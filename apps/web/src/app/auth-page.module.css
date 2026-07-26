@@ -1,0 +1,152 @@
+.screen {
+  --auth-bg: #0f1117;
+  --auth-card: #191d26;
+  --auth-card-hover: #222734;
+  --auth-text: #f4f7fb;
+  --auth-muted: #9aa4b5;
+  --auth-border: rgba(244, 247, 251, 0.13);
+  --auth-border-strong: rgba(244, 247, 251, 0.22);
+  --auth-tint: rgba(244, 247, 251, 0.06);
+  --auth-button-bg: #f4f7fb;
+  --auth-button-text: #0f1117;
+  --auth-secondary-button-bg: #2a303d;
+  --auth-secondary-button-text: #d7deea;
+  --auth-secondary-button-hover: #333b4b;
+  --auth-control-opacity: 0.6;
+  --auth-control-opacity-hover: 1;
+  --auth-control-border: rgba(244, 247, 251, 0.32);
+  --auth-control-text: #dbe3ef;
+  --auth-input-text: #d7deea;
+  --auth-input-placeholder: #929cad;
+  background:
+    linear-gradient(rgba(15, 17, 23, 0.88), rgba(15, 17, 23, 0.92)),
+    url(https://r2-data-upload.budget.digitalport.my/assets/images/wallpaper/wall.png) center / cover fixed !important;
+}
+
+:global(html[data-theme="light"]) .screen {
+  --auth-bg: #f4f6fa;
+  --auth-card: #ffffff;
+  --auth-card-hover: #eef2f7;
+  --auth-text: #111827;
+  --auth-muted: #667085;
+  --auth-border: rgba(17, 24, 39, 0.09);
+  --auth-border-strong: rgba(17, 24, 39, 0.16);
+  --auth-tint: rgba(17, 24, 39, 0.04);
+  --auth-button-bg: #111827;
+  --auth-button-text: #ffffff;
+  --auth-secondary-button-bg: #e5e7eb;
+  --auth-secondary-button-text: #4b5563;
+  --auth-secondary-button-hover: #d1d5db;
+  --auth-control-opacity: 0.4;
+  --auth-control-opacity-hover: 1;
+  --auth-control-border: rgba(17, 24, 39, 0.16);
+  --auth-control-text: #111827;
+  --auth-input-text: #4b5563;
+  --auth-input-placeholder: #98a2b3;
+  background:
+    linear-gradient(rgba(244, 246, 250, 0.82), rgba(244, 246, 250, 0.88)),
+    url(https://r2-data-upload.budget.digitalport.my/assets/images/wallpaper/wall.png) center / cover fixed !important;
+}
+
+.input {
+  color: var(--auth-input-text) !important;
+  -webkit-text-fill-color: var(--auth-input-text) !important;
+  caret-color: var(--auth-input-text);
+}
+
+.input::placeholder {
+  color: var(--auth-input-placeholder) !important;
+  -webkit-text-fill-color: var(--auth-input-placeholder) !important;
+}
+
+.input:-webkit-autofill,
+.input:-webkit-autofill:hover,
+.input:-webkit-autofill:focus,
+.input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--auth-input-text) !important;
+  caret-color: var(--auth-input-text);
+  -webkit-box-shadow: 0 0 0px 1000px var(--auth-card) inset !important;
+  box-shadow: 0 0 0px 1000px var(--auth-card) inset !important;
+  transition: background-color 9999s ease-out 0s;
+}
+
+
+@media (min-width: 768px) {
+  .screen {
+    --auth-bg: #111820;
+    --auth-card: transparent;
+    --auth-card-hover: rgba(255, 255, 255, 0.04);
+    --auth-text: #eef3f7;
+    --auth-muted: #8a98a8;
+    --auth-border: rgba(238, 243, 247, 0.16);
+    --auth-border-strong: rgba(238, 243, 247, 0.34);
+    --auth-tint: rgba(238, 243, 247, 0.06);
+    --auth-button-bg: #eef3f7;
+    --auth-button-text: #111820;
+    --auth-secondary-button-bg: transparent;
+    --auth-secondary-button-text: #c7d0da;
+    --auth-secondary-button-hover: rgba(238, 243, 247, 0.06);
+    --auth-control-border: rgba(238, 243, 247, 0.22);
+    --auth-input-text: #eef3f7;
+    --auth-input-placeholder: #728093;
+    background:
+      radial-gradient(circle at 12% 18%, rgba(238, 243, 247, 0.07), transparent 28rem),
+      linear-gradient(135deg, rgba(17, 24, 32, 0.92), rgba(23, 33, 43, 0.94), rgba(16, 22, 29, 0.95)),
+      url(https://r2-data-upload.budget.digitalport.my/assets/images/wallpaper/wall.png) center / cover fixed !important;
+  }
+
+  :global(html[data-theme="light"]) .screen {
+    --auth-bg: #eef1ed;
+    --auth-card: transparent;
+    --auth-card-hover: rgba(20, 32, 35, 0.04);
+    --auth-text: #142023;
+    --auth-muted: #667274;
+    --auth-border: rgba(20, 32, 35, 0.16);
+    --auth-border-strong: rgba(20, 32, 35, 0.34);
+    --auth-tint: rgba(20, 32, 35, 0.05);
+    --auth-button-bg: #142023;
+    --auth-button-text: #f8faf7;
+    --auth-secondary-button-bg: transparent;
+    --auth-secondary-button-text: #4b585b;
+    --auth-secondary-button-hover: rgba(20, 32, 35, 0.06);
+    --auth-control-border: rgba(20, 32, 35, 0.18);
+    --auth-input-text: #142023;
+    --auth-input-placeholder: #7c8789;
+    background:
+      radial-gradient(circle at 14% 20%, rgba(20, 32, 35, 0.06), transparent 28rem),
+      linear-gradient(135deg, rgba(238, 241, 237, 0.88), rgba(227, 232, 226, 0.9), rgba(246, 247, 243, 0.92)),
+      url(https://r2-data-upload.budget.digitalport.my/assets/images/wallpaper/wall.png) center / cover fixed !important;
+  }
+
+  .screen > div:nth-of-type(2) {
+    max-width: 30rem !important;
+    margin-top: 0 !important;
+  }
+
+  .screen h1 {
+    letter-spacing: -0.06em;
+  }
+
+  .input {
+    background: transparent !important;
+    border-radius: 0 !important;
+    border-bottom: 1px solid var(--auth-border) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .input:focus {
+    border-bottom-color: var(--auth-border-strong) !important;
+    --tw-ring-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .input:-webkit-autofill,
+  .input:-webkit-autofill:hover,
+  .input:-webkit-autofill:focus,
+  .input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
+    box-shadow: 0 0 0px 1000px transparent inset !important;
+  }
+}

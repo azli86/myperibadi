@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "digitalport-gateway",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-05-25",
+  "observability": {
+    "enabled": true
+  },
+  "ai": {
+    "binding": "AI"
+  },
+  // VPC tunnel binding to reach the homeserver (API) — managed via Dashboard
+  // "vpc_services": [{ "binding": "VPC_SERVICE", "service_id": "019e6034-1970-74c3-8eac-d91d831077c6" }],
+  // Set WEBHOOK_SECRET with: npx wrangler secret put WEBHOOK_SECRET
+  // Set AI_GATEWAY_SECRET with: npx wrangler secret put AI_GATEWAY_SECRET
+  // Keep UI /api traffic on the web server rewrite. Add VPC_SERVICE only for explicit webhook/internal proxy routes.
+  "r2_buckets": [
+    {
+      "binding": "BUDGET_R2",
+      "bucket_name": "budgetdigital"
+    }
+  ],
+}

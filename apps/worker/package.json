@@ -1,0 +1,16 @@
+{
+  "name": "expenseclaw-whatsapp-worker",
+  "version": "1.0.0",
+  "description": "WhatsApp Bot Worker for ExpenseClaw using Baileys",
+  "main": "index_v2.js",
+  "scripts": {
+    "start": "node index_v2.js",
+    "dev": "node index_v2.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.16",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

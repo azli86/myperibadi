@@ -1,0 +1,3051 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ── Self-hosted DM Sans (no external font dependency) ── */
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url("/fonts/DMSans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Sans";
+  font-style: italic;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url("/fonts/DMSans-italic.woff2") format("woff2");
+}
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --font-sans: "DM Sans", sans-serif;
+  --color-green-500: #047a62;
+  --color-green-600: #058B70;
+  --color-green-700: #047056;
+}
+
+/* ── shadcn sidebar + primitives theme tokens ── */
+@theme {
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-primary: var(--btn-primary-bg, #171717);
+  --color-primary-foreground: var(--btn-primary-text, #ffffff);
+  --color-border: var(--border);
+  --color-ring: var(--input-focus, #a3a3a3);
+  --color-muted-foreground: var(--muted);
+  --color-accent: var(--surface-tint-strong);
+  --color-secondary: var(--surface-tint);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--text);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  /* ── Premium Black, White & Grey (design system) ──
+     Dark page #0D0D0D · Light page #F2F2F2 · Info #3B82F6 */
+  --brand-navy: #0d0d0d;
+  --brand-blue: #3b82f6;
+  --brand-cyan: #00d4e0;
+  --brand-deep: #0d0d0d;
+  --brand-mist: #f2f2f2;
+  --brand-muted: #737373;
+  --brand-gradient: linear-gradient(135deg, #262626 0%, #1a1a1a 100%);
+  --brand-hero-gradient: linear-gradient(145deg, #0d0d0d 0%, #161616 48%, #1a1a1a 100%);
+  --brand-hero-gradient-wide: linear-gradient(120deg, #0d0d0d 0%, #161616 55%, #1a1a1a 100%);
+
+  /* ── Dark Mode ── */
+  --page-bg: #0d0d0d;
+  --bg: #0d0d0d;
+  --bg2: #161616;
+  --bg-tertiary: #1f1f1f;
+  --bg-elevation: #262626;
+  --card: #1a1a1a;
+  --card2: #202020;
+  --card3: #161616;
+  --card-active: #262626;
+  --card-elevated: #2d2d2d;
+  --hero-start: #0d0d0d;
+  --hero-mid: #161616;
+  --hero-end: #1f1f1f;
+  --hero-radial: radial-gradient(circle at top, #1f1f1f 0%, #161616 40%, #0d0d0d 100%);
+  --border: #2a2a2a;
+  --border-light: #333333;
+  --border-strong: #3d3d3d;
+  --divider: #3d3d3d;
+  --divider-light: #4a4a4a;
+  --surface-tint: rgba(255, 255, 255, 0.04);
+  --surface-tint-strong: rgba(255, 255, 255, 0.08);
+  --skeleton-base: rgba(255, 255, 255, 0.05);
+  --skeleton-panel: rgba(255, 255, 255, 0.03);
+  --skeleton-panel-highlight: rgba(255, 255, 255, 0.06);
+  --skeleton-border: rgba(255, 255, 255, 0.08);
+  --text: #e5e5e5;
+  --text-soft: #a8a8a8;
+  --muted: #858585;
+  --text-disabled: #5e5e5e;
+  --income: #22c55e;
+  --income-bg: rgba(34, 197, 94, 0.12);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.12);
+  --expense: #ef4444;
+  --expense-bg: rgba(239, 68, 68, 0.12);
+  --info: #3b82f6;
+  --info-bg: rgba(59, 138, 246, 0.12);
+  --sheet-bg: #161616;
+  --accent: #22c55e;
+  --accent2: var(--btn-primary-bg);
+  --accent-bg: rgba(255, 255, 255, 0.08);
+  --overlay: rgba(0, 0, 0, 0.72);
+  --input-bg: #161616;
+  --input-border: #2a2a2a;
+  --input-focus: #525252;
+  --input-placeholder: #7a7a7a;
+  --btn-primary-bg: #9f9f9f;
+  --btn-primary-text: #0d0d0d;
+  --btn-primary-hover: #909090;
+  --btn-secondary-bg: #262626;
+  --btn-secondary-text: #c8c8c8;
+  --btn-secondary-hover: #333333;
+  --icon-bg: #a8a8a8;
+  --icon-fg: #0d0d0d;
+  --bottom-nav-text: #e5e5e5;
+  --bottom-nav-muted: #858585;
+  --bottom-nav-surface: #161616;
+  --bottom-nav-rail: rgba(255, 255, 255, 0.05);
+  --bottom-nav-center-bg: #2a2a2a;
+  --bottom-nav-center-text: #e5e5e5;
+  --bottom-nav-center-ring: rgba(42, 42, 42, 0.14);
+  --bottom-nav-active-fill: #262626;
+  --bottom-nav-active-detail: #e5e5e5;
+  --radius: 12px;
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 28px;
+  --radius-4xl: 32px;
+  --card-radius-xl: 20px;
+  --card-radius-lg: 16px;
+  --card-radius-md: 14px;
+  --card-radius-sm: 12px;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.35);
+  --card-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
+  /* ── Flowy / Soft Surface Tokens ── */
+  --surface-float: rgba(255, 255, 255, 0.03);
+  --surface-float-hover: rgba(255, 255, 255, 0.05);
+  --pill-bg: rgba(255, 255, 255, 0.05);
+  --pill-bg-hover: rgba(255, 255, 255, 0.08);
+  --pill-bg-active: rgba(255, 255, 255, 0.12);
+  --pill-border: rgba(255, 255, 255, 0.06);
+  --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 6px 20px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.45);
+  --glass-blur: 22px;
+  /* ── shadcn sidebar (dark) ── */
+  --sidebar: #0d0d0d;
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--btn-primary-bg);
+  --sidebar-primary-foreground: var(--btn-primary-text);
+  --sidebar-accent: var(--surface-tint-strong);
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--input-focus);
+}
+
+html[data-theme="light"] {
+  /* ── Light Mode ── */
+  --page-bg: #f2f2f2;
+  --bg: #f2f2f2;
+  --bg2: #e9e9e9;
+  --bg-tertiary: #e0e0e0;
+  --bg-elevation: #d6d6d6;
+  --card: #ffffff;
+  --card2: #fafafa;
+  --card3: #f2f2f2;
+  --card-active: #f2f2f2;
+  --card-elevated: #ebebeb;
+  --hero-start: #ffffff;
+  --hero-mid: #fafafa;
+  --hero-end: #f2f2f2;
+  --hero-radial: radial-gradient(circle at top, #ffffff 0%, #fafafa 35%, #e9e9e9 75%);
+  --border: #e5e5e5;
+  --border-light: #dadada;
+  --border-strong: #d0d0d0;
+  --divider: #d0d0d0;
+  --divider-light: #c6c6c6;
+  --surface-tint: rgba(23, 23, 23, 0.03);
+  --surface-tint-strong: rgba(23, 23, 23, 0.06);
+  --skeleton-base: rgba(23, 23, 23, 0.05);
+  --skeleton-highlight: rgba(255, 255, 255, 0.88);
+  --skeleton-panel: rgba(255, 255, 255, 0.5);
+  --skeleton-panel-highlight: rgba(255, 255, 255, 0.72);
+  --skeleton-border: #e5e5e5;
+  --text: #171717;
+  --text-soft: #525252;
+  --muted: #737373;
+  --text-disabled: #a3a3a3;
+  --income-bg: rgba(34, 197, 94, 0.12);
+  --warning-bg: rgba(245, 158, 11, 0.12);
+  --expense-bg: rgba(239, 68, 68, 0.12);
+  --info-bg: rgba(59, 138, 246, 0.12);
+  --sheet-bg: #ffffff;
+  --accent-bg: rgba(23, 23, 23, 0.06);
+  --overlay: rgba(0, 0, 0, 0.42);
+  --input-bg: #ffffff;
+  --input-border: #dadada;
+  --input-focus: #a3a3a3;
+  --input-placeholder: #a3a3a3;
+  --btn-primary-bg: #171717;
+  --btn-primary-text: #ffffff;
+  --btn-primary-hover: #303030;
+  --btn-secondary-bg: #eeeeee;
+  --btn-secondary-text: #171717;
+  --btn-secondary-hover: #e0e0e0;
+  --icon-bg: #171717;
+  --icon-fg: #ffffff;
+  --bottom-nav-text: #171717;
+  --bottom-nav-muted: #737373;
+  --bottom-nav-surface: #ffffff;
+  --bottom-nav-rail: rgba(242, 242, 242, 0.96);
+  --bottom-nav-center-bg: #e5e5e5;
+  --bottom-nav-center-text: #171717;
+  --bottom-nav-center-ring: rgba(229, 229, 229, 0.08);
+  --bottom-nav-active-fill: #eeeeee;
+  --bottom-nav-active-detail: #171717;
+  --card-shadow: 0 1px 3px rgba(23, 23, 23, 0.05), 0 1px 2px rgba(23, 23, 23, 0.03);
+  --card-shadow-hover: 0 6px 18px rgba(23, 23, 23, 0.08), 0 2px 4px rgba(23, 23, 23, 0.04);
+  /* ── Flowy / Soft Surface Tokens ── */
+  --surface-float: rgba(23, 23, 23, 0.02);
+  --surface-float-hover: rgba(23, 23, 23, 0.04);
+  --pill-bg: rgba(23, 23, 23, 0.04);
+  --pill-bg-hover: rgba(23, 23, 23, 0.07);
+  --pill-bg-active: rgba(23, 23, 23, 0.1);
+  --pill-border: #e5e5e5;
+  --shadow-soft: 0 2px 8px rgba(23, 23, 23, 0.04);
+  --shadow-card: 0 4px 16px rgba(23, 23, 23, 0.06);
+  --shadow-lg: 0 10px 32px rgba(23, 23, 23, 0.08);
+  --glass-blur: 22px;
+  /* ── shadcn sidebar (light) ── */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #171717;
+  --sidebar-primary: var(--btn-primary-bg);
+  --sidebar-primary-foreground: var(--btn-primary-text);
+  --sidebar-accent: rgba(23, 23, 23, 0.06);
+  --sidebar-accent-foreground: #171717;
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--input-focus);
+}
+
+html,
+body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+html[data-theme="dark"] {
+  --border: #2a2a2a;
+  --border-strong: #3d3d3d;
+  --skeleton-border: rgba(0, 0, 0, 0.45);
+}
+
+html[data-theme="dark"],
+html[data-theme="dark"] body,
+html[data-theme="dark"] .portal-app-shell,
+html[data-theme="dark"] .portal-personal-shell,
+html[data-theme="dark"] .portal-removed-business-shell {
+  background-color: var(--bg);
+}
+
+html[data-theme="light"] .portal-removed-business-shell {
+  background: #f3f8f4 !important;
+  background-color: #f3f8f4 !important;
+}
+
+/* Mobile personal dashboard: flat page background (no top wash/shadow) */
+@media (max-width: 767.98px) {
+  html[data-theme="dark"] .portal-personal-shell.portal-dashboard-home,
+  html[data-theme="light"] .portal-personal-shell.portal-dashboard-home {
+    background-color: var(--page-bg) !important;
+    background-image: none !important;
+  }
+}
+
+body {
+  color: var(--text);
+  background: var(--page-bg);
+  font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100dvh;
+  position: relative;
+  overscroll-behavior: none;
+}
+
+@keyframes budget-alert-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.12);
+    background-color: rgba(248, 113, 113, 0.10);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(248, 113, 113, 0.06);
+    background-color: rgba(248, 113, 113, 0.16);
+  }
+}
+
+.budget-alert-critical {
+  animation: budget-alert-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 160% 0;
+  }
+  100% {
+    background-position: -160% 0;
+  }
+}
+
+@keyframes skeleton-panel-shimmer {
+  0% {
+    transform: translateX(-140%);
+  }
+  100% {
+    transform: translateX(140%);
+  }
+}
+
+.skeleton-surface {
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-base) 0%,
+    var(--skeleton-highlight) 48%,
+    var(--skeleton-base) 100%
+  ) !important;
+  backdrop-filter: blur(8px);
+  background-size: 220% 100% !important;
+  animation: skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
+.skeleton-panel {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: linear-gradient(135deg, var(--skeleton-panel), transparent 48%, var(--skeleton-panel-highlight)) !important;
+  border-color: var(--skeleton-border) !important;
+  backdrop-filter: blur(10px);
+}
+
+.skeleton-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 35%, rgba(255,255,255,0.42) 50%, rgba(255,255,255,0.12) 65%, transparent 100%);
+  transform: translateX(-140%);
+  animation: skeleton-panel-shimmer 1.6s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.skeleton-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Shadows are now allowed globally. Controlled per-component. */
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+}
+
+/* Global link typography: keep link text compact by default. */
+:where(a):not(.keep-link-size) {
+  font-size: 0.82rem !important;
+  line-height: 1.2;
+}
+
+select {
+  color-scheme: dark;
+}
+
+html[data-theme="light"] select {
+  color-scheme: light;
+}
+
+select option,
+select optgroup {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+html[data-theme="light"] select option,
+html[data-theme="light"] select optgroup {
+  background-color: #ffffff;
+  color: #101828;
+}
+
+select option:checked {
+  background-color: var(--surface-tint-strong);
+  color: var(--text);
+}
+
+html[data-theme="light"] select option:checked {
+  background-color: #e5e7eb;
+  color: #101828;
+}
+
+/* ── Modern Card Base ── */
+
+/* Dark borders on ALL pages (not sidebar-only) */
+html[data-theme="dark"] .modern-card,
+html[data-theme="dark"] [class~="border"],
+html[data-theme="dark"] [class~="border-[var(--border)]"],
+html[data-theme="dark"] [class~="border-[color:var(--border)]"],
+html[data-theme="dark"] [class*="border-[var(--border)]"],
+html[data-theme="dark"] [class*="border-[color:var(--border)]"],
+html[data-theme="dark"] [class~="border-white/5"],
+html[data-theme="dark"] [class~="border-white/8"],
+html[data-theme="dark"] [class~="border-white/10"],
+html[data-theme="dark"] [class~="border-white/12"],
+html[data-theme="dark"] [class~="border-white/15"],
+html[data-theme="dark"] [class~="border-white/20"],
+html[data-theme="dark"] [class*="border-white/"],
+html[data-theme="dark"] [class*="border-white/[0."] {
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] .modern-card:hover,
+html[data-theme="dark"] [class*="border-[var(--border-strong)]"],
+html[data-theme="dark"] [class*="border-[color:var(--border-strong)]"] {
+  border-color: var(--border-strong) !important;
+}
+
+/* Kill leftover bright white borders on dark */
+html[data-theme="dark"] .balance-hero,
+html[data-theme="dark"] .portal-download-card,
+html[data-theme="dark"] .purple-chrome,
+html[data-theme="dark"] .chatgpt-composer-shell {
+  border-color: var(--border) !important;
+}
+
+.modern-card {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius-lg);
+  box-shadow: var(--card-shadow);
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.modern-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--card-shadow-hover);
+}
+
+.modern-card-interactive {
+  cursor: pointer;
+}
+
+.modern-card-interactive:hover {
+  transform: translateY(-1px);
+}
+
+/* ── Glass Effect ── */
+.glass-surface {
+  background: color-mix(in srgb, var(--card) 85%, transparent);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border);
+}
+
+/* ── Pill/Tab Base ── */
+.pill-base {
+  background-color: var(--pill-bg);
+  border: 1px solid var(--pill-border);
+  border-radius: 999px;
+  transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+.pill-base:hover {
+  background-color: var(--pill-bg-hover);
+}
+
+.pill-base.active {
+  background-color: var(--pill-bg-active);
+}
+
+/* Global rounded scale: softer modern cards. */
+[class~="rounded-3xl"] {
+  border-radius: var(--radius-3xl) !important;
+}
+
+[class~="rounded-2xl"] {
+  border-radius: var(--radius-2xl) !important;
+}
+
+[class~="rounded-xl"] {
+  border-radius: var(--radius-xl) !important;
+}
+
+[class*="rounded-[40px]"],
+[class*="rounded-[32px]"] {
+  border-radius: var(--card-radius-xl) !important;
+}
+
+[class*="rounded-[16px]"],
+[class*="rounded-[16px]"],
+[class*="rounded-t-[16px]"],
+[class*="rounded-b-[30px]"],
+[class*="rounded-l-[30px]"],
+[class*="rounded-r-[30px]"],
+[class*="rounded-t-[16px]"],
+[class*="rounded-b-[28px]"],
+[class*="rounded-l-[28px]"],
+[class*="rounded-r-[28px]"] {
+  border-radius: var(--card-radius-lg) !important;
+}
+
+[class*="rounded-[16px]"],
+[class*="rounded-[16px]"],
+[class*="rounded-t-[16px]"],
+[class*="rounded-b-[24px]"],
+[class*="rounded-l-[24px]"],
+[class*="rounded-r-[24px]"] {
+  border-radius: var(--card-radius-md) !important;
+}
+
+[class*="rounded-[16px]"],
+[class*="rounded-[20px]"],
+[class*="rounded-t-[20px]"],
+[class*="rounded-b-[20px]"],
+[class*="rounded-l-[20px]"],
+[class*="rounded-r-[20px]"] {
+  border-radius: var(--card-radius-sm) !important;
+}
+
+[class*="rounded-t-"] {
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+[class*="rounded-b-"] {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+}
+
+/*
+ * App sheet system
+ * Mobile: bottom sheet, top corners only (flush to screen edge)
+ * sm+: centered dialog, full rounded
+ * Use class names — do NOT rely on rounded-t-* + sm:rounded-* (global CSS zeros bottoms)
+ */
+.app-sheet-panel {
+  --app-sheet-r: 28px;
+  --app-sheet-r-desktop: 24px;
+  border-top-left-radius: var(--app-sheet-r) !important;
+  border-top-right-radius: var(--app-sheet-r) !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+.app-sheet-panel--sm {
+  --app-sheet-r: 24px;
+  --app-sheet-r-desktop: 20px;
+}
+
+.app-sheet-panel--lg {
+  --app-sheet-r: 32px;
+  --app-sheet-r-desktop: 16px;
+}
+
+.app-sheet-panel--xl {
+  --app-sheet-r: 30px;
+  --app-sheet-r-desktop: 24px;
+}
+
+/* Always bottom-docked (menus): never full-round bottoms */
+.app-sheet-panel--docked {
+  border-top-left-radius: var(--app-sheet-r) !important;
+  border-top-right-radius: var(--app-sheet-r) !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+.app-sheet-panel-header {
+  border-top-left-radius: var(--app-sheet-r, 28px) !important;
+  border-top-right-radius: var(--app-sheet-r, 28px) !important;
+  border-bottom-left-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+@media (min-width: 640px) {
+  .app-sheet-panel:not(.app-sheet-panel--docked) {
+    border-radius: var(--app-sheet-r-desktop) !important;
+  }
+
+  .app-sheet-panel--docked {
+    border-top-left-radius: var(--app-sheet-r) !important;
+    border-top-right-radius: var(--app-sheet-r) !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+  }
+
+  .app-sheet-panel-header {
+    border-top-left-radius: var(--app-sheet-r-desktop, 24px) !important;
+    border-top-right-radius: var(--app-sheet-r-desktop, 24px) !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+  }
+
+  .app-sheet-panel--docked .app-sheet-panel-header,
+  .app-sheet-panel--docked.app-sheet-panel-header {
+    border-top-left-radius: var(--app-sheet-r) !important;
+    border-top-right-radius: var(--app-sheet-r) !important;
+  }
+}
+
+/* Personal desktop card clamp must not flatten sheets */
+@media (min-width: 768px) {
+  .portal-personal-shell .app-sheet-panel:not(.app-sheet-panel--docked) {
+    border-radius: var(--app-sheet-r-desktop) !important;
+  }
+
+  .portal-personal-shell .app-sheet-panel--docked {
+    border-top-left-radius: var(--app-sheet-r) !important;
+    border-top-right-radius: var(--app-sheet-r) !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+  }
+
+  .portal-personal-shell .app-sheet-panel-header {
+    border-top-left-radius: var(--app-sheet-r-desktop) !important;
+    border-top-right-radius: var(--app-sheet-r-desktop) !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+  }
+}
+
+[class*="rounded-l-"] {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+[class*="rounded-r-"] {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+}
+
+/* Global control typography cleanup for buttons, pills, and tab-like actions */
+:where(button, [role="tab"], a[class*="rounded"][class*="px-"]):not(.keep-control-caps) {
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+
+:where(button, [role="tab"], a[class*="rounded"][class*="px-"])[class*="tracking-"]:not(.keep-control-caps) {
+  letter-spacing: 0.01em !important;
+}
+
+:where(button, [role="tab"], a[class*="rounded"][class*="px-"])[class*="uppercase"]:not(.keep-control-caps) {
+  text-transform: none !important;
+}
+
+:where(button, [role="tab"], a[class*="rounded"][class*="px-"])[class*="font-black"]:not(.keep-control-caps),
+:where(button, [role="tab"], a[class*="rounded"][class*="px-"])[class*="font-extrabold"]:not(.keep-control-caps),
+:where(button, [role="tab"], a[class*="rounded"][class*="px-"])[class*="font-bold"]:not(.keep-control-caps) {
+  font-weight: 600 !important;
+}
+
+
+/* Scoped mobile type scale for signed-in app pages. Auth pages do not use .portal-app-shell. */
+@media (max-width: 767px) {
+  .portal-app-shell {
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
+
+  .portal-app-shell :where([class~="text-5xl"], [class~="text-4xl"], [class~="text-3xl"], [class*="text-[2.25rem]"], [class*="text-[2rem]"], [class*="text-[1.9rem]"]) {
+    font-size: 1.25rem !important;
+    line-height: 1.18 !important;
+  }
+
+  .portal-app-shell :where([class~="text-2xl"], [class*="text-[1.7rem]"], [class*="text-[1.6rem]"], [class*="text-[1.55rem]"], [class*="text-[1.5rem]"]) {
+    font-size: 1.125rem !important;
+    line-height: 1.22 !important;
+  }
+
+  .portal-app-shell :where([class~="text-xl"]) {
+    font-size: 1rem !important;
+    line-height: 1.28 !important;
+  }
+
+  .portal-app-shell :where([class~="text-lg"], [class~="text-base"]) {
+    font-size: 0.875rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .portal-app-shell :where([class~="text-sm"]) {
+    font-size: 0.8125rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .portal-app-shell :where(button, [role="tab"], a[class*="rounded"][class*="px-"]) {
+    font-size: 0.8125rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .portal-app-shell :where(input, select, textarea) {
+    font-size: 16px !important;
+    line-height: 1.35 !important;
+  }
+
+  .portal-app-shell :where([class~="p-8"], [class~="p-7"], [class~="p-6"]) {
+    padding: 1rem !important;
+  }
+
+  .portal-app-shell :where([class~="px-8"], [class~="px-7"], [class~="px-6"]) {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .portal-app-shell :where([class~="py-8"], [class~="py-7"], [class~="py-6"]) {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  .portal-app-shell :where([class~="gap-8"], [class~="gap-7"], [class~="gap-6"]) {
+    gap: 1rem !important;
+  }
+}
+
+/* Desktop scrollbars stay visible; mobile keeps the app-style hidden scrollbar. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-tint-strong) transparent;
+  border-color: var(--border);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--surface-tint-strong);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (max-width: 767px) {
+  html,
+  body,
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  *::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+::selection {
+  background: var(--accent-bg);
+  color: var(--text);
+}
+
+[class~="bg-[var(--card3)]"],
+[class~="bg-[#080b12]"],
+[class~="bg-[#0c0f18]"],
+[class~="bg-[#0c111c]"] {
+  background-color: var(--card3) !important;
+}
+
+[class~="bg-[var(--card3)]/90"] {
+  background-color: color-mix(in srgb, var(--card3) 90%, transparent) !important;
+}
+
+[class~="bg-[var(--card3)]/50"] {
+  background-color: color-mix(in srgb, var(--card3) 50%, transparent) !important;
+}
+
+[class~="bg-[var(--card)]"],
+[class~="bg-[#10131d]"],
+[class~="bg-[#121628]"] {
+  background-color: var(--card3) !important;
+}
+
+[class~="bg-[var(--card)]"],
+[class~="bg-[var(--card)]/80"],
+[class~="bg-[var(--card)]/90"],
+[class~="bg-[var(--card)]/95"],
+[class~="bg-[#1c2030]"],
+[class~="bg-[#1a1e2e]"] {
+  background-color: var(--card) !important;
+}
+
+[class~="bg-[#1a1e35]"],
+[class~="bg-[#1a1240]"] {
+  background-color: var(--card2) !important;
+}
+
+/* Normalize legacy hardcoded dark card surfaces across all pages. */
+html[data-theme="dark"] [class~="bg-[#0f0f0f]"] {
+  background-color: var(--page-bg) !important;
+}
+
+html[data-theme="dark"] [class~="bg-[#161616]"],
+html[data-theme="dark"] [class~="bg-[#1c1c1c]"],
+html[data-theme="dark"] [class~="bg-[#212121]"] {
+  background-color: var(--card) !important;
+}
+
+html[data-theme="dark"] [class~="bg-[#0f0f0f]/85"] {
+  background-color: color-mix(in srgb, var(--page-bg) 85%, transparent) !important;
+}
+
+html[data-theme="dark"] [class~="bg-[#0f0f0f]/92"] {
+  background-color: color-mix(in srgb, var(--page-bg) 92%, transparent) !important;
+}
+
+/* Emoji picker: hide category title rows like "Smileys & People" */
+.category-emoji-picker .epr-emoji-category-label {
+  display: none !important;
+}
+
+html[data-theme="light"] [class~="bg-[var(--card)]/80"] {
+  background-color: color-mix(in srgb, var(--card) 85%, transparent) !important;
+}
+
+html[data-theme="light"] [class~="bg-[var(--card)]/90"] {
+  background-color: color-mix(in srgb, var(--card) 92%, transparent) !important;
+}
+
+html[data-theme="light"] [class~="bg-[var(--card)]/95"] {
+  background-color: color-mix(in srgb, var(--card) 95%, transparent) !important;
+}
+
+.chat-composer {
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+html[data-theme="light"] .chat-composer {
+  background-color: color-mix(in srgb, var(--card) 94%, transparent) !important;
+  border-top-color: var(--border) !important;
+  box-shadow: 0 -12px 28px color-mix(in srgb, var(--brand-navy) 6%, transparent);
+}
+
+.chat-composer-surface,
+.chat-composer-icon-button {
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+
+html[data-theme="light"] .chat-composer-surface {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--brand-navy) 4%, transparent);
+}
+
+html[data-theme="light"] .chat-composer-icon-button {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+  color: var(--muted) !important;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--brand-navy) 4%, transparent);
+}
+
+html[data-theme="light"] .chat-composer-textarea {
+  color: var(--text) !important;
+}
+
+html[data-theme="light"] .chat-composer-textarea::placeholder {
+  color: var(--muted) !important;
+}
+
+.chatgpt-composer-shell {
+  border-radius: var(--card-radius-lg) !important;
+  transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+.chatgpt-composer-control,
+.chatgpt-send-button {
+  border-radius: 9999px !important;
+}
+
+html[data-theme="light"] .chatgpt-composer-shell {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] .chatgpt-composer-shell {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+}
+
+/* Chat bubbles — brand accents */
+.chat-user-bubble {
+  border-radius: var(--radius-3xl) !important;
+}
+
+html[data-theme="dark"] .chat-user-bubble {
+  background: color-mix(in srgb, var(--text) 12%, var(--card)) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="light"] .chat-user-bubble {
+  background: color-mix(in srgb, var(--text) 6%, var(--surface-tint)) !important;
+  border-color: transparent !important;
+  color: var(--text) !important;
+}
+
+html[data-theme="dark"] .chat-bot-bubble,
+html[data-theme="light"] .chat-bot-bubble {
+  background: var(--card) !important;
+  border-color: var(--border) !important;
+  color: var(--text) !important;
+}
+
+.chatgpt-send-button:not(:disabled),
+button.chatgpt-send-button:not(:disabled) {
+  background: var(--btn-primary-bg) !important;
+  color: var(--btn-primary-text) !important;
+}
+
+/* Cleaned up text mapping so older hard-coded UI colors follow the active theme. */
+.text-\[\#f0f2fa\],
+.text-\[\#f3f6ff\],
+.text-\[\#f8fafc\],
+.text-\[\#fafafa\] {
+  color: var(--text);
+}
+
+.text-soft,
+.text-\[\#cfd6f6\],
+.text-\[\#eef2ff\],
+.text-\[\#d7dcfb\],
+.text-\[\#d1d5db\],
+.text-\[\#c9d0ee\],
+.text-\[\#d7dcf3\],
+.text-\[\#b9c3f0\],
+.text-\[\#cfcfcf\],
+[class~="text-indigo-100/70"],
+[class~="text-indigo-100/76"],
+[class~="text-indigo-200/72"] {
+  color: var(--text-soft);
+}
+
+.text-muted,
+.text-\[\#6b7194\],
+.text-\[\#8b92a6\],
+.text-\[\#8d95ba\],
+.text-\[\#94a3b8\],
+.text-\[\#9aa3c7\],
+.text-\[\#9ca3af\],
+.text-\[\#9ea6c7\] {
+  color: var(--muted);
+}
+
+[class~="text-white/80"] {
+  color: color-mix(in srgb, var(--text) 80%, transparent);
+}
+
+[class~="text-white/70"] {
+  color: color-mix(in srgb, var(--text) 70%, transparent);
+}
+
+[class~="text-white/60"] {
+  color: color-mix(in srgb, var(--text) 60%, transparent);
+}
+
+[class~="text-white/50"] {
+  color: color-mix(in srgb, var(--text) 50%, transparent);
+}
+
+[class~="hover:text-[var(--text)]"]:hover,
+[class~="hover:text-white"]:hover {
+  color: var(--text);
+}
+
+.group:hover [class~="group-hover:text-[var(--text)]"],
+.group:hover [class~="group-hover:text-white"] {
+  color: var(--text);
+}
+
+[class~="placeholder:text-[var(--muted)]"]::placeholder {
+  color: color-mix(in srgb, var(--muted) 70%, transparent) !important;
+}
+
+[class~="border-[color:var(--border)]"],
+[class~="border-[var(--border)]"],
+[class~="border-white/5"],
+[class~="border-white/8"],
+[class~="border-white/10"],
+[class~="border-white/[0.03]"],
+[class~="border-white/[0.04]"],
+[class~="border-white/[0.05]"],
+[class~="border-white/[0.06]"],
+[class~="border-white/[0.08]"],
+[class~="border-white/[0.10]"] {
+  border-color: var(--border) !important;
+}
+
+[class~="border-[color:var(--border-strong)]"],
+[class~="border-[var(--border-strong)]"] {
+  border-color: var(--border-strong) !important;
+}
+
+html[data-theme="light"] [class~="border-slate-100"],
+html[data-theme="light"] [class~="border-slate-200"],
+html[data-theme="light"] [class~="border-slate-200/50"],
+html[data-theme="light"] [class~="border-slate-200/60"],
+html[data-theme="light"] [class~="border-slate-200/70"],
+html[data-theme="light"] [class~="border-slate-200/80"] {
+  border-color: var(--border) !important;
+}
+
+html[data-theme="light"] [class~="hover:border-slate-200"]:hover,
+html[data-theme="light"] [class~="hover:border-slate-300"]:hover {
+  border-color: var(--border-strong) !important;
+}
+
+html[data-theme="dark"] :is(
+  [class~="border-black"],
+  [class~="border-black/5"],
+  [class~="border-black/10"],
+  [class~="border-zinc-800"],
+  [class~="border-zinc-900"],
+  [class~="border-neutral-800"],
+  [class~="border-neutral-900"],
+  [class~="border-slate-800"],
+  [class~="border-slate-900"]
+) {
+  border-color: var(--border) !important;
+}
+
+html[data-theme="dark"] :is(
+  [class~="hover:border-zinc-700"],
+  [class~="hover:border-neutral-700"],
+  [class~="hover:border-slate-700"]
+):hover {
+  border-color: var(--border-strong) !important;
+}
+
+[class~="bg-white/5"],
+[class~="bg-white/[0.01]"],
+[class~="bg-white/[0.02]"],
+[class~="bg-white/[0.03]"],
+[class~="bg-white/[0.04]"] {
+  background-color: var(--surface-tint) !important;
+}
+
+[class~="bg-white/[0.08]"],
+[class~="bg-white/10"],
+[class~="bg-white/16"],
+[class~="bg-white/20"] {
+  background-color: var(--surface-tint-strong) !important;
+}
+
+[class~="divide-white/[0.04]"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border) !important;
+}
+
+[class~="divide-white/[0.06]"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border-strong) !important;
+}
+
+[class~="divide-white/5"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--border) !important;
+}
+
+[class~="hover:bg-white/[0.02]"]:hover,
+[class~="hover:bg-white/[0.03]"]:hover,
+[class~="hover:bg-white/[0.04]"]:hover,
+[class~="hover:bg-white/5"]:hover {
+  background-color: var(--surface-tint-strong) !important;
+}
+
+[class~="hover:bg-[#f87171]/5"]:hover {
+  background-color: color-mix(in srgb, var(--expense) 10%, transparent) !important;
+}
+
+[class~="hover:border-[color:var(--border)]"]:hover {
+  border-color: var(--border-strong) !important;
+}
+
+[class~="from-[#0f0f0f]"] {
+  --tw-gradient-from: var(--hero-start) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: color-mix(in srgb, var(--hero-start) 0%, transparent) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+[class~="via-[#121628]"],
+[class~="via-[#0f0f0f]"] {
+  --tw-gradient-via: var(--hero-mid) var(--tw-gradient-via-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to) !important;
+}
+
+[class~="to-[#0f0f0f]"] {
+  --tw-gradient-to: var(--hero-end) var(--tw-gradient-to-position) !important;
+}
+
+html[data-theme="dark"] [class~="from-[#0f0f0f]"] {
+  --tw-gradient-from: var(--card2) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: color-mix(in srgb, var(--card2) 0%, transparent) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+html[data-theme="dark"] [class~="from-[#1a1a1a]"] {
+  --tw-gradient-from: var(--card2) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: color-mix(in srgb, var(--card2) 0%, transparent) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+html[data-theme="dark"] [class~="via-[#121628]"],
+html[data-theme="dark"] [class~="via-[#0f0f0f]"] {
+  --tw-gradient-via: var(--card3) var(--tw-gradient-via-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to) !important;
+}
+
+html[data-theme="dark"] [class~="to-[#0f0f0f]"] {
+  --tw-gradient-to: var(--card) var(--tw-gradient-to-position) !important;
+}
+
+html[data-theme="dark"] [class~="to-[#0a0a0a]"] {
+  --tw-gradient-to: var(--card) var(--tw-gradient-to-position) !important;
+}
+
+[class~="bg-[radial-gradient(circle_at_top,#0f0f0f_0%,#0f0f0f_20%,#0f0f0f_65%)]"],
+[class~="bg-[radial-gradient(circle_at_top,#0f0f0f_0%,#0f0f0f_52%,#0f0f0f_100%)]"] {
+  background-image: var(--hero-radial) !important;
+}
+
+.force-white {
+  color: #ffffff !important;
+}
+
+/* Primary solid buttons — monochrome (design system) */
+.accent-solid-btn,
+.accent-solid-btn * {
+  color: var(--btn-primary-text) !important;
+}
+
+:is(button, a, [role="button"], .accent-solid-btn)[class~="bg-[var(--accent2)]"],
+:is(button, a, [role="button"], .accent-solid-btn)[class~="bg-[var(--btn-primary-bg)]"],
+:is(button, a, [role="button"], .accent-solid-btn)[class~="bg-[var(--brand-blue)]"],
+:is(button, a, [role="button"])[class~="bg-blue-500"],
+:is(button, a, [role="button"])[class~="bg-blue-600"],
+:is(button, a, [role="button"])[class~="bg-blue-700"],
+:is(button, a, [role="button"])[class~="bg-[#0a62fe]"],
+:is(button, a, [role="button"])[class~="bg-[#0A62FE]"],
+:is(button, a, [role="button"])[class~="bg-[#1565ff]"],
+:is(button, a, [role="button"])[class~="bg-[#3b82f6]"] {
+  background-color: var(--btn-primary-bg) !important;
+  color: var(--btn-primary-text) !important;
+}
+
+:is(button, a, [role="button"], .accent-solid-btn)[class~="bg-[var(--accent2)]"] *,
+:is(button, a, [role="button"], .accent-solid-btn)[class~="bg-[var(--btn-primary-bg)]"] *,
+:is(button, a, [role="button"], .accent-solid-btn)[class~="bg-[var(--brand-blue)]"] *,
+:is(button, a, [role="button"])[class~="bg-blue-500"] *,
+:is(button, a, [role="button"])[class~="bg-blue-600"] *,
+:is(button, a, [role="button"])[class~="bg-blue-700"] *,
+:is(button, a, [role="button"])[class~="bg-[#0a62fe]"] *,
+:is(button, a, [role="button"])[class~="bg-[#0A62FE]"] *,
+:is(button, a, [role="button"])[class~="bg-[#1565ff]"] *,
+:is(button, a, [role="button"])[class~="bg-[#3b82f6]"] * {
+  color: var(--btn-primary-text) !important;
+}
+
+/* Business keeps white text on solid primary fills in light mode */
+html[data-theme="light"] .portal-removed-business-shell :is(button, a, [role="button"], .accent-solid-btn)[class~="bg-[var(--accent2)]"],
+html[data-theme="light"] .portal-removed-business-shell :is(button, a, [role="button"], .accent-solid-btn)[class~="bg-[var(--accent2)]"] *,
+html[data-theme="light"] .portal-removed-business-shell :is(button, a, [role="button"])[class~="bg-blue-600"],
+html[data-theme="light"] .portal-removed-business-shell :is(button, a, [role="button"])[class~="bg-blue-600"] * {
+  color: #ffffff !important;
+}
+
+.balance-hero {
+  position: relative;
+  overflow: hidden;
+}
+
+html[data-theme="dark"] .balance-hero {
+  /* Premium black elevated card */
+  background: linear-gradient(155deg, #1a1a1a 0%, #202020 42%, #262626 100%) !important;
+  border-color: #2a2a2a !important;
+}
+
+html[data-theme="light"] .balance-hero {
+  background: linear-gradient(155deg, #171717 0%, #262626 48%, #303030 100%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Mobile dashboard hero */
+@media (max-width: 767.98px) {
+  html[data-theme="dark"] .balance-hero {
+    background: linear-gradient(165deg, #161616 0%, #1a1a1a 36%, #262626 100%) !important;
+  }
+
+  html[data-theme="light"] .balance-hero {
+    background: linear-gradient(165deg, #171717 0%, #262626 42%, #303030 100%) !important;
+  }
+
+  .balance-hero .pointer-events-none > div {
+    opacity: 0.55;
+  }
+}
+
+/* Board/list dark heroes — brand navy depth */
+.portal-brand-board-hero {
+  background-image: var(--brand-hero-gradient);
+}
+.portal-brand-board-hero-wide {
+  background-image: var(--brand-hero-gradient-wide);
+}
+
+/* Ensure content inside balance-hero stays light in light mode */
+html[data-theme="light"] .balance-hero,
+html[data-theme="light"] .balance-hero p,
+html[data-theme="light"] .balance-hero span,
+html[data-theme="light"] .balance-hero button,
+html[data-theme="light"] .balance-hero svg {
+  color: #f8fafc;
+}
+html[data-theme="light"] .balance-hero [class*="text-[var(--text)]"] { color: #f0f2fa !important; }
+html[data-theme="light"] .balance-hero [class*="text-[var(--muted)]"] { color: #cbd5e1 !important; }
+html[data-theme="light"] .balance-hero [class*="text-[#34d399]"] { color: #ffffff !important; }
+html[data-theme="light"] .balance-hero [class*="text-[#f87171]"] { color: #f87171 !important; }
+html[data-theme="light"] .balance-hero .text-white,
+html[data-theme="light"] .balance-hero [class~="text-white"],
+html[data-theme="light"] .balance-hero [class*="text-white"] { color: #f8fafc !important; }
+html[data-theme="light"] .balance-hero [class*="text-white/"] { color: rgba(240, 242, 250, 0.78) !important; }
+html[data-theme="light"] .balance-hero [class*="text-[#B8C8D8]"],
+html[data-theme="light"] .balance-hero .balance-hero-label { color: #c5d0e0 !important; }
+html[data-theme="light"] .balance-hero .balance-hero-amount { background-image: linear-gradient(90deg, #ffffff 0%, #ffffff 60%, #c4b8ff 100%) !important; }
+
+/* Keep glass surfaces translucent — do NOT remap to solid white card */
+html[data-theme="light"] .balance-hero [class*="bg-white/"],
+html[data-theme="light"] .balance-hero [class*="bg-white/[0.04]"],
+html[data-theme="light"] .balance-hero [class*="bg-white/[0.06]"],
+html[data-theme="light"] .balance-hero [class*="bg-white/[0.03]"],
+html[data-theme="light"] .balance-hero [class~="bg-white/10"],
+html[data-theme="light"] .balance-hero [class~="bg-white/12"],
+html[data-theme="light"] .balance-hero [class~="bg-white/15"],
+html[data-theme="light"] .portal-personal-shell .balance-hero [class~="bg-white/10"],
+html[data-theme="light"] .portal-personal-shell .balance-hero [class~="bg-white/12"],
+html[data-theme="light"] .portal-personal-shell .balance-hero [class~="bg-white/15"],
+html[data-theme="light"] .portal-personal-shell .balance-hero [class*="bg-white/"] {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+html[data-theme="light"] .balance-hero [class*="border-white/[0.06]"],
+html[data-theme="light"] .balance-hero [class*="border-white/[0.08]"],
+html[data-theme="light"] .balance-hero [class*="ring-white/"] {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+html[data-theme="light"] .balance-hero [class*="hover:bg-white/[0.06]"]:hover,
+html[data-theme="light"] .balance-hero [class*="hover:bg-white/[0.10]"]:hover {
+  background-color: rgba(255, 255, 255, 0.14) !important;
+}
+html[data-theme="light"] .balance-hero [class*="hover:text-[var(--text)]"]:hover {
+  color: #f0f2fa !important;
+}
+
+/* Shimmer animation over the balance amount */
+@keyframes balance-shimmer {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+.balance-hero-amount {
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-size: 200% auto;
+  animation: balance-shimmer 6s ease-in-out infinite;
+}
+
+html[data-theme="dark"] .balance-hero-amount {
+  background-image: linear-gradient(90deg, #ffffff 0%, #ffffff 40%, #c4b8ff 55%, #ffffff 70%, #ffffff 100%);
+}
+
+html[data-theme="light"] .balance-trend-chart {
+  opacity: 0.9 !important;
+}
+
+.dashboard-tokenized {
+  color: var(--text);
+}
+
+.dashboard-tokenized [class~="bg-white"],
+.dashboard-tokenized [class~="bg-white/[0.03]"],
+.dashboard-tokenized [class~="bg-white/[0.01]"] {
+  background-color: var(--btn-primary-bg) !important;
+}
+
+.dashboard-tokenized [class~="bg-white/5"],
+.dashboard-tokenized [class~="bg-white/[0.04]"],
+.dashboard-tokenized [class~="bg-white/[0.06]"],
+.dashboard-tokenized [class~="bg-white/[0.07]"],
+.dashboard-tokenized [class~="bg-white/[0.08]"],
+.dashboard-tokenized [class~="bg-white/10"],
+.dashboard-tokenized [class~="bg-white/15"],
+.dashboard-tokenized [class~="bg-white/20"] {
+  background-color: var(--surface-tint) !important;
+}
+
+.dashboard-tokenized [class~="border-white/5"],
+.dashboard-tokenized [class~="border-white/[0.08]"],
+.dashboard-tokenized [class~="border-white/10"] {
+  border-color: var(--border) !important;
+}
+
+.dashboard-tokenized [class~="text-white"],
+.dashboard-tokenized [class~="text-white/90"],
+.dashboard-tokenized [class~="text-white/80"],
+.dashboard-tokenized [class~="text-white/70"],
+.dashboard-tokenized [class~="text-white/60"],
+.dashboard-tokenized [class~="text-white/50"],
+.dashboard-tokenized [class~="text-white/40"],
+.dashboard-tokenized [class~="hover:text-white"]:hover {
+  color: var(--text) !important;
+}
+
+.dashboard-tokenized [class~="bg-white"][class~="text-black"],
+.dashboard-tokenized [class~="bg-white"][class~="text-neutral-950"],
+.dashboard-tokenized [class~="bg-white"][class~="text-neutral-900"] {
+  background-color: var(--btn-primary-bg) !important;
+  color: var(--btn-primary-text) !important;
+}
+
+.dashboard-tokenized [class~="bg-[#212121]"],
+.dashboard-tokenized [class~="bg-[#102622]"] {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+}
+
+/* Comparison card: follows theme tokens */
+.dashboard-tokenized .comparison-card [class~="text-white"],
+.dashboard-tokenized .comparison-card-wrap [class~="text-white"],
+.dashboard-tokenized .comparison-card [class~="text-white/40"],
+.dashboard-tokenized .comparison-card-wrap [class~="text-white/40"],
+.dashboard-tokenized .comparison-card [class~="text-white/45"],
+.dashboard-tokenized .comparison-card-wrap [class~="text-white/45"],
+.dashboard-tokenized .comparison-card [class~="text-white/50"],
+.dashboard-tokenized .comparison-card-wrap [class~="text-white/50"],
+.dashboard-tokenized .comparison-card [class~="text-white/55"],
+.dashboard-tokenized .comparison-card-wrap [class~="text-white/55"],
+.dashboard-tokenized .comparison-card [class~="text-white/60"],
+.dashboard-tokenized .comparison-card-wrap [class~="text-white/60"],
+.dashboard-tokenized .comparison-card [class~="text-white/65"],
+.dashboard-tokenized .comparison-card-wrap [class~="text-white/65"],
+.dashboard-tokenized .comparison-card [class~="text-white/70"],
+.dashboard-tokenized .comparison-card-wrap [class~="text-white/70"],
+.dashboard-tokenized .comparison-card [class~="text-white/75"],
+.dashboard-tokenized .comparison-card-wrap [class~="text-white/75"],
+.dashboard-tokenized .comparison-card [class~="text-white/80"],
+.dashboard-tokenized .comparison-card-wrap [class~="text-white/80"],
+.dashboard-tokenized .comparison-card [class~="text-white/85"],
+.dashboard-tokenized .comparison-card-wrap [class~="text-white/85"],
+.dashboard-tokenized .comparison-card [class~="text-white/90"],
+.dashboard-tokenized .comparison-card-wrap [class~="text-white/90"] {
+  color: var(--text) !important;
+}
+
+
+.dashboard-tokenized [class~="hover:bg-white/[0.02]"]:hover {
+  background-color: var(--surface-tint) !important;
+}
+
+/* Wallet credit card: keep white text in light mode since cards have gradient backgrounds */
+.wallet-credit-card,
+.wallet-credit-card .text-white,
+.wallet-credit-card p,
+.wallet-credit-card span,
+html[data-theme="light"] .wallet-credit-card,
+html[data-theme="light"] .wallet-credit-card .text-white,
+html[data-theme="light"] .wallet-credit-card [class*="text-white"],
+html[data-theme="light"] .wallet-credit-card p,
+html[data-theme="light"] .wallet-credit-card span,
+html[data-theme="light"] .portal-personal-shell .wallet-credit-card,
+html[data-theme="light"] .portal-personal-shell .wallet-credit-card .text-white,
+html[data-theme="light"] .portal-personal-shell .wallet-credit-card [class*="text-white"],
+html[data-theme="light"] .portal-personal-shell .wallet-credit-card p,
+html[data-theme="light"] .portal-personal-shell .wallet-credit-card span {
+  color: #ffffff !important;
+}
+
+/* Subscription hero: premium black card — force light text in light mode */
+.subscription-hero,
+.subscription-hero p,
+.subscription-hero span,
+.subscription-hero svg,
+html[data-theme="light"] .subscription-hero,
+html[data-theme="light"] .subscription-hero p,
+html[data-theme="light"] .subscription-hero span,
+html[data-theme="light"] .subscription-hero svg,
+html[data-theme="light"] .portal-personal-shell .subscription-hero,
+html[data-theme="light"] .portal-personal-shell .subscription-hero p,
+html[data-theme="light"] .portal-personal-shell .subscription-hero span,
+html[data-theme="light"] .portal-personal-shell .subscription-hero svg,
+html[data-theme="light"] .portal-personal-shell .subscription-hero [class*="text-["],
+html[data-theme="light"] .portal-personal-shell .subscription-hero .subscription-hero-amount {
+  color: #f5f5f5 !important;
+}
+
+/* Hero CTAs: keep token fill + ink (override light-text force above) */
+.subscription-hero button.hero-cta-primary,
+.subscription-hero a.hero-cta-primary,
+html[data-theme="light"] .portal-personal-shell .subscription-hero button.hero-cta-primary,
+html[data-theme="light"] .portal-personal-shell .subscription-hero a.hero-cta-primary {
+  background-color: var(--btn-primary-bg) !important;
+  color: var(--btn-primary-text) !important;
+}
+
+.subscription-hero button.hero-cta-primary *,
+.subscription-hero a.hero-cta-primary *,
+html[data-theme="light"] .portal-personal-shell .subscription-hero button.hero-cta-primary *,
+html[data-theme="light"] .portal-personal-shell .subscription-hero a.hero-cta-primary * {
+  color: var(--btn-primary-text) !important;
+}
+
+.subscription-hero button.hero-cta-secondary,
+.subscription-hero a.hero-cta-secondary,
+html[data-theme="light"] .portal-personal-shell .subscription-hero button.hero-cta-secondary,
+html[data-theme="light"] .portal-personal-shell .subscription-hero a.hero-cta-secondary {
+  background-color: var(--btn-secondary-bg) !important;
+  color: var(--btn-secondary-text) !important;
+}
+
+.subscription-hero button.hero-cta-secondary *,
+.subscription-hero a.hero-cta-secondary *,
+html[data-theme="light"] .portal-personal-shell .subscription-hero button.hero-cta-secondary *,
+html[data-theme="light"] .portal-personal-shell .subscription-hero a.hero-cta-secondary * {
+  color: var(--btn-secondary-text) !important;
+}
+
+/* Wallet hero: light-mode protection on dark finance cards */
+.wallet-hero,
+.wallet-hero p,
+.wallet-hero span,
+.wallet-hero svg,
+html[data-theme="light"] .wallet-hero,
+html[data-theme="light"] .wallet-hero p,
+html[data-theme="light"] .wallet-hero span,
+html[data-theme="light"] .wallet-hero svg,
+html[data-theme="light"] .portal-personal-shell .wallet-hero,
+html[data-theme="light"] .portal-personal-shell .wallet-hero p,
+html[data-theme="light"] .portal-personal-shell .wallet-hero span,
+html[data-theme="light"] .portal-personal-shell .wallet-hero svg,
+html[data-theme="light"] .portal-personal-shell .wallet-hero [class*="text-["],
+html[data-theme="light"] .portal-personal-shell .wallet-hero .wallet-hero-amount {
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .wallet-hero [class*="text-[#cbd5e1]"],
+html[data-theme="light"] .portal-personal-shell .wallet-hero [class*="text-[#94a3b8]"] {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .wallet-hero [class*="text-[#6ee7b7]"],
+html[data-theme="light"] .portal-personal-shell .wallet-hero [class*="text-[#a7f3d0]"] {
+  color: #6ee7b7 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .wallet-hero [class*="text-[#fcd34d]"],
+html[data-theme="light"] .portal-personal-shell .wallet-hero [class*="text-[#fde68a]"] {
+  color: #fcd34d !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .wallet-hero [class*="text-[#7dd3fc]"],
+html[data-theme="light"] .portal-personal-shell .wallet-hero [class*="text-[#bae6fd]"],
+html[data-theme="light"] .portal-personal-shell .wallet-hero [class*="text-[#a5b4fc]"] {
+  color: #7dd3fc !important;
+}
+
+/* Loan hero: light-mode protection on dark finance cards */
+.loan-detail-hero,
+.loan-detail-hero p,
+.loan-detail-hero span,
+.loan-detail-hero svg,
+html[data-theme="light"] .loan-detail-hero,
+html[data-theme="light"] .loan-detail-hero p,
+html[data-theme="light"] .loan-detail-hero span,
+html[data-theme="light"] .loan-detail-hero svg,
+html[data-theme="light"] .portal-personal-shell .loan-detail-hero,
+html[data-theme="light"] .portal-personal-shell .loan-detail-hero p,
+html[data-theme="light"] .portal-personal-shell .loan-detail-hero span,
+html[data-theme="light"] .portal-personal-shell .loan-detail-hero svg,
+html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-["],
+html[data-theme="light"] .portal-personal-shell .loan-detail-hero .loan-detail-amount {
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-slate-300"],
+html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-slate-400"] {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-sky-200"],
+html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-sky-300"] {
+  color: #7dd3fc !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-orange-200"],
+html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-orange-300"] {
+  color: #fdba74 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-emerald-200"],
+html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-emerald-300"] {
+  color: #6ee7b7 !important;
+}
+
+/* Categories hero: light-mode protection on dark finance cards */
+.categories-hero,
+.categories-hero p,
+.categories-hero span,
+.categories-hero svg,
+html[data-theme="light"] .categories-hero,
+html[data-theme="light"] .categories-hero p,
+html[data-theme="light"] .categories-hero span,
+html[data-theme="light"] .categories-hero svg,
+html[data-theme="light"] .portal-personal-shell .categories-hero,
+html[data-theme="light"] .portal-personal-shell .categories-hero p,
+html[data-theme="light"] .portal-personal-shell .categories-hero span,
+html[data-theme="light"] .portal-personal-shell .categories-hero svg,
+html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-["],
+html[data-theme="light"] .portal-personal-shell .categories-hero .categories-hero-amount {
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#cbd5e1]"],
+html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#94a3b8]"] {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#fda4af]"],
+html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#fecdd3]"] {
+  color: #fecdd3 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#6ee7b7]"],
+html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#a7f3d0]"] {
+  color: #6ee7b7 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#7dd3fc]"],
+html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#bae6fd]"] {
+  color: #7dd3fc !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#fb923c]"] {
+  color: #fb923c !important;
+}
+
+/* Map analysis hero: light-mode protection on dark finance cards */
+.map-analysis-hero,
+.map-analysis-hero p,
+.map-analysis-hero span,
+.map-analysis-hero svg,
+html[data-theme="light"] .map-analysis-hero,
+html[data-theme="light"] .map-analysis-hero p,
+html[data-theme="light"] .map-analysis-hero span,
+html[data-theme="light"] .map-analysis-hero svg,
+html[data-theme="light"] .portal-personal-shell .map-analysis-hero,
+html[data-theme="light"] .portal-personal-shell .map-analysis-hero p,
+html[data-theme="light"] .portal-personal-shell .map-analysis-hero span,
+html[data-theme="light"] .portal-personal-shell .map-analysis-hero svg,
+html[data-theme="light"] .portal-personal-shell .map-analysis-hero [class*="text-["],
+html[data-theme="light"] .portal-personal-shell .map-analysis-hero .map-analysis-hero-amount {
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .map-analysis-hero [class*="text-[#cbd5e1]"],
+html[data-theme="light"] .portal-personal-shell .map-analysis-hero [class*="text-[#94a3b8]"] {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .map-analysis-hero [class*="text-[#7dd3fc]"],
+html[data-theme="light"] .portal-personal-shell .map-analysis-hero [class*="text-[#bae6fd]"] {
+  color: #7dd3fc !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .map-analysis-hero [class*="text-[#6ee7b7]"],
+html[data-theme="light"] .portal-personal-shell .map-analysis-hero [class*="text-[#a7f3d0]"] {
+  color: #6ee7b7 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .map-analysis-hero [class*="text-[#fcd34d]"],
+html[data-theme="light"] .portal-personal-shell .map-analysis-hero [class*="text-[#fde68a]"] {
+  color: #fcd34d !important;
+}
+
+/* Budget hero: light-mode protection on dark finance cards */
+.budget-hero,
+.budget-hero p,
+.budget-hero span,
+.budget-hero svg,
+html[data-theme="light"] .budget-hero,
+html[data-theme="light"] .budget-hero p,
+html[data-theme="light"] .budget-hero span,
+html[data-theme="light"] .budget-hero svg,
+html[data-theme="light"] .portal-personal-shell .budget-hero,
+html[data-theme="light"] .portal-personal-shell .budget-hero p,
+html[data-theme="light"] .portal-personal-shell .budget-hero span,
+html[data-theme="light"] .portal-personal-shell .budget-hero svg,
+html[data-theme="light"] .portal-personal-shell .budget-hero [class*="text-["],
+html[data-theme="light"] .portal-personal-shell .budget-hero .budget-hero-amount {
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .budget-hero [class*="text-[#cbd5e1]"],
+html[data-theme="light"] .portal-personal-shell .budget-hero [class*="text-[#94a3b8]"] {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .budget-hero [class*="text-[#7dd3fc]"],
+html[data-theme="light"] .portal-personal-shell .budget-hero [class*="text-[#bae6fd]"] {
+  color: #7dd3fc !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .budget-hero [class*="text-[#fda4af]"],
+html[data-theme="light"] .portal-personal-shell .budget-hero [class*="text-[#fecdd3]"] {
+  color: #fecdd3 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .budget-hero [class*="text-[#fcd34d]"],
+html[data-theme="light"] .portal-personal-shell .budget-hero [class*="text-[#fde68a]"],
+html[data-theme="light"] .portal-personal-shell .budget-hero [class*="text-[#fb923c]"] {
+  color: #fcd34d !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .budget-hero [class*="text-[#6ee7b7]"],
+html[data-theme="light"] .portal-personal-shell .budget-hero [class*="text-[#a7f3d0]"] {
+  color: #6ee7b7 !important;
+}
+
+/* Debt hero: same light-mode protection on dark finance cards */
+.debt-hero,
+.debt-hero p,
+.debt-hero span,
+.debt-hero svg,
+.debt-hero button,
+.debt-hero .debt-hero-btn,
+html[data-theme="light"] .debt-hero,
+html[data-theme="light"] .debt-hero p,
+html[data-theme="light"] .debt-hero span,
+html[data-theme="light"] .debt-hero svg,
+html[data-theme="light"] .debt-hero button,
+html[data-theme="light"] .debt-hero .debt-hero-btn,
+html[data-theme="light"] .portal-personal-shell .debt-hero,
+html[data-theme="light"] .portal-personal-shell .debt-hero p,
+html[data-theme="light"] .portal-personal-shell .debt-hero span,
+html[data-theme="light"] .portal-personal-shell .debt-hero svg,
+html[data-theme="light"] .portal-personal-shell .debt-hero button,
+html[data-theme="light"] .portal-personal-shell .debt-hero .debt-hero-btn,
+html[data-theme="light"] .portal-personal-shell .debt-hero [class*="text-["],
+html[data-theme="light"] .portal-personal-shell .debt-hero .debt-hero-amount {
+  color: #ffffff !important;
+}
+
+/* Keep glass secondary action visible (shell remaps bg-white/10 → card white) */
+html[data-theme="light"] .portal-personal-shell .debt-hero .debt-hero-btn,
+html[data-theme="light"] .portal-personal-shell .debt-hero button.debt-hero-btn {
+  color: #ffffff !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .debt-hero button.debt-hero-btn[class*="bg-[rgba(255,255,255"],
+html[data-theme="light"] .portal-personal-shell .debt-hero button[class*="bg-[rgba(255,255,255"] {
+  background-color: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .debt-hero button[class*="bg-[#10b981]"] {
+  background-color: #10b981 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .debt-hero [class*="text-[#cbd5e1]"],
+html[data-theme="light"] .portal-personal-shell .debt-hero [class*="text-[#94a3b8]"] {
+  color: #cbd5e1 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .debt-hero [class*="text-[#6ee7b7]"],
+html[data-theme="light"] .portal-personal-shell .debt-hero [class*="text-[#a7f3d0]"] {
+  color: #6ee7b7 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .debt-hero [class*="text-[#fdba74]"],
+html[data-theme="light"] .portal-personal-shell .debt-hero [class*="text-[#fed7aa]"],
+html[data-theme="light"] .portal-personal-shell .debt-hero [class*="text-[#fb923c]"] {
+  color: #fdba74 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .debt-hero [class*="text-[#7dd3fc]"],
+html[data-theme="light"] .portal-personal-shell .debt-hero [class*="text-[#bae6fd]"] {
+  color: #7dd3fc !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .subscription-hero [class*="text-[#a3a3a3]"],
+html[data-theme="light"] .portal-personal-shell .subscription-hero [class*="text-[#8c8c8c]"],
+html[data-theme="light"] .portal-personal-shell .subscription-hero [class*="text-[#b3b3b3]"] {
+  color: #a3a3a3 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .subscription-hero [class*="text-[#e5e5e5]"],
+html[data-theme="light"] .portal-personal-shell .subscription-hero [class*="text-[#f5f5f5]"] {
+  color: #f5f5f5 !important;
+}
+
+
+
+/* Category comparison bar: keep white text on colored bars */
+.category-compare-bar.text-white,
+html[data-theme="light"] .category-compare-bar.text-white,
+html[data-theme="light"] .category-compare-bar[class*="text-white"],
+html[data-theme="light"] .portal-personal-shell .category-compare-bar.text-white,
+html[data-theme="light"] .portal-personal-shell .category-compare-bar[class*="text-white"] {
+  color: #ffffff !important;
+}
+html[data-theme="light"] .wallet-credit-card select {
+  color: rgba(255, 255, 255, 0.9) !important;
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.txn-detail-panel {
+  transition: box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
+}
+
+.txn-detail-kicker {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.txn-detail-muted-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.txn-detail-action-btn {
+  min-height: 3.5rem;
+  border-radius: var(--radius-3xl);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.txn-detail-action-btn:active {
+  transform: scale(0.98);
+}
+
+.txn-detail-action-btn--primary {
+  background: var(--text);
+  color: var(--page-bg);
+  box-shadow: 0 18px 34px transparent;
+}
+
+.txn-detail-action-btn--primary:hover {
+  background: #97a3ff;
+}
+
+.txn-detail-action-btn--secondary {
+  background: var(--card3);
+  border: 1px solid rgba(244, 63, 94, 0.18);
+  color: #f43f5e;
+}
+
+.txn-detail-action-btn--secondary:hover {
+  background: rgba(244, 63, 94, 0.06);
+}
+
+.txn-detail-inline-btn {
+  border-radius: 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+
+.txn-detail-form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+
+.txn-detail-form-label--small {
+  font-size: 0.8rem;
+}
+
+.portal-download-card {
+  background: linear-gradient(135deg, var(--card2) 0%, var(--card3) 100%) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.08) !important;
+}
+
+.portal-download-card__icon {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.portal-download-card__title {
+  color: #f8fafc;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.portal-download-card__desc {
+  color: #94a3b8;
+}
+
+.portal-download-card__button {
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 14px 28px transparent;
+}
+
+.portal-download-card__button:hover {
+  background: #97a3ff;
+}
+
+html[data-theme="light"] .portal-download-card {
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--text) 16%, transparent), transparent 35%),
+    linear-gradient(135deg, #ffffff 0%, #f4f7ff 52%, #ebf1ff 100%) !important;
+  border-color: color-mix(in srgb, var(--text) 12%, transparent) !important;
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="light"] .portal-download-card__icon {
+  background-color: color-mix(in srgb, var(--text) 12%, transparent);
+  color: var(--text);
+}
+
+html[data-theme="light"] .portal-download-card__title {
+  color: #0f172a;
+}
+
+html[data-theme="light"] .portal-download-card__desc {
+  color: #64748b;
+}
+
+html[data-theme="light"] .txn-detail-panel {
+  background-color: #ffffff !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06) !important;
+}
+
+.txn-hero-card {
+  position: relative;
+  overflow: hidden;
+}
+
+html[data-theme="light"] .txn-hero-card {
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.08) !important;
+}
+
+html[data-theme="light"] .txn-hero-card--income {
+  background:
+    radial-gradient(circle at top right, rgba(52, 211, 153, 0.16), transparent 35%),
+    linear-gradient(135deg, #ffffff 0%, #eefcf6 52%, #e2f8ef 100%) !important;
+  border-color: rgba(52, 211, 153, 0.18) !important;
+}
+
+html[data-theme="light"] .txn-hero-card--expense {
+  background:
+    radial-gradient(circle at top right, rgba(248, 113, 113, 0.16), transparent 35%),
+    linear-gradient(135deg, #ffffff 0%, #fff1f1 52%, #ffe5e5 100%) !important;
+  border-color: rgba(248, 113, 113, 0.18) !important;
+}
+
+html[data-theme="light"] .txn-hero-card .txn-hero-kicker {
+  color: #64748b !important;
+}
+
+html[data-theme="light"] .txn-hero-card .txn-hero-title {
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .txn-hero-card .txn-hero-soft-glow {
+  display: none;
+}
+
+html[data-theme="light"] .txn-hero-card .txn-hero-icon {
+  background-color: rgba(255, 255, 255, 0.75) !important;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.05);
+}
+
+html[data-theme="light"] .txn-hero-card .txn-hero-amount-expense {
+  color: #ef4444 !important;
+}
+
+html[data-theme="light"] .txn-hero-card .txn-hero-amount-income {
+  color: #059669 !important;
+}
+
+
+.purple-chrome {
+  color: #ffffff;
+}
+
+html[data-theme="dark"] .purple-chrome {
+  border-color: var(--border) !important;
+}
+html[data-theme="light"] .purple-chrome {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html[data-theme="dark"] .purple-chrome {
+  background: var(--card) !important;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.12) !important;
+}
+
+html[data-theme="light"] .purple-chrome {
+  background: #0d0d0d !important;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.08) !important;
+}
+
+.purple-chrome [class*="bg-[var(--card)]"],
+.purple-chrome [class*="bg-[var(--card)]"],
+html[data-theme="light"] .purple-chrome [class*="bg-[var(--card)]"],
+html[data-theme="light"] .purple-chrome [class*="bg-[var(--card)]"] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.purple-chrome .text-white,
+.purple-chrome [class*="text-[var(--text)]"],
+.purple-chrome [class*="text-[#f3f6ff]"],
+html[data-theme="light"] .purple-chrome .text-white,
+html[data-theme="light"] .purple-chrome [class*="text-[var(--text)]"],
+html[data-theme="light"] .purple-chrome [class*="text-[#f3f6ff]"] {
+  color: #ffffff !important;
+}
+
+.purple-chrome [class*="text-[var(--muted)]"],
+.purple-chrome [class*="text-[var(--muted)]"],
+.purple-chrome [class*="text-[var(--text)]"],
+.purple-chrome [class~="text-indigo-200/75"],
+.purple-chrome [class~="text-indigo-200/80"],
+.purple-chrome [class~="text-indigo-100/75"],
+html[data-theme="light"] .purple-chrome [class*="text-[var(--muted)]"],
+html[data-theme="light"] .purple-chrome [class*="text-[var(--muted)]"],
+html[data-theme="light"] .purple-chrome [class*="text-[var(--text)]"],
+html[data-theme="light"] .purple-chrome [class~="text-indigo-200/75"],
+html[data-theme="light"] .purple-chrome [class~="text-indigo-200/80"],
+html[data-theme="light"] .purple-chrome [class~="text-indigo-100/75"] {
+  color: rgba(224, 231, 255, 0.88) !important;
+}
+
+@media (min-width: 1024px) {
+  /* Personal left sidebar — premium black */
+  .portal-desktop-sidebar {
+    --bg: #0d0d0d;
+  --bg2: var(--bg);
+    --card: #1a1a1a;
+    --card2: #202020;
+  --card3: var(--bg);
+    --sidebar: #0d0d0d;
+    --border: #2a2a2a;
+    --border-strong: #3d3d3d;
+    --surface-tint: rgba(255, 255, 255, 0.04);
+    --surface-tint-strong: rgba(255, 255, 255, 0.08);
+    --text: #f5f5f5;
+    --text-soft: #b3b3b3;
+    --muted: #8c8c8c;
+    --accent-bg: rgba(255, 255, 255, 0.08);
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 240px;
+    overflow-y: auto;
+    background-color: var(--card) !important;
+    color: #fafafa !important;
+    border-right: 1px solid var(--border) !important;
+    box-shadow: 2px 0 16px rgba(0, 0, 0, 0.2);
+  }
+
+/* Right rail matches left sidebar */
+.portal-desktop-right-rail {
+  background-color: var(--sidebar) !important;
+}
+html[data-theme="dark"] .portal-desktop-right-rail {
+  background-color: #0d0d0d !important;
+}
+html[data-theme="light"] .portal-desktop-right-rail {
+  background-color: #ffffff !important;
+}
+
+/* Force left sidebar surface */
+.portal-desktop-sidebar,
+.portal-desktop-sidebar [data-sidebar="sidebar"],
+html[data-theme="dark"] .portal-desktop-sidebar,
+html[data-theme="dark"] .portal-desktop-sidebar [data-sidebar="sidebar"] {
+  --sidebar: #0d0d0d;
+  background-color: #0d0d0d !important;
+}
+
+html[data-theme="light"] .portal-desktop-sidebar,
+html[data-theme="light"] .portal-desktop-sidebar [data-sidebar="sidebar"] {
+  --sidebar: #ffffff;
+  background-color: #ffffff !important;
+}
+
+  .portal-desktop-sidebar::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .portal-desktop-sidebar::-webkit-scrollbar-thumb {
+    background-color: var(--surface-tint-strong);
+    border-radius: 999px;
+  }
+
+  html[data-theme="light"] .portal-desktop-sidebar {
+    --bg: #f2f2f2;
+    --bg2: #e9e9e9;
+    --card: #ffffff;
+    --card2: #fafafa;
+    --card3: #f2f2f2;
+    --sidebar: #ffffff;
+    --border: #e5e5e5;
+    --border-strong: #d0d0d0;
+    --surface-tint: rgba(23, 23, 23, 0.03);
+    --surface-tint-strong: rgba(23, 23, 23, 0.06);
+    --text: #171717;
+    --text-soft: #525252;
+    --muted: #737373;
+    --accent-bg: rgba(23, 23, 23, 0.08);
+    background-color: #ffffff !important;
+    color: #171717 !important;
+    border-right: 1px solid #e5e5e5 !important;
+    box-shadow: 2px 0 16px rgba(23, 23, 23, 0.05);
+  }
+
+  .portal-desktop-main {
+    margin-left: 240px;
+    min-height: 100vh;
+  }
+
+  /*
+   * Full-width frame (main column edge-to-edge).
+   * Max-width lives on .portal-page-body / pages without a topbar — not on the outer frame —
+   * so sticky top bars can span the whole main column.
+   */
+  .portal-page-frame {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    overflow: visible; /* never clip sticky top bars */
+  }
+
+  /* Solid sticky top bar — sticks to main (lg:overflow-y-auto) scrollport */
+  .portal-desktop-topbar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 50;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 1.25rem;
+    padding: 0.7rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 70%, transparent), 0 8px 24px rgba(0, 0, 0, 0.04);
+  }
+
+  @media (min-width: 1280px) {
+    .portal-desktop-topbar {
+      margin-bottom: 1.5rem;
+      padding: 0.75rem 2rem;
+    }
+  }
+
+  /* Content under top bar (and pages without top bar) stays readable width */
+  .portal-page-body {
+    width: 100%;
+    max-width: 1280px;
+    margin-inline: auto;
+    padding: 0 1.5rem 1.5rem;
+    box-sizing: border-box;
+    overflow: visible;
+  }
+
+  @media (min-width: 1280px) {
+    .portal-page-body {
+      padding: 0 2rem 2rem;
+    }
+  }
+
+  /* Pages without DesktopPageHeader — keep old centered frame look */
+  .portal-page-frame:not(:has(.portal-desktop-topbar)) {
+    max-width: 1280px;
+    margin-inline: auto;
+    padding: 1.5rem;
+  }
+
+  @media (min-width: 1280px) {
+    .portal-page-frame:not(:has(.portal-desktop-topbar)) {
+      padding: 2rem;
+    }
+  }
+}
+
+/* Desktop top bar sticky for tablet+ (when pages use md:block) */
+@media (min-width: 768px) {
+  .portal-desktop-topbar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 50;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 1.25rem;
+    padding: 0.7rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--card);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--border) 70%, transparent), 0 8px 24px rgba(0, 0, 0, 0.04);
+  }
+
+  .portal-page-body {
+    width: 100%;
+    max-width: 1280px;
+    margin-inline: auto;
+    padding: 0 1.25rem 1.5rem;
+    box-sizing: border-box;
+    overflow: visible;
+  }
+}
+
+@media (min-width: 1024px) {
+  .portal-desktop-topbar {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .portal-desktop-topbar {
+    margin-bottom: 1.5rem;
+    padding: 0.75rem 2rem 0.75rem calc(240px + 2rem);
+  }
+
+  .portal-page-body {
+    padding: 0 2rem 2rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .portal-personal-shell .portal-desktop-topbar {
+    padding-left: 1rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .portal-personal-shell .portal-desktop-topbar {
+    padding-left: 1rem !important;
+  }
+}
+
+/* ── Map experience + premium markers ── */
+.map-experience .leaflet-control-attribution {
+  border-radius: 12px 0 0 0 !important;
+  background: color-mix(in srgb, var(--card) 88%, transparent) !important;
+  backdrop-filter: blur(10px);
+  color: var(--muted) !important;
+  font-size: 10px !important;
+  padding: 3px 8px !important;
+}
+
+.map-tile-dark-grey {
+  filter: grayscale(0.55) saturate(0.45) brightness(1.18) contrast(0.9);
+}
+
+.txn-marker-wrap {
+  background: none !important;
+  border: none !important;
+}
+
+.txn-marker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  transition: transform 0.22s cubic-bezier(0.34, 1.4, 0.64, 1);
+  transform-origin: bottom center;
+  pointer-events: auto;
+  filter: drop-shadow(0 8px 18px rgba(15, 23, 42, 0.18));
+}
+
+.txn-marker__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  max-width: 11rem;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  backdrop-filter: blur(12px);
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+}
+
+.txn-marker__number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  align-self: stretch;
+  background: var(--surface-tint-strong);
+  color: var(--text);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.txn-marker__amount {
+  min-width: 0;
+  overflow: hidden;
+  padding: 6px 10px;
+  text-overflow: ellipsis;
+}
+
+.txn-marker__stem {
+  width: 2px;
+  height: 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 28%, transparent);
+  margin-top: 2px;
+}
+
+.txn-marker__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2.5px solid var(--card);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.2) !important;
+  flex-shrink: 0;
+}
+
+.txn-marker.is-expense .txn-marker__dot {
+  background-color: var(--expense);
+}
+
+.txn-marker.is-expense .txn-marker__number {
+  background-color: var(--expense-bg);
+  color: var(--expense);
+}
+
+.txn-marker.is-income .txn-marker__dot {
+  background-color: var(--income);
+}
+
+.txn-marker.is-income .txn-marker__number {
+  background-color: var(--income-bg);
+  color: var(--income);
+}
+
+.txn-marker.is-active {
+  transform: scale(1.1) translateY(-4px);
+  z-index: 1000 !important;
+}
+
+.txn-marker.is-active .txn-marker__badge {
+  background: var(--btn-primary-bg);
+  border-color: var(--border-strong);
+  color: var(--btn-primary-text);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--btn-primary-bg) 35%, transparent);
+}
+
+.txn-marker.is-active .txn-marker__number {
+  background: color-mix(in srgb, var(--btn-primary-text) 14%, transparent);
+  color: var(--btn-primary-text);
+}
+
+.txn-marker.is-active .txn-marker__amount {
+  color: var(--btn-primary-text);
+}
+
+.txn-marker.is-active .txn-marker__stem {
+  background: color-mix(in srgb, var(--btn-primary-bg) 70%, transparent);
+}
+
+.txn-marker.is-active .txn-marker__dot {
+  border-color: var(--btn-primary-text);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--btn-primary-bg) 28%, transparent),
+    0 6px 16px rgba(15, 23, 42, 0.22) !important;
+}
+
+.txn-marker:hover {
+  transform: translateY(-2px) scale(1.03);
+}
+
+/* Chat bot bubble action text — never clip (override any global nowrap/ellipsis) */
+.chat-bot-bubble {
+  overflow: visible !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+.chat-bot-bubble * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.chat-bot-bubble .chat-action-list,
+.chat-bot-bubble .chat-action-btn,
+.chat-bot-bubble .chat-action-btn-inner,
+.chat-bot-bubble .chat-action-btn-text {
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+.chat-bot-bubble .chat-action-btn-text,
+.chat-bot-bubble .chat-action-btn-text span {
+  display: block !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  hyphens: auto !important;
+  max-width: 100% !important;
+}
+
+
+
+
+
+/* ============================================================
+   Light mode: boost greys for contrast on card bg (#f5f6fa)
+   ============================================================ */
+
+/* --- Text --- */
+html[data-theme="light"] [class~="text-gray-300"] {
+  color: #6b7280 !important;
+}
+html[data-theme="light"] [class~="text-gray-400"] {
+  color: #6b7280 !important;
+}
+html[data-theme="light"] [class~="text-gray-500"] {
+  color: #4b5563 !important;
+}
+
+/* --- Backgrounds: inner surfaces inside cards --- */
+html[data-theme="light"] [class~="bg-gray-50"] {
+  background-color: #eef0f4 !important; /* darker than card bg for visible contrast */
+}
+html[data-theme="light"] [class~="bg-gray-100"] {
+  background-color: #e5e7ec !important; /* clearly distinct from card */
+}
+
+/* --- Borders: make dividers visible on light cards --- */
+html[data-theme="light"] [class~="border-gray-50"] {
+  border-color: #e5e7eb !important;
+}
+html[data-theme="light"] [class~="border-gray-100"] {
+  border-color: #d1d5db !important;
+}
+html[data-theme="light"] [class~="border-gray-200"] {
+  border-color: #c4c8cf !important;
+}
+html[data-theme="light"] [class~="border-gray-300"] {
+  border-color: #9ca3af !important;
+}
+
+@media (min-width: 768px) {
+  /* Personal desktop: tighter card corners */
+  .portal-personal-shell {
+    --radius: 10px;
+    --radius-xs: 6px;
+    --radius-sm: 8px;
+    --radius-md: 10px;
+    --radius-lg: 12px;
+    --radius-xl: 12px;
+    --radius-2xl: 14px;
+    --radius-3xl: 16px;
+    --radius-4xl: 18px;
+    --card-radius-xl: 12px;
+    --card-radius-lg: 10px;
+    --card-radius-md: 8px;
+    --card-radius-sm: 8px;
+  }
+
+  .portal-personal-shell .modern-card {
+    border-radius: var(--card-radius-lg);
+  }
+
+  /* Catch hard-coded large radii used on personal desktop cards */
+  .portal-personal-shell [class*="rounded-[40px]"],
+  .portal-personal-shell [class*="rounded-[38px]"],
+  .portal-personal-shell [class*="rounded-[32px]"],
+  .portal-personal-shell [class*="rounded-[30px]"],
+  .portal-personal-shell [class*="rounded-[28px]"],
+  .portal-personal-shell [class*="rounded-[26px]"],
+  .portal-personal-shell [class*="rounded-[24px]"],
+  .portal-personal-shell [class*="rounded-[22px]"],
+  .portal-personal-shell [class*="rounded-[20px]"],
+  .portal-personal-shell [class*="rounded-[18px]"],
+  .portal-personal-shell [class*="rounded-[16px]"] {
+    border-radius: 10px !important;
+  }
+
+  .portal-personal-shell [class*="rounded-t-[30px]"],
+  .portal-personal-shell [class*="rounded-t-[28px]"],
+  .portal-personal-shell [class*="rounded-t-[24px]"],
+  .portal-personal-shell [class*="rounded-t-[20px]"] {
+    border-radius: 10px 10px 0 0 !important;
+  }
+
+  .portal-personal-shell [class~="rounded-3xl"] {
+    border-radius: var(--radius-3xl) !important;
+  }
+  .portal-personal-shell [class~="rounded-2xl"] {
+    border-radius: var(--radius-2xl) !important;
+  }
+  .portal-personal-shell [class~="rounded-xl"] {
+    border-radius: var(--radius-xl) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+
+  html[data-theme="light"] .portal-personal-shell {
+    --bg: #F2F4F7;
+    --bg2: #F2F4F7;
+    --card: #FFFFFF;
+    --card2: #FFFFFF;
+    --card3: #F2F4F7;
+    --border: #d9dce3;
+    --border-strong: rgba(15, 23, 42, 0.14);
+    --surface-tint: rgba(15, 23, 42, 0.04);
+    --surface-tint-strong: rgba(15, 23, 42, 0.08);
+    --text: #0f172a;
+    --text-soft: #334155;
+    --muted: #475569;
+    color: var(--text);
+  }
+
+  html[data-theme="light"] .portal-personal-shell .portal-desktop-main {
+    background: var(--bg);
+  }
+
+  html[data-theme="dark"] .portal-personal-shell .portal-desktop-main {
+    background: var(--bg);
+  }
+
+  html[data-theme="light"] .portal-personal-shell [class~="bg-white/5"],
+  html[data-theme="light"] .portal-personal-shell [class~="bg-white/10"],
+  html[data-theme="light"] .portal-personal-shell [class~="bg-white/12"],
+  html[data-theme="light"] .portal-personal-shell [class~="bg-white/15"],
+  html[data-theme="light"] .portal-personal-shell [class~="bg-white/18"],
+  html[data-theme="light"] .portal-personal-shell [class~="bg-white/20"],
+  html[data-theme="light"] .portal-personal-shell [class~="bg-white/40"],
+  html[data-theme="light"] .portal-personal-shell [class~="bg-white/50"],
+  html[data-theme="light"] .portal-personal-shell [class~="bg-white/60"],
+  html[data-theme="light"] .portal-personal-shell [class~="bg-white/70"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:bg-white/5"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:bg-white/10"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:bg-white/12"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:bg-white/15"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:bg-white/18"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:bg-white/20"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:bg-white/5"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:bg-white/10"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:bg-white/12"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:bg-white/15"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:bg-white/18"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:bg-white/20"] {
+    background-color: var(--card) !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell [class~="border-white/5"],
+  html[data-theme="light"] .portal-personal-shell [class~="border-white/8"],
+  html[data-theme="light"] .portal-personal-shell [class~="border-white/10"],
+  html[data-theme="light"] .portal-personal-shell [class~="border-white/12"],
+  html[data-theme="light"] .portal-personal-shell [class~="border-white/15"],
+  html[data-theme="light"] .portal-personal-shell [class~="border-white/20"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:border-white/5"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:border-white/8"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:border-white/10"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:border-white/12"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:border-white/15"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:border-white/20"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:border-white/5"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:border-white/8"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:border-white/10"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:border-white/12"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:border-white/15"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:border-white/20"] {
+    border-color: var(--border) !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell [class*="shadow-black/"],
+  html[data-theme="light"] .portal-personal-shell [class*="rgba(0,0,0,0.18)"],
+  html[data-theme="light"] .portal-personal-shell [class*="rgba(0,0,0,0.32)"],
+  html[data-theme="light"] .portal-personal-shell [class*="rgba(0,0,0,0.42)"] {
+    box-shadow: 0 18px 46px rgba(15, 23, 42, 0.08) !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .purple-chrome {
+    border-color: rgba(15, 23, 42, 0.08) !important;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(245, 246, 250, 0.96)) !important;
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08) !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell [class~="text-[var(--muted)]"],
+  html[data-theme="light"] .portal-personal-shell .text-muted,
+  html[data-theme="light"] .portal-personal-shell [class~="text-gray-300"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-gray-400"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-slate-300"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-slate-400"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-zinc-300"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-zinc-400"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-neutral-300"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-neutral-400"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-white/40"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-white/50"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-white/60"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-[var(--muted)]"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-[var(--muted)]"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-gray-300"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-gray-400"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-slate-300"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-slate-400"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-zinc-300"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-zinc-400"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-neutral-300"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-neutral-400"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-white/40"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-white/50"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-white/60"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-gray-300"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-gray-400"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-slate-300"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-slate-400"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-zinc-300"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-zinc-400"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-neutral-300"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-neutral-400"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-white/40"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-white/50"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-white/60"] {
+    color: var(--muted) !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell [class~="text-[var(--text)]"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-white"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-white/70"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-white/80"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-gray-100"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-gray-200"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-slate-100"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-slate-200"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-zinc-100"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-zinc-200"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-neutral-100"],
+  html[data-theme="light"] .portal-personal-shell [class~="text-neutral-200"],
+  html[data-theme="light"] .portal-personal-shell [class~="md:text-[var(--text)]"],
+  html[data-theme="light"] .portal-personal-shell [class~="md:text-white"],
+  html[data-theme="light"] .portal-personal-shell [class~="md:text-white/70"],
+  html[data-theme="light"] .portal-personal-shell [class~="md:text-white/80"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-gray-100"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-gray-200"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-slate-100"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-slate-200"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-zinc-100"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-zinc-200"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-neutral-100"],
+  html[data-theme="light"] .portal-personal-shell [class*="md:text-neutral-200"],
+  html[data-theme="light"] .portal-personal-shell [class~="lg:text-[var(--text)]"],
+  html[data-theme="light"] .portal-personal-shell [class~="lg:text-white"],
+  html[data-theme="light"] .portal-personal-shell [class~="lg:text-white/70"],
+  html[data-theme="light"] .portal-personal-shell [class~="lg:text-white/80"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-gray-100"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-gray-200"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-slate-100"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-slate-200"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-zinc-100"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-zinc-200"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-neutral-100"],
+  html[data-theme="light"] .portal-personal-shell [class*="lg:text-neutral-200"] {
+    color: var(--text) !important;
+  }
+
+  /* Solid monochrome CTAs keep primary text color */
+  html[data-theme="light"] .portal-personal-shell :is(button, a, [role="button"], .accent-solid-btn)[class~="bg-[var(--accent2)]"],
+  html[data-theme="light"] .portal-personal-shell :is(button, a, [role="button"], .accent-solid-btn)[class~="bg-[var(--btn-primary-bg)]"],
+  html[data-theme="light"] .portal-personal-shell :is(button, a, [role="button"], .accent-solid-btn)[class~="bg-[var(--brand-blue)]"],
+  html[data-theme="light"] .portal-personal-shell :is(button, a, [role="button"])[class~="bg-blue-500"],
+  html[data-theme="light"] .portal-personal-shell :is(button, a, [role="button"])[class~="bg-blue-600"],
+  html[data-theme="light"] .portal-personal-shell :is(button, a, [role="button"])[class~="bg-blue-700"],
+  html[data-theme="light"] .portal-personal-shell :is(button, a, [role="button"], .accent-solid-btn)[class~="bg-[var(--accent2)]"] *,
+  html[data-theme="light"] .portal-personal-shell :is(button, a, [role="button"], .accent-solid-btn)[class~="bg-[var(--btn-primary-bg)]"] *,
+  html[data-theme="light"] .portal-personal-shell :is(button, a, [role="button"], .accent-solid-btn)[class~="bg-[var(--brand-blue)]"] *,
+  html[data-theme="light"] .portal-personal-shell :is(button, a, [role="button"])[class~="bg-blue-500"] *,
+  html[data-theme="light"] .portal-personal-shell :is(button, a, [role="button"])[class~="bg-blue-600"] *,
+  html[data-theme="light"] .portal-personal-shell :is(button, a, [role="button"])[class~="bg-blue-700"] * {
+    background-color: var(--btn-primary-bg) !important;
+    color: var(--btn-primary-text) !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .balance-hero,
+  html[data-theme="light"] .portal-personal-shell .balance-hero p,
+  html[data-theme="light"] .portal-personal-shell .balance-hero span,
+  html[data-theme="light"] .portal-personal-shell .balance-hero button,
+  html[data-theme="light"] .portal-personal-shell .balance-hero [class*="text-white"],
+  html[data-theme="light"] .portal-personal-shell .balance-hero [class~="text-white"],
+  html[data-theme="light"] .portal-personal-shell .balance-hero [class~="text-white/70"],
+  html[data-theme="light"] .portal-personal-shell .balance-hero [class~="text-white/80"],
+  html[data-theme="light"] .portal-personal-shell .balance-hero [class*="text-[var(--text)]"] {
+    color: #f8fafc !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .balance-hero [class*="text-[var(--muted)]"],
+  html[data-theme="light"] .portal-personal-shell .balance-hero [class~="text-white/40"],
+  html[data-theme="light"] .portal-personal-shell .balance-hero [class~="text-white/50"],
+  html[data-theme="light"] .portal-personal-shell .balance-hero [class~="text-white/60"],
+  html[data-theme="light"] .portal-personal-shell .balance-hero [class~="text-white/70"],
+  html[data-theme="light"] .portal-personal-shell .balance-hero .balance-hero-label {
+    color: #c5d0e0 !important;
+  }
+
+  /* Never turn glass pills into solid white cards on the blue hero */
+  html[data-theme="light"] .portal-personal-shell .balance-hero [class~="bg-white/5"],
+  html[data-theme="light"] .portal-personal-shell .balance-hero [class~="bg-white/10"],
+  html[data-theme="light"] .portal-personal-shell .balance-hero [class~="bg-white/12"],
+  html[data-theme="light"] .portal-personal-shell .balance-hero [class~="bg-white/15"],
+  html[data-theme="light"] .portal-personal-shell .balance-hero [class*="bg-white/"] {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .vehicle-hero-card,
+  html[data-theme="light"] .portal-personal-shell .vehicle-hero-card [class*="text-white"],
+  html[data-theme="light"] .portal-personal-shell .vehicle-hero-card [class~="text-white"] {
+    color: #ffffff !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .vehicle-hero-card [class*="text-slate-300"],
+  html[data-theme="light"] .portal-personal-shell .vehicle-hero-card [class*="text-slate-400"] {
+    color: #cbd5e1 !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .vehicle-hero-card [class*="text-amber-200"] {
+    color: #fde68a !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .vehicle-hero-card [class*="text-sky-200"],
+  html[data-theme="light"] .portal-personal-shell .vehicle-hero-card [class*="text-sky-300"] {
+    color: #7dd3fc !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .vehicle-hero-card [class*="text-rose-300"] {
+    color: #fda4af !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .vehicle-hero-card [class*="text-emerald-300"] {
+    color: #6ee7b7 !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .vehicle-hero-card [class*="text-amber-300"] {
+    color: #fcd34d !important;
+  }
+
+  /* Loan hero is always dark — keep amounts readable in light mode */
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero,
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero p,
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero span,
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero svg,
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero .loan-detail-amount,
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero .loan-detail-amount *,
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class~="text-white"],
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-white"],
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-slate-100"],
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-slate-200"] {
+    color: #ffffff !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-slate-300"],
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-slate-400"] {
+    color: #cbd5e1 !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-sky-200"],
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-sky-300"] {
+    color: #7dd3fc !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-orange-200"],
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-orange-300"] {
+    color: #fdba74 !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-emerald-200"],
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-emerald-300"] {
+    color: #6ee7b7 !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .loan-detail-hero .loan-detail-amount [class*="opacity"] {
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+
+  /* Subscription / dark finance heroes stay light-on-dark in light mode */
+  html[data-theme="light"] .portal-personal-shell .subscription-hero,
+  html[data-theme="light"] .portal-personal-shell .subscription-hero [class~="text-white"],
+  html[data-theme="light"] .portal-personal-shell .subscription-hero [class*="text-white"] {
+    color: #f5f5f5 !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .subscription-hero [class*="text-[#a3a3a3]"],
+  html[data-theme="light"] .portal-personal-shell .subscription-hero [class*="text-[#8c8c8c]"] {
+    color: #a3a3a3 !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .subscription-hero .subscription-hero-amount {
+    color: #f5f5f5 !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .dashboard-contrast-card,
+  html[data-theme="light"] .portal-personal-shell .dashboard-contrast-card [class*="text-white"],
+  html[data-theme="light"] .portal-personal-shell .dashboard-contrast-card [class*="text-[var(--text)]"],
+  html[data-theme="light"] .portal-personal-shell .dashboard-contrast-card [class*="text-[var(--muted)]"] {
+    color: inherit !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .dashboard-theme-card [class~="text-[var(--text)]"] {
+    color: var(--text) !important;
+  }
+
+  html[data-theme="light"] .portal-personal-shell .dashboard-theme-card [class~="text-[var(--muted)]"] {
+    color: var(--muted) !important;
+  }
+}
+
+.portal-personal-shell .dashboard-theme-card {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* ── Business Green Override ── */
+.business-theme .bg-green-600,
+.business-theme .hover\:bg-green-700:hover,
+.business-theme .bg-emerald-600,
+.business-theme .hover\:bg-emerald-500:hover { background-color: #058B70 !important; }
+.business-theme .bg-green-500,
+.business-theme .hover\:bg-green-600:hover,
+.business-theme .bg-emerald-500,
+.business-theme .hover\:bg-emerald-400:hover { background-color: #047a62 !important; }
+.business-theme .text-green-600,
+.business-theme .text-emerald-600 { color: #058B70 !important; }
+.business-theme .text-green-500,
+.business-theme .text-emerald-500 { color: #047a62 !important; }
+.business-theme .border-green-600,
+.business-theme .border-emerald-500\/25 { border-color: #058B70 !important; }
+.business-theme .shadow-green-600\/20,
+.business-theme .shadow-green-600\/40,
+.business-theme .ring-green-600\/20 { --tw-shadow-color: rgba(5,139,112,0.2) !important; }
+.business-theme .shadow-emerald-500\/40 { --tw-shadow-color: rgba(5,139,112,0.4) !important; }
+.business-theme .shadow-lg.shadow-green-600\/20,
+.business-theme .ring-green-600\/20 { --tw-ring-color: rgba(5,139,112,0.2) !important; }
+.business-theme .focus\:border-green-500:focus { border-color: #058B70 !important; }
+
+/* ── Category VS Comparison Card ── */
+.category-vs-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-3xl);
+  border: 1px solid var(--border);
+  background: #0b1530;
+  color: var(--text);
+  box-shadow: 0 18px 42px rgba(3, 10, 24, 0.34);
+}
+
+.category-vs-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #142347 0%, #0b1530 52%, #08101f 100%);
+  pointer-events: none;
+}
+
+.category-vs-card__inner {
+  position: relative;
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .category-vs-card__inner { padding: 1.25rem; }
+}
+
+.category-vs-card__title {
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  color: #ffffff;
+}
+
+.category-vs-card__subtitle {
+  margin-top: 0.125rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.category-vs-card__badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.625rem;
+  font-weight: 900;
+}
+
+.category-vs-card__badge--up {
+  background-color: rgba(244, 63, 94, 0.2);
+  color: #fda4af;
+}
+
+.category-vs-card__badge--down {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+
+.category-vs-card__header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: 0.5rem;
+  padding: 0 0.25rem;
+}
+
+@media (min-width: 640px) {
+  .category-vs-card__header { gap: 0.75rem; }
+}
+
+.category-vs-card__month-label {
+  font-size: 0.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.category-vs-card__month-label--before {
+  color: rgba(203, 213, 225, 0.7);
+}
+
+.category-vs-card__month-label--now {
+  color: var(--accent);
+}
+
+.category-vs-card__month-name {
+  margin-top: 0.125rem;
+  font-size: 0.55rem;
+  font-weight: 600;
+  color: rgba(203, 213, 225, 0.4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-vs-card__total {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+}
+
+.category-vs-card__vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.06);
+  font-size: 0.5rem;
+  font-weight: 900;
+  color: var(--accent);
+}
+
+.category-vs-card__row {
+  border-radius: var(--radius-3xl);
+  background-color: rgba(255, 255, 255, 0.04);
+  padding: 0.75rem;
+}
+
+.category-vs-card__row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.category-vs-card__row-name {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.category-vs-card__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+}
+
+.category-vs-card__row-title {
+  font-size: 0.6875rem;
+  font-weight: 900;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-vs-card__pct-badge {
+  flex-shrink: 0;
+  border-radius: 9999px;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.5rem;
+  font-weight: 900;
+}
+
+.category-vs-card__pct-badge--up {
+  background-color: rgba(244, 63, 94, 0.2);
+  color: #fda4af;
+}
+
+.category-vs-card__pct-badge--down {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+
+.category-vs-card__bars {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .category-vs-card__bars { gap: 0.75rem; }
+}
+
+.category-vs-card__bar-wrap--before {
+  min-width: 0;
+}
+
+.category-vs-card__bar-wrap--now {
+  min-width: 0;
+}
+
+.category-vs-card__bar-value {
+  font-size: 0.55rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 0.25rem;
+}
+
+.category-vs-card__bar-value--before {
+  text-align: right;
+  color: rgba(203, 213, 225, 0.6);
+}
+
+.category-vs-card__bar-value--now {
+  text-align: left;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.category-vs-card__bar {
+  height: 0.75rem;
+  overflow: hidden;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.category-vs-card__bar--before {
+  display: flex;
+  justify-content: flex-end;
+  border-radius: 9999px 0 0 9999px;
+}
+
+.category-vs-card__bar--now {
+  border-radius: 0 9999px 9999px 0;
+}
+
+.category-vs-card__bar-fill--before {
+  height: 100%;
+  border-radius: 9999px 0 0 9999px;
+  background-color: rgba(255, 255, 255, 0.25);
+  transition: width 0.3s ease;
+}
+
+.category-vs-card__bar-fill--now {
+  height: 100%;
+  border-radius: 0 9999px 9999px 0;
+  transition: width 0.3s ease;
+}
+
+.category-vs-card__divider {
+  width: 1px;
+  align-self: stretch;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.category-vs-card__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 8rem;
+  opacity: 0.4;
+}
+
+.category-vs-card__empty-icon {
+  margin-bottom: 0.5rem;
+  color: #cbd5e1;
+}
+
+.category-vs-card__empty-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}

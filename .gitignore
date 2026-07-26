@@ -1,0 +1,56 @@
+# dependencies
+node_modules/
+
+# build outputs
+.next/
+dist/
+build/
+out/
+.vercel/
+
+# env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# caches
+.pytest_cache/
+.cache/
+.turbo/
+.monitor/
+
+# local tool settings
+.claude/settings.local.json
+.DS_Store
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# local virtualenvs
+apps/api/venv/
+
+# runtime auth/session state
+apps/worker/auth_info/
+apps/worker/auth_quarantine/
+apps/worker/*auth*/
+
+# backup files
+*.bak*
+
+# local secrets
+apps/api/env
+apps/api/.env
+.env
+*.env
