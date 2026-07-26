@@ -575,8 +575,7 @@ export default function Dashboard() {
     const mobileQuery = window.matchMedia("(max-width: 767px)")
 
     const applyThemeColor = () => {
-      const isRemovedBusiness = window.location.hostname.includes("removed_business") || document.body.classList.contains("business-theme")
-      metaTheme.setAttribute("content", getPwaThemeColor(resolvedTheme, isRemovedBusiness))
+      metaTheme.setAttribute("content", getPwaThemeColor(resolvedTheme))
     }
 
     applyThemeColor()

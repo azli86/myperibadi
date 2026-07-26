@@ -149,9 +149,6 @@ export function clearAuthSession() {
 }
 
 export function getLoginRedirectPath(sessionId: string): string {
-  if (typeof window !== "undefined" && window.location.hostname.includes("removed_business")) {
-    return `/${sessionId}/removed_business`
-  }
   return `/${sessionId}`
 }
 

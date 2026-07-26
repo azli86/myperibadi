@@ -153,7 +153,6 @@ type NoticeBannerItem = {
   message?: string;
 };
 
-const ACCOUNT_MODE_STORAGE_KEY = "bdp-account-mode";
 
 type ShellStats = {
   balance: number;
@@ -861,15 +860,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     (typeof params.sessionId === "string" ? params.sessionId : "") ||
     pathSegments[0] ||
     "";
-  const isRemovedBusinessRoute = false;
-  const removed_businessBasePath = `/${sessionId}`;
   const isPersonalDashboardHome =
     Boolean(sessionId) &&
-    !isRemovedBusinessRoute &&
     (pathname === `/${sessionId}` || pathname === `/${sessionId}/`);
-  const isRemovedBusinessDashboardHome = false;
   const isLight = resolvedTheme === "light";
-  const [noticeBanners, setNoticeBanners] = useState<{ personal?: NoticeBannerItem; removed_business?: NoticeBannerItem } | null>(null);
+  const [noticeBanners, setNoticeBanners] = useState<{ personal?: NoticeBannerItem } | null>(null);
   const menuTitle = lang === "BM" ? "Menu Utama" : "Main Menu";
 
   useEffect(() => {
@@ -903,7 +898,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     };
   }, [sessionId, pathname]);
 
-  const activeNoticeBanner = isRemovedBusinessRoute ? noticeBanners?.removed_business : noticeBanners?.personal;
+  const activeNoticeBanner = noticeBanners?.personal;
   const noticeTitle = activeNoticeBanner
     ? (lang === "BM"
         ? (activeNoticeBanner.title_bm || activeNoticeBanner.title_en || activeNoticeBanner.title || "")
@@ -914,9 +909,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         ? (activeNoticeBanner.message_bm || activeNoticeBanner.message_en || activeNoticeBanner.message || "")
         : (activeNoticeBanner.message_en || activeNoticeBanner.message_bm || activeNoticeBanner.message || "")).trim()
     : "";
-  const showNoticeBanner = Boolean(activeNoticeBanner?.enabled && (noticeTitle || noticeMessage) && (isRemovedBusinessDashboardHome || isPersonalDashboardHome));
+  const showNoticeBanner = Boolean(activeNoticeBanner?.enabled && (noticeTitle || noticeMessage) && isPersonalDashboardHome);
   const noticeBannerNode = showNoticeBanner && activeNoticeBanner ? (
-    <section className={cn("mb-4 rounded-2xl border px-4 py-3 text-sm shadow-[var(--shadow-soft)]", isRemovedBusinessRoute ? "removed_business-page-wrap" : undefined, activeNoticeBanner.type === "alert" ? "border-rose-500/25 bg-rose-500/12 text-rose-700 dark:text-rose-200" : activeNoticeBanner.type === "warning" ? "border-amber-500/25 bg-amber-400/15 text-amber-800 dark:text-amber-200" : "border-sky-500/25 bg-sky-500/12 text-sky-700 dark:text-sky-200")}>
+    <section className={cn("mb-4 rounded-2xl border px-4 py-3 text-sm shadow-[var(--shadow-soft)]", activeNoticeBanner.type === "alert" ? "border-rose-500/25 bg-rose-500/12 text-rose-700 dark:text-rose-200" : activeNoticeBanner.type === "warning" ? "border-amber-500/25 bg-amber-400/15 text-amber-800 dark:text-amber-200" : "border-sky-500/25 bg-sky-500/12 text-sky-700 dark:text-sky-200")}>
       <div className="flex items-start gap-3">
         {activeNoticeBanner.type === "alert" ? <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> : activeNoticeBanner.type === "warning" ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> : <Info className="mt-0.5 h-4 w-4 shrink-0" />}
         <div className="min-w-0 flex-1">
@@ -1015,71 +1010,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { nameKey: "chat" as const, href: `/${sessionId}/chat`, icon: MessageCircle, label: t.chat },
     { nameKey: "receipts" as const, href: `/${sessionId}/receipts`, icon: NavReceiptsIcon, label: t.receipts },
   ];
-  const removed_businessMobileNavLeft = [
-    {
-      nameKey: "removed_business-dashboard" as const,
-      href: `/${sessionId}/removed_business`,
-      icon: LayoutDashboard,
-    },
-    {
-      nameKey: "removed_business-orders" as const,
-      href: `/${sessionId}/removed_business/orders`,
-      icon: Receipt,
-    },
-    {
-      nameKey: "removed_business-kanban" as const,
-      href: `/${sessionId}/removed_business/trackingsetting`,
-      icon: Grid2X2,
-    },
-    {
-      nameKey: "removed_business-riders" as const,
-      href: `/${sessionId}/removed_business/riders`,
-      icon: User,
-    },
-  ];
-  const removed_businessMobileNavRight = [
-    {
-      nameKey: "removed_business-products" as const,
-      href: `/${sessionId}/removed_business/products`,
-      icon: Grid2X2,
-    },
-    {
-      nameKey: "removed_business-stock" as const,
-      href: `/${sessionId}/removed_business/stock`,
-      icon: Boxes,
-    },
-    {
-      nameKey: "removed_business-settings" as const,
-      href: `/${sessionId}/removed_business/settings`,
-      icon: Settings,
-    },
-  ];
-  const removed_businessMobileNavFlat = [
-    { nameKey: "removed_business-dashboard" as const, href: `/${sessionId}/removed_business`, icon: LayoutDashboard, label: lang === "BM" ? "Utama" : "Home" },
-    { nameKey: "removed_business-orders" as const, href: `/${sessionId}/removed_business/orders`, icon: Receipt, label: lang === "BM" ? "Order" : "Orders" },
-    { nameKey: "removed_business-kanban" as const, href: `/${sessionId}/removed_business/trackingsetting`, icon: Grid2X2, label: "Order Track" },
-    { nameKey: "removed_business-products" as const, href: `/${sessionId}/removed_business/products`, icon: Grid2X2, label: lang === "BM" ? "Produk" : "Products" },
-    { nameKey: "removed_business-calculator" as const, href: null, icon: CalculatorIcon, label: lang === "BM" ? "Kira" : "Calc", isCalc: true },
-    { nameKey: "removed_business-stock" as const, href: `/${sessionId}/removed_business/stock`, icon: Boxes, label: lang === "BM" ? "Stok" : "Stock" },
-    { nameKey: "removed_business-settings" as const, href: `/${sessionId}/removed_business/settings`, icon: Settings, label: lang === "BM" ? "Lagi" : "More" },
-  ];
   const mobileBottomNavItems = [
     { key: "dashboard", href: `/${sessionId}` },
     { key: "transactions", href: `/${sessionId}/transactions` },
     { key: "wallet", href: `/${sessionId}/wallet-settings` },
     { key: "chat", href: `/${sessionId}/chat` },
     { key: "more", href: `/${sessionId}/settings` },
-  ];
-  const removed_businessMobileBottomNavItems = [
-    { key: "removed_business-dashboard", href: `/${sessionId}/removed_business` },
-    { key: "removed_business-orders", href: `/${sessionId}/removed_business/orders` },
-    { key: "removed_business-kanban", href: `/${sessionId}/removed_business/trackingsetting` },
-    { key: "removed_business-riders", href: `/${sessionId}/removed_business/riders` },
-    { key: "removed_business-expenses", href: `/${sessionId}/removed_business/expenses` },
-    { key: "removed_business-products", href: `/${sessionId}/removed_business/products` },
-    { key: "removed_business-stock", href: `/${sessionId}/removed_business/stock` },
-    { key: "removed_business-whatsapp", href: `/${sessionId}/removed_business/whatsapp` },
-    { key: "removed_business-settings", href: `/${sessionId}/removed_business/settings` },
   ];
   const mobileSheetClass = isLight
     ? "bg-white/95 backdrop-blur-xl text-neutral-900"
@@ -1117,114 +1053,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const mobileBottomNavItemInactiveClass = isLight
     ? "bg-transparent text-neutral-400"
     : "bg-transparent text-neutral-500";
-  const mobileMenuSections = isRemovedBusinessRoute
-    ? [
-        {
-          label: "Business",
-          items: [
-            {
-              name: lang === "BM" ? "Dashboard RemovedBusiness" : "Business Dashboard",
-              subtitle:
-                lang === "BM"
-                  ? "Ringkasan jualan dan status order"
-                  : "Overview of sales and order status",
-              href: `/${sessionId}/removed_business`,
-              icon: LayoutDashboard,
-            },
-            {
-              name: lang === "BM" ? "Order RemovedBusiness" : "Business Orders",
-              subtitle:
-                lang === "BM"
-                  ? "Semak order masuk dan penghantaran"
-                  : "Review incoming orders and deliveries",
-              href: `/${sessionId}/removed_business/orders`,
-              icon: Receipt,
-            },
-            {
-              name: "Order Track",
-              subtitle:
-                lang === "BM"
-                  ? "Pantau status order ikut kolum"
-                  : "Track order status by column",
-              href: `/${sessionId}/removed_business/trackingsetting`,
-              icon: Grid2X2,
-            },
-            {
-              name: lang === "BM" ? "Produk" : "Products",
-              subtitle:
-                lang === "BM"
-                  ? "Urus produk, stok dan harga"
-                  : "Manage products, stock and pricing",
-              href: `/${sessionId}/removed_business/products`,
-              icon: Package,
-            },
-            {
-              name: lang === "BM" ? "Stok" : "Stock",
-              subtitle:
-                lang === "BM"
-                  ? "Pantau stok dan pending delivery"
-                  : "Track stock and pending deliveries",
-              href: `/${sessionId}/removed_business/stock`,
-              icon: Boxes,
-            },
-            {
-              name: lang === "BM" ? "Rider" : "Riders",
-              subtitle:
-                lang === "BM"
-                  ? "Assign rider dan urus penghantaran"
-                  : "Assign riders and manage deliveries",
-              href: `/${sessionId}/removed_business/riders`,
-              icon: Truck,
-            },
-            {
-              name: lang === "BM" ? "Upah Owner" : "Owner Salary",
-              subtitle:
-                lang === "BM"
-                  ? "Rekod ambilan owner tanpa kacau expenses"
-                  : "Track owner draws without mixing expenses",
-              href: `/${sessionId}/removed_business/owner-salary`,
-              icon: DollarSign,
-            },
-            {
-              name: lang === "BM" ? "WhatsApp Bot" : "WhatsApp Bot",
-              subtitle:
-                lang === "BM"
-                  ? "Paut WhatsApp untuk auto rekod"
-                  : "Link WhatsApp for auto record",
-              href: `/${sessionId}/removed_business/whatsapp`,
-              icon: MessageCircleMore,
-            },
-            {
-              name: lang === "BM" ? "Automation Flow" : "Automation Flow",
-              subtitle:
-                lang === "BM"
-                  ? "Workflow WhatsApp RemovedBusiness"
-                  : "RemovedBusiness WhatsApp workflow",
-              href: `/${sessionId}/removed_business/automation-flow`,
-              icon: Bot,
-            },
-            {
-              name: lang === "BM" ? "Theme Studio" : "Theme Studio",
-              subtitle:
-                lang === "BM"
-                  ? "Urus reka bentuk, warna dan logo"
-                  : "Customize design, colors and logo",
-              href: `/${sessionId}/removed_business/theme-studio`,
-              icon: Palette,
-            },
-            {
-              name: lang === "BM" ? "Tetapan RemovedBusiness" : "Business Settings",
-              subtitle:
-                lang === "BM"
-                  ? "Setup rule, order dan payment"
-                  : "Configure rules, orders and payments",
-              href: `/${sessionId}/removed_business/settings`,
-              icon: Settings,
-            },
-          ],
-        },
-      ]
-    : [
+  const mobileMenuSections = [
         {
           label: menuTitle,
           items: [
@@ -1412,8 +1241,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               name: "AdminPortal Admin",
               subtitle:
                 lang === "BM"
-                  ? "Urus activation removed_business pengguna"
-                  : "Manage user removed_business activation",
+                  ? "Urus akaun dan akses pengguna"
+                  : "Manage user accounts and access",
               href: `/${sessionId}/adminportal`,
               icon: ShieldCheck,
             },
@@ -1430,9 +1259,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         },
       ]
     : [];
-  const currentDesktopNavigationSections = isRemovedBusinessRoute
-    ? mobileMenuSections
-    : desktopNavigationSections;
+  const currentDesktopNavigationSections = desktopNavigationSections;
 
   const [stats, setStats] = useState<ShellStats>({ balance: 0, income_month: 0, expense_month: 0 });
   const [showAddModal, setShowAddModal] = useState(false);
@@ -1464,8 +1291,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [budgetItems, setBudgetItems] = useState<ShellBudgetItem[]>([]);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileSheetAccountSwitcher, setShowMobileSheetAccountSwitcher] = useState(false);
-  const [removed_businessCloudInboxEnabled, setRemovedBusinessCloudInboxEnabled] = useState(false);
-  const [removed_businessEnabled, setRemovedBusinessEnabled] = useState(false);
+
   const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
   const [showLeftAccountSwitcher, setShowLeftAccountSwitcher] = useState(false);
   const [activeEmail, setActiveEmail] = useState<string | null>(null);
@@ -1687,21 +1513,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     pathname === "/login" ||
     pathname === "/register" ||
     pathname === "/forgot-password" ||
-    pathname === "/reset-password" ||
-    pathname.startsWith("/public/removed_business/delivery/");
+    pathname === "/reset-password";
   const isChatFullscreen = pathname === `/${sessionId}/chat`;
   const isMapFullscreen =
     pathname === `/${sessionId}/map` || pathname === `/${sessionId}/places`;
   const isTransactionDetailPage =
     pathname.startsWith(`/${sessionId}/transactions/`) &&
     pathname !== `/${sessionId}/transactions`;
-  const isRemovedBusinessOrderDetailPage =
-    pathname.startsWith(`/${sessionId}/removed_business/orders/`) &&
-    pathname !== `/${sessionId}/removed_business/orders`;
   const personalRootPath = `/${sessionId}`;
-  const removed_businessRootPath = `/${sessionId}/removed_business`;
-  const pinSectionKey = isRemovedBusinessRoute ? "removed_business" : "personal";
-  const pinVerifiedStorageKey = `pin_verified_${sessionId}_${pinSectionKey}`;
+  const pinVerifiedStorageKey = `pin_verified_${sessionId}_personal`;
   const mobileChatHref = `/${sessionId}/chat`;
   const isMobileChatActive = pathname === mobileChatHref;
   const sharedTransactionQueryToken =
@@ -1725,58 +1545,17 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     user,
   );
   const MobileHeaderIcon = mobileHeaderMeta.icon;
-  const currentMobileNavLeft = isRemovedBusinessRoute ? removed_businessMobileNavLeft : mobileNavLeft;
-  const currentMobileNavRight = isRemovedBusinessRoute
-    ? removed_businessCloudInboxEnabled
-      ? [
-          removed_businessMobileNavRight[0],
-          removed_businessMobileNavRight[1],
-          {
-            nameKey: "removed_business-inbox" as const,
-            href: `/${sessionId}/removed_business/inbox`,
-            icon: MessageCircleMore,
-          },
-          removed_businessMobileNavRight[2],
-        ]
-      : removed_businessMobileNavRight
-    : mobileNavRight;
-  const currentMobileCenterHref = isRemovedBusinessRoute
-    ? `/${sessionId}/removed_business/expenses`
-    : mobileChatHref;
-  const currentMobileBottomNavItems = isRemovedBusinessRoute
-    ? removed_businessCloudInboxEnabled
-      ? [
-          ...removed_businessMobileBottomNavItems.slice(0, 5),
-          { key: "removed_business-inbox", href: `/${sessionId}/removed_business/inbox` },
-          removed_businessMobileBottomNavItems[5],
-        ]
-      : removed_businessMobileBottomNavItems
-    : mobileBottomNavItems;
+  const currentMobileNavLeft = mobileNavLeft;
+  const currentMobileNavRight = mobileNavRight;
+  const currentMobileCenterHref = mobileChatHref;
+  const currentMobileBottomNavItems = mobileBottomNavItems;
 
   const isMobileBottomNavActive = React.useCallback(
     (href: string) => {
       const base = `/${sessionId}`;
-      const removed_businessBase = `${base}/removed_business`;
 
       if (href === base) return pathname === href;
-      if (href === removed_businessBase) return pathname === href;
       if (href === `${base}/transactions`)
-        return pathname === href || pathname.startsWith(`${href}/`);
-      if (href === `${removed_businessBase}/orders`)
-        return pathname === href || pathname.startsWith(`${href}/`);
-      if (href === `${removed_businessBase}/trackingsetting`)
-        return pathname === href || pathname.startsWith(`${href}/`);
-      if (href === `${removed_businessBase}/expenses`)
-        return pathname === href || pathname.startsWith(`${href}/`);
-      if (href === `${removed_businessBase}/products`)
-        return pathname === href || pathname.startsWith(`${href}/`);
-      if (href === `${removed_businessBase}/stock`)
-        return pathname === href || pathname.startsWith(`${href}/`);
-      if (href === `${removed_businessBase}/riders`)
-        return pathname === href || pathname.startsWith(`${href}/`);
-      if (href === `${removed_businessBase}/settings`)
-        return pathname === href || pathname.startsWith(`${href}/`);
-      if (href === `${removed_businessBase}/whatsapp`)
         return pathname === href || pathname.startsWith(`${href}/`);
       if (href === `${base}/settings`) {
         return [
@@ -1799,54 +1578,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     (item) => isMobileBottomNavActive(item.href),
   );
 
-  useEffect(() => {
-    if (typeof window === "undefined" || !sessionId) return;
 
-    const storedMode = window.localStorage.getItem(ACCOUNT_MODE_STORAGE_KEY);
-    const isOnRemovedBusinessDomain = window.location.hostname.includes("removed_business");
-    if (pathname === personalRootPath && storedMode === "business" && isOnRemovedBusinessDomain) {
-      router.replace(removed_businessRootPath);
-    }
-  }, [removed_businessRootPath, pathname, personalRootPath, router, sessionId]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadRemovedBusinessCloudState() {
-      if (!isRemovedBusinessRoute) {
-        setRemovedBusinessCloudInboxEnabled(false);
-        return;
-      }
-      try {
-        const token = getAccessToken();
-        const headers = token
-          ? { Authorization: `Bearer ${token}` }
-          : undefined;
-        const res = await fetch("/api/removed_business/whatsapp-cloud-settings", {
-          headers,
-        });
-        const data = await res.json().catch(() => null);
-        const enabled = Boolean(
-          data?.enabled && data?.phone_number_id && data?.has_access_token,
-        );
-        if (!cancelled) setRemovedBusinessCloudInboxEnabled(enabled);
-      } catch {
-        if (!cancelled) setRemovedBusinessCloudInboxEnabled(false);
-      }
-    }
-
-    void loadRemovedBusinessCloudState();
-    return () => {
-      cancelled = true;
-    };
-  }, [isRemovedBusinessRoute, sessionId, refreshKey]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (isRemovedBusinessRoute && window.location.hostname.includes("removed_business")) {
-      window.localStorage.setItem(ACCOUNT_MODE_STORAGE_KEY, "business");
-    }
-  }, [isRemovedBusinessRoute]);
 
   // Load multi-account data only after mount to avoid SSR/client hydration mismatch.
   useEffect(() => {
@@ -2369,19 +2101,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       console.error("Shell data fetch error:", err);
     }
 
-    // Fetch removed_business access separately (non-critical)
-    try {
-      const token = getAccessToken();
-      if (token) {
-        const removed_businessRes = await fetch("/api/removed_business/access", { headers: { Authorization: `Bearer ${token}` } });
-        if (removed_businessRes.ok) {
-          const removed_businessData = await removed_businessRes.json().catch(() => null);
-          setRemovedBusinessEnabled(Boolean(removed_businessData?.enabled));
-        }
-      }
-    } catch {
-      // ignore removed_business access errors
-    }
   };
 
   useEffect(() => {
@@ -3066,18 +2785,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       className={cn(
         // overflow-x-clip (not hidden) so sticky page top bars still work against main scroll
         "portal-app-shell min-h-[100dvh] flex flex-col font-sans select-none overflow-x-clip",
-        isRemovedBusinessRoute ? "portal-removed_business-shell" : "portal-personal-shell",
+        "portal-personal-shell",
         isPersonalDashboardHome && "portal-dashboard-home",
-        isRemovedBusinessRoute
-          ? "lg:block lg:min-h-[100dvh] lg:h-auto lg:overflow-visible"
-          : "lg:h-[100dvh] lg:flex-row lg:overflow-hidden",
-        isRemovedBusinessRoute
-          ? isLight
-            ? "bg-[var(--bg)] text-slate-900"
-            : "bg-black text-[#f5f7fb]"
-            : isLight
-              ? "bg-[var(--bg)] text-slate-900"
-              : "bg-black text-[#f0f2fa]",
+        "lg:h-[100dvh] lg:flex-row lg:overflow-hidden",
+        isLight
+          ? "bg-[var(--bg)] text-slate-900"
+          : "bg-black text-[#f0f2fa]",
       )}
     >
       {pinLockRequired && !suppressPinLockUi && (
@@ -3242,7 +2955,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         sessionId={sessionId}
         lang={lang}
       />
-      {!isRemovedBusinessRoute && (
+      { (
         <Sidebar collapsible="icon" className="portal-desktop-sidebar z-50">
           <SidebarHeader className="shrink-0 gap-0 px-0 pb-3 pt-1.5">
             <Link
@@ -3438,7 +3151,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       <div
         className={cn(
           "portal-desktop-main flex-1 flex min-w-0 flex-col min-h-[100dvh] lg:h-full lg:min-h-0",
-          isRemovedBusinessRoute && "lg:w-full lg:max-w-none",
         )}
       >
         {/* Global Status Bar Background for iOS immersive mode */}
@@ -3461,7 +3173,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               : cn(
                   // Personal desktop: no side/top pad so sticky top bars can go edge-to-edge
                   "w-full p-3 pt-[calc(env(safe-area-inset-top,0px)+0.35rem)] pb-[calc(88px+env(safe-area-inset-bottom,0px))] md:px-0 md:pt-0 md:pb-6",
-                  isRemovedBusinessRoute && "lg:p-0 lg:pt-0 lg:pb-0",
                   isTransactionDetailPage &&
                     "mx-auto max-w-5xl md:mx-0 md:max-w-none",
                 ),
@@ -3561,11 +3272,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
           {isChatFullscreen || isMapFullscreen ? (
             children
-          ) : isRemovedBusinessRoute ? (
-            <>
-              {noticeBannerNode}
-              {children}
-            </>
           ) : (
             <div className="portal-page-frame">
               {noticeBannerNode}
@@ -3591,7 +3297,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           )}
 
 
-        {!isChatFullscreen && !isTransactionDetailPage && !isRemovedBusinessOrderDetailPage && !isRemovedBusinessRoute && (
+        {!isChatFullscreen && !isTransactionDetailPage &&  (
           <nav
             className={cn(
               "lg:hidden fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 will-change-transform",
@@ -3745,7 +3451,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* ── Desktop Right Sidebar ── */}
-      {!isRemovedBusinessRoute && (
+      { (
         <aside className="portal-desktop-right-rail hidden h-[100dvh] w-[300px] shrink-0 flex-col border-l border-[var(--border)] bg-[var(--page-bg)] lg:flex">
           {/* Balance only at top */}
           <div className="shrink-0 border-b border-[var(--border)] px-3 pb-3 pt-3">
@@ -4067,100 +3773,29 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               </div>
 
               <div className="px-4 pb-10">
-                <div className={cn(isRemovedBusinessRoute ? "space-y-2" : "space-y-5")}>
+                <div className="space-y-5">
                   {mobileMenuSections.map((section, index) => (
                     <section key={`${index}-${section.label}`}>
-                      {(isRemovedBusinessRoute ? index > 0 : true) && (
-                        <p
-                          className={cn(
-                            isRemovedBusinessRoute
-                              ? "mb-1 text-[0.58rem] font-bold uppercase tracking-[0.16em]"
-                              : "mb-2.5 text-[0.62rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]",
-                            isRemovedBusinessRoute && mobileSheetSectionLabelClass,
-                          )}
-                        >
-                          {section.label}
-                        </p>
-                      )}
-                      {isRemovedBusinessRoute ? (
-                        <div className="space-y-0">
-                          {section.items.map((item) => {
-                            const isActive = pathname === item.href;
-                            return (
-                              <button
-                                key={item.href}
-                                type="button"
-                                onClick={() => {
-                                  if (pathname === item.href) {
-                                    requestMobileMenuClose();
-                                    return;
-                                  }
-                                  requestMobileMenuCloseThen(() => {
-                                    router.push(item.href);
-                                  });
-                                }}
-                                className={cn(
-                                  "flex w-full items-center gap-2 rounded-xl px-1.5 py-0.5 text-left transition-all",
-                                  mobileSheetRowClass,
-                                  isActive && mobileSheetActiveRowClass,
-                                )}
-                              >
-                                <div
-                                  className={cn(
-                                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-xl",
-                                    mobileSheetIconWrapClass,
-                                  )}
-                                >
-                                  <item.icon
-                                    size={15}
-                                    className={
-                                      isActive ? mobileSheetActiveIconClass : ""
-                                    }
-                                  />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p
-                                    className={cn(
-                                      "truncate text-[0.78rem] font-semibold leading-[1.05]",
-                                      isActive
-                                        ? mobileSheetActiveTitleClass
-                                        : mobileSheetTitleClass,
-                                    )}
-                                  >
-                                    {item.name}
-                                  </p>
-                                </div>
-                                <ChevronRight
-                                  size={12}
-                                  className={cn(
-                                    "shrink-0",
-                                    isActive
-                                      ? mobileSheetActiveIconClass
-                                      : mobileSheetSubtextClass,
-                                  )}
-                                />
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-4 gap-x-1 gap-y-4">
-                          {section.items.map((item) => {
-                            const isActive = pathname === item.href;
-                            return (
-                              <button
-                                key={item.href}
-                                type="button"
-                                title={item.subtitle}
-                                onClick={() => {
-                                  if (pathname === item.href) {
-                                    requestMobileMenuClose();
-                                    return;
-                                  }
-                                  requestMobileMenuCloseThen(() => {
-                                    router.push(item.href);
-                                  });
-                                }}
+                      <p className="mb-2.5 text-[0.62rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                        {section.label}
+                      </p>
+                      <div className="grid grid-cols-4 gap-x-1 gap-y-4">
+                        {section.items.map((item) => {
+                          const isActive = pathname === item.href;
+                          return (
+                            <button
+                              key={item.href}
+                              type="button"
+                              title={item.subtitle}
+                              onClick={() => {
+                                if (pathname === item.href) {
+                                  requestMobileMenuClose();
+                                  return;
+                                }
+                                requestMobileMenuCloseThen(() => {
+                                  router.push(item.href);
+                                });
+                              }}
                                 className="flex min-w-0 flex-col items-center gap-1.5 text-center transition-transform active:scale-[0.94]"
                               >
                                 <div
@@ -4197,8 +3832,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                             );
                           })}
                         </div>
-                      )}
-                    </section>
+                      </section>
                   ))}
                 </div>
               </div>
@@ -4613,300 +4247,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     </div>
   );
 
-  if (isRemovedBusinessRoute) {
-    return (
-      <>
-        {waReconnectBanner.show && (
-          <div className="hidden lg:block">
-            <div className="mx-auto flex w-full max-w-[1600px] items-center gap-3 bg-amber-500/10 px-4 py-2.5 text-left shadow-sm backdrop-blur-md lg:mx-0 lg:rounded-b-xl lg:border lg:border-amber-400/30">
-              <AlertCircle size={16} className="shrink-0 text-amber-500" />
-              <p className="min-w-0 flex-1 text-[0.75rem] font-bold text-amber-600">
-                {lang === "EN" ? "WhatsApp connection needs attention. Go to WhatsApp settings to reconnect."
-                : "Sambungan WhatsApp memerlukan perhatian. Ke Tetapan WhatsApp untuk sambung semula."}
-              </p>
-              <a href={removed_businessBasePath + "/whatsapp"} className="shrink-0 rounded-full bg-amber-500 px-4 py-1.5 text-[0.7rem] font-bold text-white transition-colors hover:bg-amber-600">
-                {lang === "EN" ? "Reconnect" : "Sambung"}
-              </a>
-            </div>
-          </div>
-        )}
-        <main
-          className={cn(
-            "hidden min-h-[100dvh] w-full overflow-x-hidden lg:block",
-            pinLockRequired &&
-              !suppressPinLockUi &&
-              "pointer-events-none select-none",
-          )}
-        >
-          {children}
-        </main>
-        {!hideGlobalCalculator && <Calculator show={showCalculator} onClose={() => setShowCalculator(false)} />}
-        {pinLockRequired && !suppressPinLockUi && (
-          <div className="hidden lg:block">
- <div className={cn("fixed inset-0 z-[99999] overflow-hidden", isLight ? "bg-[var(--page-bg)]" : "bg-black")}>
-              <div
-                aria-hidden="true"
-                className="hidden"
-              >
-                <div
-                  className={cn(
-                    "absolute -top-[10%] -left-[10%] h-[70vw] w-[70vw] max-h-[800px] max-w-[800px] rounded-full blur-[120px]",
-                    isLight ? "bg-indigo-300/30" : "bg-indigo-600/15",
-                  )}
-                />
-                <div
-                  className={cn(
-                    "absolute top-[20%] -right-[10%] h-[60vw] w-[60vw] max-h-[600px] max-w-[600px] rounded-full blur-[120px]",
-                    isLight ? "bg-sky-300/30" : "bg-sky-600/15",
-                  )}
-                />
-                <div
-                  className={cn(
-                    "absolute -bottom-[20%] left-[10%] h-[80vw] w-[80vw] max-h-[900px] max-w-[900px] rounded-full blur-[120px]",
-                    isLight ? "bg-rose-200/40" : "bg-rose-900/20",
-                  )}
-                />
-                <div
-                  className={cn(
- "absolute inset-0",
-                    isLight ? "bg-slate-50/80" : "bg-[#09090b]/80",
-                  )}
-                />
-              </div>
-              <div className="relative z-10 flex h-[100dvh] w-full items-center justify-center overflow-hidden px-5 py-8">
-                <div
-                  className={cn(
-                    "relative flex w-full max-w-[380px] flex-col justify-between rounded-[38px] border px-5 pb-5 pt-6",
-                    isLight
-                      ? "border-[var(--border)] bg-[var(--card)] text-slate-950"
-                      : "border-[var(--border)] bg-[var(--card)] text-white",
-                  )}
-                >
-                  <div className="mx-auto flex w-full max-w-[250px] flex-col items-center">
-                    <div
-                      className={cn(
-                        "mb-4 flex h-14 w-14 items-center justify-center rounded-[16px] shadow-inner",
-                        isLight
-                          ? "bg-slate-200 text-slate-800"
-                          : "bg-zinc-700 text-zinc-100",
-                      )}
-                    >
-                      <Lock size={22} strokeWidth={2.7} />
-                    </div>
-                    <h2 className="text-center text-[1.375rem] font-black tracking-tight">
-                      {lang === "BM" ? "Masukkan PIN" : "Enter PIN"}
-                    </h2>
-                    <p
-                      className={cn(
-                        "mt-1 text-center text-[0.75rem] font-semibold",
-                        isLight ? "text-slate-500" : "text-white/45",
-                      )}
-                    >
-                      {lang === "BM"
-                        ? "6 digit untuk buka portal"
-                        : "6 digits to unlock portal"}
-                    </p>
-                    <div
-                      className={cn(
-                        "mx-auto mt-3 flex h-10 w-fit items-center justify-center gap-3 rounded-full px-4",
-                        isLight ? "bg-slate-100" : "bg-white/[0.07]",
-                      )}
-                    >
-                      {Array.from({ length: 6 }).map((_, idx) => {
-                        const filled = idx < pinInput.length;
-                        return (
-                          <span
-                            key={idx}
-                            className={cn(
-                              "block h-3 w-3 rounded-full transition-all duration-200",
-                              filled
-                                ? isLight
-                                  ? "scale-110 bg-slate-500"
-                                  : "scale-110 bg-zinc-300"
-                                : isLight
-                                  ? "bg-slate-300"
-                                  : "bg-white/18",
-                            )}
-                          />
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="mx-auto mt-8 flex w-full flex-col space-y-8">
-                    <div className="mx-auto grid w-full grid-cols-3 gap-x-5 gap-y-6">
-                      {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map(
-                        (digit) => (
-                          <button
-                            key={digit}
-                            type="button"
-                            onPointerDown={(event) =>
-                              handlePinPointerDown(event, digit)
-                            }
-                            disabled={pinUnlocking}
-                            className={cn(
-                              "flex h-[64px] touch-manipulation select-none items-center justify-center overflow-visible rounded-[24px] transition-all duration-150 active:scale-[0.94] disabled:opacity-50",
-                              isLight
-                                ? "bg-slate-100 text-slate-900 hover:bg-slate-200"
-                                : "bg-white/8 text-white hover:bg-white/12",
-                            )}
-                          >
-                            <span className="block translate-y-[1px] text-[2.2rem] font-black leading-none">
-                              {digit}
-                            </span>
-                          </button>
-                        ),
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleLogout}
-                        className={cn(
-                          "flex h-[64px] select-none items-center justify-center rounded-[24px] text-[0.72rem] font-black uppercase tracking-[0.14em] transition-all active:scale-[0.94]",
-                          isLight
-                            ? "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                            : "bg-white/8 text-white/60 hover:bg-white/12",
-                        )}
-                      >
-                        {lang === "BM" ? "Keluar" : "Logout"}
-                      </button>
-                      <button
-                        type="button"
-                        onPointerDown={(event) =>
-                          handlePinPointerDown(event, "0")
-                        }
-                        disabled={pinUnlocking}
-                        className={cn(
-                          "flex h-[64px] touch-manipulation select-none items-center justify-center overflow-visible rounded-[24px] transition-all duration-150 active:scale-[0.94] disabled:opacity-50",
-                          isLight
-                            ? "bg-slate-100 text-slate-900 hover:bg-slate-200"
-                            : "bg-white/8 text-white hover:bg-white/12",
-                        )}
-                      >
-                        <span className="block translate-y-[1px] text-[2.2rem] font-black leading-none">
-                          0
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onPointerDown={handlePinDeletePointerDown}
-                        disabled={pinUnlocking || pinInput.length === 0}
-                        className={cn(
-                          "flex h-[64px] select-none items-center justify-center rounded-[24px] transition-all active:scale-[0.94] disabled:opacity-35",
-                          isLight
-                            ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                            : "bg-white/8 text-white/80 hover:bg-white/12",
-                        )}
-                      >
-                        <Delete size={22} />
-                      </button>
-                    </div>
-                    {pinLockError && (
-                      <p
-                        className={cn(
-                          "text-center text-sm font-bold",
-                          isLight ? "text-rose-600" : "text-rose-300",
-                        )}
-                      >
-                        {pinLockError}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        {/* ── Mobile Account Switcher ── */}
-        
-          {showAccountSwitcher && typeof window !== "undefined" && window.innerWidth < 1024 && (
-            <>
-              <div
-                className="fixed inset-0 z-[600] bg-transparent lg:hidden"
-                onClick={() => setShowAccountSwitcher(false)}
-              />
-              <div
-                className="fixed bottom-0 left-0 right-0 z-[601] max-h-[60vh] overflow-y-auto bg-[var(--card)] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] shadow-2xl lg:hidden"
-              >
-                <div className="sticky top-0 z-10 flex justify-center pt-3 pb-2 bg-[var(--card)]">
-                  <div className="h-1 w-10 rounded-full bg-[var(--border)]" />
-                </div>
-                <div className="px-5 pt-2 pb-4">
-                  <h3 className="text-sm font-black text-[var(--text)] mb-3 px-1">
-                    {lang === "BM" ? "Tukar Akaun" : "Switch Account"}
-                  </h3>
-                  <div className="space-y-1">
-                    {storedAccounts.map((acct: AccountProfile) => (
-                      <button
-                        key={acct.email}
-                        type="button"
-                        onClick={() => {
-                          if (acct.email !== activeEmail) {
-                            switchToAccount(acct.email)
-                            setShowAccountSwitcher(false)
-                            window.location.reload()
-                          }
-                        }}
-                        className={cn(
-                          "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors",
-                          acct.email === activeEmail
-                            ? "bg-[var(--surface-tint-strong)]"
-                            : "hover:bg-[var(--surface-tint)]"
-                        )}
-                      >
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-xs font-black uppercase text-[var(--text)]">
-                          {(acct.name || acct.email)[0]}
-                        </div>
-                        <div className="min-w-0 text-left">
-                          <div className="text-sm font-bold text-[var(--text)] truncate">
-                            {acct.name || acct.email.split("@")[0]}
-                          </div>
-                          <div className="text-[11px] text-[var(--muted)] truncate">
-                            {acct.email}
-                          </div>
-                        </div>
-                        {acct.email === activeEmail && (
-                          <Check size={16} className="ml-auto shrink-0 text-[var(--text)]" />
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-[var(--border)] space-y-1">
-                    <button
-                      type="button"
-                      onClick={() => { setShowAccountSwitcher(false); setShowAddAccountModal(true) }}
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)] transition-colors"
-                    >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-dashed border-[var(--border)]">
-                        <UserPlus size={16} />
-                      </div>
-                      <span>{lang === "BM" ? "Tambah Akaun" : "Add Account"}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setShowAccountSwitcher(false); router.push(`/${sessionId}/settings`) }}
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)] transition-colors"
-                    >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-tint)]">
-                        <Settings size={16} />
-                      </div>
-                      <span>{lang === "BM" ? "Tetapan" : "Settings"}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        
-        <div className="lg:hidden">{shellContent}</div>
-      </>
-    );
-  }
-
   return (
     <>
       <SidebarProvider className="contents">{shellContent}</SidebarProvider>
       {/* ── Mobile Calculator ── */}
-      {!isRemovedBusinessRoute && !isDesktop && <Calculator show={showCalculator} onClose={() => setShowCalculator(false)} hideFab />}
+      { !isDesktop && <Calculator show={showCalculator} onClose={() => setShowCalculator(false)} hideFab />}
       {/* ── Add Account Login Overlay ── */}
       
         {showAddAccountModal && (

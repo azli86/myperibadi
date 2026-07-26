@@ -124,9 +124,8 @@ function applyTheme(theme: ThemeMode, resolvedTheme: ResolvedTheme) {
   document.documentElement.style.colorScheme = resolvedTheme
   storeThemePreference(theme, resolvedTheme)
 
-  const isRemovedBusiness = window.location.hostname.includes("removed_business") || document.body.classList.contains("business-theme")
   const cssThemeColor = getComputedStyle(document.documentElement).getPropertyValue("--page-bg").trim()
-  const pwaThemeColor = cssThemeColor || getPwaThemeColor(resolvedTheme, isRemovedBusiness)
+  const pwaThemeColor = cssThemeColor || getPwaThemeColor(resolvedTheme)
   document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
     meta.content = pwaThemeColor
   })

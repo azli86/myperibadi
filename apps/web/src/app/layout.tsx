@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import "./globals.css";
 import AppShellBoundary from "@/components/layout/AppShellBoundary";
 import ZoomLock from "@/components/layout/ZoomLock";
@@ -24,16 +24,10 @@ function resolveThemeMode(theme: ThemeMode, cookieResolvedTheme?: string): Resol
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const heads = await headers()
-  const host = heads.get("host") || ""
-  const isRemovedBusiness = host.includes("removed_business")
-
   return {
-      title: isRemovedBusiness ? "DigitalPort RemovedBusiness" : "MyPeribadi",
-    description: isRemovedBusiness
-      ? "Manage your business expenses, receipts, and financial reports with DigitalPort."
-      : "Manage your personal budget, receipts, and daily expenses with ease.",
-    applicationName: isRemovedBusiness ? "DigitalPort RemovedBusiness" : "MyPeribadi",
+    title: "MyPeribadi",
+    description: "Manage your personal budget, receipts, and daily expenses with ease.",
+    applicationName: "MyPeribadi",
     manifest: "/manifest.webmanifest",
     icons: {
       icon: "/icon-512-v3.png",
@@ -55,12 +49,12 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     appleWebApp: {
       capable: true,
-      statusBarStyle: isRemovedBusiness ? "default" : "black-translucent",
-    title: isRemovedBusiness ? "DigitalPort RemovedBusiness" : "MyPeribadi",
+      statusBarStyle: "black-translucent",
+      title: "MyPeribadi",
     },
     other: {
-      "navigation-bar-color": isRemovedBusiness ? "#151515" : "#0d0d0d",
-      "msapplication-navbutton-color": isRemovedBusiness ? "#151515" : "#0d0d0d",
+      "navigation-bar-color": "#0d0d0d",
+      "msapplication-navbutton-color": "#0d0d0d",
     },
     formatDetection: {
       telephone: false,
@@ -69,8 +63,6 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export async function generateViewport(): Promise<Viewport> {
-  const heads = await headers()
-  const isRemovedBusiness = (heads.get("host") || "").includes("removed_business")
 
   return {
     width: "device-width",
@@ -80,8 +72,8 @@ export async function generateViewport(): Promise<Viewport> {
     userScalable: false,
     viewportFit: "cover",
     themeColor: [
-      { media: "(prefers-color-scheme: light)", color: getPwaThemeColor("light", isRemovedBusiness) },
-      { media: "(prefers-color-scheme: dark)", color: getPwaThemeColor("dark", isRemovedBusiness) },
+      { media: "(prefers-color-scheme: light)", color: getPwaThemeColor("light") },
+      { media: "(prefers-color-scheme: dark)", color: getPwaThemeColor("dark") },
     ],
   }
 }

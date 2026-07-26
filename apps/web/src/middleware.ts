@@ -9,10 +9,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(`https://app.myperibadi.com${url.pathname}${url.search}`, 301)
   }
 
-  if (host === "budget.digitalport.my") {
-    return NextResponse.redirect(`https://removed_business.digitalport.my${url.pathname}${url.search}`, 301)
-  }
-
   const response = NextResponse.next()
   response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
   response.headers.set("Pragma", "no-cache")

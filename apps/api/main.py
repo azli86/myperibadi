@@ -7820,15 +7820,91 @@ def _removed_business_is_order_confirm_text(text: str) -> bool:
 
 
 def _removed_business_normalize_phone(phone: str | None) -> str | None:
-    return _module_removed_business_normalize_phone(phone)
+    value = re.sub(r"[^0-9+]", "", (phone or "").strip())
+    return value or None
+
+
+def _removed_business_is_plausible_phone_digits(digits: str) -> bool:
+    cleaned = re.sub(r"[^0-9]", "", digits or "")
+    if not cleaned:
+        return False
+    if len(cleaned) < 8 or len(cleaned) > 15:
+        return False
+    if cleaned == (cleaned[:1] * len(cleaned)):
+        return False
+    return True
 
 
 def _removed_business_extract_whatsapp_phone_from_value(value: Any, *, allow_group: bool = False) -> str | None:
-    return _module_removed_business_extract_whatsapp_phone_from_value(value, allow_group=allow_group)
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    lowered = raw.lower()
+    if lowered in {"status@broadcast", "broadcast"}:
+        return None
+    body = raw
+    domain = ""
+    if "@" in raw:
+        body, domain = raw.split("@", 1)
+        domain = domain.strip().lower()
+        if domain == "g.us" and not allow_group:
+            return None
+        if domain and domain not in {"s.whatsapp.net", "c.us", "g.us", "lid"}:
+            return None
+    body = body.split(":", 1)[0].strip()
+    digits = re.sub(r"[^0-9+]", "", body)
+    if digits.startswith("+"):
+        digits = digits[1:]
+    if digits.startswith("00"):
+        digits = digits[2:]
+    if not _removed_business_is_plausible_phone_digits(digits):
+        return None
+    return digits
 
 
 def _removed_business_extract_whatsapp_customer_phone(payload: dict[str, Any]) -> str | None:
-    return _module_removed_business_extract_whatsapp_customer_phone(payload)
+    direct_keys = (
+        "customer_phone", "phone", "from", "sender", "sender_phone", "from_number",
+        "author", "participant", "jid", "remote_jid", "remoteJid", "chat_id", "wa_id",
+    )
+    candidates: list[Any] = []
+
+    def push(value: Any) -> None:
+        if value is None:
+            return
+        if isinstance(value, (dict, list, tuple, set)):
+            return
+        text = str(value).strip()
+        if not text:
+            return
+        candidates.append(text)
+
+    def collect_map(node: Any) -> None:
+        if not isinstance(node, dict):
+            return
+        for key in direct_keys:
+            push(node.get(key))
+        key_node = node.get("key")
+        if isinstance(key_node, dict):
+            for key in direct_keys:
+                push(key_node.get(key))
+
+    collect_map(payload)
+    for root_key in ("message", "data", "event", "msg", "value", "sender", "contact", "context"):
+        collect_map(payload.get(root_key))
+
+    for value in candidates:
+        parsed = _removed_business_extract_whatsapp_phone_from_value(value, allow_group=False)
+        if parsed:
+            return parsed
+
+    fallback = str(payload.get("phone") or payload.get("customer_phone") or "").strip() or None
+    if fallback and "@g.us" in fallback.lower():
+        return None
+    normalized = _removed_business_normalize_phone(fallback)
+    if normalized and (len(normalized) < 8 or len(normalized) > 15):
+        return None
+    return normalized
 
 def _removed_business_display_customer_phone(phone: str | None) -> str | None:
     parsed = _module_removed_business_extract_whatsapp_phone_from_value(phone, allow_group=False)

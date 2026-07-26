@@ -12,6 +12,49 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import models
 
 
+def normalize_whatsapp_phone(phone: str | None) -> str | None:
+    value = re.sub(r"[^0-9+]", "", (phone or "").strip())
+    return value or None
+
+
+def is_plausible_phone_digits(digits: str) -> bool:
+    cleaned = re.sub(r"[^0-9]", "", digits or "")
+    if not cleaned:
+        return False
+    if len(cleaned) < 8 or len(cleaned) > 15:
+        return False
+    if cleaned == (cleaned[:1] * len(cleaned)):
+        return False
+    return True
+
+
+def extract_whatsapp_phone_from_value(value: Any, *, allow_group: bool = False) -> str | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    lowered = raw.lower()
+    if lowered in {"status@broadcast", "broadcast"}:
+        return None
+    body = raw
+    domain = ""
+    if "@" in raw:
+        body, domain = raw.split("@", 1)
+        domain = domain.strip().lower()
+        if domain == "g.us" and not allow_group:
+            return None
+        if domain and domain not in {"s.whatsapp.net", "c.us", "g.us", "lid"}:
+            return None
+    body = body.split(":", 1)[0].strip()
+    digits = re.sub(r"[^0-9+]", "", body)
+    if digits.startswith("+"):
+        digits = digits[1:]
+    if digits.startswith("00"):
+        digits = digits[2:]
+    if not is_plausible_phone_digits(digits):
+        return None
+    return digits
+
+
 async def whatsapp_webhook_route(
     *,
     payload: Any,
@@ -22,14 +65,10 @@ async def whatsapp_webhook_route(
     get_whatsapp_group_privacy_settings: Callable[..., Awaitable[tuple[bool, bool, bool]]],
     build_whatsapp_message_key: Callable[..., str],
     mark_whatsapp_event_if_new: Callable[..., Awaitable[bool]],
-    removed_business_access_enabled: Callable[[models.User], bool],
-    removed_business_extract_whatsapp_phone_from_value: Callable[..., str | None],
-    removed_business_normalize_phone: Callable[[str | None], str | None],
-    removed_business_handle_incoming_order_payload: Callable[..., Awaitable[dict[str, Any]]],
     get_personal_prefix_mode_settings: Callable[..., Awaitable[tuple[bool, str]]],
     strip_personal_prefix: Callable[[str, str], str | None],
     process_bot_input: Callable[..., Awaitable[dict[str, Any]]],
-    removed_business_access_enabled_for_user: Callable[..., Awaitable[bool]] | None = None,
+    **_ignored: Any,
 ) -> dict[str, Any]:
     ensure_valid_whatsapp_worker_request(request)
 
@@ -74,140 +113,18 @@ async def whatsapp_webhook_route(
     if source_channel == "whatsapp":
         linked_phone_result = await db.execute(select(models.WhatsAppLink).where(models.WhatsAppLink.user_id == payload.user_id))
         linked_phone_row = linked_phone_result.scalar_one_or_none()
-        linked_phone = removed_business_normalize_phone(getattr(linked_phone_row, "phone", None))
+        linked_phone = normalize_whatsapp_phone(getattr(linked_phone_row, "phone", None))
         incoming_phone = (
-            removed_business_extract_whatsapp_phone_from_value(payload.phone, allow_group=False)
-            or removed_business_normalize_phone(payload.phone)
-            or removed_business_extract_whatsapp_phone_from_value(payload.remote_jid, allow_group=False)
-            or removed_business_extract_whatsapp_phone_from_value(payload.participant_jid, allow_group=False)
-            or removed_business_normalize_phone(payload.remote_jid)
-            or removed_business_normalize_phone(payload.participant_jid)
+            extract_whatsapp_phone_from_value(payload.phone, allow_group=False)
+            or normalize_whatsapp_phone(payload.phone)
+            or extract_whatsapp_phone_from_value(payload.remote_jid, allow_group=False)
+            or extract_whatsapp_phone_from_value(payload.participant_jid, allow_group=False)
+            or normalize_whatsapp_phone(payload.remote_jid)
+            or normalize_whatsapp_phone(payload.participant_jid)
         )
         is_real_self_chat = bool(payload.is_self_chat)
         if linked_phone and incoming_phone and incoming_phone == linked_phone:
             is_real_self_chat = True
-
-        # [DO-NOT-CHANGE] !ORDER messages skip removed_business handler, go to bot processor directly
-        is_direct_order = bool(text and ("!ORDER" in text or "!order" in text))
-
-        if payload.from_me and incoming_phone and not is_real_self_chat and not is_direct_order:
-            setting_res = await db.execute(
-                select(models.BusinessPaymentSetting.allow_owner_whatsapp_order_proxy).where(
-                    models.BusinessPaymentSetting.user_id == payload.user_id
-                )
-            )
-            allow_owner_order = bool(setting_res.scalar_one_or_none())
-            if allow_owner_order:
-                user_res = await db.execute(select(models.User).where(models.User.id == payload.user_id))
-                webhook_user = user_res.scalar_one_or_none()
-                if webhook_user and (await removed_business_access_enabled_for_user(db, webhook_user) if removed_business_access_enabled_for_user else removed_business_access_enabled(webhook_user)):
-                    removed_business_result = await removed_business_handle_incoming_order_payload(
-                        db,
-                        user_id=payload.user_id,
-                        source="whatsapp",
-                        text=text,
-                        customer_name=(payload.customer_name or payload.push_name or "Customer").strip() or "Customer",
-                        customer_phone=incoming_phone,
-                        receipt_url=None,
-                        has_receipt_media=bool(media_payload),
-                        receipt_payload=media_payload,
-                        receipt_mime_type=payload.media_mime_type,
-                        receipt_file_name=payload.media_file_name,
-                        latitude=payload.latitude,
-                        longitude=payload.longitude,
-                        location_name=payload.location_name,
-                        bypass_whatsapp_prefix=True,
-                    )
-                    removed_business_status = str((removed_business_result or {}).get("status") or "")
-                    if removed_business_status not in {
-                        "ignored",
-                        "ignored_whatsapp_non_removed_business",
-                        "ignored_receipt_without_confirmed_order",
-                        "ignored_receipt_before_payment_stage",
-                        "ignored_receipt_without_payment_stage_order",
-                    }:
-                        return removed_business_result
-
-        if media_payload and not payload.from_me:
-            user_res = await db.execute(select(models.User).where(models.User.id == payload.user_id))
-            webhook_user = user_res.scalar_one_or_none()
-            if webhook_user and (await removed_business_access_enabled_for_user(db, webhook_user) if removed_business_access_enabled_for_user else removed_business_access_enabled(webhook_user)) and not is_real_self_chat:
-                resolved_customer_name = (payload.customer_name or payload.push_name or "").strip() or None
-                resolved_customer_phone = incoming_phone
-                if resolved_customer_phone and not (linked_phone and resolved_customer_phone == linked_phone):
-                    removed_business_result = await removed_business_handle_incoming_order_payload(
-                        db,
-                        user_id=payload.user_id,
-                        source="whatsapp",
-                        text=text,
-                        customer_name=resolved_customer_name,
-                        customer_phone=resolved_customer_phone,
-                        receipt_url=None,
-                        has_receipt_media=True,
-                        receipt_payload=media_payload,
-                        receipt_mime_type=payload.media_mime_type,
-                        receipt_file_name=payload.media_file_name,
-                        latitude=payload.latitude,
-                        longitude=payload.longitude,
-                        location_name=payload.location_name,
-                    )
-                    removed_business_status = str((removed_business_result or {}).get("status") or "")
-                    if removed_business_status not in {
-                        "ignored",
-                        "ignored_whatsapp_prefix",
-                        "ignored_whatsapp_prefix_unset",
-                        "ignored_whatsapp_non_removed_business",
-                        "ignored_receipt_without_confirmed_order",
-                        "ignored_receipt_before_payment_stage",
-                        "ignored_receipt_without_payment_stage_order",
-                    }:
-                        return removed_business_result
-                return {"reply": None}
-            if not is_real_self_chat:
-                return {"reply": None}
-
-        if not is_real_self_chat:
-            if payload.from_me and not media_payload:
-                return {"reply": None}
-            if not payload.from_me:
-                user_res = await db.execute(select(models.User).where(models.User.id == payload.user_id))
-                webhook_user = user_res.scalar_one_or_none()
-                if not webhook_user or not (await removed_business_access_enabled_for_user(db, webhook_user) if removed_business_access_enabled_for_user else removed_business_access_enabled(webhook_user)):
-                    return {"reply": None}
-                resolved_customer_name = (payload.customer_name or payload.push_name or "").strip() or None
-                resolved_customer_phone = incoming_phone
-                if not resolved_customer_phone or (linked_phone and resolved_customer_phone == linked_phone):
-                    return {"reply": None}
-                removed_business_result = await removed_business_handle_incoming_order_payload(
-                    db,
-                    user_id=payload.user_id,
-                    source="whatsapp",
-                    text=text,
-                    customer_name=resolved_customer_name,
-                    customer_phone=resolved_customer_phone,
-                    receipt_url=None,
-                    has_receipt_media=bool(media_payload),
-                    receipt_payload=media_payload,
-                    receipt_mime_type=payload.media_mime_type,
-                    receipt_file_name=payload.media_file_name,
-                    latitude=payload.latitude,
-                    longitude=payload.longitude,
-                    location_name=payload.location_name,
-                )
-                removed_business_status = str((removed_business_result or {}).get("status") or "")
-                if removed_business_status not in {
-                    "ignored",
-                    "ignored_whatsapp_prefix",
-                    "ignored_whatsapp_prefix_unset",
-                    "ignored_whatsapp_non_removed_business",
-                    "ignored_whatsapp_catalog_code_required",
-                    "ignored_receipt_without_confirmed_order",
-                    "ignored_receipt_before_payment_stage",
-                    "ignored_receipt_without_payment_stage_order",
-                }:
-                    return removed_business_result
-                # [DO-NOT-CHANGE] Don't return early — let ignored messages fall through to process_bot_input
-                # so features like ORD- order lookup still work for external customer messages.
 
         if media_payload:
             if not payload.from_me:
@@ -215,38 +132,10 @@ async def whatsapp_webhook_route(
             if not is_real_self_chat and (not linked_phone or not incoming_phone or incoming_phone != linked_phone):
                 return {"reply": None}
 
-        # ORD- lookup — respond with order details for valid order numbers (works for self & non-self)
-        ord_match = re.search(r'\b(ORD-[A-Z0-9]{4}-[A-Z0-9]{4})\b', text or "", re.IGNORECASE)
-        if ord_match:
-            order_no = ord_match.group(0).upper()
-            try:
-                ord_result = await db.execute(
-                    select(models.BusinessOrder).where(
-                        models.BusinessOrder.order_no == order_no,
-                        models.BusinessOrder.user_id == payload.user_id,
-                    )
-                )
-                order = ord_result.scalar_one_or_none()
-                if order:
-                    status_label = order.status.replace("_", " ").title()
-                    amt = float(order.amount or 0)
-                    reply_parts = [
-                        f"*Order #{order.order_no}*",
-                        f"Status: {status_label}",
-                        f"Customer: {order.customer_name or '-'}",
-                        f"Item: {order.item_name}",
-                    ]
-                    if amt > 0:
-                        reply_parts.append(f"Total: RM{amt:,.2f}")
-                    if order.order_mode:
-                        reply_parts.append(f"Mode: {order.order_mode.title()}")
-                    return {"reply": "\n".join(reply_parts)}
-            except Exception:
-                pass
-            return {"reply": None}
-
-        # Personal bot & prefix only for self-chat — silently block non-self-chat
-        if source_channel == "whatsapp" and not is_real_self_chat:
+        # Personal bot only for self-chat
+        if not is_real_self_chat:
+            if payload.from_me and not media_payload:
+                return {"reply": None}
             return {"reply": None}
 
         prefix_mode_enabled, personal_trigger_prefix = await get_personal_prefix_mode_settings(

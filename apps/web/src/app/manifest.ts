@@ -1,22 +1,16 @@
-import { cookies, headers } from "next/headers"
+import { cookies } from "next/headers"
 import type { MetadataRoute } from "next"
 import { THEME_COOKIE_KEY, getPwaThemeColor } from "@/lib/theme"
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
-  const heads = await headers()
-  const host = heads.get("host") || ""
-  const isRemovedBusiness = host.includes("removed_business")
-
-  const name = isRemovedBusiness ? "DigitalPort RemovedBusiness" : "MyPeribadi"
+  const name = "MyPeribadi"
   const shortName = name
-  const desc = isRemovedBusiness
-    ? "Manage your business expenses, receipts, and financial reports with DigitalPort."
-    : "Manage your personal budget, receipts, and daily expenses with ease."
+  const desc = "Manage your personal budget, receipts, and daily expenses with ease."
 
   const cookieStore = await cookies()
   const themeCookie = cookieStore.get(THEME_COOKIE_KEY)?.value
   const effectiveTheme = themeCookie === "light" ? "light" : "dark"
-  const pwaThemeColor = getPwaThemeColor(effectiveTheme, isRemovedBusiness)
+  const pwaThemeColor = getPwaThemeColor(effectiveTheme)
 
   const appManifest = {
     name,
@@ -33,19 +27,19 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     gcm_sender_id: "103953800507",
     icons: [
       {
-        src: isRemovedBusiness ? "/icon-removed_business-192-v2.svg" : "/icon-192-v3.png",
+        src: "/icon-192-v3.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: isRemovedBusiness ? "/icon-removed_business-512-v2.svg" : "/icon-512-v3.png",
+        src: "/icon-512-v3.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: isRemovedBusiness ? "/icon-removed_business-512-v2.svg" : "/icon-512-v3.png",
+        src: "/icon-512-v3.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
@@ -56,7 +50,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
         name: "Open Chat",
         short_name: "Chat",
         url: "/",
-        icons: [{ src: isRemovedBusiness ? "/icon-removed_business-192-v2.svg" : "/icon-192-v3.png", sizes: "192x192", type: "image/png" }],
+        icons: [{ src: "/icon-192-v3.png", sizes: "192x192", type: "image/png" }],
       },
     ],
     share_target: {
