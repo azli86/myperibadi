@@ -844,6 +844,7 @@ export default function MapAnalysisPage() {
       <div className="hidden md:block">
         <DesktopPageHeader
           title={tr("Map Analisis", "Map Analysis")}
+          homeHref={`/${sessionId}`}
           actions={
             <>
               {rangeToggle}

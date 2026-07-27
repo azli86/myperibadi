@@ -3,10 +3,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import {
-  ArrowLeft,
   CalendarClock,
   ChevronDown,
   Loader2,
+  MoreVertical,
   Pencil,
   Trash2,
   X,
@@ -23,7 +23,13 @@ import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
 import { cn } from "@/lib/utils"
 import { usePageAlert } from "@/hooks/usePageAlert"
-import HistoryBackButton from "@/components/navigation/HistoryBackButton"
+import {
+  DesktopPageAction,
+  DesktopPageBody,
+  DesktopPageHeader,
+  MobileIconButton,
+  MobilePageHeader,
+} from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount } from "@/components/ui/MoneyAmount"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
@@ -110,6 +116,8 @@ export default function SubscriptionDetailPage() {
   const [loading, setLoading] = useState(true)
   const [hasLoadedData, setHasLoadedData] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
   const [mounted, setMounted] = useState(false)
   const [showEditSheet, setShowEditSheet] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -123,6 +131,17 @@ export default function SubscriptionDetailPage() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [mobileMenuOpen])
 
   const tr = useCallback((bm: string, en: string) => (isBM ? bm : en), [isBM])
   const formatCurrency = useCallback(
@@ -360,37 +379,82 @@ export default function SubscriptionDetailPage() {
     return { label: tr("Aktif", "Active"), className: "bg-white/10 text-[#e5e5e5]" }
   })()
 
+  const subListHref = `/${sessionId}/subscription`
+
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] max-w-full overflow-x-hidden pb-24 text-[var(--text)]">
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-1 pt-4">
-        <HistoryBackButton
-          fallbackHref={`/${sessionId}/subscription`}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-tint)] text-[var(--text)] transition-transform active:scale-90"
-        >
-          <ArrowLeft size={20} />
-        </HistoryBackButton>
-        <h1 className="truncate text-center text-[1.18rem] font-extrabold tracking-tight">{title}</h1>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowEditSheet(true)}
-            disabled={loading || !subscription}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-tint)] text-[var(--muted)] transition hover:text-[var(--text)] active:scale-[0.96] disabled:opacity-45"
-            aria-label={tr("Edit subscription", "Edit subscription")}
-          >
-            <Pencil size={17} />
-          </button>
-          <button
-            type="button"
-            onClick={handleDeleteSubscription}
-            disabled={deleting || loading || !subscription}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-tint)] text-[var(--muted)] transition hover:text-[var(--text)] active:scale-[0.96] disabled:opacity-45"
-            aria-label={tr("Padam subscription", "Delete subscription")}
-          >
-            {deleting ? <Loader2 size={17} className="animate-spin" /> : <Trash2 size={17} />}
-          </button>
-        </div>
+    <div className="relative min-h-[calc(100vh-4rem)] max-w-full text-[var(--text)]">
+      <div className="sticky top-0 z-50 bg-[var(--page-bg)] pb-2 pt-1 md:hidden">
+        <MobilePageHeader
+          title={title}
+          fallbackHref={subListHref}
+          backPreferHistory
+          action={
+            <div ref={mobileMenuRef} className="relative">
+              <MobileIconButton
+                onClick={() => setMobileMenuOpen((v) => !v)}
+                label={tr("Menu", "Menu")}
+              >
+                <MoreVertical size={16} />
+              </MobileIconButton>
+              {mobileMenuOpen ? (
+                <div className="absolute right-0 top-11 z-50 w-44 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] py-1 shadow-lg shadow-black/10">
+                  <button
+                    type="button"
+                    onClick={() => { setMobileMenuOpen(false); setShowEditSheet(true) }}
+                    disabled={loading || !subscription}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--text)] transition active:scale-[0.98] disabled:opacity-40"
+                  >
+                    <Pencil size={16} className="text-amber-500" />
+                    {tr("Edit", "Edit")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMobileMenuOpen(false); handleDeleteSubscription() }}
+                    disabled={deleting || loading || !subscription}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-rose-500 transition active:scale-[0.98] disabled:opacity-40"
+                  >
+                    {deleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                    {tr("Padam", "Delete")}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          }
+        />
       </div>
+      <DesktopPageHeader
+        title={title}
+        breadcrumbs={[{ label: tr("Papan Subscription", "Subscription Board"), href: subListHref }]}
+        homeHref={`/${sessionId}`}
+        showBack={false}
+        className="hidden md:block"
+        actions={
+          <>
+            <DesktopPageAction
+              onClick={() => setShowEditSheet(true)}
+              disabled={loading || !subscription}
+              variant="solid"
+              aria-label={tr("Edit subscription", "Edit subscription")}
+              className="min-w-0 flex-1 justify-center px-2 sm:flex-none sm:px-3"
+            >
+              <Pencil size={16} />
+              {tr("Edit", "Edit")}
+            </DesktopPageAction>
+            <button
+              type="button"
+              onClick={handleDeleteSubscription}
+              disabled={deleting || loading || !subscription}
+              className="inline-flex h-8 min-w-0 flex-1 shrink items-center justify-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-2 text-xs font-bold leading-none text-rose-500 transition active:scale-[0.98] disabled:opacity-40 sm:flex-none sm:px-3 [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:shrink-0"
+              aria-label={tr("Padam subscription", "Delete subscription")}
+            >
+              {deleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+              {tr("Padam", "Delete")}
+            </button>
+          </>
+        }
+      />
+
+      <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
 
       {/* Hero */}
       <div className="mt-4 px-1">
@@ -662,6 +726,7 @@ export default function SubscriptionDetailPage() {
           </div>
         </div>
       </div>
+      </DesktopPageBody>
 
       {mounted && showEditSheet && subscription
         ? createPortal(

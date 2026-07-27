@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   CalendarClock,
   ChevronRight,
+  MoreVertical,
   Package,
   Plus,
   Search,
@@ -96,6 +97,8 @@ export default function WarrantyListPage() {
   const [showSearchPopup, setShowSearchPopup] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
   const showDataSkeleton = useDelayedSkeleton(loading && !hasLoaded)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -117,6 +120,17 @@ export default function WarrantyListPage() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [mobileMenuOpen])
 
   const loadDevices = useCallback(async () => {
     if (!hasLoaded) setLoading(true)
@@ -685,13 +699,30 @@ export default function WarrantyListPage() {
           title={tr("Waranti Saya", "My Warranty")}
           fallbackHref={`/${sessionId}`}
           action={
-            <div className="flex items-center gap-1.5">
-              <MobileIconButton onClick={openSearchPopup} label={tr("Semak Waranti", "Check Warranty")}>
-                <Search strokeWidth={2.5} />
+            <div ref={mobileMenuRef} className="relative">
+              <MobileIconButton onClick={() => setMobileMenuOpen((v) => !v)} label={tr("Menu", "Menu")}>
+                <MoreVertical size={16} />
               </MobileIconButton>
-              <MobileIconButton onClick={() => router.push(`/${sessionId}/warranty/add`)} label={tr("Tambah Peranti", "Add Device")}>
-                <Plus strokeWidth={2.5} />
-              </MobileIconButton>
+              {mobileMenuOpen ? (
+                <div className="absolute right-0 top-11 z-50 w-48 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] py-1 shadow-lg shadow-black/10">
+                  <button
+                    type="button"
+                    onClick={() => { setMobileMenuOpen(false); openSearchPopup() }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--text)] transition active:scale-[0.98]"
+                  >
+                    <Search size={16} className="text-[var(--accent2)]" />
+                    {tr("Semak Waranti", "Check Warranty")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMobileMenuOpen(false); router.push(`/${sessionId}/warranty/add`) }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--text)] transition active:scale-[0.98]"
+                  >
+                    <Plus size={16} className="text-emerald-500" />
+                    {tr("Tambah Peranti", "Add Device")}
+                  </button>
+                </div>
+              ) : null}
             </div>
           }
         />
@@ -699,7 +730,7 @@ export default function WarrantyListPage() {
       </div>
 
       <div className="hidden md:block">
-        <DesktopPageHeader title={tr("Waranti Saya", "My Warranty")} />
+        <DesktopPageHeader title={tr("Waranti Saya", "My Warranty")} homeHref={`/${sessionId}`} />
         <DesktopPageBody className="space-y-5">{desktopBoard}</DesktopPageBody>
       </div>
 

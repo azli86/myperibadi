@@ -1061,6 +1061,7 @@ export default function CategoriesPage() {
         <div className="hidden md:block">
           <DesktopPageHeader
             title={lang === "EN" ? "Category Board" : "Papan Kategori"}
+            homeHref={`/${sessionId}`}
             actions={
               <DesktopPageAction onClick={openAddCategory}>
                 <Plus strokeWidth={2.5} />

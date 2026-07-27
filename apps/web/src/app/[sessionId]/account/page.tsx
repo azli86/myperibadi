@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import {
-  ArrowLeft,
   AtSign,
   CheckCircle2,
   ChevronDown,
@@ -22,8 +21,7 @@ import {
 } from "lucide-react"
 import { useLang } from "@/lib/lang"
 import { getAccessToken, setAuthTokens } from "@/lib/auth-session"
-import HistoryBackButton from "@/components/navigation/HistoryBackButton"
-import { DesktopPageBody, DesktopPageHeader } from "@/components/layout/PageHeader"
+import { MobilePageHeader, DesktopPageBody, DesktopPageHeader } from "@/components/layout/PageHeader"
 import { usePageAlert } from "@/hooks/usePageAlert"
 import { cn } from "@/lib/utils"
 import BadgeOverviewModal from "@/components/badges/BadgeOverviewModal"
@@ -257,47 +255,46 @@ export default function AccountPage() {
     <div className="flex flex-col gap-5 pb-20 md:gap-0 md:pb-0">
       {/* ─── Mobile Header ─── */}
       <div className="md:hidden">
-        <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 pt-4">
-          <HistoryBackButton
-            fallbackHref={`/${sessionId}/settings`}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface-tint)] text-[var(--text)] active:scale-95 transition-all"
-          >
-            <ArrowLeft size={18} />
-          </HistoryBackButton>
-          <h1 className="text-center text-[1.2rem] font-extrabold tracking-tight text-[var(--text)]">
-            {tr("Akaun Saya", "My Account")}
-          </h1>
-          <div className="h-10 w-10" aria-hidden="true" />
-        </div>
+        <MobilePageHeader
+          title={tr("Akaun Saya", "My Account")}
+          fallbackHref={`/${sessionId}/settings`}
+          backPreferHistory
+        />
       </div>
 
-      <DesktopPageHeader className="hidden md:block" title={tr("Akaun Saya", "My Account")} />
+      <DesktopPageHeader
+        title={tr("Akaun Saya", "My Account")}
+        breadcrumbs={[{ label: tr("Tetapan", "Settings"), href: `/${sessionId}/settings` }]}
+        homeHref={`/${sessionId}`}
+        showBack={false}
+        className="hidden md:block"
+      />
 
       <DesktopPageBody className="flex flex-col gap-5 md:gap-7">
       {/* ─── Profile Hero Card ─── */}
       <div>
-        <div className="relative overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-          <div className="absolute right-6 top-6 h-24 w-24 rounded-full bg-[var(--accent)]/5 blur-3xl" />
-          <div className="relative flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
+        <div className="relative overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-gradient-to-br from-[var(--card)] to-[var(--surface-tint)] p-5 shadow-sm md:p-6">
+          <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-[var(--accent)]/8 blur-3xl" />
+          <div className="relative flex items-center gap-4">
             <Link
               href={`/${sessionId}/badges`}
               className="shrink-0 active:scale-95 transition-transform"
               aria-label={tr("Buka info badge", "Open badge details")}
             >
-              <div className="flex h-16 w-16 items-center justify-center rounded-[16px] bg-[var(--surface-tint)] text-[var(--text)] ring-1 ring-cyan-500/20">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--text)] ring-1 ring-[var(--accent)]/15">
                 <Sparkles size={28} />
               </div>
             </Link>
             <div className="min-w-0 flex-1">
-              <h2 className="text-xl font-black tracking-tight text-[var(--text)] truncate">
+              <h2 className="break-words text-xl font-black tracking-tight text-[var(--text)] md:text-2xl">
                 {profile?.name || tr("Pengguna Budget", "Budget User")}
               </h2>
-              <div className="mt-1 flex items-center gap-2">
+              <div className="mt-1 flex items-center gap-1.5">
                 <AtSign size={13} className="shrink-0 text-[var(--muted)]" />
-                <p className="text-xs font-semibold text-[var(--muted)] truncate">{profile?.email || "-"}</p>
+                <p className="truncate text-xs font-semibold text-[var(--muted)] md:text-sm">{profile?.email || "-"}</p>
               </div>
-              <div className="mt-3 flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2.5 py-1 text-[0.625rem] font-black uppercase tracking-wider text-[var(--muted)]">
+              <div className="mt-3 flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)]/12 px-2.5 py-0.5 text-[0.625rem] font-black uppercase tracking-wider text-[var(--accent)]">
                   <Sparkles size={10} />
                   {tr("Bot Aktif", "Bot Active")}
                 </span>
@@ -309,7 +306,7 @@ export default function AccountPage() {
 
       {/* ─── Bot Personality Preview ─── */}
       <div>
-        <div className="relative overflow-hidden rounded-[16px] border border-[var(--border)] bg-gradient-to-br from-[var(--card)] via-[var(--card)] to-[var(--surface-tint)] p-5 shadow-sm">
+        <div className="relative overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-gradient-to-br from-[var(--card)] via-[var(--card)] to-[var(--surface-tint)] p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
               <Sparkles size={14} />
@@ -325,7 +322,7 @@ export default function AccountPage() {
       </div>
 
       {/* ─── Edit Profile Form ─── */}
-      <section className="overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--card)] shadow-sm">
+      <section className="overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <div className="border-b border-[var(--border)] bg-[var(--surface-tint)]/30 px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--text)] text-[var(--bg)]">
@@ -422,7 +419,7 @@ export default function AccountPage() {
       </section>
 
       {/* ─── Change Email ─── */}
-      <section className="overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--card)] shadow-sm">
+      <section className="overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <div className="border-b border-[var(--border)] bg-[var(--surface-tint)]/30 px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--text)] text-[var(--bg)]">

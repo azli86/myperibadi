@@ -623,6 +623,7 @@ export default function WhatsAppPage() {
       <DesktopPageHeader
         className="hidden lg:block"
         title={t.waTitle}
+        homeHref={`/${sessionId}`}
         backHref={`/${sessionId}/connector`}
         actions={desktopHeaderActions}
       />

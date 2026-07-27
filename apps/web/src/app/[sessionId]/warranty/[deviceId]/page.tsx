@@ -6,6 +6,7 @@ import {
   FileText,
   Image as ImageIcon,
   Loader2,
+  MoreVertical,
   Paperclip,
   Pencil,
   Plus,
@@ -223,6 +224,8 @@ export default function WarrantyDetailPage() {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
   const showDataSkeleton = useDelayedSkeleton(loading && !hasLoaded)
 
   const isBm = lang === "BM"
@@ -243,6 +246,17 @@ export default function WarrantyDetailPage() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [mobileMenuOpen])
 
   const loadData = useCallback(async () => {
     if (!deviceId) return
@@ -1065,13 +1079,30 @@ export default function WarrantyDetailPage() {
           title={toTitleCase(device?.device_name) || tr("Butiran Peranti", "Device Details")}
           fallbackHref={`/${sessionId}/warranty`}
           action={
-            <div className="flex items-center gap-1">
-              <MobileIconButton onClick={openEdit} label={tr("Edit", "Edit")}>
-                <Pencil size={16} />
+            <div ref={mobileMenuRef} className="relative">
+              <MobileIconButton onClick={() => setMobileMenuOpen((v) => !v)} label={tr("Menu", "Menu")}>
+                <MoreVertical size={16} />
               </MobileIconButton>
-              <MobileIconButton onClick={handleDeleteDevice} label={tr("Padam", "Delete")}>
-                <Trash2 size={16} />
-              </MobileIconButton>
+              {mobileMenuOpen ? (
+                <div className="absolute right-0 top-11 z-50 w-44 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] py-1 shadow-lg shadow-black/10">
+                  <button
+                    type="button"
+                    onClick={() => { setMobileMenuOpen(false); openEdit() }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--text)] transition active:scale-[0.98]"
+                  >
+                    <Pencil size={16} className="text-amber-500" />
+                    {tr("Edit", "Edit")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMobileMenuOpen(false); handleDeleteDevice() }}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-rose-500 transition active:scale-[0.98]"
+                  >
+                    <Trash2 size={16} />
+                    {tr("Padam", "Delete")}
+                  </button>
+                </div>
+              ) : null}
             </div>
           }
         />
@@ -1278,7 +1309,9 @@ export default function WarrantyDetailPage() {
       <div className="hidden md:block">
         <DesktopPageHeader
           title={toTitleCase(device?.device_name) || tr("Butiran Peranti", "Device Details")}
-          breadcrumbs={[tr("Waranti Saya", "My Warranty")]}
+          breadcrumbs={[{ label: tr("Waranti Saya", "My Warranty"), href: `/${sessionId}/warranty` }]}
+          homeHref={`/${sessionId}`}
+          backHref={`/${sessionId}/warranty`}
           actions={
             <>
               <DesktopPageAction onClick={openAddClaim}>

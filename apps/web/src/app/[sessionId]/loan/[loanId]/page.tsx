@@ -3,10 +3,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import {
-  ArrowLeft,
   ChevronDown,
   CreditCard,
   Loader2,
+  MoreVertical,
   Plus,
   Trash2,
   Wallet,
@@ -24,7 +24,7 @@ import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
 import { cn } from "@/lib/utils"
 import { usePageAlert } from "@/hooks/usePageAlert"
-import HistoryBackButton from "@/components/navigation/HistoryBackButton"
+import { DesktopPageAction, DesktopPageBody, DesktopPageHeader, MobileIconButton, MobilePageHeader } from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount } from "@/components/ui/MoneyAmount"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
@@ -109,6 +109,8 @@ export default function LoanDetailPage() {
   const [deletingLoan, setDeletingLoan] = useState(false)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [wallets, setWallets] = useState<WalletOption[]>([])
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const mobileMenuRef = useRef<HTMLDivElement>(null)
   const [showPaymentForm, setShowPaymentForm] = useState(false)
   const [showEditLoanSheet, setShowEditLoanSheet] = useState(false)
   const [savingPayment, setSavingPayment] = useState(false)
@@ -130,6 +132,17 @@ export default function LoanDetailPage() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [mobileMenuOpen])
 
   const formatCurrency = useCallback((value: number) => {
     return `RM ${Number(value || 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -450,47 +463,100 @@ export default function LoanDetailPage() {
   const title = loan?.name || tr("Detail Loan", "Loan Detail")
   const isSettled = loan?.status === "settled" || Number(loan?.outstanding_amount || 0) <= 0.004
   const canPay = !loading && !!loan && !isSettled
+  const loanListHref = `/${sessionId}/loan`
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] max-w-full overflow-x-hidden pb-24 text-[var(--text)]">
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-1 pt-4">
-        <HistoryBackButton
-          fallbackHref={`/${sessionId}/loan`}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-tint)] text-[var(--text)] transition-transform active:scale-90"
-        >
-          <ArrowLeft size={20} />
-        </HistoryBackButton>
-        <h1 className="truncate text-center text-[1.18rem] font-extrabold tracking-tight">{title}</h1>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowPaymentForm(true)}
-            disabled={!canPay}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--btn-primary-bg)]/10 text-emerald-600 transition active:scale-[0.96] disabled:opacity-45"
-            aria-label={tr("Bayar loan", "Pay loan")}
-          >
-            <Plus size={17} />
-          </button>
-          <button
-            type="button"
-            onClick={openEditLoanSheet}
-            disabled={loading || !loan}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-500/10 text-amber-500 transition active:scale-[0.96] disabled:opacity-45"
-            aria-label={tr("Edit loan", "Edit loan")}
-          >
-            <Pencil size={17} />
-          </button>
-          <button
-            type="button"
-            onClick={handleDeleteLoan}
-            disabled={deletingLoan || loading || !loan}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500/10 text-rose-500 transition active:scale-[0.96] disabled:opacity-45"
-            aria-label={tr("Padam loan", "Delete loan")}
-          >
-            {deletingLoan ? <Loader2 size={17} className="animate-spin" /> : <Trash2 size={17} />}
-          </button>
-        </div>
+    <div className="relative min-h-[calc(100vh-4rem)] max-w-full text-[var(--text)]">
+      <div className="sticky top-0 z-50 bg-[var(--page-bg)] pb-2 pt-1 md:hidden">
+        <MobilePageHeader
+          title={title}
+          fallbackHref={loanListHref}
+          backPreferHistory
+          action={
+            <div ref={mobileMenuRef} className="relative">
+              <MobileIconButton
+                onClick={() => setMobileMenuOpen((v) => !v)}
+                label={tr("Menu", "Menu")}
+              >
+                <MoreVertical size={16} />
+              </MobileIconButton>
+              {mobileMenuOpen ? (
+                <div className="absolute right-0 top-11 z-50 w-44 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] py-1 shadow-lg shadow-black/10">
+                  <button
+                    type="button"
+                    onClick={() => { setMobileMenuOpen(false); setShowPaymentForm(true) }}
+                    disabled={!canPay}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--text)] transition active:scale-[0.98] disabled:opacity-40"
+                  >
+                    <Plus size={16} className="text-[var(--accent2)]" />
+                    {tr("Bayar", "Pay")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMobileMenuOpen(false); openEditLoanSheet() }}
+                    disabled={loading || !loan}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--text)] transition active:scale-[0.98] disabled:opacity-40"
+                  >
+                    <Pencil size={16} className="text-amber-500" />
+                    {tr("Edit", "Edit")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMobileMenuOpen(false); handleDeleteLoan() }}
+                    disabled={deletingLoan || loading || !loan}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-rose-500 transition active:scale-[0.98] disabled:opacity-40"
+                  >
+                    {deletingLoan ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                    {tr("Padam", "Delete")}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          }
+        />
       </div>
+      <DesktopPageHeader
+        title={title}
+        breadcrumbs={[{ label: tr("Loan", "Loan"), href: loanListHref }]}
+        homeHref={`/${sessionId}`}
+        showBack={false}
+        className="hidden md:block"
+        actions={
+          <>
+            <DesktopPageAction
+              onClick={() => setShowPaymentForm(true)}
+              disabled={!canPay}
+              aria-label={tr("Bayar loan", "Pay loan")}
+              className="min-w-0 flex-1 justify-center px-2 sm:flex-none sm:px-3"
+            >
+              <Plus size={16} />
+              {tr("Bayar", "Pay")}
+            </DesktopPageAction>
+            <DesktopPageAction
+              onClick={openEditLoanSheet}
+              disabled={loading || !loan}
+              variant="solid"
+              aria-label={tr("Edit loan", "Edit loan")}
+              className="min-w-0 flex-1 justify-center px-2 sm:flex-none sm:px-3"
+            >
+              <Pencil size={16} />
+              {tr("Edit", "Edit")}
+            </DesktopPageAction>
+            <button
+              type="button"
+              onClick={handleDeleteLoan}
+              disabled={deletingLoan || loading || !loan}
+              className="inline-flex h-8 min-w-0 flex-1 shrink items-center justify-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-2 text-xs font-bold leading-none text-rose-500 transition active:scale-[0.98] disabled:opacity-40 sm:flex-none sm:px-3 [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:shrink-0"
+              aria-label={tr("Padam loan", "Delete loan")}
+            >
+              {deletingLoan ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+              {tr("Padam", "Delete")}
+            </button>
+          </>
+        }
+      />
+
+      <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
 
       {/* Hero */}
       <div className="mt-4 px-1">
@@ -813,6 +879,7 @@ export default function LoanDetailPage() {
           </div>
         </div>
       </div>
+      </DesktopPageBody>
 
       {/* Payment sheet */}
       {mounted && showPaymentForm && loan

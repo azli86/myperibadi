@@ -146,7 +146,7 @@ export default function AboutPage() {
 
       {/* ─── Desktop View ─── */}
       <div className="hidden md:block">
-        <DesktopPageHeader title={tr("Tentang Apps", "About App")} />
+        <DesktopPageHeader title={tr("Tentang Apps", "About App")} homeHref={`/${sessionId}`} />
         <DesktopPageBody className="space-y-6">
         {/* Hero Card */}
         <div className="relative overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--card)] shadow-sm">

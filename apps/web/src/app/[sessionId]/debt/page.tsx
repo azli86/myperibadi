@@ -940,6 +940,7 @@ export default function DebtPage() {
       <div className="hidden md:block">
         <DesktopPageHeader
           title={tr("Papan Hutang", "Debt Board")}
+          homeHref={`/${sessionId}`}
           actions={
             <DesktopPageAction
               onClick={() => {

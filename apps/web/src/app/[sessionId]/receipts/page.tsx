@@ -550,6 +550,7 @@ export default function ReceiptsPage() {
       <div className="hidden min-w-0 flex-col md:flex">
         <DesktopPageHeader
           title={t.receipts}
+          homeHref={`/${sessionId}`}
           actions={
             <div className="relative z-[60]">
               <DesktopPageAction type="button" onClick={openNativeMonthPicker}>

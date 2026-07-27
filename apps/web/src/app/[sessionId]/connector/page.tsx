@@ -404,6 +404,7 @@ export default function ConnectorPage() {
       <div className="hidden md:block">
         <DesktopPageHeader
           title={tr("Connector", "Connector")}
+          homeHref={`/${sessionId}`}
           actions={
             <button
               type="button"

@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import Link from "next/link"
 import { ArrowLeft, ChevronRight } from "lucide-react"
 import HistoryBackButton from "@/components/navigation/HistoryBackButton"
 import { cn } from "@/lib/utils"
@@ -159,15 +160,24 @@ export function DesktopPageHeader({
   backHref,
   backPreferHistory,
   breadcrumbs,
+  homeHref,
+  showBack,
 }: {
   title: string
   actions?: React.ReactNode
   className?: string
   backHref?: string
   backPreferHistory?: boolean
-  breadcrumbs?: string[]
+  breadcrumbs?: Array<string | { label: string; href?: string }>
+  homeHref?: string
+  showBack?: boolean
 }) {
-  const breadcrumbItems = ["Home", ...(breadcrumbs ?? []), title]
+  const rawItems = breadcrumbs ?? []
+  const breadcrumbItems: Array<{ label: string; href?: string }> = [
+    { label: "Home", href: homeHref },
+    ...rawItems.map((item) => (typeof item === "string" ? { label: item } : item)),
+    { label: title },
+  ]
   return (
     <header
       className={cn(
@@ -175,9 +185,9 @@ export function DesktopPageHeader({
         className,
       )}
     >
-      <div className="flex w-full items-center justify-between gap-4">
+      <div className="flex h-8 w-full items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-2.5">
-          {backHref ? (
+          {showBack && backHref ? (
             <HistoryBackButton
               fallbackHref={backHref}
               preferHistory={backPreferHistory}
@@ -191,14 +201,18 @@ export function DesktopPageHeader({
             {breadcrumbItems.map((item, index) => {
               const isLast = index === breadcrumbItems.length - 1
               return (
-                <React.Fragment key={`${item}-${index}`}>
+                <React.Fragment key={`${item.label}-${index}`}>
                   {index > 0 ? (
                     <ChevronRight size={13} strokeWidth={2.25} className="shrink-0 text-[var(--muted)]" />
                   ) : null}
                   {isLast ? (
-                    <h1 className="min-w-0 truncate text-[var(--muted)]">{item}</h1>
+                    <h1 className="min-w-0 truncate text-[var(--muted)]">{item.label}</h1>
+                  ) : item.href ? (
+                    <Link href={item.href} className="shrink-0 text-[var(--text)] transition hover:text-[var(--accent2)]">
+                      {item.label}
+                    </Link>
                   ) : (
-                    <span className="shrink-0 text-[var(--text)]">{item}</span>
+                    <span className="shrink-0 text-[var(--text)]">{item.label}</span>
                   )}
                 </React.Fragment>
               )

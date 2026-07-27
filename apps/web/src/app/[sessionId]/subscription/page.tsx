@@ -587,6 +587,7 @@ export default function SubscriptionPage() {
       <div className="hidden md:block">
         <DesktopPageHeader
           title={tr("Papan Subscription", "Subscription Board")}
+          homeHref={`/${sessionId}`}
           actions={
             <DesktopPageAction onClick={openCreateSheet}>
               <Plus strokeWidth={2.5} />

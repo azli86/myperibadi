@@ -524,6 +524,7 @@ export default function SecurityPage() {
       <div className="hidden md:block">
         <DesktopPageHeader
           title={tr("Keselamatan", "Security")}
+          homeHref={`/${sessionId}`}
           actions={
             <DesktopPageChip
               className={cn(

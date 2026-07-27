@@ -918,6 +918,7 @@ export default function BudgetPage() {
       <div className="hidden md:block">
         <DesktopPageHeader
           title={tr("Papan Bajet", "Budget Board")}
+          homeHref={`/${sessionId}`}
           actions={monthPicker(false)}
         />
 

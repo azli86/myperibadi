@@ -957,7 +957,8 @@ export default function VehicleDetailPage() {
         <div className="hidden md:block">
           <DesktopPageHeader
             title={vehicle.name}
-            breadcrumbs={[tr("Kenderaan", "My Vehicle")]}
+            breadcrumbs={[{ label: tr("Kenderaan", "My Vehicle"), href: `/${sessionId}/vehicle` }]}
+            homeHref={`/${sessionId}`}
             backHref={`/${sessionId}/vehicle`}
           />
         </div>

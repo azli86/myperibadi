@@ -1245,7 +1245,8 @@ export default function TransactionDetailPage() {
         </div>
         <DesktopPageHeader
           title={pendingTitle}
-          breadcrumbs={[langT.transactions]}
+          breadcrumbs={[{ label: langT.transactions, href: `/${sessionId}/transactions` }]}
+          homeHref={`/${sessionId}`}
           backHref={`/${sessionId}/transactions`}
           backPreferHistory
           className="hidden md:block"
@@ -1330,14 +1331,12 @@ export default function TransactionDetailPage() {
         disabled={receiptDownloading}
         variant="solid"
         aria-label={lang === "BM" ? "Muat turun resit" : "Download receipt"}
-        className="min-w-0 flex-1 justify-center px-2 sm:flex-none sm:px-3"
+        className="sm:px-2.5"
       >
         {receiptDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
-        {lang === "BM" ? "Resit" : "Receipt"}
       </DesktopPageAction>
-      <DesktopPageAction onClick={() => setShowEditModal(true)} aria-label={langT.editTransaction} className="min-w-0 flex-1 justify-center px-2 sm:flex-none sm:px-3">
+      <DesktopPageAction onClick={() => setShowEditModal(true)} aria-label={langT.editTransaction} className="sm:px-2.5">
         <Edit3 size={16} />
-        {langT.edit}
       </DesktopPageAction>
       {refundButtonState !== "hidden" ? (
         <button
@@ -1363,16 +1362,59 @@ export default function TransactionDetailPage() {
     </>
   )
 
+  const mobileMenuItems = (
+    <>
+      <button
+        type="button"
+        onClick={() => { downloadStandardReceipt() }}
+        disabled={receiptDownloading}
+        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--text)] transition active:scale-[0.98] disabled:opacity-40"
+      >
+        {receiptDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} className="text-[var(--accent2)]" />}
+        {lang === "BM" ? "Muat turun resit" : "Download receipt"}
+      </button>
+      <button
+        type="button"
+        onClick={() => setShowEditModal(true)}
+        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--text)] transition active:scale-[0.98]"
+      >
+        <Edit3 size={16} className="text-amber-500" />
+        {langT.edit}
+      </button>
+      {refundButtonState !== "hidden" ? (
+        <button
+          type="button"
+          onClick={handleRefundClick}
+          disabled={refundButtonState === "loading"}
+          className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-emerald-500 transition active:scale-[0.98] disabled:opacity-40"
+        >
+          {refundButtonState === "loading" ? <Loader2 size={16} className="animate-spin" /> : <Undo2 size={16} />}
+          Refund
+        </button>
+      ) : null}
+      <button
+        type="button"
+        onClick={() => setShowDeleteModal(true)}
+        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-rose-500 transition active:scale-[0.98]"
+      >
+        <Trash2 size={16} />
+        {langT.delete}
+      </button>
+    </>
+  )
+
   return (
     <>
       <div className="relative min-h-[calc(100vh-4rem)] max-w-full text-[var(--text)]">
-        <TxnHeader txn={txn} sessionId={sessionId} />
+        <TxnHeader txn={txn} sessionId={sessionId} actions={mobileMenuItems} />
         <DesktopPageHeader
           title={transactionDetailTitle}
-          breadcrumbs={[langT.transactions]}
+          breadcrumbs={[{ label: langT.transactions, href: `/${sessionId}/transactions` }]}
+          homeHref={`/${sessionId}`}
           backHref={`/${sessionId}/transactions`}
           backPreferHistory
           className="hidden md:block"
+          actions={heroActions}
         />
 
         <DesktopPageBody className="max-w-2xl px-4 pb-16 md:max-w-6xl lg:max-w-7xl">
@@ -1382,7 +1424,6 @@ export default function TransactionDetailPage() {
             formattedAmount={formattedAmount}
             amountClass={amountClass}
             badgeClass={badgeClass}
-            actions={heroActions}
           />
 
           {vehicleLink?.vehicle_id ? (

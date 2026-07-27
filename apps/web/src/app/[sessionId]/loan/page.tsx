@@ -573,6 +573,7 @@ export default function LoanPage() {
       <div className="hidden md:block">
         <DesktopPageHeader
           title={tr("Papan Loan", "Loan Board")}
+          homeHref={`/${sessionId}`}
           actions={
             <DesktopPageAction onClick={openCreateSheet}>
               <Plus strokeWidth={2.5} />

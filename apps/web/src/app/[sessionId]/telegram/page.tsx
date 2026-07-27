@@ -215,6 +215,7 @@ export default function TelegramPage() {
       <DesktopPageHeader
         className="hidden lg:block"
         title="Telegram"
+        homeHref={`/${sessionId}`}
         backHref={`/${sessionId}/connector`}
         actions={desktopHeaderActions}
       />

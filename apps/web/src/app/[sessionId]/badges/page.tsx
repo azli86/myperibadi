@@ -163,7 +163,7 @@ export default function BadgesPage() {
           </div>
         </div>
 
-        <DesktopPageHeader className="hidden md:block" title="Reward Badge" />
+        <DesktopPageHeader className="hidden md:block" title="Reward Badge" homeHref={`/${sessionId}`} />
 
         <DesktopPageBody className="mx-auto grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-3">
           <article className={cn("rounded-[16px] border p-5 md:col-span-2 xl:col-span-3", surface)}>

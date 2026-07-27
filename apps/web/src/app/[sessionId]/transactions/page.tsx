@@ -1011,6 +1011,7 @@ export default function TransactionsPage() {
  <DesktopPageHeader
    className="hidden md:block"
  title={lang === "EN" ? "Transactions" : "Transaksi"}
+ homeHref={`/${sessionId}`}
  actions={
  <>
  <DesktopPageChip>

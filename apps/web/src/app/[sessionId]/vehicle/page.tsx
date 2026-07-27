@@ -720,6 +720,7 @@ export default function VehicleListPage() {
       <div className="hidden md:block">
         <DesktopPageHeader
           title={tr("Papan Kenderaan", "Vehicle Board")}
+          homeHref={`/${sessionId}`}
           actions={
             <DesktopPageAction onClick={() => setShowSheet(true)}>
               <Plus strokeWidth={2.5} />

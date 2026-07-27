@@ -231,7 +231,7 @@ export default function ChangelogPage() {
 
       {/* ─── Desktop View ─── */}
       <div className="hidden md:block">
-        <DesktopPageHeader title={tr("Log Perubahan", "Changelog")} />
+        <DesktopPageHeader title={tr("Log Perubahan", "Changelog")} homeHref={`/${sessionId}`} />
         <DesktopPageBody className="space-y-6">
         {/* Timeline Grid */}
         <div className="grid gap-4">

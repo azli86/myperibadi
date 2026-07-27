@@ -595,7 +595,8 @@ export default function WarrantyAddPage() {
       <div className="hidden md:block">
         <DesktopPageHeader
           title={tr("Tambah Peranti", "Add Device")}
-          breadcrumbs={[tr("Waranti Saya", "My Warranty")]}
+          breadcrumbs={[{ label: tr("Waranti Saya", "My Warranty"), href: `/${sessionId}/warranty` }]}
+          homeHref={`/${sessionId}`}
           backHref={`/${sessionId}/warranty`}
           actions={
             <button

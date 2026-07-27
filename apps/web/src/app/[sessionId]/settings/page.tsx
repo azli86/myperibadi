@@ -5,14 +5,12 @@ import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 import {
   User,
-  Wallet,
   Shield,
   HelpCircle,
   ScrollText,
   Info,
   LogOut,
   ChevronRight,
-  MessageSquare,
   Clock,
   Check,
   X,
@@ -34,13 +32,6 @@ import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 
-type AccountLink = {
-  icon: LucideIcon
-  label: string
-  sub: string
-  href: string
-  accent: string
-}
 
 export default function LagiPage() {
   const { lang, setLang, timezone, setTimezone, timeFormat, setTimeFormat, t } = useLang()
@@ -92,13 +83,8 @@ export default function LagiPage() {
     )
   }
 
-  const accountLinks: AccountLink[] = [
-    { icon: User, label: t.myAccount, sub: tr("Profil, emel dan maklumat peribadi", "Profile, email and personal info"), href: `/${sessionId}/account`, accent: "bg-[var(--surface-tint)] text-[var(--text)]" },
-    { icon: Wallet, label: t.walletSettings, sub: tr("Dompet, baki dan struktur akaun", "Wallets, balances and account structure"), href: `/${sessionId}/wallet-settings`, accent: "bg-[var(--surface-tint)] text-[var(--text)]" },
-    { icon: MessageSquare, label: t.linkedWhatsApp, sub: tr("Sambungan bot dan status nombor aktif", "Bot connection and active number status"), href: `/${sessionId}/whatsapp`, accent: "bg-[var(--surface-tint)] text-[var(--text)]" },
-  ]
-
   const systemLinks = [
+    { icon: User, label: t.myAccount, href: `/${sessionId}/account` },
     { icon: Shield, label: t.security, href: `/${sessionId}/security` },
     { icon: HelpCircle, label: t.helpSupport, href: `/${sessionId}/help` },
     { icon: ScrollText, label: t.changelog, href: `/${sessionId}/changelog` },
@@ -161,51 +147,34 @@ export default function LagiPage() {
           fallbackHref={`/${sessionId}`}
         />
 
-        {/* Profile Link */}
+        {/* Profile Hero */}
         <div className="px-1">
           <Link
             href={`/${sessionId}/account`}
-            className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 active:scale-[0.98] transition-all"
+            className="relative flex items-center gap-4 overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-gradient-to-br from-[var(--card)] to-[var(--surface-tint)] p-4 active:scale-[0.99] transition-all"
           >
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]">
-              <Sparkles size={20} />
+            <div className="absolute -right-6 -top-8 h-28 w-28 rounded-full bg-[var(--accent)]/8 blur-2xl" />
+            <div className="relative grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--text)] ring-1 ring-[var(--accent)]/15">
+              <Sparkles size={22} />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-lg font-black text-[var(--text)]">{userProfile.name}</p>
+            <div className="relative min-w-0 flex-1">
+              <p className="truncate text-base font-black text-[var(--text)]">{userProfile.name}</p>
               <p className="mt-0.5 truncate text-xs font-semibold text-[var(--muted)]">{userProfile.email}</p>
+              <div className="mt-2 flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)]/12 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[var(--accent)]">
+                  <Sparkles size={9} />
+                  {tr("Bot Aktif", "Bot Active")}
+                </span>
+              </div>
             </div>
-            <ChevronRight size={18} className="text-[var(--muted)]" />
+            <ChevronRight size={18} className="relative shrink-0 text-[var(--muted)]" />
           </Link>
         </div>
-
-        {/* Account Links */}
-        <section className="px-1">
-          <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{t.myAccount}</p>
-          <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
-            {accountLinks.map((item, i) => {
-              const content = (
-                <>
-                  <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", item.accent)}><item.icon size={18} /></div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold text-[var(--text)]">{item.label}</p>
-                    <p className="mt-0.5 truncate text-[0.625rem] font-medium text-[var(--muted)]">{item.sub}</p>
-                  </div>
-                  <ChevronRight size={16} className="text-[var(--muted)]" />
-                </>
-              )
-              const cls = cn("flex items-center gap-3 px-4 py-3.5 transition-all", i !== 0 && "border-t border-[var(--border)]")
-              return (
-                <Link key={item.label} href={item.href} className={cls}>{content}</Link>
-              )
-            })}
-          </div>
-        </section>
-
 
         {/* Preferences */}
         <section className="px-1">
           <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{t.preferences}</p>
-          <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
+          <div className="mt-2 overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)]">
             {mobilePreferenceRows.map((item, i) => (
               <button
                 key={item.key}
@@ -228,7 +197,7 @@ export default function LagiPage() {
         {/* System */}
         <section className="px-1">
           <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{t.system}</p>
-          <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
+          <div className="mt-2 overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)]">
             {systemLinks.map((item, i) => (
               <Link
                 key={item.label}
@@ -245,8 +214,8 @@ export default function LagiPage() {
 
         {/* Logout */}
         <div className="px-1">
-          <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3.5 text-left transition-all active:scale-[0.98]">
-            <LogOut size={16} className="shrink-0 text-red-500" />
+          <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)] px-4 py-3.5 text-left transition-all active:scale-[0.99]">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500"><LogOut size={18} /></div>
             <span className="text-sm font-bold text-red-500">{t.logout}</span>
           </button>
         </div>
@@ -257,6 +226,7 @@ export default function LagiPage() {
       <div className="hidden md:block">
         <DesktopPageHeader
           title={tr("Tetapan", "Settings")}
+          homeHref={`/${sessionId}`}
           actions={
             <DesktopPageChip>
               RM {showProfileSkeleton ? "..." : stats.balance.toLocaleString("en-MY", { minimumFractionDigits: 2 })}
@@ -264,26 +234,28 @@ export default function LagiPage() {
           }
         />
         <DesktopPageBody className="space-y-6">
-        {/* Account Links Card */}
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm overflow-hidden">
-          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[var(--border)]">
-            {accountLinks.map((item) => {
-              const inner = (
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", item.accent)}><item.icon size={18} /></div>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-[var(--text)]">{item.label}</p>
-                    <p className="mt-0.5 truncate text-[0.625rem] font-medium text-[var(--muted)]">{item.sub}</p>
-                  </div>
+        {/* Profile Hero Card */}
+        <Link href={`/${sessionId}/account`} className="block">
+          <div className="relative overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-gradient-to-br from-[var(--card)] to-[var(--surface-tint)] p-6 shadow-sm transition-all hover:shadow-md">
+            <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-[var(--accent)]/8 blur-3xl" />
+            <div className="relative flex items-center gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--text)] ring-1 ring-[var(--accent)]/15">
+                <Sparkles size={28} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-xl font-black tracking-tight text-[var(--text)]">{userProfile.name}</h2>
+                <p className="mt-0.5 truncate text-sm font-semibold text-[var(--muted)]">{userProfile.email}</p>
+                <div className="mt-2 flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)]/12 px-2.5 py-0.5 text-[0.625rem] font-black uppercase tracking-wider text-[var(--accent)]">
+                    <Sparkles size={10} />
+                    {tr("Bot Aktif", "Bot Active")}
+                  </span>
                 </div>
-              )
-              const cls = "flex items-center justify-between gap-3 px-5 py-4 transition-colors hover:bg-[var(--surface-tint)]/50"
-              return (
-                <Link key={item.label} href={item.href} className={cls}>{inner}<ChevronRight size={16} className="shrink-0 text-[var(--muted)]" /></Link>
-              )
-            })}
+              </div>
+              <ChevronRight size={20} className="relative shrink-0 text-[var(--muted)]" />
+            </div>
           </div>
-        </div>
+        </Link>
 
         {/* Desktop Grid */}
 
@@ -291,7 +263,7 @@ export default function LagiPage() {
           {/* Left Column */}
           <div className="space-y-5">
             {/* Language */}
-            <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]"><Globe size={20} /></div>
                 <div>
@@ -326,7 +298,7 @@ export default function LagiPage() {
             </div>
 
             {/* Time & Timezone */}
-            <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]"><Clock size={20} /></div>
                 <div>
@@ -378,7 +350,7 @@ export default function LagiPage() {
             </div>
 
             {/* Theme */}
-            <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]"><Palette size={20} /></div>
                 <div>
@@ -416,7 +388,7 @@ export default function LagiPage() {
           {/* Right Column */}
           <div className="space-y-5">
             {/* System Links */}
-            <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
               <p className="text-[0.625rem] font-black uppercase tracking-[0.24em] text-[var(--muted)]">{t.system}</p>
               <div className="mt-4 space-y-2">
                 {systemLinks.map((item) => (
@@ -434,7 +406,7 @@ export default function LagiPage() {
             </div>
 
             {/* Danger Zone */}
-            <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
               <p className="text-[0.625rem] font-black uppercase tracking-[0.24em] text-[var(--muted)]">{t.dangerZone}</p>
               <h3 className="mt-3 text-xl font-black tracking-tight text-[var(--text)]">{tr("Keluar dari sesi", "Exit session")}</h3>
               <p className="mt-2 text-sm font-medium text-[var(--muted)]">{tr("Anda akan log keluar dari peranti ini.", "You will be logged out from this device.")}</p>

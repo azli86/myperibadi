@@ -738,6 +738,7 @@ export default function WalletSettingsPage() {
       <div className="hidden md:block">
         <DesktopPageHeader
           title={tr("Papan Dompet", "Wallet Board")}
+          homeHref={`/${sessionId}`}
           actions={
             <DesktopPageAction onClick={openCreateWalletModal}>
               <Plus strokeWidth={2.5} />
