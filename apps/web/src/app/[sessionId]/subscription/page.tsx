@@ -42,6 +42,7 @@ type SubscriptionItem = {
   notes?: string | null
   status: string
   start_date: string
+  last_payment_date?: string | null
   created_at: string
   updated_at: string
 }
@@ -61,7 +62,7 @@ const defaultForm = (): SubscriptionFormState => ({
 })
 
 /** Days until this month's due (KL). Negative = overdue this cycle. */
-function daysUntilDueDay(dueDay: number): number {
+function daysUntilDueDay(dueDay: number, lastPaymentDate?: string | null): number {
   const day = Math.min(31, Math.max(1, Math.floor(dueDay || 1)))
   const now = new Date()
   const kl = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" }))
@@ -70,8 +71,12 @@ function daysUntilDueDay(dueDay: number): number {
   const month = kl.getMonth()
   const lastDayThisMonth = new Date(year, month + 1, 0).getDate()
   const dueThisMonth = Math.min(day, lastDayThisMonth)
-  const dueDate = new Date(year, month, dueThisMonth)
+  let dueDate = new Date(year, month, dueThisMonth)
   dueDate.setHours(0, 0, 0, 0)
+  if (lastPaymentDate?.slice(0, 7) === `${year}-${String(month + 1).padStart(2, "0")}`) {
+    const nextMonthLastDay = new Date(year, month + 2, 0).getDate()
+    dueDate = new Date(year, month + 1, Math.min(day, nextMonthLastDay))
+  }
   return Math.round((dueDate.getTime() - kl.getTime()) / (1000 * 60 * 60 * 24))
 }
 
@@ -161,7 +166,7 @@ export default function SubscriptionPage() {
     return subscriptions.reduce(
       (acc, c) => {
         const amt = Number(c.amount || 0)
-        const days = daysUntilDueDay(Number(c.due_day_of_month || 1))
+        const days = daysUntilDueDay(Number(c.due_day_of_month || 1), c.last_payment_date)
         if (c.status === "active") {
           acc.totalMonthly += amt
           acc.activeCount += 1
@@ -194,8 +199,8 @@ export default function SubscriptionPage() {
       const aActive = a.status === "active" ? 0 : 1
       const bActive = b.status === "active" ? 0 : 1
       if (aActive !== bActive) return aActive - bActive
-      const aDays = daysUntilDueDay(Number(a.due_day_of_month || 1))
-      const bDays = daysUntilDueDay(Number(b.due_day_of_month || 1))
+      const aDays = daysUntilDueDay(Number(a.due_day_of_month || 1), a.last_payment_date)
+      const bDays = daysUntilDueDay(Number(b.due_day_of_month || 1), b.last_payment_date)
       if (aDays !== bDays) return aDays - bDays
       return Number(a.due_day_of_month || 1) - Number(b.due_day_of_month || 1)
     })
@@ -311,7 +316,7 @@ export default function SubscriptionPage() {
 
   const renderSubscriptionCard = (c: SubscriptionItem, compact = false) => {
     const isActive = c.status === "active"
-    const days = daysUntilDueDay(Number(c.due_day_of_month || 1))
+    const days = daysUntilDueDay(Number(c.due_day_of_month || 1), c.last_payment_date)
     const tone = isActive ? urgencyTone(days) : "ok"
     const initial = (c.name?.[0] || "S").toUpperCase()
 

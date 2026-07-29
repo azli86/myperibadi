@@ -1,6 +1,7 @@
 "use client"
 
 import { getAccessToken } from "@/lib/auth-session"
+import { currentCycleKey, cycleMonthBounds, categoryCycleKeyForRef, categoryCycleMonthBounds } from "@/lib/cycle"
 import React, { useState, useEffect, useRef, useMemo } from "react"
 import {
  Search,
@@ -53,6 +54,7 @@ type TransactionRecord = TransactionToneTarget & {
  category_name?: string | null
  category_icon_name?: string | null
  wallet_name?: string | null
+ wallet_id?: number | null
  attachment_count?: number | null
 }
 
@@ -169,7 +171,9 @@ function addMonths(date: Date, delta: number) {
  return new Date(date.getFullYear(), date.getMonth() + delta, 1)
 }
 
-function getMonthBounds(monthKey: string) {
+function getMonthBounds(monthKey: string, cycleStartDay: number = 1) {
+ const cycle = cycleMonthBounds(monthKey, cycleStartDay)
+ if (cycle) return { start: toDateKey(cycle.start), end: toDateKey(cycle.end) }
  const [yearText, monthText] = monthKey.split("-")
  const year = Number(yearText)
  const month = Number(monthText)
@@ -221,6 +225,9 @@ function isOwnerSalaryBusinessWithdrawal(tx: TransactionToneTarget) {
 }
 
 function getTransactionCategoryLabel(tx: TransactionToneTarget, fallback: string) {
+ const vendor = (tx.vendor_or_source || "").trim().toLowerCase()
+ if (vendor.startsWith("subx ")) return "Subscription"
+ if (vendor.startsWith("loan payment ")) return "Loan"
  if (tx.category_name) return tx.category_name
  if (isOwnerSalaryBusinessWithdrawal(tx)) return "Salary Business"
  return fallback
@@ -272,7 +279,7 @@ export default function TransactionsPage() {
  expense_month: 0,
  })
  const [apiCategories, setApiCategories] = useState<{ id: number; name: string; kind?: "expense" | "income" }[]>([])
- const [apiWallets, setApiWallets] = useState<{ id: number; name: string; label?: string | null }[]>([])
+ const [apiWallets, setApiWallets] = useState<{ id: number; name: string; label?: string | null; card_color?: string | null }[]>([])
  const [loading, setLoading] = useState(true)
  const showDataSkeleton = useDelayedSkeleton(loading)
  const [searchQuery, setSearchQuery] = useState("")
@@ -292,7 +299,17 @@ export default function TransactionsPage() {
  const [activeDailyBarIndex, setActiveDailyBarIndex] = useState<number | null>(null)
  const [isMobileViewport, setIsMobileViewport] = useState(false)
  const dailyChartScrollRef = useRef<HTMLDivElement | null>(null)
- const didInitMonthRef = useRef(false)
+const [cycleStartDay, setCycleStartDay] = useState(1)
+const [cycleMode, setCycleMode] = useState<"day" | "category">("day")
+const [salaryDates, setSalaryDates] = useState<string[]>([])
+const resolveMonthBounds = (mk: string) =>
+  cycleMode === "category"
+    ? categoryCycleMonthBounds(salaryDates, mk)
+    : getMonthBounds(mk, cycleStartDay)
+const currentCycleKeyStr = useMemo(
+  () => currentCycleKey(new Date(), cycleStartDay),
+  [cycleStartDay]
+)
  const didShowDeletedAlertRef = useRef(false)
  useEffect(() => {
  if (searchParams.get("deleted") !== "success" || didShowDeletedAlertRef.current) return
@@ -316,9 +333,11 @@ export default function TransactionsPage() {
  const fetchDropdownData = async () => {
  const token = getAccessToken()
  try {
- const [catsRes, walsRes] = await Promise.all([
+ const [catsRes, walsRes, meRes, cycleRes] = await Promise.all([
  fetch("/api/categories", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : undefined }),
- fetch("/api/wallets", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : undefined })
+ fetch("/api/wallets", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : undefined }),
+ fetch("/api/users/me", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : undefined }),
+ fetch("/api/cycles/me", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : undefined }),
  ])
  if (catsRes.ok) {
  const catsData = await catsRes.json()
@@ -328,18 +347,33 @@ export default function TransactionsPage() {
  const walsData = await walsRes.json()
  setApiWallets(walsData)
  }
+ if (meRes.ok) {
+ const meData = await meRes.json()
+ const cd = Number(meData.cycle_start_day) || 1
+ setCycleStartDay(cd)
+ const mode = meData.cycle_mode === "category" ? "category" : "day"
+ setCycleMode(mode)
+ if (cycleRes.ok) {
+ const cycleData = await cycleRes.json()
+ const sd: string[] = Array.isArray(cycleData.salary_dates) ? cycleData.salary_dates : []
+ setSalaryDates(sd)
+ if (mode === "category") {
+ const ck = categoryCycleKeyForRef(sd, new Date())
+ setSelectedMonth(ck || currentMonthInKualaLumpur)
+ } else {
+ setSelectedMonth(cd > 1 ? currentCycleKey(new Date(), cd) : currentMonthInKualaLumpur)
+ }
+ } else {
+ setSelectedMonth(cd > 1 ? currentCycleKey(new Date(), cd) : currentMonthInKualaLumpur)
+ }
+ }
  } catch (err) {
  console.error("Failed to load dropdown data:", err)
+ } finally {
  }
  }
  fetchDropdownData()
  }, [])
-
- useEffect(() => {
- if (didInitMonthRef.current) return
- didInitMonthRef.current = true
- setSelectedMonth(currentMonthInKualaLumpur)
- }, [currentMonthInKualaLumpur])
 
  useEffect(() => {
  if (!selectedMonth) return
@@ -349,7 +383,7 @@ export default function TransactionsPage() {
  setLoading(true)
  setError(null)
  const token = getAccessToken()
- const monthBounds = getMonthBounds(selectedMonth)
+ const monthBounds = resolveMonthBounds(selectedMonth)
  const hasFilterNeedingGraphWindow = !startDate && !endDate && (
  searchQuery.trim().length > 0 ||
  selectedType !== "all" ||
@@ -403,8 +437,12 @@ export default function TransactionsPage() {
  }, [endDate, searchQuery, selectedCategory, selectedMonth, selectedType, selectedWallet, startDate])
 
  const monthOptions = useMemo(
- () =>
- Array.from(
+ () => {
+ if (cycleMode === "category" && salaryDates.length) {
+ const keys = Array.from(new Set(salaryDates.map((d) => d.slice(0, 7)))).sort().reverse()
+ return keys
+ }
+ return Array.from(
  new Set([
  currentMonthInKualaLumpur,
  selectedMonth,
@@ -416,9 +454,8 @@ export default function TransactionsPage() {
  )
  .filter(Boolean)
  .sort()
- .reverse(),
- [currentMonthInKualaLumpur, selectedMonth, transactions],
- )
+ .reverse()
+ }, [cycleMode, salaryDates, currentMonthInKualaLumpur, selectedMonth, transactions])
 
  const categoryOptions = useMemo(
  () => {
@@ -441,6 +478,18 @@ export default function TransactionsPage() {
  [apiCategories, transactions],
  )
 
+ const walletById = useMemo(
+ (): Record<number, { name: string; label?: string | null; card_color?: string | null }> => {
+ const map: Record<number, { name: string; label?: string | null; card_color?: string | null }> = {}
+ for (const w of apiWallets) map[w.id] = w
+ return map
+ }, [apiWallets])
+
+ const walletLabel = (tx: TransactionRecord) => {
+ const w = tx.wallet_id ? walletById[tx.wallet_id] : null
+ return w?.label || w?.name || tx.wallet_name || "Wallet"
+ }
+
  const walletOptions = useMemo(
  () => {
  return apiWallets
@@ -460,7 +509,7 @@ export default function TransactionsPage() {
 
  const filteredTxns = transactions.filter(t => {
  const txnDateKey = getTxnDateKey(t.txn_date)
- const monthBounds = selectedMonth ? getMonthBounds(selectedMonth) : null
+ const monthBounds = selectedMonth ? resolveMonthBounds(selectedMonth) : null
  const effectiveStartDate = startDate || (shouldIgnoreMonthForFilterGraph ? "" : monthBounds?.start || "")
  const effectiveEndDate = endDate || (shouldIgnoreMonthForFilterGraph ? "" : monthBounds?.end || "")
  let matchesDate = true
@@ -579,7 +628,7 @@ export default function TransactionsPage() {
 
  const mobileDateRangeLabel = useMemo(() => {
  const locale = lang === "EN" ? "en-MY" : "ms-MY"
- const monthBounds = selectedMonth ? getMonthBounds(selectedMonth) : null
+ const monthBounds = selectedMonth ? resolveMonthBounds(selectedMonth) : null
  const effectiveStartDate = startDate || monthBounds?.start || ""
  const effectiveEndDate = endDate || monthBounds?.end || ""
  if (!effectiveStartDate && !effectiveEndDate) return langT.allTransactions
@@ -690,13 +739,17 @@ export default function TransactionsPage() {
  const isPositive = getTransactionAmountPrefix(tx) === "+"
  return acc + (isPositive ? amount : -amount)
  }, 0)
+ const isCurrentCycle =
+ cycleMode === "category"
+ ? categoryCycleKeyForRef(salaryDates, new Date()) === selectedMonth
+ : selectedMonth === currentCycleKeyStr
  const shouldUseStatsMonthlySummary =
  !hasActiveSearch &&
  !hasDateRangeFilter &&
  selectedType === "all" &&
  selectedCategory === "all" &&
  selectedWallet === "all" &&
- selectedMonth === currentMonthInKualaLumpur
+ isCurrentCycle
  const displayIncome = shouldUseStatsMonthlySummary ? statsSnapshot.income_month : totalIncome
  const displayExpense = shouldUseStatsMonthlySummary ? statsSnapshot.expense_month : totalExpense
 
@@ -821,6 +874,15 @@ export default function TransactionsPage() {
 
  const handleMonthChange = (direction: number) => {
  if (!selectedMonth) return
+ if (cycleMode === "category" && salaryDates.length) {
+ const keys = Array.from(new Set(salaryDates.map((d) => d.slice(0, 7)))).sort()
+ const idx = keys.indexOf(selectedMonth)
+ if (idx === -1) return
+ const ni = idx + direction
+ if (ni < 0 || ni >= keys.length) return
+ setSelectedMonth(keys[ni])
+ return
+ }
  const [y, m] = selectedMonth.split('-').map(Number)
  const date = new Date(y, m - 1 + direction, 1)
  
@@ -1775,9 +1837,11 @@ export default function TransactionsPage() {
 
  <div className={cn("text-right text-xs font-bold tabular-nums", rowTone)}>
  {showDataSkeleton ? <AmountSkeleton className="h-3 w-20" /> : getTransactionAmountLabel(tx)}
- <p className="mt-0.5 truncate text-[0.625rem] font-medium text-[var(--muted)]">
- {tx.wallet_name || "Wallet"}
- </p>
+ <span
+ className="mt-0.5 block truncate text-[0.625rem] font-medium text-[var(--muted)]"
+ >
+ {walletLabel(tx)}
+ </span>
  </div>
  </button>
  )
@@ -1932,6 +1996,11 @@ export default function TransactionsPage() {
  )}
  >
  {showDataSkeleton ? <AmountSkeleton className="h-3 w-20" /> : getTransactionAmountLabel(tx)}
+ <span
+ className="mt-0.5 block truncate text-[0.625rem] font-medium text-[var(--muted)]"
+ >
+ {walletLabel(tx)}
+ </span>
  </div>
  </button>
  ))}

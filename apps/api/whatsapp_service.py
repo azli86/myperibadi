@@ -56,6 +56,12 @@ INTERNAL_DEBT_CATEGORY_CODES = {
     INTERNAL_DEBT_IN_CATEGORY_CODE,
 }
 
+MONTHLY_SALARY_CATEGORY_CODE = models.MONTHLY_SALARY_CATEGORY_CODE
+MONTHLY_SALARY_CATEGORY_NAME = models.MONTHLY_SALARY_CATEGORY_NAME
+MONTHLY_SALARY_KEYWORDS = models.MONTHLY_SALARY_KEYWORDS
+# Reserved keywords locked to the system category; other categories cannot reuse them.
+MONTHLY_SALARY_LOCKED_KEYWORDS = models.MONTHLY_SALARY_LOCKED_KEYWORDS
+
 WHATSAPP_FALLBACK_REPLY_ENABLED = os.getenv("WHATSAPP_FALLBACK_REPLY_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
 
 MODEL_IDENTITY_QUERY_PATTERNS = [
@@ -1574,7 +1580,9 @@ async def _process_budget_command(
             if language != "EN"
             else "Invalid month format. Use `@YYYY-MM`, e.g. `@2026-04`."
         )
-    month_key = month_token or budget_service.normalize_month_key(None)
+    user_row = (await db.execute(select(models.User.cycle_start_day).where(models.User.id == user_id))).scalar_one_or_none()
+    start_day = int(user_row or 1)
+    month_key = month_token or budget_service.normalize_month_key(None, start_day)
     lowered_body = command_body.lower()
 
     if lowered_body in {"list"}:
@@ -1583,6 +1591,7 @@ async def _process_budget_command(
             user_id=user_id,
             household_id=household_id,
             month_key=month_key,
+            start_day=start_day,
         )
         active_items = [item for item in items if item["budget_amount"] > 0]
         if not active_items:
@@ -1605,6 +1614,7 @@ async def _process_budget_command(
             user_id=user_id,
             household_id=household_id,
             month_key=month_key,
+            start_day=start_day,
         )
         if language == "EN":
             return (
@@ -1669,6 +1679,7 @@ async def _process_budget_command(
             user_id=user_id,
             household_id=household_id,
             month_key=month_key,
+            start_day=start_day,
         )
         item = next((x for x in items if x["category_id"] == int(category.id)), None)
         if not item:
@@ -1701,6 +1712,7 @@ async def _process_budget_command(
             user_id=user_id,
             household_id=household_id,
             month_key=month_key,
+            start_day=start_day,
         )
         item = next((x for x in items if x["category_id"] == int(category.id)), None)
         if not item or item["budget_amount"] <= 0:
@@ -2357,6 +2369,7 @@ async def ensure_standard_categories(db: AsyncSession, user_id: str):
     if len(existing) >= 3:
         await ensure_internal_transfer_category(db, household_id)
         await ensure_internal_debt_categories(db, household_id)
+        await ensure_monthly_salary_category(db, household_id)
         await db.flush()
         return household_id
     
@@ -2383,6 +2396,7 @@ async def ensure_standard_categories(db: AsyncSession, user_id: str):
                 db.add(new_kw)
     await ensure_internal_transfer_category(db, household_id)
     await ensure_internal_debt_categories(db, household_id)
+    await ensure_monthly_salary_category(db, household_id)
     await db.flush()
     return household_id
 
@@ -2428,6 +2442,49 @@ async def ensure_internal_transfer_category(
     await db.flush()
     return category
 
+async def ensure_monthly_salary_category(
+    db: AsyncSession,
+    household_id: Optional[int],
+) -> Optional[models.Category]:
+    if not household_id:
+        return None
+
+    result = await db.execute(
+        select(models.Category).where(
+            models.Category.household_id == household_id,
+            models.Category.system_code == MONTHLY_SALARY_CATEGORY_CODE,
+        ).limit(1)
+    )
+    category = result.scalar_one_or_none()
+    if not category:
+        category = models.Category(
+            name=MONTHLY_SALARY_CATEGORY_NAME,
+            icon_name="banknote",
+            kind="income",
+            household_id=household_id,
+            is_default=False,
+            is_internal=False,
+            system_code=MONTHLY_SALARY_CATEGORY_CODE,
+        )
+        db.add(category)
+        await db.flush()
+
+    # Seed locked keywords (Mgaji / Msalary only). Do not add anything else.
+    existing_res = await db.execute(
+        select(models.CategoryKeyword).where(models.CategoryKeyword.category_id == category.id)
+    )
+    existing = {kw.keyword.lower(): kw for kw in existing_res.scalars().all()}
+    for kw_text in MONTHLY_SALARY_KEYWORDS:
+        if kw_text.lower() not in existing:
+            db.add(models.CategoryKeyword(
+                category_id=category.id,
+                keyword=kw_text,
+                match_type="contains",
+                is_active=True,
+            ))
+    await db.flush()
+    return category
+
 async def get_default_category(
     db: AsyncSession,
     kind: str,
@@ -2469,8 +2526,8 @@ async def get_default_category(
 async def ensure_personal_wallet(db: AsyncSession, user_id: str) -> models.Wallet:
     wallet_result = await db.execute(
         select(models.Wallet)
-        .where(models.Wallet.owner_user_id == user_id, models.Wallet.type == "personal")
-        .order_by(models.Wallet.created_at.asc(), models.Wallet.id.asc())
+        .where(models.Wallet.owner_user_id == user_id)
+        .order_by(models.Wallet.is_bot_default.desc(), models.Wallet.created_at.asc(), models.Wallet.id.asc())
         .limit(1)
     )
     wallet = wallet_result.scalar_one_or_none()
@@ -2639,8 +2696,14 @@ async def get_user_balance(db: AsyncSession, user_id: str) -> float:
     return float(bal_res.scalar() or 0)
 
 
-def _money_lifespan_days_left(today: Optional[date] = None) -> int:
+async def _money_lifespan_days_left(db: AsyncSession, user_id: str, today: Optional[date] = None) -> int:
     current_day = today or current_business_date()
+    user = await db.get(models.User, user_id)
+    if user:
+        cycle = await budget_service.resolve_user_cycle(db, user=user, ref=current_day)
+        end = cycle.get("end")
+        if end:
+            return max((end - current_day).days, 1)
     _, month_end_exclusive = budget_service.month_bounds(current_day.strftime("%Y-%m"))
     return max((month_end_exclusive - current_day).days, 1)
 
@@ -2669,7 +2732,9 @@ def _whatsapp_bold_money(value: Optional[str]) -> Optional[str]:
     if not value:
         return None
     return f"*{value}*"
-def _format_money_lifespan_message(
+async def _format_money_lifespan_message(
+    db: AsyncSession,
+    user_id: str,
     balance: float,
     language: str,
     today: Optional[date] = None,
@@ -2678,7 +2743,7 @@ def _format_money_lifespan_message(
     txn_amount: Optional[float] = None,
 ) -> str:
     balance_value = float(balance or 0)
-    days_left = _money_lifespan_days_left(today)
+    days_left = await _money_lifespan_days_left(db, user_id, today)
     daily_amount = balance_value / days_left if balance_value > 0 else 0.0
     daily_text = _format_lifespan_money(daily_amount, rounded=True)
     balance_text = _format_lifespan_money(balance_value, rounded=True)
@@ -2688,42 +2753,21 @@ def _format_money_lifespan_message(
     if txn_amount is not None and abs(float(txn_amount)) > 0.004:
         txn_amount_text = _format_lifespan_money(float(txn_amount), rounded=True)
         if language == "EN":
-            if (txn_type or "").lower() == "income":
-                txn_prefix = f"Received *{txn_amount_text}*. "
-            else:
-                txn_prefix = f"Spent *{txn_amount_text}* recorded. "
+            txn_prefix = f"Received *{txn_amount_text}*. " if (txn_type or "").lower() == "income" else f"Spent *{txn_amount_text}* recorded. "
         else:
-            if (txn_type or "").lower() == "income":
-                txn_prefix = f"Pendapatan *{txn_amount_text}* direkod. "
-            else:
-                txn_prefix = f"Belanja *{txn_amount_text}* dicatat. "
+            txn_prefix = f"Pendapatan *{txn_amount_text}* direkod. " if (txn_type or "").lower() == "income" else f"Belanja *{txn_amount_text}* dicatat. "
 
     if language == "EN":
-        if txn_prefix:
-            return (
-                f"\n\n{txn_prefix}Your balance is now *{balance_text}*. "
-                f"At this pace, it can last about {days_left} more days. "
-                f"Try to stay under *{daily_text}* per day until the end of the month. "
-                f"Money status: {status_text}."
-            )
         return (
-            f"\n\nYour balance is now *{balance_text}*. "
-            f"If you stay disciplined, it can last about {days_left} more days. "
-            f"Try to stay under *{daily_text}* per day until the end of the month. "
+            f"\n\n{txn_prefix}{'Your balance is now' if txn_prefix else 'Your balance is now'} *{balance_text}*. "
+            f"It can last about {days_left} more days. "
+            f"Try to stay under *{daily_text}* per day until the next reset. "
             f"Money status: {status_text}."
         )
-
-    if txn_prefix:
-        return (
-            f"\n\n{txn_prefix}Baki tinggal *{balance_text}*. "
-            f"Kalau control elok, boleh tahan lagi {days_left} hari lagi. "
-            f"Cuba jaga bawah *{daily_text}* sehari sehingga hujung bulan. "
-            f"Status duit: {status_text}."
-        )
     return (
-        f"\n\nBaki sekarang *{balance_text}*. "
-        f"Kalau control cun-cun, boleh tahan {days_left} hari lagi. "
-        f"Hari ni cuba bawah *{daily_text}* sehari sehingga hujung bulan ya. "
+        f"\n\n{txn_prefix}{'Baki tinggal' if txn_prefix else 'Baki sekarang'} *{balance_text}*. "
+        f"Boleh tahan {days_left} hari lagi. "
+        f"Cuba jaga bawah *{daily_text}* sehari sehingga reset seterusnya. "
         f"Status duit: {status_text}."
     )
 
@@ -3319,10 +3363,11 @@ async def _process_whatsapp_message_impl(
             return msg, None
 
         if lowered == "summary":
-            # Get start of month
-            from datetime import date
-            today = date.today()
-            start_of_month = date(today.year, today.month, 1)
+            today = current_business_date()
+            user = await db.get(models.User, user_id)
+            cycle = await budget_service.resolve_user_cycle(db, user=user, ref=today) if user else None
+            start_of_month = (cycle or {}).get("start") or date(today.year, today.month, 1)
+            end_exclusive = (cycle or {}).get("end") or (today + timedelta(days=1))
             excluded_codes = (
                 INTERNAL_TRANSFER_CATEGORY_CODE,
                 INTERNAL_DEBT_OUT_CATEGORY_CODE,
@@ -3334,7 +3379,7 @@ async def _process_whatsapp_message_impl(
                 select(func.sum(models.Transaction.amount))
                 .select_from(models.Transaction)
                 .outerjoin(models.Category, models.Transaction.category_id == models.Category.id)
-                .where(models.Transaction.user_id == user_id, models.Transaction.type == "income", models.Transaction.txn_date >= start_of_month)
+                .where(models.Transaction.user_id == user_id, models.Transaction.type == "income", models.Transaction.txn_date >= start_of_month, models.Transaction.txn_date < end_exclusive)
                 .where(
                     or_(
                         models.Category.system_code.is_(None),
@@ -3349,7 +3394,7 @@ async def _process_whatsapp_message_impl(
                 select(func.sum(models.Transaction.amount))
                 .select_from(models.Transaction)
                 .outerjoin(models.Category, models.Transaction.category_id == models.Category.id)
-                .where(models.Transaction.user_id == user_id, models.Transaction.type == "expense", models.Transaction.txn_date >= start_of_month)
+                .where(models.Transaction.user_id == user_id, models.Transaction.type == "expense", models.Transaction.txn_date >= start_of_month, models.Transaction.txn_date < end_exclusive)
                 .where(
                     or_(
                         models.Category.system_code.is_(None),
@@ -3884,7 +3929,9 @@ async def _process_whatsapp_message_impl(
             show_expense_amount=show_expense_amount,
             show_income_amount=show_income_amount,
         )
-        lifespan_note = "" if hide_group_balance else _format_money_lifespan_message(
+        lifespan_note = "" if hide_group_balance else await _format_money_lifespan_message(
+            db,
+            user_id,
             balance,
             user_lang,
             txn_type=txn_type,

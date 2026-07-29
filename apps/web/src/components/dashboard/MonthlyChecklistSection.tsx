@@ -15,6 +15,7 @@ interface Subscription {
   amount: number
   due_day_of_month: number
   status: string
+  last_payment_date?: string | null
 }
 
 interface Loan {
@@ -48,7 +49,7 @@ function dueDateForMonth(year: number, month: number, dueDay: number) {
 
 function computeCurrentPeriod(dueDay: number, today: Date) {
   const currentDue = dueDateForMonth(today.getFullYear(), today.getMonth(), dueDay)
-  if (today >= currentDue) {
+  if (today > currentDue) {
     const next = new Date(today.getFullYear(), today.getMonth() + 1, 1)
     const periodEnd = dueDateForMonth(next.getFullYear(), next.getMonth(), dueDay)
     return { start: currentDue, end: periodEnd }
@@ -56,6 +57,11 @@ function computeCurrentPeriod(dueDay: number, today: Date) {
   const prev = new Date(today.getFullYear(), today.getMonth() - 1, 1)
   const periodStart = dueDateForMonth(prev.getFullYear(), prev.getMonth(), dueDay)
   return { start: periodStart, end: currentDue }
+}
+
+function daysUntilDue(dueDay: number, today: Date) {
+  const due = dueDateForMonth(today.getFullYear(), today.getMonth(), dueDay)
+  return Math.round((due.getTime() - new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) / 86400000)
 }
 
 function formatPeriodLabel(dueDay: number, today: Date, locale: string) {
@@ -132,8 +138,14 @@ export function MonthlyChecklistSection() {
   }, [])
 
   const isChecked = useCallback((itemType: "loan" | "subscription", itemId: number) => {
-    return checkoffs.some((c) => c.item_type === itemType && c.item_id === itemId)
-  }, [checkoffs])
+    if (checkoffs.some((c) => c.item_type === itemType && c.item_id === itemId)) return true
+    if (itemType !== "subscription") return false
+    const subscription = subscriptions.find((item) => item.id === itemId)
+    if (!subscription?.last_payment_date) return false
+    const paid = new Date(`${subscription.last_payment_date.slice(0, 10)}T00:00:00`)
+    const { start, end } = computeCurrentPeriod(subscription.due_day_of_month, new Date())
+    return paid >= start && paid <= end
+  }, [checkoffs, subscriptions])
 
   const today = new Date()
 
@@ -243,6 +255,14 @@ export function MonthlyChecklistSection() {
                 const checked = isChecked(item.type, item.id)
                 const key = `${item.type}-${item.id}`
                 const TypeIcon = item.type === "loan" ? Landmark : CreditCard
+                const days = daysUntilDue(item.dueDay, today)
+                const dayLabel = checked
+                  ? (lang === "EN" ? "Paid" : "Dibayar")
+                  : days < 0
+                    ? (lang === "EN" ? `${Math.abs(days)} days overdue` : `${Math.abs(days)} hari lewat`)
+                    : days === 0
+                      ? (lang === "EN" ? "Due today" : "Due hari ini")
+                      : (lang === "EN" ? `${days} days left` : `${days} hari lagi`)
                 return (
                   <motion.button
                     key={key}
@@ -278,6 +298,8 @@ export function MonthlyChecklistSection() {
                         {formatCurrency(item.amount)}
                         <span className="mx-1 opacity-40">·</span>
                         {lang === "EN" ? "Due" : "Due"} {item.dueDay}
+                        <span className="mx-1 opacity-40">·</span>
+                        {dayLabel}
                       </p>
                     </div>
 

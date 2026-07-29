@@ -19,6 +19,8 @@ class UserUpdate(BaseModel):
     show_hero_amounts: Optional[bool] = None
     theme_mode: Optional[str] = Field(default=None, max_length=12)
     bot_personality: Optional[str] = Field(default=None, max_length=160)
+    cycle_start_day: Optional[int] = Field(default=None, ge=1, le=28)
+    cycle_mode: Optional[str] = Field(default=None, pattern="^(day|category)$")
 
 
 class EmailChangeRequest(BaseModel):
@@ -37,6 +39,8 @@ class UserResponse(UserBase):
     show_hero_amounts: bool = True
     theme_mode: str = "system"
     bot_personality: Optional[str] = None
+    cycle_start_day: int = 1
+    cycle_mode: str = "day"
     created_at: datetime
 
     class Config:
@@ -348,6 +352,7 @@ class WalletBase(BaseModel):
     name: str
     label: Optional[str] = None
     card_color: Optional[str] = None
+    image_url: Optional[str] = None
     type: str  # cash / bank / bank_digital / ewallet / credit_card
     currency: str = "MYR"
 
@@ -358,6 +363,7 @@ class WalletUpdate(BaseModel):
     name: Optional[str] = None
     label: Optional[str] = None
     card_color: Optional[str] = None
+    image_url: Optional[str] = None
     type: Optional[str] = None
     currency: Optional[str] = None
     status: Optional[str] = None
@@ -618,6 +624,7 @@ class SubscriptionResponse(BaseModel):
     notes: Optional[str] = None
     status: str
     start_date: str
+    last_payment_date: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

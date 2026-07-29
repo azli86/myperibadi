@@ -51,6 +51,9 @@ function isOwnerSalaryBusinessWithdrawal(tx: Pick<TransactionDetail, "category_n
 }
 
 function getTransactionCategoryLabel(tx: TransactionDetail, fallback: string) {
+  const vendor = (tx.vendor_or_source || "").trim().toLowerCase()
+  if (vendor.startsWith("subx ")) return "Subscription"
+  if (vendor.startsWith("loan payment ")) return "Loan"
   if (tx.category_name) return tx.category_name
   if (isOwnerSalaryBusinessWithdrawal(tx)) return "Salary Business"
   return fallback

@@ -23,7 +23,7 @@ def _due_date_for_month(year: int, month: int, due_day: int) -> date:
 
 def _compute_checkoff_period(due_day: int, today: date) -> tuple[date, date]:
     current_due = _due_date_for_month(today.year, today.month, due_day)
-    if today >= current_due:
+    if today > current_due:
         period_start = current_due
         next_month = today.replace(day=1) + timedelta(days=32)
         period_end = _due_date_for_month(next_month.year, next_month.month, due_day)

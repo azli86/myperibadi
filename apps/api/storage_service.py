@@ -147,6 +147,10 @@ def build_direct_receipt_object_key(user_id: str, filename: Optional[str], exten
     return f"receipts/{user_id}/{month_prefix}/direct/{uuid4().hex}-{stem}{ext}"
 
 
+def build_category_icon_object_key(user_id: str, extension: str) -> str:
+    ext = extension.lower() if extension.startswith(".") else f".{extension.lower()}"
+    return f"category-icons/{user_id}/{uuid4().hex}{ext}"
+
 def build_theme_asset_object_key(user_id: str, asset_type: str, extension: str) -> str:
     ext = extension.lower()
     if not ext.startswith("."):

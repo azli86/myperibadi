@@ -74,6 +74,7 @@ async def create_wallet_route(
         name=wallet_name,
         label=wallet_label,
         card_color=(wallet_in.card_color or "").strip() or None,
+        image_url=(wallet_in.image_url or "").strip() or None,
         type=wallet_type,
         currency=(wallet_in.currency or "MYR").upper(),
         status="active",
@@ -125,6 +126,8 @@ async def update_wallet_route(
 
     if wallet_in.card_color is not None:
         wallet.card_color = wallet_in.card_color.strip() or None
+    if wallet_in.image_url is not None:
+        wallet.image_url = wallet_in.image_url.strip() or None
 
     if wallet_in.type is not None:
         next_type = resolve_wallet_type(wallet_in.type, current_type=wallet.type)

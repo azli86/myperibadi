@@ -25,10 +25,19 @@ async def get_subscriptions_route(
         query.order_by(models.Subscription.due_day_of_month.asc(), models.Subscription.name.asc(), models.Subscription.id.asc())
     )
     rows = list(result.scalars().all())
-    return [_serialize_subscription(c) for c in rows]
+    response = []
+    for c in rows:
+        paid = await db.scalar(
+            select(func.max(models.Transaction.txn_date)).where(
+                models.Transaction.user_id == current_user.id,
+                models.Transaction.vendor_or_source == f"SUBX {c.name}",
+            )
+        )
+        response.append(_serialize_subscription(c, paid))
+    return response
 
 
-def _serialize_subscription(c: models.Subscription) -> schemas.SubscriptionResponse:
+def _serialize_subscription(c: models.Subscription, last_payment_date: Optional[date] = None) -> schemas.SubscriptionResponse:
     return schemas.SubscriptionResponse(
         id=int(c.id),
         name=str(c.name),
@@ -38,6 +47,7 @@ def _serialize_subscription(c: models.Subscription) -> schemas.SubscriptionRespo
         notes=c.notes,
         status=str(c.status),
         start_date=c.start_date.strftime("%Y-%m-%d"),
+        last_payment_date=last_payment_date.isoformat() if last_payment_date else None,
         created_at=c.created_at,
         updated_at=c.updated_at,
     )

@@ -18,6 +18,7 @@ import {
   TrendingUp,
   ArrowLeft,
   ChevronRight,
+  Upload,
 } from "lucide-react"
 import { useParams } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -49,6 +50,7 @@ type Category = {
   amountMonth?: number
   transactionCountMonth?: number
   status: string
+  system_code?: string | null
 }
 type Keyword = { id: number; keyword: string; match_type: string; status: string }
 type KeywordsMap = { [categoryId: number]: Keyword[] }
@@ -489,6 +491,30 @@ export default function CategoriesPage() {
       )
     }
   }, [modal])
+
+  async function uploadCategoryIcon(file: File, onChange: (url: string) => void) {
+    if (file.size > 256 * 1024) {
+      showAlert(lang === "EN" ? "File too large" : "Fail terlalu besar", lang === "EN" ? "Maximum icon size is 256 KB." : "Saiz maksimum ikon ialah 256 KB.", "error")
+      return
+    }
+    const form = new FormData()
+    form.append("file", file)
+    const token = getAccessToken()
+    const res = await fetch("/api/categories/icon-upload", { method: "POST", credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      showAlert(lang === "EN" ? "Upload failed" : "Upload gagal", data.detail || "Upload failed.", "error")
+      return
+    }
+    onChange(data.url)
+  }
+
+  const IconUpload = ({ onChange }: { onChange: (url: string) => void }) => (
+    <label className="mt-3 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)] text-xs font-bold text-[var(--muted)]">
+      <Upload size={14} /> {lang === "EN" ? "Upload icon (max 256 KB)" : "Upload ikon (maks 256 KB)"}
+      <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadCategoryIcon(file, onChange); e.target.value = "" }} />
+    </label>
+  )
 
   async function addCategory() {
     if (!newCatName.trim()) return
@@ -1223,6 +1249,7 @@ export default function CategoriesPage() {
                             {t.categoryIcon}
                           </label>
                           <CategoryIconPicker value={editCatIconName} kind={editCatKind} onChange={setEditCatIconName} compact />
+                          <IconUpload onChange={setEditCatIconName} />
                         </div>
                       </div>
 
@@ -1272,10 +1299,10 @@ export default function CategoriesPage() {
                                 </p>
                               </div>
                               <div className="flex shrink-0 gap-1">
-                                <button onClick={() => openEditKeyword(kw)} className="rounded-lg p-1.5 text-[var(--muted)] transition-all hover:bg-[var(--surface-tint)] active:scale-90">
+                                <button onClick={() => openEditKeyword(kw)} disabled={selectedCategory?.system_code === "monthly_salary"} className="rounded-lg p-1.5 text-[var(--muted)] transition-all hover:bg-[var(--surface-tint)] active:scale-90 disabled:cursor-not-allowed disabled:opacity-30">
                                   <Edit2 size={12} />
                                 </button>
-                                <button onClick={() => openDeleteKeyword(kw)} className="rounded-lg p-1.5 text-rose-400 transition-all hover:bg-rose-500/10 active:scale-90">
+                                <button onClick={() => openDeleteKeyword(kw)} disabled={selectedCategory?.system_code === "monthly_salary"} className="rounded-lg p-1.5 text-rose-400 transition-all hover:bg-rose-500/10 active:scale-90 disabled:cursor-not-allowed disabled:opacity-30">
                                   <Trash2 size={12} />
                                 </button>
                               </div>
@@ -1297,7 +1324,9 @@ export default function CategoriesPage() {
                         </button>
                         <button
                           onClick={() => setModal("archiveCategory")}
-                          className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 text-sm font-black text-rose-500 transition active:scale-[0.98]"
+                          disabled={selectedCategory?.system_code === "monthly_salary"}
+                          title={selectedCategory?.system_code === "monthly_salary" ? (lang === "EN" ? "Locked system category" : "Kategori sistem berkunci") : undefined}
+                          className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 text-sm font-black text-rose-500 transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-30"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -1341,6 +1370,7 @@ export default function CategoriesPage() {
                           {t.categoryIcon}
                         </label>
                         <CategoryIconPicker value={newCatIconName} kind={newCatKind} onChange={setNewCatIconName} compact />
+                        <IconUpload onChange={setNewCatIconName} />
                       </div>
                       <div className="-mx-4 border-t border-[var(--border)] bg-[var(--sheet-bg)] px-4 pt-4 md:-mx-6 md:px-6">
                         <button

@@ -41,6 +41,16 @@ async def update_my_profile_route(
         current_user.theme_mode = normalize_theme_mode(user_in.theme_mode)
     if user_in.bot_personality is not None:
         current_user.bot_personality = normalize_bot_personality(user_in.bot_personality)
+    if user_in.cycle_start_day is not None:
+        day = int(user_in.cycle_start_day)
+        if day < 1 or day > 28:
+            raise HTTPException(status_code=400, detail="Cycle reset day must be between 1 and 28.")
+        current_user.cycle_start_day = day
+    if user_in.cycle_mode is not None:
+        mode = (user_in.cycle_mode or "day").strip().lower()
+        if mode not in ("day", "category"):
+            raise HTTPException(status_code=400, detail="cycle_mode must be 'day' or 'category'.")
+        current_user.cycle_mode = mode
 
     await db.commit()
     await db.refresh(current_user)

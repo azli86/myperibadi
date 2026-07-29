@@ -1,6 +1,7 @@
 "use client"
 
 import { getAccessToken } from "@/lib/auth-session"
+import { currentCycleKey, categoryCycleKeyForRef } from "@/lib/cycle"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import {
@@ -52,6 +53,8 @@ type BudgetItem = {
 type BudgetSummary = {
   month_key: string
   total_budget: number
+  cycle_income: number
+  unallocated_amount: number
   total_used: number
   remaining_amount: number
   overall_progress_percent: number
@@ -86,10 +89,25 @@ export default function BudgetPage() {
   }, [timezone])
 
   const [monthKey, setMonthKey] = useState(currentMonthKey)
+  const [cycleStartDay, setCycleStartDay] = useState(1)
+  const [cycleMode, setCycleMode] = useState<"day" | "category">("day")
+  const [salaryDates, setSalaryDates] = useState<string[]>([])
+  const currentCycleMonthKey = useMemo(
+    () => {
+      if (cycleMode === "category") {
+        const ck = categoryCycleKeyForRef(salaryDates, new Date())
+        if (ck) return ck
+      }
+      return cycleStartDay > 1 ? currentCycleKey(new Date(), cycleStartDay) : currentMonthKey
+    },
+    [cycleMode, salaryDates, cycleStartDay, currentMonthKey]
+  )
   const [items, setItems] = useState<BudgetItem[]>([])
   const [summary, setSummary] = useState<BudgetSummary>({
-    month_key: currentMonthKey,
+    month_key: currentCycleMonthKey,
     total_budget: 0,
+    cycle_income: 0,
+    unallocated_amount: 0,
     total_used: 0,
     remaining_amount: 0,
     overall_progress_percent: 0,
@@ -156,8 +174,32 @@ export default function BudgetPage() {
   }, [monthKey, tr])
 
   useEffect(() => {
-    setMonthKey(currentMonthKey)
-  }, [currentMonthKey])
+    setMonthKey(currentCycleMonthKey)
+  }, [currentCycleMonthKey])
+
+  useEffect(() => {
+    let alive = true
+    const fetchMe = async () => {
+      try {
+        const token = getAccessToken()
+        const [res, cycleRes] = await Promise.all([
+          fetch("/api/users/me", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : undefined }),
+          fetch("/api/cycles/me", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : undefined }),
+        ])
+        if (res.ok && alive) {
+          const data = await res.json()
+          setCycleStartDay(Number(data.cycle_start_day) || 1)
+          setCycleMode(data.cycle_mode === "category" ? "category" : "day")
+        }
+        if (cycleRes.ok && alive) {
+          const cycleData = await cycleRes.json()
+          setSalaryDates(Array.isArray(cycleData.salary_dates) ? cycleData.salary_dates : [])
+        }
+      } catch {}
+    }
+    fetchMe()
+    return () => { alive = false }
+  }, [])
 
   useEffect(() => {
     loadData()
@@ -379,7 +421,7 @@ export default function BudgetPage() {
     summary.remaining_amount < 0 ? "over_budget" : summary.overall_progress_percent >= 80 ? "warning" : "normal"
 
   const monthPickerLabel =
-    monthKey === currentMonthKey ? tr("Bulan Ini", "This Month") : monthMeta.label
+    monthKey === currentCycleMonthKey ? tr("Bulan Ini", "This Month") : monthMeta.label
 
   const statusMeta = (item: BudgetItem) => {
     const hasBudget = item.budget_amount > 0
@@ -765,10 +807,24 @@ export default function BudgetPage() {
         </div>
 
         <div className={cn(
-          "grid grid-cols-3",
-          desktop ? "min-w-0 flex-1 gap-3" : "mt-5 gap-2.5",
+          "grid grid-cols-2",
+          desktop ? "min-w-0 flex-1 gap-3 lg:grid-cols-4" : "mt-5 gap-2.5",
         )}>
           {[
+            {
+              label: tr("Pendapatan", "Income"),
+              value: summary.cycle_income,
+              icon: <Wallet size={desktop ? 16 : 12} className="text-emerald-400" />,
+              color: "text-emerald-300",
+              isMoney: true,
+            },
+            {
+              label: summary.unallocated_amount < 0 ? tr("Terlebih Agih", "Overallocated") : tr("Belum Diagih", "Unallocated"),
+              value: Math.abs(summary.unallocated_amount),
+              icon: summary.unallocated_amount < 0 ? <AlertTriangle size={desktop ? 16 : 12} className="text-rose-400" /> : <BadgeCheck size={desktop ? 16 : 12} className="text-[#b3b3b3]" />,
+              color: summary.unallocated_amount < 0 ? "text-[#fecdd3]" : "text-[#e5e5e5]",
+              isMoney: true,
+            },
             {
               label: tr("Bajet", "Budget"),
               value: summary.total_budget,
@@ -783,18 +839,7 @@ export default function BudgetPage() {
               color: "text-[#fecdd3]",
               isMoney: true,
             },
-            {
-              label: tr("Amaran", "Alerts"),
-              value: summary.over_budget_count + summary.alert_count,
-              icon:
-                summary.over_budget_count > 0 || summary.alert_count > 0 ? (
-                  <AlertTriangle size={desktop ? 16 : 12} className="text-[#fcd34d]" />
-                ) : (
-                  <BadgeCheck size={desktop ? 16 : 12} className="text-[#b3b3b3]" />
-                ),
-              color: "text-[#fde68a]",
-              isMoney: false,
-            },
+
           ].map((item) => (
             <div
               key={item.label}

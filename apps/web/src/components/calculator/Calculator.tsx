@@ -81,6 +81,9 @@ export default function Calculator({
   const [wallets, setWallets] = useState<WalletOption[]>([])
   const [walletId, setWalletId] = useState("")
   const [walletDropdownOpen, setWalletDropdownOpen] = useState(false)
+  const [categoryId, setCategoryId] = useState("auto")
+  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false)
+  const [txnType, setTxnType] = useState<"expense" | "income">("expense")
   const [categories, setCategories] = useState<CategoryOption[]>([])
   const [categoryKeywords, setCategoryKeywords] = useState<Record<number, CategoryKeywordOption[]>>({})
   const [successInfo, setSuccessInfo] = useState<{ title: string; amount: number; wallet: string; balance?: number | null; category: string } | null>(null)
@@ -141,9 +144,8 @@ export default function Calculator({
         if (!res.ok) return
         const data = await res.json()
         if (cancelled || !Array.isArray(data)) return
-        const expenseCategories = data.filter((category) => category.kind === "expense")
-        setCategories(expenseCategories)
-        const entries = await Promise.all(expenseCategories.map(async (category) => {
+        setCategories(data)
+        const entries = await Promise.all(data.map(async (category) => {
           const kwRes = await fetch(`/api/categories/${category.id}/keywords`, {
             cache: "no-store",
             credentials: "include",
@@ -323,6 +325,7 @@ export default function Calculator({
     const normalizedTitle = title.trim().toLowerCase()
     let best: { category: CategoryOption; score: number } | null = null
     for (const category of categories) {
+      if (category.kind && category.kind !== txnType) continue
       const keywords = categoryKeywords[category.id] || []
       for (const keywordRow of keywords) {
         const keyword = (keywordRow.keyword || "").trim().toLowerCase()
@@ -343,6 +346,8 @@ export default function Calculator({
     }
     setSendError("")
     setTransactionTitle("")
+    setCategoryId("auto")
+    setCategoryDropdownOpen(false)
     setSendOpen(true)
   }
 
@@ -363,6 +368,8 @@ export default function Calculator({
     try {
       const token = getAccessToken()
       const matchedCategory = detectCategory(title)
+      const chosenCategoryId = categoryId === "auto" ? (matchedCategory?.id ?? null) : (categoryId ? Number(categoryId) : null)
+      const chosenCategoryName = categoryId === "auto" ? (matchedCategory?.name ?? null) : (categories.find((category) => category.id === chosenCategoryId)?.name ?? null)
       const walletBeforeSave = wallets.find((wallet) => String(wallet.id) === walletId)
       const walletLabel = walletBeforeSave?.label || walletBeforeSave?.name || "Wallet"
       const res = await fetch("/api/transactions", {
@@ -373,12 +380,12 @@ export default function Calculator({
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          type: "expense",
+          type: txnType,
           amount: Number(amount.toFixed(2)),
           vendor_or_source: title,
           txn_date: getTodayDateInTimeZone(),
           notes: title,
-          category_id: matchedCategory?.id ?? null,
+          category_id: chosenCategoryId,
           wallet_id: walletId ? Number(walletId) : null,
         }),
       })
@@ -410,7 +417,7 @@ export default function Calculator({
         amount,
         wallet: savedPayload?.wallet_name || walletLabel,
         balance: latestWallet?.balance,
-        category: savedPayload?.category_name || matchedCategory?.name || tr("Tanpa kategori", "Uncategorized"),
+        category: savedPayload?.category_name || chosenCategoryName || tr("Tanpa kategori", "Uncategorized"),
       })
       setDisplay(fmtNum(amount))
       setExpression("")
@@ -418,6 +425,8 @@ export default function Calculator({
       setShouldResetDisplay(true)
       setTransactionTitle("")
       setWalletDropdownOpen(false)
+      setCategoryId("auto")
+      setCategoryDropdownOpen(false)
       setSendOpen(false)
       window.dispatchEvent(new Event("refreshData"))
     } catch (error) {
@@ -462,6 +471,8 @@ export default function Calculator({
   const opCls = "h-10 w-full bg-[var(--surface-tint-strong)] text-[var(--text)] text-2xl font-bold hover:bg-[var(--border-strong)]"
   const selectedWallet = wallets.find((wallet) => String(wallet.id) === walletId)
   const selectedWalletLabel = selectedWallet?.label || selectedWallet?.name || tr("Pilih wallet", "Select wallet")
+  const selectedCategory = categories.find((category) => String(category.id) === categoryId)
+  const selectedCategoryLabel = categoryId === "auto" ? tr("Auto kategori", "Auto category") : (selectedCategory?.name || tr("Tanpa kategori", "Uncategorized"))
 
   const sendDialog = sendOpen ? (
         <>
@@ -478,6 +489,10 @@ export default function Calculator({
                 </button>
               </div>
               <input value={transactionTitle} onChange={(event) => setTransactionTitle(event.target.value)} autoFocus placeholder={tr("Title transaksi", "Transaction title")} className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-sm font-semibold text-[var(--text)] outline-none transition focus:border-indigo-500" />
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => { setTxnType("expense"); setCategoryId("auto") }} className={cn("rounded-2xl border px-4 py-2.5 text-sm font-bold transition", txnType === "expense" ? "border-transparent bg-rose-500/15 text-rose-500" : "border-[var(--border)] bg-[var(--bg)] text-[var(--muted)]")}>{tr("Perbelanjaan", "Expense")}</button>
+                <button type="button" onClick={() => { setTxnType("income"); setCategoryId("auto") }} className={cn("rounded-2xl border px-4 py-2.5 text-sm font-bold transition", txnType === "income" ? "border-transparent bg-emerald-500/15 text-emerald-500" : "border-[var(--border)] bg-[var(--bg)] text-[var(--muted)]")}>{tr("Pendapatan", "Income")}</button>
+              </div>
               <div className="relative mt-3">
                 <button type="button" onClick={() => setWalletDropdownOpen((value) => !value)} className="flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left text-sm font-bold text-[var(--text)] transition hover:border-indigo-500/60">
                   <span className="truncate">{selectedWalletLabel}</span>
@@ -491,6 +506,29 @@ export default function Calculator({
                         return (
                           <button key={wallet.id} type="button" onClick={() => { setWalletId(String(wallet.id)); setWalletDropdownOpen(false) }} className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition", active ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "text-[var(--text)] hover:bg-[var(--surface-tint)]")}>
                             <span className="truncate">{label}</span>
+                            {active && <span className="ml-2 text-xs">✓</span>}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+              </div>
+              <div className="relative mt-3">
+                <button type="button" onClick={() => setCategoryDropdownOpen((value) => !value)} className="flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left text-sm font-bold text-[var(--text)] transition hover:border-indigo-500/60">
+                  <span className="truncate">{selectedCategoryLabel}</span>
+                  <span className={cn("ml-3 text-xs text-[var(--muted)] transition", categoryDropdownOpen && "rotate-180")}>⌄</span>
+                </button>
+                {categoryDropdownOpen && (
+                    <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-10 max-h-48 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-2xl">
+                      <button type="button" onClick={() => { setCategoryId("auto"); setCategoryDropdownOpen(false) }} className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition", categoryId === "auto" ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "text-[var(--text)] hover:bg-[var(--surface-tint)]")}>
+                        <span className="truncate">{tr("Auto kategori", "Auto category")}</span>
+                        {categoryId === "auto" && <span className="ml-2 text-xs">✓</span>}
+                      </button>
+                      {categories.filter((category) => category.kind === txnType).map((category) => {
+                        const active = String(category.id) === categoryId
+                        return (
+                          <button key={category.id} type="button" onClick={() => { setCategoryId(String(category.id)); setCategoryDropdownOpen(false) }} className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition", active ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "text-[var(--text)] hover:bg-[var(--surface-tint)]")}>
+                            <span className="truncate">{category.name}</span>
                             {active && <span className="ml-2 text-xs">✓</span>}
                           </button>
                         )

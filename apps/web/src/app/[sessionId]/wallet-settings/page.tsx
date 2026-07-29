@@ -19,6 +19,7 @@ import {
   Users,
   Star,
   Search,
+  Upload,
 } from "lucide-react"
 import { useLang } from "@/lib/lang"
 import { usePageAlert } from "@/hooks/usePageAlert"
@@ -43,6 +44,7 @@ type WalletItem = {
   name: string
   label: string
   card_color: string
+  image_url: string
   currency: string
   balance: number
   type: WalletKind
@@ -58,6 +60,7 @@ type DraftWallet = {
   name: string
   label: string
   card_color: string
+  image_url: string
   type: WalletKind
   currency: string
   is_bot_default: boolean
@@ -100,6 +103,7 @@ const DEFAULT_DRAFT: DraftWallet = {
   name: "",
   label: "",
   card_color: "indigo",
+  image_url: "",
   type: "cash",
   currency: "RM",
   is_bot_default: false,
@@ -110,6 +114,7 @@ function toWalletPayload(wallet: DraftWallet | WalletItem) {
     name: wallet.name.trim(),
     label: wallet.label.trim(),
     card_color: wallet.card_color.trim(),
+    image_url: wallet.image_url.trim(),
     type: wallet.type,
     currency: wallet.currency.trim().toUpperCase(),
     is_bot_default: wallet.is_bot_default,
@@ -159,6 +164,7 @@ function GlossyWalletPreview({
   balance,
   isBotDefault,
   txnCount,
+  imageUrl,
   balanceLabel,
   recordsLabel,
 }: {
@@ -170,6 +176,7 @@ function GlossyWalletPreview({
   balance: number | string
   isBotDefault?: boolean
   txnCount?: number
+  imageUrl?: string
   balanceLabel: string
   sharedLabel?: string
   personalLabel?: string
@@ -183,6 +190,13 @@ function GlossyWalletPreview({
         background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 16%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 8%, var(--card)) 100%)`,
       }}
     >
+      {imageUrl && (
+        <>
+          <img src={imageUrl} alt="" className="absolute -right-5 -top-8 h-[135%] w-[62%] rotate-[9deg] object-cover opacity-55 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_55%)]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[var(--card)] from-30% via-[var(--card)] via-52% to-transparent to-90%" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/5" />
+        </>
+      )}
       <div
         className="absolute -right-8 -top-10 h-28 w-28 rounded-full opacity-10 blur-2xl"
         style={{ backgroundColor: accent.color }}
@@ -190,8 +204,8 @@ function GlossyWalletPreview({
 
       <div className="relative flex items-start justify-between gap-3">
         <div className="relative shrink-0">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm">
-            <Wallet size={19} />
+          <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm">
+            {imageUrl ? <img src={imageUrl} alt="" className="h-full w-full object-cover" /> : <Wallet size={19} />}
           </div>
           {isBotDefault ? (
             <span
@@ -288,6 +302,7 @@ export default function WalletSettingsPage() {
               name: wallet.name || "",
               label: wallet.label || wallet.name || "",
               card_color: wallet.card_color || "",
+              image_url: wallet.image_url || "",
               balance: wallet.balance || 0,
               type: normalizeWalletType(wallet.type),
               currency: (wallet.currency || "RM").toUpperCase(),
@@ -459,6 +474,16 @@ export default function WalletSettingsPage() {
     )
   }
 
+  async function uploadWalletImage(file: File, wallet: WalletItem) {
+    if (file.size > 512 * 1024) return showAlert(tr("Fail terlalu besar", "File too large"), tr("Maksimum 512 KB.", "Maximum 512 KB."), "error")
+    const form = new FormData(); form.append("file", file)
+    const token = getAccessToken()
+    const res = await fetch("/api/wallets/image-upload", { method: "POST", credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) return showAlert(tr("Upload gagal", "Upload failed"), data.detail || "Upload failed", "error")
+    setActiveWallet({ ...wallet, image_url: `${data.url}${data.url.includes("?") ? "&" : "?"}v=${Date.now()}` })
+  }
+
   const totalBalance = wallets.reduce((sum, w) => sum + w.balance, 0)
   const cashCount = wallets.filter((w) => w.type === "cash").length
   const bankCount = wallets.filter((w) => w.type === "bank").length
@@ -605,6 +630,13 @@ export default function WalletSettingsPage() {
           background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 16%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 8%, var(--card)) 100%)`,
         }}
       >
+        {wallet.image_url && (
+          <>
+            <img src={wallet.image_url} alt="" className="absolute -right-5 -top-8 h-[135%] w-[62%] rotate-[9deg] object-cover opacity-55 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_55%)]" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[var(--card)] from-30% via-[var(--card)] via-52% to-transparent to-90%" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/5" />
+          </>
+        )}
         <div
           className="absolute -right-8 -top-10 h-28 w-28 rounded-full opacity-10 blur-2xl"
           style={{ backgroundColor: accent.color }}
@@ -612,8 +644,8 @@ export default function WalletSettingsPage() {
 
         <div className="relative flex items-start justify-between gap-3">
           <div className="relative shrink-0">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm">
-              <Wallet size={19} />
+            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm">
+              {wallet.image_url ? <img src={wallet.image_url} alt="" className="h-full w-full object-cover" /> : <Wallet size={19} />}
             </div>
             {wallet.is_bot_default ? (
               <span
@@ -886,6 +918,7 @@ export default function WalletSettingsPage() {
                       currency={draft.currency || "RM"}
                       balance="0.00"
                       isBotDefault={draft.is_bot_default}
+                      imageUrl={draft.image_url}
                       balanceLabel={tr("Baki", "Balance")}
                       sharedLabel={tr("Bersama", "Shared")}
                       personalLabel={tr("Personal", "Personal")}
@@ -1117,6 +1150,7 @@ export default function WalletSettingsPage() {
                       balance={activeWallet.balance}
                       isBotDefault={activeWallet.is_bot_default}
                       txnCount={activeWallet.transaction_count}
+                      imageUrl={activeWallet.image_url}
                       balanceLabel={tr("Baki", "Balance")}
                       sharedLabel={tr("Bersama", "Shared")}
                       personalLabel={tr("Personal", "Personal")}
@@ -1145,6 +1179,10 @@ export default function WalletSettingsPage() {
                     <p className="mb-3 text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
                       {tr("Warna", "Color")}
                     </p>
+                    <label className="mb-3 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)] text-xs font-bold text-[var(--muted)]">
+                      <Upload size={14} /> {tr("Upload imej (maks 512 KB)", "Upload image (max 512 KB)")}
+                      <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadWalletImage(file, activeWallet); e.target.value = "" }} />
+                    </label>
                     <div className="flex flex-wrap items-center justify-center gap-3">
                       {CARD_ACCENTS.map((accent) => {
                         const isSelected = activeWallet.card_color === accent.key

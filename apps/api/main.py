@@ -279,6 +279,7 @@ from fastapi.security import OAuth2PasswordBearer
 import storage_service
 import location_service
 import whatsapp_service
+import budget_service
 import scam_service
 import urllib.request
 import urllib.error
@@ -822,7 +823,8 @@ def _validate_category_icon_name(icon_name: str | None) -> str | None:
     value = (icon_name or "").strip()
     if not value:
         return None
-    if len(value) > 32:
+    limit = 500 if value.startswith("https://") else 32
+    if len(value) > limit:
         raise HTTPException(status_code=400, detail="Category icon is too long.")
     return value
 
@@ -971,6 +973,10 @@ async def ensure_database_schema():
             await conn.execute(text("ALTER TABLE business_orders ADD COLUMN IF NOT EXISTS cancel_reason VARCHAR(120) NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider VARCHAR(20) NOT NULL DEFAULT 'email'"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS firebase_uid VARCHAR(128) NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS cycle_start_day BIGINT NOT NULL DEFAULT 1"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS cycle_mode VARCHAR(12) NOT NULL DEFAULT 'day'"))
+            await conn.execute(text("ALTER TABLE categories ALTER COLUMN icon_name TYPE VARCHAR(500)"))
+            await conn.execute(text("ALTER TABLE wallets ADD COLUMN IF NOT EXISTS image_url VARCHAR(500) NULL"))
             await conn.execute(text("ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL"))
             # Fix FK constraints so products can be deleted (SET NULL on referenced rows)
             await conn.execute(text("ALTER TABLE business_orders DROP CONSTRAINT IF EXISTS business_orders_product_id_fkey"))
@@ -9723,6 +9729,30 @@ async def get_my_profile(current_user: models.User = Depends(get_current_user)):
         current_user=current_user,
     )
 
+@app.get("/cycles/me")
+async def get_my_cycle(
+    db: AsyncSession = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    # Ensure household/categories (incl. Monthly Salary) exist before resolving,
+    # otherwise default_household_id may be None and the salary cycle won't apply.
+    await whatsapp_service.ensure_standard_categories(db, current_user.id)
+    await db.commit()
+    await db.refresh(current_user)
+    cycle = await budget_service.resolve_user_cycle(db, user=current_user)
+    salary_dates = await budget_service.get_salary_dates(
+        db,
+        user_id=current_user.id,
+        household_id=current_user.default_household_id,
+    )
+    return {
+        "mode": cycle["mode"],
+        "month_key": cycle["month_key"],
+        "start": cycle["start"].isoformat(),
+        "end": cycle["end"].isoformat(),
+        "salary_dates": [d.isoformat() for d in salary_dates],
+    }
+
 @app.patch("/users/me", response_model=schemas.UserResponse)
 async def update_my_profile(user_in: schemas.UserUpdate, db: AsyncSession = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     return await _module_update_my_profile_route(
@@ -9924,6 +9954,26 @@ async def change_my_password(
         clear_user_pin=_clear_user_pin,
         clear_user_refresh_token=_clear_user_refresh_token,
     )
+@app.post("/wallets/image-upload")
+async def upload_wallet_image(file: UploadFile = File(...), current_user: models.User = Depends(get_current_user)):
+    payload = await file.read(524289)
+    if len(payload) > 524288:
+        raise HTTPException(status_code=413, detail="Imej terlalu besar. Maksimum 512 KB.")
+    try:
+        mime_type, extension = storage_service.validate_receipt_file(file.filename, file.content_type, payload)
+        if mime_type == "application/pdf":
+            raise storage_service.StorageValidationError("Hanya PNG, JPG atau WEBP dibenarkan.")
+        object_key = f"wallet-images/{current_user.id}/{uuid4().hex}{extension}"
+        await asyncio.to_thread(storage_service.upload_receipt_object, object_key, payload, mime_type, filename=file.filename)
+        url = storage_service.public_cdn_url(object_key)
+        if not url:
+            raise storage_service.StorageError("R2_CDN_DOMAIN tidak dikonfigurasi.")
+        return {"url": url}
+    except storage_service.StorageValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except storage_service.StorageError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
 @app.get("/wallets", response_model=List[schemas.WalletResponse])
 async def get_wallets(db: AsyncSession = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     return await _module_get_wallets_route(
@@ -9971,6 +10021,29 @@ async def delete_wallet(
         db=db,
         current_user=current_user,
     )
+
+@app.post("/categories/icon-upload")
+async def upload_category_icon(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user),
+):
+    payload = await file.read(262145)
+    if len(payload) > 262144:
+        raise HTTPException(status_code=413, detail="Icon terlalu besar. Maksimum 256 KB.")
+    try:
+        mime_type, extension = storage_service.validate_receipt_file(file.filename, file.content_type, payload)
+        if mime_type == "application/pdf":
+            raise storage_service.StorageValidationError("Hanya PNG, JPG atau WEBP dibenarkan.")
+        object_key = storage_service.build_category_icon_object_key(current_user.id, extension)
+        await asyncio.to_thread(storage_service.upload_receipt_object, object_key, payload, mime_type, filename=file.filename)
+        url = storage_service.public_cdn_url(object_key)
+        if not url:
+            raise storage_service.StorageError("R2_CDN_DOMAIN tidak dikonfigurasi.")
+        return {"url": url}
+    except storage_service.StorageValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except storage_service.StorageError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 @app.get("/categories", response_model=List[schemas.CategoryResponse])
 async def get_categories(db: AsyncSession = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):

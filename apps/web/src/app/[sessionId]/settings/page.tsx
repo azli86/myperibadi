@@ -18,10 +18,12 @@ import {
   Sparkles,
   Palette,
   Globe,
+  CalendarDays,
   type LucideIcon,
 
 } from "lucide-react"
 import BadgeOverviewModal from "@/components/badges/BadgeOverviewModal"
+import CycleResetCalendar from "@/components/settings/CycleResetCalendar"
 import { DesktopPageBody, DesktopPageChip, DesktopPageHeader, MobilePageHeader } from "@/components/layout/PageHeader"
 import { useLang, Lang } from "@/lib/lang"
 import { usePageAlert } from "@/hooks/usePageAlert"
@@ -46,8 +48,12 @@ export default function LagiPage() {
   const [stats, setStats] = useState({ balance: 0 })
   const [profileLoading, setProfileLoading] = useState(true)
   const showProfileSkeleton = useDelayedSkeleton(profileLoading)
-  const [activeMobileSheet, setActiveMobileSheet] = useState<"language" | "theme" | "timezone" | "timeFormat" | null>(null)
+  const [activeMobileSheet, setActiveMobileSheet] = useState<"language" | "theme" | "timezone" | "timeFormat" | "cycleReset" | null>(null)
   const [showBadgeModal, setShowBadgeModal] = useState(false)
+  const [cycleStartDay, setCycleStartDay] = useState(1)
+  const [cycleMode, setCycleMode] = useState<"day" | "category">("day")
+  const [cycleSaving, setCycleSaving] = useState(false)
+  const [cycleModeSaving, setCycleModeSaving] = useState(false)
   const closeMobileSheet = React.useCallback(() => setActiveMobileSheet(null), [])
 
   const isBm = lang === "BM"
@@ -63,6 +69,8 @@ export default function LagiPage() {
         if (meRes.ok) {
           const data = await meRes.json()
           setUserProfile({ name: data.name || data.email.split("@")[0], email: data.email, id: `BD-${data.id.toString().padStart(4, "0")}`, phone: data.phone || "" })
+          setCycleStartDay(Number(data.cycle_start_day) || 1)
+          setCycleMode(data.cycle_mode === "category" ? "category" : "day")
         }
         const statsRes = await fetch("/api/stats", { credentials: "include", headers })
         if (statsRes.ok) setStats(await statsRes.json())
@@ -81,6 +89,46 @@ export default function LagiPage() {
       async () => { await logoutAuthSession(); router.push("/login") },
       "warning"
     )
+  }
+
+  async function saveCycleStartDay(day: number) {
+    try {
+      setCycleSaving(true)
+      const token = getAccessToken()
+      if (!token) return
+      const res = await fetch("/api/users/me", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cycle_start_day: day }),
+      })
+      if (!res.ok) throw new Error("save failed")
+      setCycleStartDay(day)
+    } catch (err) {
+      showAlert(tr("Gagal simpan tetapan", "Failed to save setting"), "error")
+    } finally {
+      setCycleSaving(false)
+    }
+  }
+
+  async function saveCycleMode(mode: "day" | "category") {
+    try {
+      setCycleModeSaving(true)
+      const token = getAccessToken()
+      if (!token) return
+      const res = await fetch("/api/users/me", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ cycle_mode: mode }),
+      })
+      if (!res.ok) throw new Error("save failed")
+      setCycleMode(mode)
+    } catch (err) {
+      showAlert(tr("Gagal simpan tetapan", "Failed to save setting"), "error")
+    } finally {
+      setCycleModeSaving(false)
+    }
   }
 
   const systemLinks = [
@@ -118,11 +166,12 @@ export default function LagiPage() {
   const currentTimezoneLabel = timezoneOptions.find(o => o.value === timezone)?.label || timezone
   const currentTimeFormatLabel = timeFormat === "12h" ? t.timeFormat12 : t.timeFormat24
 
-  const mobilePreferenceRows: Array<{ key: "language" | "theme" | "timezone" | "timeFormat"; icon: LucideIcon; label: string; value: string }> = [
+  const mobilePreferenceRows: Array<{ key: "language" | "theme" | "timezone" | "timeFormat" | "cycleReset"; icon: LucideIcon; label: string; value: string }> = [
     { key: "language", icon: Globe, label: t.language, value: currentLanguageLabel },
     { key: "theme", icon: Palette, label: t.theme, value: currentThemeLabel },
     { key: "timezone", icon: Clock, label: t.timezone, value: currentTimezoneLabel },
     { key: "timeFormat", icon: Clock, label: t.timeFormat, value: currentTimeFormatLabel },
+    { key: "cycleReset", icon: CalendarDays, label: tr("Kitaran Reset", "Reset Cycle"), value: cycleMode === "category" ? tr("Ikut Gaji", "By Salary") : tr(`Setiap ${cycleStartDay} hari bulan`, `Day ${cycleStartDay} each month`) },
   ]
 
   const activeConfig = activeMobileSheet ? {
@@ -130,6 +179,7 @@ export default function LagiPage() {
     theme: { title: t.theme, subtitle: tr("Pilih rupa portal yang anda suka", "Choose the portal look you prefer") },
     timezone: { title: t.timezone, subtitle: t.timezoneNote },
     timeFormat: { title: t.timeFormat, subtitle: t.timeFormatDesc },
+    cycleReset: { title: tr("Kitaran Reset Bulanan", "Monthly Reset Cycle"), subtitle: tr("Pilih hari kitaran baharu bermula", "Choose the day your cycle restarts") },
   }[activeMobileSheet] : null
 
   const { requestClose: requestMobileSheetClose, requestCloseThen: requestMobileSheetCloseThen } = useOverlayBackClose({
@@ -383,6 +433,30 @@ export default function LagiPage() {
                 })}
               </div>
             </div>
+            {/* Cycle Reset */}
+            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]"><CalendarDays size={20} /></div>
+                <div>
+                  <p className="text-[0.625rem] font-black uppercase tracking-[0.24em] text-[var(--muted)]">{tr("Kitaran Reset", "Reset Cycle")}</p>
+                  <p className="text-sm font-semibold text-[var(--muted)]">{tr("Hari kitaran baharu bermula", "Day your new cycle starts")}</p>
+                </div>
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => saveCycleMode("day")} disabled={cycleModeSaving} className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${cycleMode === "day" ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "bg-[var(--surface-tint)] text-[var(--muted)]"}`}>{tr("Ikut Hari", "By Day")}</button>
+                <button type="button" onClick={() => saveCycleMode("category")} disabled={cycleModeSaving} className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${cycleMode === "category" ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "bg-[var(--surface-tint)] text-[var(--muted)]"}`}>{tr("Ikut Gaji", "By Salary")}</button>
+              </div>
+              {cycleMode === "day" ? (
+                <>
+                  <div className="mt-4">
+                    <CycleResetCalendar value={cycleStartDay} onChange={(d) => saveCycleStartDay(d)} lang={lang} />
+                  </div>
+                  <p className="mt-3 text-center text-xs font-medium text-[var(--muted)]">{cycleSaving ? (isBm ? "Menyimpan..." : "Saving...") : tr(`Kitaran bermula setiap hari ${cycleStartDay} bulan`, `Cycle restarts on day ${cycleStartDay} of each month`)}</p>
+                </>
+              ) : (
+                <p className="mt-4 text-center text-xs font-medium text-[var(--muted)]">{cycleModeSaving ? (isBm ? "Menyimpan..." : "Saving...") : tr("Kitaran reset mengikut tarikh gaji (Monthly Salary: Mgaji / Msalary).", "Cycle resets on your salary date (Monthly Salary: Mgaji / Msalary).")}</p>
+              )}
+            </div>
           </div>
 
           {/* Right Column */}
@@ -490,6 +564,24 @@ export default function LagiPage() {
                       </button>
                     )
                   })}
+                  {activeMobileSheet === "cycleReset" && (
+                    <div className="py-4">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button type="button" onClick={() => saveCycleMode("day")} disabled={cycleModeSaving} className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${cycleMode === "day" ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "bg-[var(--surface-tint)] text-[var(--muted)]"}`}>{tr("Ikut Hari", "By Day")}</button>
+                        <button type="button" onClick={() => saveCycleMode("category")} disabled={cycleModeSaving} className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${cycleMode === "category" ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "bg-[var(--surface-tint)] text-[var(--muted)]"}`}>{tr("Ikut Gaji", "By Salary")}</button>
+                      </div>
+                      {cycleMode === "day" ? (
+                        <>
+                          <div className="mt-4">
+                            <CycleResetCalendar value={cycleStartDay} onChange={(d) => { setCycleStartDay(d); saveCycleStartDay(d) }} lang={lang} />
+                          </div>
+                          <p className="mt-3 text-center text-xs font-medium text-[var(--muted)]">{tr(`Kitaran bermula setiap hari ${cycleStartDay} bulan`, `Cycle restarts on day ${cycleStartDay} of each month`)}</p>
+                        </>
+                      ) : (
+                        <p className="mt-4 text-center text-xs font-medium text-[var(--muted)]">{tr("Kitaran reset mengikut tarikh gaji (Monthly Salary: Mgaji / Msalary).", "Cycle resets on your salary date (Monthly Salary: Mgaji / Msalary).")}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

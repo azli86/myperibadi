@@ -32,9 +32,14 @@ async def get_receipts_route(
     if household_id is None:
         return []
 
+    start_day = int(getattr(current_user, "cycle_start_day", 1) or 1)
     if month_key:
-        month_key = budget_service.normalize_month_key(month_key)
-        month_start, month_end_exclusive = budget_service.month_bounds(month_key)
+        month_key = budget_service.normalize_month_key(month_key, start_day)
+        month_start, month_end_exclusive = budget_service.month_bounds(month_key, start_day)
+    else:
+        cycle = await budget_service.resolve_user_cycle(db, user=current_user)
+        month_key = cycle["month_key"]
+        month_start, month_end_exclusive = cycle["start"], cycle["end"]
 
     if limit is None or limit <= 0:
         limit = 60

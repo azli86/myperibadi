@@ -148,8 +148,19 @@ async def add_category_keyword_route(
     validate_keyword_text: Callable[[str], str],
     validate_keyword_match_type: Callable[[str], str],
 ) -> models.CategoryKeyword:
-    await get_mutable_category(cat_id, current_user, db)
+    category = await get_mutable_category(cat_id, current_user, db)
     keyword = validate_keyword_text(kw_in.keyword)
+
+    if keyword.lower() in models.MONTHLY_SALARY_LOCKED_KEYWORDS:
+        raise HTTPException(
+            status_code=400,
+            detail="Kata kunci ini dikhaskan untuk kategori sistem Monthly Salary.",
+        )
+    if category.system_code == models.MONTHLY_SALARY_CATEGORY_CODE:
+        raise HTTPException(
+            status_code=400,
+            detail="Kategori Monthly Salary tidak boleh tambah kata kunci lain.",
+        )
 
     db_kw = models.CategoryKeyword(
         category_id=cat_id,
@@ -169,7 +180,12 @@ async def delete_category_route(
     current_user: models.User,
     get_mutable_category: Callable[..., Awaitable[models.Category]],
 ) -> dict[str, str]:
-    await get_mutable_category(cat_id, current_user, db)
+    category = await get_mutable_category(cat_id, current_user, db)
+    if category.system_code == models.MONTHLY_SALARY_CATEGORY_CODE:
+        raise HTTPException(
+            status_code=400,
+            detail="Kategori Monthly Salary tidak boleh dipadam.",
+        )
     await db.execute(models.CategoryKeyword.__table__.delete().where(models.CategoryKeyword.category_id == cat_id))
     await db.execute(models.CategoryBudget.__table__.delete().where(models.CategoryBudget.category_id == cat_id))
     await db.execute(models.Category.__table__.delete().where(models.Category.id == cat_id))
@@ -185,6 +201,19 @@ async def delete_keyword_route(
     get_mutable_keyword: Callable[..., Awaitable[models.CategoryKeyword]],
 ) -> dict[str, str]:
     await get_mutable_keyword(kw_id, current_user, db)
+    kw_row = await db.execute(
+        select(models.CategoryKeyword).where(models.CategoryKeyword.id == kw_id)
+    )
+    kw = kw_row.scalar_one_or_none()
+    if kw is not None:
+        cat_row = await db.execute(
+            select(models.Category.system_code).where(models.Category.id == kw.category_id)
+        )
+        if (cat_row.scalar_one_or_none() or "") == models.MONTHLY_SALARY_CATEGORY_CODE:
+            raise HTTPException(
+                status_code=400,
+                detail="Kata kunci Monthly Salary tidak boleh dipadam.",
+            )
     await db.execute(models.CategoryKeyword.__table__.delete().where(models.CategoryKeyword.id == kw_id))
     await db.commit()
     return {"message": "Keyword deleted"}
@@ -235,8 +264,22 @@ async def update_keyword_route(
     validate_keyword_text: Callable[[str], str],
     validate_keyword_match_type: Callable[[str], str],
 ) -> dict[str, str]:
-    await get_mutable_keyword(kw_id, current_user, db)
+    kw = await get_mutable_keyword(kw_id, current_user, db)
     keyword = validate_keyword_text(kw_in.keyword)
+
+    cat_row = await db.execute(
+        select(models.Category.system_code).where(models.Category.id == kw.category_id)
+    )
+    if (cat_row.scalar_one_or_none() or "") == models.MONTHLY_SALARY_CATEGORY_CODE:
+        raise HTTPException(
+            status_code=400,
+            detail="Kata kunci Monthly Salary tidak boleh diubah.",
+        )
+    if keyword.lower() in models.MONTHLY_SALARY_LOCKED_KEYWORDS:
+        raise HTTPException(
+            status_code=400,
+            detail="Kata kunci ini dikhaskan untuk kategori sistem Monthly Salary.",
+        )
 
     await db.execute(
         update(models.CategoryKeyword)

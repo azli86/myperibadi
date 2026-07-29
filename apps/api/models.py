@@ -7,6 +7,13 @@ from database import Base
 import string
 import random
 
+# System category that defines the per-user budget/transaction cycle when
+# cycle_mode == 'category' (cycle resets on each Monthly Salary transaction).
+MONTHLY_SALARY_CATEGORY_CODE = "monthly_salary"
+MONTHLY_SALARY_CATEGORY_NAME = "Monthly Salary"
+MONTHLY_SALARY_KEYWORDS = ("Mgaji", "Msalary")
+MONTHLY_SALARY_LOCKED_KEYWORDS = {kw.lower() for kw in MONTHLY_SALARY_KEYWORDS}
+
 def generate_nano_id():
     return ''.join(random.choices(string.ascii_letters + string.digits, k=16))
 
@@ -38,6 +45,8 @@ class User(Base):
     bot_personality: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)
     personal_bot_prefix_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     personal_bot_prefix: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    cycle_start_day: Mapped[int] = mapped_column(BigInteger, default=1, nullable=False)  # 1..28, monthly reset day for budgets/transactions
+    cycle_mode: Mapped[str] = mapped_column(String(12), default="day", nullable=False)  # 'day' | 'category' (reset by Monthly Salary category)
     
     reset_token: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     reset_token_expires: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
@@ -112,6 +121,7 @@ class Wallet(Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     label: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     card_color: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     type: Mapped[str] = mapped_column(String(20))  # cash / bank / bank_digital / ewallet / credit_card (+ legacy shared)
     currency: Mapped[str] = mapped_column(String(10), default="MYR")
     status: Mapped[str] = mapped_column(String(20), default="active")
@@ -125,7 +135,7 @@ class Category(Base):
     __tablename__ = "categories"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    icon_name: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    icon_name: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     kind: Mapped[str] = mapped_column(String(20)) # expense / income
     is_default: Mapped[bool] = mapped_column(Boolean, default=True)
     is_internal: Mapped[bool] = mapped_column(Boolean, default=False)

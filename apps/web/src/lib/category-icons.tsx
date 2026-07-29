@@ -187,7 +187,11 @@ export function CategoryIconGlyph({
   brandFill = false,
   className,
 }: CategoryIconProps) {
-  const normalizedIcon = String(iconName || "").trim().toLowerCase()
+  const rawIcon = String(iconName || "").trim()
+  const normalizedIcon = rawIcon.toLowerCase()
+  if (/^https:\/\//i.test(rawIcon)) {
+    return <img src={rawIcon} alt={categoryName || "Category"} width={size} height={size} className={cn("rounded-md object-cover", className)} style={{ width: size, height: size }} />
+  }
   const isLiteralEmojiIcon = /\p{Extended_Pictographic}/u.test(normalizedIcon)
   const resolvedIconName = (
     CATEGORY_EMOJI_MAP[normalizedIcon as CategoryIconName]

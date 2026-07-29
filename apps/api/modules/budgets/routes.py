@@ -11,6 +11,29 @@ import models
 import schemas
 
 
+async def _resolve_cycle(db: AsyncSession, current_user: models.User, month: str | None):
+    """Return (month_key, explicit_bounds|None). When month is None (default view)
+    resolve the user's active cycle (day- or salary-based); otherwise keep the
+    requested month key. In category mode, a requested month maps to its salary
+    cycle when one exists, else falls back to cycle-day bounds."""
+    mode = (getattr(current_user, "cycle_mode", "day") or "day").strip().lower()
+    if month and mode == "category":
+        bounds = await budget_service.get_category_cycle_bounds_for_month(
+            db,
+            user_id=current_user.id,
+            household_id=getattr(current_user, "default_household_id", None),
+            month_key=month,
+        )
+        if bounds:
+            start, end = bounds
+            return month, (start, end)
+    if month:
+        start_day = int(getattr(current_user, "cycle_start_day", 1) or 1)
+        return budget_service.normalize_month_key(month, start_day), None
+    cyc = await budget_service.resolve_user_cycle(db, user=current_user)
+    return cyc["month_key"], (cyc["start"], cyc["end"])
+
+
 async def get_budgets_route(
     *,
     month: str | None,
@@ -18,8 +41,9 @@ async def get_budgets_route(
     current_user: models.User,
     ensure_current_user_household: Callable[..., Awaitable[int]],
 ) -> list[dict]:
+    start_day = int(getattr(current_user, "cycle_start_day", 1) or 1)
     try:
-        month_key = budget_service.normalize_month_key(month)
+        month_key, explicit_bounds = await _resolve_cycle(db, current_user, month)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -29,6 +53,8 @@ async def get_budgets_route(
         user_id=current_user.id,
         household_id=household_id,
         month_key=month_key,
+        start_day=start_day,
+        explicit_bounds=explicit_bounds,
     )
     return items
 
@@ -83,6 +109,7 @@ async def create_budget_route(
         user_id=current_user.id,
         household_id=household_id,
         month_key=month_key,
+        start_day=int(getattr(current_user, "cycle_start_day", 1) or 1),
     )
     for item in items:
         if item["id"] == int(target_budget_id):
@@ -135,6 +162,7 @@ async def update_budget_route(
         user_id=current_user.id,
         household_id=household_id,
         month_key=target_month_key,
+        start_day=int(getattr(current_user, "cycle_start_day", 1) or 1),
     )
     for item in items:
         if item["id"] == int(budget.id):
@@ -162,8 +190,9 @@ async def get_budget_summary_route(
     current_user: models.User,
     ensure_current_user_household: Callable[..., Awaitable[int]],
 ) -> dict:
+    start_day = int(getattr(current_user, "cycle_start_day", 1) or 1)
     try:
-        month_key = budget_service.normalize_month_key(month)
+        month_key, explicit_bounds = await _resolve_cycle(db, current_user, month)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -173,5 +202,7 @@ async def get_budget_summary_route(
         user_id=current_user.id,
         household_id=household_id,
         month_key=month_key,
+        start_day=start_day,
+        explicit_bounds=explicit_bounds,
     )
     return summary

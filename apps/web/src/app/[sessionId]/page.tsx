@@ -40,6 +40,7 @@ import { usePageAlert } from "@/hooks/usePageAlert"
 import { CategoryIconGlyph } from "@/lib/category-icons"
 import { splitWalletTaggedDescription } from "@/lib/transaction-display"
 import { fetchApiJson, readApiCache } from "@/lib/api-cache"
+import { categoryCycleMonthBounds, cycleMonthBounds } from "@/lib/cycle"
 import BadgeOverviewModal from "@/components/badges/BadgeOverviewModal"
 import { APP_BADGES, deriveEarnedBadgeKeys, type BadgeBudgetItemLike, type BadgeTransactionLike } from "@/lib/badges"
 import { formatCurrencyLabel } from "@/components/ui/MoneyAmount"
@@ -189,6 +190,7 @@ type DashboardWallet = {
   name: string
   label?: string | null
   card_color?: string | null
+  image_url?: string | null
   balance: number
   currency: string
   type?: "cash" | "bank" | "bank_digital" | "ewallet" | "credit_card" | "shared" | "personal" | string | null
@@ -206,6 +208,14 @@ type DashboardUserProfile = {
   name?: string | null
   email?: string | null
   show_hero_amounts?: boolean | null
+  cycle_start_day?: number | null
+  cycle_mode?: "day" | "category" | string | null
+}
+
+type DashboardCycleInfo = {
+  mode?: "day" | "category" | string | null
+  month_key?: string | null
+  salary_dates?: string[] | null
 }
 
 type DashboardBudgetItem = {
@@ -382,6 +392,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const showDataSkeleton = useDelayedSkeleton(loading)
   const [stats, setStats] = useState({ balance: 0, income_month: 0, expense_month: 0, safe_balance: 0 })
+  const [cycleStartDay, setCycleStartDay] = useState(1)
+  const [cycleMode, setCycleMode] = useState<"day" | "category">("day")
+  const [salaryDates, setSalaryDates] = useState<string[]>([])
   const [transactions, setTransactions] = useState<DashboardTransaction[]>([])
   const [categories, setCategories] = useState<DashboardCategory[]>([])
   const [wallets, setWallets] = useState<DashboardWallet[]>([])
@@ -452,8 +465,18 @@ export default function Dashboard() {
   }
   const [selectedDashboardMonthKey, setSelectedDashboardMonthKey] = useState(dashboardCurrentMonthKey)
   const previousDashboardMonthKey = getPreviousDashboardMonthKey(selectedDashboardMonthKey)
-  const currentMonthTransactions = transactions.filter((tx) => String(tx.txn_date).startsWith(selectedDashboardMonthKey))
-  const previousMonthTransactions = transactions.filter((tx) => String(tx.txn_date).startsWith(previousDashboardMonthKey))
+  const txInCycleMonth = (tx: DashboardTransaction, monthKey: string) => {
+    const dateKey = String(tx.txn_date).slice(0, 10)
+    const bounds = cycleMode === "category"
+      ? categoryCycleMonthBounds(salaryDates, monthKey)
+      : cycleMonthBounds(monthKey, cycleStartDay)
+    if (!bounds) return dateKey.startsWith(monthKey)
+    const start = bounds.start instanceof Date ? bounds.start.toISOString().slice(0, 10) : bounds.start
+    const end = bounds.end instanceof Date ? bounds.end.toISOString().slice(0, 10) : bounds.end
+    return dateKey >= start && dateKey <= end
+  }
+  const currentMonthTransactions = transactions.filter((tx) => txInCycleMonth(tx, selectedDashboardMonthKey))
+  const previousMonthTransactions = transactions.filter((tx) => txInCycleMonth(tx, previousDashboardMonthKey))
   const analyticalCurrentMonthTransactions = currentMonthTransactions.filter((tx) => !tx.is_wallet_transfer && !tx.is_debt_movement && tx.type === "expense")
   const analyticalPreviousMonthTransactions = previousMonthTransactions.filter((tx) => !tx.is_wallet_transfer && !tx.is_debt_movement && tx.type === "expense")
   const selectedDashboardMonthOption = dashboardMonthOptions.find((option) => option.key === selectedDashboardMonthKey) ?? dashboardMonthOptions[0]
@@ -493,6 +516,8 @@ export default function Dashboard() {
       if (typeof me?.show_hero_amounts === "boolean") {
         setShowHeroAmounts(me.show_hero_amounts)
       }
+      if (typeof me?.cycle_start_day === "number") setCycleStartDay(Math.min(28, Math.max(1, me.cycle_start_day)))
+      if (me?.cycle_mode === "category" || me?.cycle_mode === "day") setCycleMode(me.cycle_mode)
     }
 
     try {
@@ -505,6 +530,7 @@ export default function Dashboard() {
         transactions: "/api/transactions",
         categories: "/api/categories",
         user: "/api/users/me",
+        cycle: "/api/cycles/me",
         wallets: "/api/wallets",
         budgets: `/api/budgets?month=${encodeURIComponent(currentMonthKey)}`,
       }
@@ -525,11 +551,12 @@ export default function Dashboard() {
       if (cachedBudgets) { setBudgetItems(Array.isArray(cachedBudgets) ? cachedBudgets : []); hydratedFromCache = true }
       if (hydratedFromCache) setLoading(false)
 
-      const [statsResult, txnsResult, catsResult, meResult, walletsResult, budgetsResult] = await Promise.allSettled([
+      const [statsResult, txnsResult, catsResult, meResult, cycleResult, walletsResult, budgetsResult] = await Promise.allSettled([
         fetchApiJson<DashboardStats>(urls.stats, token),
         fetchApiJson<DashboardTransaction[]>(urls.transactions, token),
         fetchApiJson<DashboardCategory[]>(urls.categories, token),
         fetchApiJson<DashboardUserProfile>(urls.user, token),
+        fetchApiJson<DashboardCycleInfo>(urls.cycle, token),
         fetchApiJson<DashboardWallet[]>(urls.wallets, token),
         fetchApiJson<DashboardBudgetItem[]>(urls.budgets, token),
       ])
@@ -540,6 +567,13 @@ export default function Dashboard() {
       if (walletsResult.status === "fulfilled") setWallets(Array.isArray(walletsResult.value) ? walletsResult.value : [])
       if (budgetsResult.status === "fulfilled") setBudgetItems(Array.isArray(budgetsResult.value) ? budgetsResult.value : [])
       if (meResult.status === "fulfilled") applyUserProfile(meResult.value)
+      if (cycleResult.status === "fulfilled") {
+        setCycleMode(cycleResult.value?.mode === "category" ? "category" : "day")
+        setSalaryDates(Array.isArray(cycleResult.value?.salary_dates) ? cycleResult.value.salary_dates : [])
+        if (cycleResult.value?.mode === "category" && cycleResult.value?.month_key) {
+          setSelectedDashboardMonthKey(cycleResult.value.month_key)
+        }
+      }
     } catch (err) {
       console.error("Fetch error:", err)
     } finally {
@@ -1536,11 +1570,12 @@ export default function Dashboard() {
                     className="relative flex h-[196px] w-full flex-col overflow-hidden rounded-3xl border border-[var(--border)] p-5 pb-6 shadow-sm transition hover:border-[var(--border-strong)] hover:shadow-md"
                     style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 16%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 8%, var(--card)) 100%)` }}
                   >
+                    
                     <div className="absolute -right-8 -top-10 h-28 w-28 rounded-full opacity-10 blur-2xl" style={{ backgroundColor: accent.color }} />
                     <div className="relative flex items-start justify-between gap-3">
                       <div className="relative shrink-0">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm">
-                          <Wallet size={19} />
+                        <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm">
+                          {wallet.image_url ? <img src={wallet.image_url} alt="" className="h-full w-full object-cover" /> : <Wallet size={19} />}
                         </div>
                         {wallet.is_bot_default ? (
                           <span
@@ -1813,7 +1848,28 @@ export default function Dashboard() {
         ? "text-[2.2rem] lg:text-[2.45rem]"
         : "text-[2.55rem] lg:text-[2.8rem]"
 
-  const moneyLifespanDaysLeft = Math.max(daysInSelectedMonth - currentDayInKualaLumpur + 1, 1)
+  const moneyLifespanCycleBounds = (() => {
+    const bounds = cycleMode === "category"
+      ? categoryCycleMonthBounds(salaryDates, selectedDashboardMonthKey)
+      : cycleMonthBounds(selectedDashboardMonthKey, cycleStartDay)
+    if (!bounds) return null
+    const startKey = bounds.start instanceof Date ? bounds.start.toISOString().slice(0, 10) : bounds.start
+    let endKey = bounds.end instanceof Date ? bounds.end.toISOString().slice(0, 10) : bounds.end
+    if (cycleMode === "category" && endKey === getTodayDateInTimeZone(timezone)) {
+      const start = new Date(`${startKey}T00:00:00`)
+      const expectedNext = new Date(start.getFullYear(), start.getMonth() + 1, start.getDate())
+      expectedNext.setDate(expectedNext.getDate() - 1)
+      endKey = `${expectedNext.getFullYear()}-${String(expectedNext.getMonth() + 1).padStart(2, "0")}-${String(expectedNext.getDate()).padStart(2, "0")}`
+    }
+    return { startKey, endKey }
+  })()
+  const todayKeyForRunway = getTodayDateInTimeZone(timezone)
+  const moneyLifespanDaysLeft = (() => {
+    if (!moneyLifespanCycleBounds) return Math.max(daysInSelectedMonth - currentDayInKualaLumpur + 1, 1)
+    const today = new Date(`${todayKeyForRunway}T00:00:00`)
+    const end = new Date(`${moneyLifespanCycleBounds.endKey}T00:00:00`)
+    return Math.max(Math.floor((end.getTime() - today.getTime()) / 86400000) + 1, 1)
+  })()
   const moneyLifespanCurrentBalance = Math.max(Number(stats.balance || 0), 0)
   const moneyLifespanSavingsAmount = moneyLifespanCurrentBalance * 0.2
   const moneyLifespanSpendableAmount = Math.max(moneyLifespanCurrentBalance - moneyLifespanSavingsAmount, 0)
@@ -1869,10 +1925,15 @@ export default function Dashboard() {
     ? moneyLifespanStatusClass
     : "bg-[var(--surface-tint-strong)] text-[var(--muted)]"
 
-  const moneyLifespanMonthProgress = Math.min(
-    100,
-    Math.max(0, (currentDayInKualaLumpur / Math.max(daysInSelectedMonth, 1)) * 100)
-  )
+  const moneyLifespanMonthProgress = (() => {
+    if (!moneyLifespanCycleBounds) return Math.min(100, Math.max(0, (currentDayInKualaLumpur / Math.max(daysInSelectedMonth, 1)) * 100))
+    const start = new Date(`${moneyLifespanCycleBounds.startKey}T00:00:00`)
+    const end = new Date(`${moneyLifespanCycleBounds.endKey}T00:00:00`)
+    const today = new Date(`${todayKeyForRunway}T00:00:00`)
+    const total = Math.max(Math.floor((end.getTime() - start.getTime()) / 86400000) + 1, 1)
+    const elapsed = Math.max(Math.floor((today.getTime() - start.getTime()) / 86400000) + 1, 0)
+    return Math.min(100, Math.max(0, (elapsed / total) * 100))
+  })()
   const moneyLifespanFocusText = showHeroAmounts
     ? lang === "EN"
       ? `Spend around ${moneyLifespanDailyDisplay} daily after setting aside 20% of current balance.`
@@ -2175,16 +2236,17 @@ export default function Dashboard() {
                         : undefined
                     }
                     className={cn(
-                      "grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] px-4 py-3.5 text-left shadow-sm transition active:scale-[0.99]",
+                      "relative grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] px-4 py-3.5 text-left shadow-sm transition active:scale-[0.99]",
                       heroWallets.length > 1 && "cursor-pointer",
                     )}
                     style={{
                       background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 14%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 7%, var(--card)) 100%)`,
                     }}
                   >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)]">
-                        <Wallet size={16} strokeWidth={2.4} />
+                    
+                    <div className="relative flex min-w-0 items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)]">
+                        {primary.image_url ? <img src={primary.image_url} alt="" className="h-full w-full object-cover" /> : <Wallet size={16} strokeWidth={2.4} />}
                       </span>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-black tracking-tight text-[var(--text)]">
@@ -2696,7 +2758,7 @@ export default function Dashboard() {
                       {lang === "EN" ? "Runway health" : "Status lifespan"}
                     </p>
                     <p className="balance-hero-label mt-0.5 text-xs font-medium text-[#c5d0e0]/90">
-                      {lang === "EN" ? "Until month end" : "Sampai hujung bulan"}
+                      {lang === "EN" ? "Until next reset" : "Sampai reset seterusnya"}
                     </p>
                   </div>
                   <span
@@ -3228,10 +3290,11 @@ export default function Dashboard() {
                               background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 14%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 6%, var(--card)) 100%)`,
                             }}
                           >
+                            
                             <div className="absolute -right-6 -top-8 h-20 w-20 rounded-full opacity-15 blur-2xl" style={{ backgroundColor: accent.color }} />
                             <div className="relative flex items-center gap-3">
-                              <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)]">
-                                <Wallet size={17} strokeWidth={2.3} />
+                              <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)]">
+                                {wallet.image_url ? <img src={wallet.image_url} alt="" className="h-full w-full object-cover" /> : <Wallet size={17} strokeWidth={2.3} />}
                                 {wallet.is_bot_default ? (
                                   <span className="absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[0.5rem] font-black leading-none text-white ring-2 ring-[var(--card)]">
                                     B

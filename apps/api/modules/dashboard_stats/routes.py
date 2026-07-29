@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
 import schemas
+from time_utils import cycle_bounds
+import budget_service
 
 
 async def get_dashboard_stats_route(
@@ -59,11 +61,8 @@ async def get_dashboard_stats_route(
     balance = sum((float(txn.amount) if txn.type == "income" else -float(txn.amount)) for txn in cash_balance_txns)
 
     business_today = current_business_date()
-    month_start = business_today.replace(day=1)
-    if month_start.month == 12:
-        month_end = date(month_start.year + 1, 1, 1)
-    else:
-        month_end = date(month_start.year, month_start.month + 1, 1)
+    cycle = await budget_service.resolve_user_cycle(db, user=current_user)
+    month_start, month_end = cycle["start"], cycle["end"]
 
     monthly_income = sum(
         float(txn.amount)
