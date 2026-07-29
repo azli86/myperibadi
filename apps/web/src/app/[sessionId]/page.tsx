@@ -1570,11 +1570,11 @@ export default function Dashboard() {
                     className="relative flex h-[196px] w-full flex-col overflow-hidden rounded-3xl border border-[var(--border)] p-5 pb-6 shadow-sm transition hover:border-[var(--border-strong)] hover:shadow-md"
                     style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 16%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 8%, var(--card)) 100%)` }}
                   >
-                    
+                    {wallet.image_url && <><img src={wallet.image_url} alt="" className="absolute -right-5 -top-8 h-[135%] w-[62%] rotate-[9deg] object-cover opacity-55 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_55%)]" /><div className="absolute inset-0 bg-gradient-to-r from-[var(--card)] from-30% via-[var(--card)] via-52% to-transparent to-90%" /><div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/5" /></>}
                     <div className="absolute -right-8 -top-10 h-28 w-28 rounded-full opacity-10 blur-2xl" style={{ backgroundColor: accent.color }} />
                     <div className="relative flex items-start justify-between gap-3">
                       <div className="relative shrink-0">
-                        <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm">
+                        <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm">
                           {wallet.image_url ? <img src={wallet.image_url} alt="" className="h-full w-full object-cover" /> : <Wallet size={19} />}
                         </div>
                         {wallet.is_bot_default ? (

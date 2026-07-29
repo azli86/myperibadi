@@ -204,7 +204,7 @@ function GlossyWalletPreview({
 
       <div className="relative flex items-start justify-between gap-3">
         <div className="relative shrink-0">
-          <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm">
+          <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm">
             {imageUrl ? <img src={imageUrl} alt="" className="h-full w-full object-cover" /> : <Wallet size={19} />}
           </div>
           {isBotDefault ? (
@@ -263,6 +263,7 @@ export default function WalletSettingsPage() {
   const [loading, setLoading] = useState(true)
   const showDataSkeleton = useDelayedSkeleton(loading)
   const [busyWalletId, setBusyWalletId] = useState<number | null>(null)
+  const [uploadingWalletId, setUploadingWalletId] = useState<number | null>(null)
   const [activeWallet, setActiveWallet] = useState<WalletItem | null>(null)
   const [mounted, setMounted] = useState(false)
   const [showCreateWalletModal, setShowCreateWalletModal] = useState(false)
@@ -476,12 +477,23 @@ export default function WalletSettingsPage() {
 
   async function uploadWalletImage(file: File, wallet: WalletItem) {
     if (file.size > 512 * 1024) return showAlert(tr("Fail terlalu besar", "File too large"), tr("Maksimum 512 KB.", "Maximum 512 KB."), "error")
-    const form = new FormData(); form.append("file", file)
-    const token = getAccessToken()
-    const res = await fetch("/api/wallets/image-upload", { method: "POST", credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) return showAlert(tr("Upload gagal", "Upload failed"), data.detail || "Upload failed", "error")
-    setActiveWallet({ ...wallet, image_url: `${data.url}${data.url.includes("?") ? "&" : "?"}v=${Date.now()}` })
+    const previewUrl = URL.createObjectURL(file)
+    setActiveWallet((current) => current?.id === wallet.id ? { ...current, image_url: previewUrl } : current)
+    setUploadingWalletId(wallet.id)
+    try {
+      const form = new FormData(); form.append("file", file)
+      const token = getAccessToken()
+      const res = await fetch("/api/wallets/image-upload", { method: "POST", credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.detail || "Upload failed")
+      setActiveWallet((current) => current?.id === wallet.id ? { ...current, image_url: `${data.url}${data.url.includes("?") ? "&" : "?"}v=${Date.now()}` } : current)
+    } catch (error) {
+      setActiveWallet((current) => current?.id === wallet.id ? { ...current, image_url: wallet.image_url } : current)
+      showAlert(tr("Upload gagal", "Upload failed"), error instanceof Error ? error.message : "Upload failed", "error")
+    } finally {
+      URL.revokeObjectURL(previewUrl)
+      setUploadingWalletId(null)
+    }
   }
 
   const totalBalance = wallets.reduce((sum, w) => sum + w.balance, 0)
@@ -644,7 +656,7 @@ export default function WalletSettingsPage() {
 
         <div className="relative flex items-start justify-between gap-3">
           <div className="relative shrink-0">
-            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm">
+            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm">
               {wallet.image_url ? <img src={wallet.image_url} alt="" className="h-full w-full object-cover" /> : <Wallet size={19} />}
             </div>
             {wallet.is_bot_default ? (
@@ -1180,7 +1192,7 @@ export default function WalletSettingsPage() {
                       {tr("Warna", "Color")}
                     </p>
                     <label className="mb-3 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)] text-xs font-bold text-[var(--muted)]">
-                      <Upload size={14} /> {tr("Upload imej (maks 512 KB)", "Upload image (max 512 KB)")}
+                      <Upload size={14} /> {uploadingWalletId === activeWallet.id ? tr("Sedang upload…", "Uploading…") : tr("Upload imej (maks 512 KB)", "Upload image (max 512 KB)")}
                       <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadWalletImage(file, activeWallet); e.target.value = "" }} />
                     </label>
                     <div className="flex flex-wrap items-center justify-center gap-3">
@@ -1291,7 +1303,7 @@ export default function WalletSettingsPage() {
                         const didSave = await saveWallet(activeWallet)
                         if (didSave) setActiveWallet(null)
                       }}
-                      disabled={busyWalletId === activeWallet.id}
+                      disabled={busyWalletId === activeWallet.id || uploadingWalletId === activeWallet.id}
                       className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--text)] text-sm font-black text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-50"
                     >
                       {busyWalletId === activeWallet.id ? (
