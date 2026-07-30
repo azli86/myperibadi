@@ -264,6 +264,7 @@ export default function WalletSettingsPage() {
   const showDataSkeleton = useDelayedSkeleton(loading)
   const [busyWalletId, setBusyWalletId] = useState<number | null>(null)
   const [uploadingWalletId, setUploadingWalletId] = useState<number | null>(null)
+  const [uploadingDraftImage, setUploadingDraftImage] = useState(false)
   const [activeWallet, setActiveWallet] = useState<WalletItem | null>(null)
   const [mounted, setMounted] = useState(false)
   const [showCreateWalletModal, setShowCreateWalletModal] = useState(false)
@@ -493,6 +494,27 @@ export default function WalletSettingsPage() {
     } finally {
       URL.revokeObjectURL(previewUrl)
       setUploadingWalletId(null)
+    }
+  }
+
+  async function uploadDraftWalletImage(file: File) {
+    if (file.size > 512 * 1024) return showAlert(tr("Fail terlalu besar", "File too large"), tr("Maksimum 512 KB.", "Maximum 512 KB."), "error")
+    const previewUrl = URL.createObjectURL(file)
+    setDraft((current) => ({ ...current, image_url: previewUrl }))
+    setUploadingDraftImage(true)
+    try {
+      const form = new FormData(); form.append("file", file)
+      const token = getAccessToken()
+      const res = await fetch("/api/wallets/image-upload", { method: "POST", credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.detail || "Upload failed")
+      setDraft((current) => ({ ...current, image_url: `${data.url}${data.url.includes("?") ? "&" : "?"}v=${Date.now()}` }))
+    } catch (error) {
+      setDraft((current) => ({ ...current, image_url: "" }))
+      showAlert(tr("Upload gagal", "Upload failed"), error instanceof Error ? error.message : "Upload failed", "error")
+    } finally {
+      URL.revokeObjectURL(previewUrl)
+      setUploadingDraftImage(false)
     }
   }
 
@@ -1043,6 +1065,10 @@ export default function WalletSettingsPage() {
 
                     {createWalletStep === 3 && (
                       <div className="space-y-3">
+                        <label className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)] text-xs font-bold text-[var(--muted)]">
+                          <Upload size={14} /> {uploadingDraftImage ? tr("Sedang upload…", "Uploading…") : tr("Upload imej (maks 512 KB)", "Upload image (max 512 KB)")}
+                          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadDraftWalletImage(file); e.target.value = "" }} />
+                        </label>
                         <button
                           type="button"
                           onClick={() => setDraft((prev) => ({ ...prev, is_bot_default: !prev.is_bot_default }))}
@@ -1065,7 +1091,7 @@ export default function WalletSettingsPage() {
                           <p className="mb-2 text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
                             {tr("Ringkasan Dompet", "Wallet Summary")}
                           </p>
-                          <ReviewRow label={tr("Warna", "Color")} value={selectedDraftAccent.label} />
+                          <ReviewRow label={tr("Penampilan", "Appearance")} value={selectedDraftAccent.label} />
                           <ReviewRow label={tr("Jenis", "Type")} value={walletTypeLabel(draft.type, isBm)} />
                           <ReviewRow label={tr("Mata Wang", "Currency")} value={formatCurrencyLabel(draft.currency)} />
                           <ReviewRow label={tr("Nama Dompet", "Wallet Name")} value={draft.label || "-"} />
@@ -1189,7 +1215,7 @@ export default function WalletSettingsPage() {
 
                   <div className="rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-4">
                     <p className="mb-3 text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Warna", "Color")}
+                      {tr("Penampilan", "Appearance")}
                     </p>
                     <label className="mb-3 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)] text-xs font-bold text-[var(--muted)]">
                       <Upload size={14} /> {uploadingWalletId === activeWallet.id ? tr("Sedang upload…", "Uploading…") : tr("Upload imej (maks 512 KB)", "Upload image (max 512 KB)")}
