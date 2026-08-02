@@ -222,61 +222,6 @@ export default function TelegramPage() {
       />
 
       <DesktopPageBody className="mt-4 flex flex-col gap-4 px-1 lg:mt-0 lg:gap-5 lg:px-0">
-        {/* Hero */}
-        <section className="subscription-hero relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[#1a1a1a] p-5 text-[#f5f5f5] md:p-6">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-          <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-3.5">
-              <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
-                style={{ backgroundColor: "rgba(56,189,248,0.15)", color: "#7dd3fc" }}
-              >
-                <Send size={22} />
-              </div>
-              <div className="min-w-0">
-                <p className="force-white text-xl font-black leading-tight text-[#ffffff] md:text-2xl">
-                  Telegram
-                </p>
-                <p className="mt-0.5 text-xs font-semibold text-[#a3a3a3] md:text-sm">
-                  {isConnected
-                    ? connectedName
-                    : isBM
-                      ? "Belum disambung"
-                      : "Not connected"}
-                </p>
-              </div>
-            </div>
-            <div
-              className="inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold"
-              style={{
-                backgroundColor: isConnected
-                  ? "rgba(110,231,183,0.14)"
-                  : "rgba(255,255,255,0.08)",
-                color: isConnected ? "#6ee7b7" : "#cbd5e1",
-              }}
-            >
-              {loading ? (
-                <Loader2 size={13} className="animate-spin" />
-              ) : isConnected ? (
-                <CheckCircle2 size={13} />
-              ) : (
-                <Unplug size={13} />
-              )}
-              {loading
-                ? isBM
-                  ? "Semak..."
-                  : "Checking..."
-                : isConnected
-                  ? isBM
-                    ? "Disambung"
-                    : "Connected"
-                  : isBM
-                    ? "Tiada sambungan"
-                    : "No connection"}
-            </div>
-          </div>
-        </section>
 
         <div className="grid gap-3 md:grid-cols-2">
           {/* Link status */}

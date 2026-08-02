@@ -61,12 +61,21 @@ export default function LoanPage() {
   const router = useRouter()
   const { lang } = useLang()
   const [detailId, setDetailId] = useState<string | number | null>(null)
+  const detailHistoryArmedRef = useRef(false)
   const openDetail = (id: string | number) => {
-    window.history.pushState({ detailSlide: true }, "")
+    detailHistoryArmedRef.current = false
     setDetailId(id)
   }
+  const armDetailHistory = () => {
+    if (detailHistoryArmedRef.current) return
+    detailHistoryArmedRef.current = true
+    window.history.pushState({ detailSlide: true }, "")
+  }
   useEffect(() => {
-    const closeDetailOnBack = () => setDetailId(null)
+    const closeDetailOnBack = () => {
+      detailHistoryArmedRef.current = false
+      setDetailId(null)
+    }
     window.addEventListener("popstate", closeDetailOnBack)
     return () => window.removeEventListener("popstate", closeDetailOnBack)
   }, [])
@@ -674,8 +683,8 @@ export default function LoanPage() {
       {detailId !== null && (
         <div className="fixed inset-0 z-[500]">
           <button type="button" aria-label={tr("Tutup butiran", "Close details")} onClick={closeDetail} className="absolute inset-0 bg-black/45" />
-          <section className="absolute bottom-0 right-0 top-0 h-[100dvh] w-full overflow-hidden animate-in slide-in-from-right duration-300 bg-[var(--page-bg)] md:w-[min(760px,72vw)] md:border-l md:border-[var(--border)] md:shadow-2xl">
-            <iframe title={tr("Butiran loan", "Loan details")} src={`/${sessionId}/loan/${detailId}`} className="block h-[100dvh] w-full border-0" />
+          <section className="absolute bottom-0 right-0 top-0 h-[100dvh] w-full overflow-hidden bg-[var(--page-bg)] md:w-[min(760px,72vw)] md:border-l md:border-[var(--border)] md:shadow-2xl">
+            <iframe onLoad={armDetailHistory} title={tr("Butiran loan", "Loan details")} src={`/${sessionId}/loan/${detailId}`} className="block h-[100dvh] w-full border-0" />
             <button type="button" aria-label={tr("Kembali", "Back")} onClick={closeDetail} className="absolute left-0 top-0 z-[600] h-16 w-16 bg-transparent md:hidden" />
           </section>
         </div>

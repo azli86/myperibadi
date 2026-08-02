@@ -299,12 +299,21 @@ export default function TransactionsPage() {
  const [activeDailyBarIndex, setActiveDailyBarIndex] = useState<number | null>(null)
  const [isMobileViewport, setIsMobileViewport] = useState(false)
  const [mobileDetailId, setMobileDetailId] = useState<string | number | null>(null)
+ const detailHistoryArmedRef = useRef(false)
  const openTransaction = (id: string | number) => {
-   window.history.pushState({ transactionSlide: true }, "")
+   detailHistoryArmedRef.current = false
    setMobileDetailId(id)
  }
+ const armDetailHistory = () => {
+   if (detailHistoryArmedRef.current) return
+   detailHistoryArmedRef.current = true
+   window.history.pushState({ transactionSlide: true }, "")
+ }
  useEffect(() => {
-   const closeSlideOnBack = () => setMobileDetailId(null)
+   const closeSlideOnBack = () => {
+     detailHistoryArmedRef.current = false
+     setMobileDetailId(null)
+   }
    window.addEventListener("popstate", closeSlideOnBack)
    return () => window.removeEventListener("popstate", closeSlideOnBack)
  }, [])
@@ -2041,10 +2050,11 @@ const currentCycleKeyStr = useMemo(
  {mobileDetailId !== null && (
    <div className="fixed inset-0 z-[500]">
      <button type="button" aria-label={lang === "EN" ? "Close transaction details" : "Tutup butiran transaksi"} onClick={closeMobileDetail} className="absolute inset-0 bg-black/45" />
-     <section className="absolute bottom-0 right-0 top-0 h-[100dvh] w-full overflow-hidden animate-in slide-in-from-right duration-300 bg-[var(--page-bg)] md:w-[min(760px,72vw)] md:border-l md:border-[var(--border)] md:shadow-2xl">
+     <section className="absolute bottom-0 right-0 top-0 h-[100dvh] w-full overflow-hidden bg-[var(--page-bg)] md:w-[min(760px,72vw)] md:border-l md:border-[var(--border)] md:shadow-2xl">
        <iframe
          title={lang === "EN" ? "Transaction details" : "Butiran transaksi"}
          src={`/${sessionId}/transactions/${mobileDetailId}`}
+         onLoad={armDetailHistory}
          className="block h-[100dvh] w-full border-0"
        />
        <button

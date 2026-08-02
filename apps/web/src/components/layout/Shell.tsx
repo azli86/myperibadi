@@ -1019,9 +1019,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { key: "chat", href: `/${sessionId}/chat` },
     { key: "more", href: `/${sessionId}/settings` },
   ];
-  const mobileSheetClass = isLight
-    ? "bg-white/95 backdrop-blur-xl text-neutral-900"
-    : "bg-[var(--sheet-bg)]/95 backdrop-blur-xl text-neutral-100 shadow-2xl shadow-black/40";
+  const mobileSheetClass = "bg-[var(--page-bg)] text-[var(--text)]";
   const mobileSheetMutedButtonClass = isLight
     ? "bg-neutral-100 text-neutral-900"
     : "bg-white/[0.06] text-white";
@@ -3575,7 +3573,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       
         {showMobileMenu && !isChatFullscreen && (
           <div
-            className="fixed inset-0 z-[500] bg-[var(--sheet-bg)] lg:hidden flex items-stretch"
+            className="fixed inset-0 z-[500] bg-[var(--page-bg)] lg:hidden flex items-stretch"
             onClick={requestMobileMenuClose}
           >
             <aside
@@ -3588,7 +3586,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <div
                 className={cn(
                   "relative z-10 mx-4 mb-5 mt-4 rounded-2xl p-3",
-                  isLight ? "bg-neutral-100" : "bg-white/[0.08]",
+                  "bg-[var(--card)]",
                 )}
               >
                 <div className="relative flex items-center justify-between gap-3">
@@ -3598,7 +3596,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       type="button"
                       onClick={() => setShowMobileSheetAccountSwitcher((open) => !open)}
                       className={cn(
-                        "flex w-full items-center gap-2.5 rounded-xl bg-[var(--card)] px-3 py-2 text-left transition-all active:scale-[0.98]", 
+                        "flex w-full items-center gap-2.5 rounded-xl bg-[var(--surface-tint)] px-3 py-2 text-left transition-all active:scale-[0.98]", 
                       )}
                     >
                       <UserAvatar name={displayName || activeEmail} size={32} />
@@ -3624,9 +3622,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         <div
                           className={cn(
                             "absolute left-0 right-0 top-[48px] z-20 overflow-hidden rounded-2xl border p-2 shadow-2xl",
-                            isLight
-                              ? "border-neutral-200 bg-white/98 backdrop-blur-md"
-                              : "border-white/10 bg-neutral-950/98 backdrop-blur-md",
+                            "border-[var(--border)] bg-[var(--sheet-bg)]",
                           )}
                         >
                           {storedAccounts.map((acct: AccountProfile) => {
@@ -3686,7 +3682,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     <button
                       type="button"
                       onClick={() => setLang(lang === "EN" ? "BM" : "EN")}
-                      className="flex h-10 min-w-10 items-center justify-center rounded-xl bg-[var(--card)] px-2 text-[11px] font-black text-[var(--text)]"
+                      className="flex h-10 min-w-10 items-center justify-center rounded-xl bg-[var(--surface-tint)] px-2 text-[11px] font-black text-[var(--text)]"
                       aria-label={lang === "BM" ? "Tukar bahasa" : "Switch language"}
                     >
                       {lang}
@@ -3694,12 +3690,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     <ThemeToggle
                       compact
                       inverted={!isLight}
-                      className="h-10 w-10 rounded-xl bg-[var(--card)]"
+                      className="h-10 w-10 rounded-xl bg-[var(--surface-tint)]"
                     />
                     <button
                       type="button"
                       onClick={requestMobileMenuClose}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--card)] text-[var(--text)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]"
                     >
                       <X size={15} />
                     </button>
@@ -3745,7 +3741,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                                 <div
                                   className={cn(
                                     "flex h-14 w-14 items-center justify-center rounded-2xl",
-                                    isLight ? "bg-neutral-100 text-neutral-800" : "bg-white/[0.08] text-neutral-100",
+                                    "bg-[var(--card)] text-[var(--text)]",
                                   )}
                                 >
                                   <item.icon
@@ -3757,7 +3753,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                                 <p
                                   className={cn(
                                     "w-full line-clamp-2 px-0.5 text-xs font-semibold leading-tight",
-                                    isLight ? "text-neutral-600" : "text-neutral-400",
+                                    "text-[var(--muted)]",
                                   )}
                                 >
                                   {item.name}
@@ -3768,12 +3764,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     </div>
                   </section>
 
-                  <section className={cn("rounded-2xl p-4", isLight ? "bg-neutral-100" : "bg-white/[0.08]")}>
+                  <section className={cn("rounded-2xl p-4", "bg-[var(--card)]")}>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/receipts`))}
-                        className="flex items-center gap-3 rounded-xl bg-[var(--card)] p-3 text-left text-[var(--text)] transition active:scale-[0.97]"
+                        className="flex items-center gap-3 rounded-xl bg-[var(--surface-tint)] p-3 text-left text-[var(--text)] transition active:scale-[0.97]"
                       >
                         <Images size={25} strokeWidth={1.85} />
                         <span className="text-sm font-bold">Gallery</span>
@@ -3781,7 +3777,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       <button
                         type="button"
                         onClick={() => { requestMobileMenuClose(); setShowCalculator(true); }}
-                        className="flex items-center gap-3 rounded-xl bg-[var(--card)] p-3 text-left text-[var(--text)] transition active:scale-[0.97]"
+                        className="flex items-center gap-3 rounded-xl bg-[var(--surface-tint)] p-3 text-left text-[var(--text)] transition active:scale-[0.97]"
                       >
                         <CalculatorIcon size={25} strokeWidth={1.85} />
                         <span className="text-sm font-bold">Calculator</span>
@@ -3789,7 +3785,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     </div>
                   </section>
 
-                  <section className={cn("rounded-2xl p-4", isLight ? "bg-neutral-100" : "bg-white/[0.08]")}>
+                  <section className={cn("rounded-2xl p-4", "bg-[var(--card)]")}>
                     <div className="grid grid-cols-2 gap-2">
                       {[
                         { name: lang === "BM" ? "Kenderaan Saya" : "My Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
@@ -3799,7 +3795,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           key={item.href}
                           type="button"
                           onClick={() => requestMobileMenuCloseThen(() => router.push(item.href))}
-                          className="flex min-w-0 items-center gap-3 rounded-xl bg-[var(--card)] p-3 text-left text-[var(--text)] transition active:scale-[0.97]"
+                          className="flex min-w-0 items-center gap-3 rounded-xl bg-[var(--surface-tint)] p-3 text-left text-[var(--text)] transition active:scale-[0.97]"
                         >
                           <item.icon size={25} strokeWidth={1.85} className="shrink-0" />
                           <span className="text-sm font-bold">{item.name}</span>
@@ -3808,7 +3804,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     </div>
                   </section>
 
-                  <section className={cn("rounded-2xl p-4", isLight ? "bg-neutral-100" : "bg-white/[0.08]")}>
+                  <section className={cn("rounded-2xl p-4", "bg-[var(--card)]")}>
                     <div className="mb-3 flex items-center gap-3 text-[var(--text)]">
                       <MapPinned size={25} strokeWidth={1.85} />
                       <span className="text-sm font-bold">Maps</span>
@@ -3823,7 +3819,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           key={item.href}
                           type="button"
                           onClick={() => requestMobileMenuCloseThen(() => router.push(item.href))}
-                          className="flex min-w-0 flex-col items-center gap-2 rounded-xl bg-[var(--card)] p-3 text-center text-[var(--text)] transition active:scale-[0.97]"
+                          className="flex min-w-0 flex-col items-center gap-2 rounded-xl bg-[var(--surface-tint)] p-3 text-center text-[var(--text)] transition active:scale-[0.97]"
                         >
                           <item.icon size={23} strokeWidth={1.85} />
                           <span className="text-xs font-semibold">{item.name}</span>
@@ -3837,10 +3833,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/connector`))}
                     className={cn(
                       "flex w-full items-center gap-4 rounded-2xl p-4 text-left transition active:scale-[0.98]",
-                      isLight ? "bg-neutral-100 text-neutral-800" : "bg-white/[0.08] text-neutral-100",
+                      "bg-[var(--card)] text-[var(--text)]",
                     )}
                   >
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--card)]">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)]">
                       <Bot size={26} strokeWidth={1.85} />
                     </span>
                     <span>
@@ -3860,10 +3856,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         onClick={() => requestMobileMenuCloseThen(() => router.push(item.href))}
                         className={cn(
                           "flex items-center gap-3 rounded-2xl p-4 text-left transition active:scale-[0.98]",
-                          isLight ? "bg-neutral-100 text-neutral-800" : "bg-white/[0.08] text-neutral-100",
+                          "bg-[var(--card)] text-[var(--text)]",
                         )}
                       >
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--card)]">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)]">
                           <item.icon size={24} strokeWidth={1.85} />
                         </span>
                         <span className="text-sm font-bold">{item.name}</span>

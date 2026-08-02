@@ -36,6 +36,7 @@ import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount, formatCurrencyLabel } from "@/components/ui/MoneyAmount"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
+import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 
 type WalletKind = "cash" | "bank" | "bank_digital" | "ewallet" | "credit_card" | "shared"
 
@@ -194,7 +195,7 @@ function GlossyWalletPreview({
         <>
           <img src={imageUrl} alt="" className="absolute -right-5 -top-8 h-[135%] w-[62%] rotate-[9deg] object-cover opacity-55 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_55%)]" />
           <div className="absolute inset-0 bg-gradient-to-r from-[var(--card)] from-30% via-[var(--card)] via-52% to-transparent to-90%" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/5" />
+          
         </>
       )}
       <div
@@ -283,8 +284,10 @@ export default function WalletSettingsPage() {
     setDraft(DEFAULT_DRAFT)
   }
 
-  const createWalletSheetSwipe = useSwipeDownToClose(closeCreateWalletModal)
-  const walletDetailSheetSwipe = useSwipeDownToClose(() => setActiveWallet(null))
+  const { requestClose: requestCreateWalletClose } = useOverlayBackClose({ id: "wallet-create", isOpen: showCreateWalletModal, onClose: closeCreateWalletModal })
+  const { requestClose: requestWalletDetailClose } = useOverlayBackClose({ id: "wallet-detail", isOpen: Boolean(activeWallet), onClose: () => setActiveWallet(null) })
+  const createWalletSheetSwipe = useSwipeDownToClose(requestCreateWalletClose)
+  const walletDetailSheetSwipe = useSwipeDownToClose(requestWalletDetailClose)
 
   useEffect(() => {
     setMounted(true)
@@ -634,7 +637,7 @@ export default function WalletSettingsPage() {
           <>
             <img src={wallet.image_url} alt="" className="absolute -right-5 -top-8 h-[135%] w-[62%] rotate-[9deg] object-cover opacity-55 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_55%)]" />
             <div className="absolute inset-0 bg-gradient-to-r from-[var(--card)] from-30% via-[var(--card)] via-52% to-transparent to-90%" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/5" />
+            
           </>
         )}
         <div
@@ -831,7 +834,7 @@ export default function WalletSettingsPage() {
         ? createPortal(
             <div
               className="fixed inset-0 z-[80] flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-transparent p-0 md:items-center md:p-4"
-              onClick={closeCreateWalletModal}
+              onClick={requestCreateWalletClose}
               onTouchMove={(event) => event.preventDefault()}
             >
               <div
@@ -862,7 +865,7 @@ export default function WalletSettingsPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={closeCreateWalletModal}
+                      onClick={requestCreateWalletClose}
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:bg-[var(--surface-tint)] hover:text-[var(--text)]"
                       aria-label={tr("Tutup", "Close")}
                     >
@@ -1106,7 +1109,7 @@ export default function WalletSettingsPage() {
         ? createPortal(
             <div
               className="fixed inset-0 z-[80] flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-transparent p-0 md:items-center md:p-4"
-              onClick={() => setActiveWallet(null)}
+              onClick={requestWalletDetailClose}
               onTouchMove={(event) => event.preventDefault()}
             >
               <div
@@ -1134,7 +1137,7 @@ export default function WalletSettingsPage() {
                     </div>
                     <button
                       type="button"
-                      onClick={() => setActiveWallet(null)}
+                      onClick={requestWalletDetailClose}
                       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:bg-[var(--surface-tint)] hover:text-[var(--text)]"
                       aria-label={tr("Tutup", "Close")}
                     >

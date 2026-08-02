@@ -46,6 +46,7 @@ import { APP_BADGES, deriveEarnedBadgeKeys, type BadgeBudgetItemLike, type Badge
 import { formatCurrencyLabel } from "@/components/ui/MoneyAmount"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
+import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 import { MonthlyChecklistSection } from "@/components/dashboard/MonthlyChecklistSection"
 import { VehicleOverdueWidget } from "@/components/dashboard/VehicleOverdueWidget"
 import { DashboardVehicleHeroRow } from "@/components/dashboard/DashboardVehicleHeroRow"
@@ -426,8 +427,12 @@ export default function Dashboard() {
   const walletAutoScrollRef = useRef<HTMLDivElement | null>(null)
   const walletScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { showAlert, alertModal } = usePageAlert(lang)
-  const dashboardAddSheetSwipe = useSwipeDownToClose(() => setShowAddModal(false))
-  const walletSheetSwipe = useSwipeDownToClose(() => setShowMobileWalletDeck(false))
+  const { requestClose: requestDashboardAddClose } = useOverlayBackClose({ id: "dashboard-add", isOpen: showAddModal, onClose: () => setShowAddModal(false) })
+  const { requestClose: requestWalletDeckClose } = useOverlayBackClose({ id: "dashboard-wallets", isOpen: showMobileWalletDeck, onClose: () => setShowMobileWalletDeck(false) })
+  const { requestClose: requestChartClose } = useOverlayBackClose({ id: "dashboard-chart", isOpen: showChartModal, onClose: () => setShowChartModal(false) })
+  const { requestClose: requestBadgeClose } = useOverlayBackClose({ id: "dashboard-badges", isOpen: showBadgeModal, onClose: () => setShowBadgeModal(false) })
+  const dashboardAddSheetSwipe = useSwipeDownToClose(requestDashboardAddClose)
+  const walletSheetSwipe = useSwipeDownToClose(requestWalletDeckClose)
   const walletDragStateRef = useRef({
     pointerId: -1,
     startX: 0,
@@ -2815,7 +2820,7 @@ export default function Dashboard() {
         {showAddModal && (
           <div
             className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center sm:p-4"
-            onClick={() => setShowAddModal(false)}
+            onClick={requestDashboardAddClose}
           >
             <div
               onClick={e => e.stopPropagation()}
@@ -2826,7 +2831,7 @@ export default function Dashboard() {
               <div className="sticky top-0 z-30 mb-3 flex items-center justify-between border-b border-[var(--border)] bg-[var(--sheet-bg)] px-5 py-4 shadow-sm sm:rounded-t-3xl sm:px-6">
                 <h3 className="text-base font-black text-[var(--text)]">{t.addNewRecord}</h3>
                 <button
-                  onClick={() => setShowAddModal(false)}
+                  onClick={requestDashboardAddClose}
                   className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] border border-[var(--border)]"
                 >
                   <X size={16} />
@@ -2972,7 +2977,7 @@ export default function Dashboard() {
         {showChartModal && (
           <div
             className="fixed inset-0 z-[85] flex touch-none items-end justify-center overflow-hidden bg-transparent px-0 pb-0 pt-0 overscroll-none md:items-center md:px-6 md:py-6"
-            onClick={() => setShowChartModal(false)}
+            onClick={requestChartClose}
           >
             <div
               onClick={(event) => event.stopPropagation()}
@@ -2983,7 +2988,7 @@ export default function Dashboard() {
                   <p className="text-[0.6875rem] font-bold uppercase tracking-[0.24em] text-[var(--muted)]">{lang === "EN" ? "Full View" : "Paparan Penuh"}</p>
                   <h3 className="mt-1 text-base font-bold text-[var(--text)]">{lang === "EN" ? "Expense Charts" : "Graf Perbelanjaan"}</h3>
                 </div>
-                <button type="button" onClick={() => setShowChartModal(false)} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--border)] text-[var(--muted)] transition hover:text-[var(--text)]" aria-label="Close chart">
+                <button type="button" onClick={requestChartClose} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--border)] text-[var(--muted)] transition hover:text-[var(--text)]" aria-label="Close chart">
                   <X size={18} />
                 </button>
               </div>
@@ -3095,7 +3100,7 @@ export default function Dashboard() {
                 <div
                   key="wallet-sheet"
                   className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center sm:p-4"
-                  onClick={() => setShowMobileWalletDeck(false)}
+                  onClick={requestWalletDeckClose}
                 >
                   <div
                     onClick={(e) => e.stopPropagation()}
@@ -3126,7 +3131,7 @@ export default function Dashboard() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => setShowMobileWalletDeck(false)}
+                          onClick={requestWalletDeckClose}
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:bg-[var(--surface-tint)] hover:text-[var(--text)]"
                           aria-label={lang === "BM" ? "Tutup" : "Close"}
                         >
@@ -3192,7 +3197,7 @@ export default function Dashboard() {
 
                       <Link
                         href={`/${sessionId}/wallet-settings`}
-                        onClick={() => setShowMobileWalletDeck(false)}
+                        onClick={requestWalletDeckClose}
                         className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm font-bold text-[var(--text)] transition active:scale-[0.99]"
                       >
                         <Wallet size={15} strokeWidth={2.4} />
@@ -3209,7 +3214,7 @@ export default function Dashboard() {
       {alertModal}
       <BadgeOverviewModal
         open={showBadgeModal}
-        onClose={() => setShowBadgeModal(false)}
+        onClose={requestBadgeClose}
         sessionId={sessionId}
         lang={lang}
       />

@@ -614,7 +614,7 @@ export default function WhatsAppPage() {
     <div className="pb-24 lg:pb-0">
       <div className="lg:hidden">
         <MobilePageHeader
-          title={t.waTitle}
+          title="WhatsApp"
           fallbackHref={`/${sessionId}/connector`}
           action={mobileHeaderAction}
         />
@@ -622,7 +622,7 @@ export default function WhatsAppPage() {
 
       <DesktopPageHeader
         className="hidden lg:block"
-        title={t.waTitle}
+        title="WhatsApp"
         breadcrumbs={[{ label: lang === "BM" ? "Penyambung" : "Connector", href: `/${sessionId}/connector` }]}
         homeHref={`/${sessionId}`}
         backHref={`/${sessionId}/connector`}
@@ -631,93 +631,6 @@ export default function WhatsAppPage() {
 
       <DesktopPageBody className="mt-4 flex flex-col gap-4 px-1 lg:mt-0 lg:gap-5 lg:px-0">
 
-      {/* Hero */}
-      <section className="subscription-hero relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[#1a1a1a] p-5 text-[#f5f5f5] md:p-6">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-        <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-        <div className="relative flex flex-col gap-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-center gap-3.5">
-              <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
-                style={{ backgroundColor: "rgba(52,211,153,0.15)", color: "#6ee7b7" }}
-              >
-                <Bot size={22} />
-              </div>
-              <div className="min-w-0">
-                <p className="force-white text-xl font-black leading-tight text-[#ffffff] md:text-2xl">
-                  WhatsApp
-                </p>
-                <p className="mt-0.5 text-xs font-semibold text-[#a3a3a3] md:text-sm">
-                  {isLinked
-                    ? (lang === "EN" ? "Connected and ready" : "Disambung dan sedia")
-                    : needsReconnect
-                      ? (lang === "EN" ? "Reconnect required" : "Perlu sambung semula")
-                      : (lang === "EN" ? "Not connected" : "Belum disambung")}
-                </p>
-              </div>
-            </div>
-            <div
-              className="inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold"
-              style={{
-                backgroundColor: isLinked
-                  ? "rgba(110,231,183,0.14)"
-                  : needsReconnect
-                    ? "rgba(252,211,77,0.14)"
-                    : "rgba(255,255,255,0.08)",
-                color: isLinked ? "#6ee7b7" : needsReconnect ? "#fcd34d" : "#cbd5e1",
-              }}
-            >
-              {sessionStatus === "loading" ? (
-                <RefreshCw size={13} className="animate-spin" />
-              ) : isLinked ? (
-                <CheckCircle2 size={13} />
-              ) : (
-                <Shield size={13} />
-              )}
-              {sessionStatus === "loading"
-                ? (lang === "EN" ? "Checking..." : "Semak...")
-                : primaryStatusLabel}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              {
-                label: lang === "EN" ? "Status" : "Status",
-                value: sessionStatus,
-                color: "#bae6fd",
-              },
-              {
-                label: lang === "EN" ? "Groups" : "Group",
-                value: String(groupRules.length),
-                color: "#6ee7b7",
-              },
-              {
-                label: "Prefix",
-                value: personalPrefixModeEnabled ? personalTriggerPrefix : "Off",
-                color: "#fcd34d",
-              },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-2xl px-2.5 py-2.5"
-                style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
-              >
-                <p className="text-[0.55rem] font-bold tracking-wide" style={{ color: "#cbd5e1" }}>
-                  {stat.label}
-                </p>
-                <p
-                  className="mt-1 truncate text-sm font-black tabular-nums leading-none"
-                  style={{ color: stat.color }}
-                >
-                  {stat.value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Tabs */}
       <div className="sticky top-2 z-20 flex items-center gap-1 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1 backdrop-blur">

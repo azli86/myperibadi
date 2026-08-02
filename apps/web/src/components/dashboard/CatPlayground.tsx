@@ -6,6 +6,7 @@ import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getAccessToken } from "@/lib/auth-session"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
+import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 
 type Lang = "EN" | "BM"
 type CatMood = "happy" | "ok" | "hungry" | "critical" | "dead"
@@ -824,7 +825,8 @@ export function CatPlayground({
   const sleepTimer = useRef<number | null>(null)
   const SLEEP_IDLE_MS = 10_000
   const closeSheet = useCallback(() => setSheetOpen(false), [])
-  const sheetSwipe = useSwipeDownToClose(closeSheet)
+  const { requestClose: requestSheetClose } = useOverlayBackClose({ id: "cat-playground", isOpen: sheetOpen, onClose: closeSheet })
+  const sheetSwipe = useSwipeDownToClose(requestSheetClose)
 
   const commitState = useCallback(
     (updater: (prev: PetState) => PetState, opts?: { sync?: boolean }) => {
@@ -1794,7 +1796,7 @@ export function CatPlayground({
         ? createPortal(
             <div
               className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center overflow-hidden bg-transparent px-0 py-0 sm:items-center sm:px-4 sm:py-6"
-              onClick={closeSheet}
+              onClick={requestSheetClose}
               role="presentation"
             >
               <div
@@ -1814,7 +1816,7 @@ export function CatPlayground({
                   </div>
                   <button
                     type="button"
-                    onClick={closeSheet}
+                    onClick={requestSheetClose}
                     className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95"
                     aria-label={lang === "BM" ? "Tutup" : "Close"}
                   >
