@@ -110,6 +110,7 @@ export default function HelpPage() {
         { id: "quick-start", label: "Mula Pantas", icon: <Zap size={14} /> },
         { id: "portal", label: "Fungsi Portal", icon: <ShieldCheck size={14} /> },
         { id: "recording", label: "Rekod Transaksi", icon: <Hash size={14} /> },
+        { id: "salary", label: "Kitar Gaji", icon: <Wallet size={14} /> },
         { id: "items", label: "Item & Kuantiti", icon: <FileImage size={14} /> },
         { id: "commands", label: "Command WhatsApp", icon: <BookOpen size={14} /> },
         { id: "budget", label: "Command Budget", icon: <Wallet size={14} /> },
@@ -127,6 +128,7 @@ export default function HelpPage() {
         { id: "quick-start", label: "Quick Start", icon: <Zap size={14} /> },
         { id: "portal", label: "Portal Features", icon: <ShieldCheck size={14} /> },
         { id: "recording", label: "Recording Transactions", icon: <Hash size={14} /> },
+        { id: "salary", label: "Salary Cycle", icon: <Wallet size={14} /> },
         { id: "items", label: "Items & Quantity", icon: <FileImage size={14} /> },
         { id: "commands", label: "WhatsApp Commands", icon: <BookOpen size={14} /> },
         { id: "budget", label: "Budget Commands", icon: <Wallet size={14} /> },
@@ -304,6 +306,28 @@ export default function HelpPage() {
                 { title: "Record with specific date (backdate)", pattern: "message + @DDMMYYYY", examples: ["grab 18.50 @05042026", "lunch 10 @01042026"] },
                 { title: "Choose specific wallet", pattern: "note + amount + wallet_name", examples: ["lunch 12.50 cash", "salary 3500 maybank"] },
                 { title: "Save transaction location", pattern: "reply transaction + attach/share location", examples: ["reply TXN message, send location", "reply old transaction, share location"] },
+              ]).map((row) => (
+                <FormatCard key={row.title} title={row.title} pattern={row.pattern} examples={row.examples} exLabel={exLabel} patLabel={patLabel} />
+              ))}
+            </div>
+          </section>
+
+          {/* ── Salary Cycle ── */}
+          <section className={getSectionClassName("salary")}>
+            <SectionHeading id="salary" icon={<Wallet size={16} />} title={isBM ? "Kitar Gaji Bulanan" : "Monthly Salary Cycle"} />
+            <TipBox isLight={isLight}>
+              {isBM
+                ? <>Gunakan command <CodeBlock>Mgaji</CodeBlock> untuk rekod gaji bulanan dan reset kitar belanjawan. Bot auto-kategorikan sebagai <CodeBlock>Monthly Salary</CodeBlock> dan menetapkan tarikh gaji untuk kitar baru. Pendapatan seterusnya dikira dari tarikh ini.</>
+                : <>Use the <CodeBlock>Msalary</CodeBlock> command to record monthly salary and reset your budget cycle. The bot auto-categorizes it as <CodeBlock>Monthly Salary</CodeBlock> and sets the salary date for a new cycle. Subsequent income is counted from this date.</>
+              }
+            </TipBox>
+            <div className="space-y-3 mt-4">
+              {(isBM ? [
+                { title: "Rekod gaji & reset kitar", pattern: "Mgaji + amount + [wallet]", examples: ["Mgaji 3500", "Mgaji 3500 maybank"] },
+                { title: "Gaji backdate", pattern: "Mgaji + amount + @DDMMYYYY", examples: ["Mgaji 3500 @01042026"] },
+              ] : [
+                { title: "Record salary & reset cycle", pattern: "Msalary + amount + [wallet]", examples: ["Msalary 3500", "Msalary 3500 maybank"] },
+                { title: "Backdated salary", pattern: "Msalary + amount + @DDMMYYYY", examples: ["Msalary 3500 @01042026"] },
               ]).map((row) => (
                 <FormatCard key={row.title} title={row.title} pattern={row.pattern} examples={row.examples} exLabel={exLabel} patLabel={patLabel} />
               ))}

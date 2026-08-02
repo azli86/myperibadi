@@ -271,56 +271,6 @@ export default function AccountPage() {
       />
 
       <DesktopPageBody className="flex flex-col gap-5 md:gap-7">
-      {/* ─── Profile Hero Card ─── */}
-      <div>
-        <div className="relative overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-gradient-to-br from-[var(--card)] to-[var(--surface-tint)] p-5 shadow-sm md:p-6">
-          <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-[var(--accent)]/8 blur-3xl" />
-          <div className="relative flex items-center gap-4">
-            <Link
-              href={`/${sessionId}/badges`}
-              className="shrink-0 active:scale-95 transition-transform"
-              aria-label={tr("Buka info badge", "Open badge details")}
-            >
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--text)] ring-1 ring-[var(--accent)]/15">
-                <Sparkles size={28} />
-              </div>
-            </Link>
-            <div className="min-w-0 flex-1">
-              <h2 className="break-words text-xl font-black tracking-tight text-[var(--text)] md:text-2xl">
-                {profile?.name || tr("Pengguna Budget", "Budget User")}
-              </h2>
-              <div className="mt-1 flex items-center gap-1.5">
-                <AtSign size={13} className="shrink-0 text-[var(--muted)]" />
-                <p className="truncate text-xs font-semibold text-[var(--muted)] md:text-sm">{profile?.email || "-"}</p>
-              </div>
-              <div className="mt-3 flex items-center gap-1.5">
-                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)]/12 px-2.5 py-0.5 text-[0.625rem] font-black uppercase tracking-wider text-[var(--accent)]">
-                  <Sparkles size={10} />
-                  {tr("Bot Aktif", "Bot Active")}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ─── Bot Personality Preview ─── */}
-      <div>
-        <div className="relative overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-gradient-to-br from-[var(--card)] via-[var(--card)] to-[var(--surface-tint)] p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--accent)]/10 text-[var(--accent)]">
-              <Sparkles size={14} />
-            </div>
-            <span className="text-[0.625rem] font-black uppercase tracking-widest text-[var(--muted)]">
-              {tr("Gaya Komunikasi Bot", "Bot Communication Style")}
-            </span>
-          </div>
-          <p className="text-sm font-semibold text-[var(--text)] leading-relaxed italic">
-            &ldquo;{personalityPreview}&rdquo;
-          </p>
-        </div>
-      </div>
-
       {/* ─── Edit Profile Form ─── */}
       <section className="overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <div className="border-b border-[var(--border)] bg-[var(--surface-tint)]/30 px-6 py-5">

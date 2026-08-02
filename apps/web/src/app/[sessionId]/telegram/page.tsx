@@ -215,6 +215,7 @@ export default function TelegramPage() {
       <DesktopPageHeader
         className="hidden lg:block"
         title="Telegram"
+        breadcrumbs={[{ label: lang === "BM" ? "Penyambung" : "Connector", href: `/${sessionId}/connector` }]}
         homeHref={`/${sessionId}`}
         backHref={`/${sessionId}/connector`}
         actions={desktopHeaderActions}

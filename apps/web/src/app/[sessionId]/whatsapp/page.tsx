@@ -623,6 +623,7 @@ export default function WhatsAppPage() {
       <DesktopPageHeader
         className="hidden lg:block"
         title={t.waTitle}
+        breadcrumbs={[{ label: lang === "BM" ? "Penyambung" : "Connector", href: `/${sessionId}/connector` }]}
         homeHref={`/${sessionId}`}
         backHref={`/${sessionId}/connector`}
         actions={desktopHeaderActions}

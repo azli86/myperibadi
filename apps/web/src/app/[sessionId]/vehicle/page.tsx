@@ -719,7 +719,7 @@ export default function VehicleListPage() {
       {/* ─── Desktop ─── */}
       <div className="hidden md:block">
         <DesktopPageHeader
-          title={tr("Papan Kenderaan", "Vehicle Board")}
+          title={tr("Kenderaan Saya", "My Vehicle")}
           homeHref={`/${sessionId}`}
           actions={
             <DesktopPageAction onClick={() => setShowSheet(true)}>

@@ -298,6 +298,20 @@ export default function TransactionsPage() {
  const [error, setError] = useState<string | null>(null)
  const [activeDailyBarIndex, setActiveDailyBarIndex] = useState<number | null>(null)
  const [isMobileViewport, setIsMobileViewport] = useState(false)
+ const [mobileDetailId, setMobileDetailId] = useState<string | number | null>(null)
+ const openTransaction = (id: string | number) => {
+   window.history.pushState({ transactionSlide: true }, "")
+   setMobileDetailId(id)
+ }
+ useEffect(() => {
+   const closeSlideOnBack = () => setMobileDetailId(null)
+   window.addEventListener("popstate", closeSlideOnBack)
+   return () => window.removeEventListener("popstate", closeSlideOnBack)
+ }, [])
+ const closeMobileDetail = () => {
+   if (window.history.state?.transactionSlide) window.history.back()
+   else setMobileDetailId(null)
+ }
  const dailyChartScrollRef = useRef<HTMLDivElement | null>(null)
 const [cycleStartDay, setCycleStartDay] = useState(1)
 const [cycleMode, setCycleMode] = useState<"day" | "category">("day")
@@ -1796,7 +1810,7 @@ const currentCycleKeyStr = useMemo(
  <button
  key={`${date}-${tx.id}`}
  type="button"
- onClick={() => router.push(`/${sessionId}/transactions/${tx.reference_id || tx.id}`)}
+ onClick={() => openTransaction(tx.reference_id || tx.id)}
  className="grid w-full grid-cols-[2.1fr_1fr_1.45fr_1.05fr] items-center border-b border-[color:var(--border)] px-5 py-4 text-left transition hover:bg-[var(--surface-tint)] active:opacity-80 last:border-b-0"
  >
  <div className="flex min-w-0 items-center gap-2.5">
@@ -1928,7 +1942,7 @@ const currentCycleKeyStr = useMemo(
  <button
  key={tx.id}
  type="button"
- onClick={() => router.push(`/${sessionId}/transactions/${tx.reference_id || tx.id}`)}
+ onClick={() => openTransaction(tx.reference_id || tx.id)}
  className="flex w-full items-start gap-2.5 px-4 py-4 text-left transition active:opacity-80"
  >
  <div
@@ -2023,6 +2037,25 @@ const currentCycleKeyStr = useMemo(
  <p className="text-[0.625rem] font-semibold uppercase tracking-[0.26em] text-[var(--muted)]">END</p>
  ) : null}
  </div>
+
+ {mobileDetailId !== null && (
+   <div className="fixed inset-0 z-[500]">
+     <button type="button" aria-label={lang === "EN" ? "Close transaction details" : "Tutup butiran transaksi"} onClick={closeMobileDetail} className="absolute inset-0 bg-black/45" />
+     <section className="absolute bottom-0 right-0 top-0 h-[100dvh] w-full overflow-hidden animate-in slide-in-from-right duration-300 bg-[var(--page-bg)] md:w-[min(760px,72vw)] md:border-l md:border-[var(--border)] md:shadow-2xl">
+       <iframe
+         title={lang === "EN" ? "Transaction details" : "Butiran transaksi"}
+         src={`/${sessionId}/transactions/${mobileDetailId}`}
+         className="block h-[100dvh] w-full border-0"
+       />
+       <button
+         type="button"
+         aria-label={lang === "EN" ? "Back to transactions" : "Kembali ke transaksi"}
+         onClick={closeMobileDetail}
+         className="absolute left-0 top-0 z-[600] h-16 w-16 bg-transparent md:hidden"
+       />
+     </section>
+   </div>
+ )}
 
  {/* Pagination Controls */}
  {totalPages > 1 && (

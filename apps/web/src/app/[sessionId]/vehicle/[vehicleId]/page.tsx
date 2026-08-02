@@ -936,30 +936,42 @@ export default function VehicleDetailPage() {
 
   return (
     <div className="min-h-[70vh] w-full bg-[var(--page-bg)]">
-      <div className="mx-auto w-full max-w-lg space-y-3 px-3 pb-28 pt-0 md:max-w-6xl md:space-y-4 md:px-6 md:pb-16 lg:max-w-7xl">
-        <MobilePageHeader
+      <div className="hidden md:block">
+        <DesktopPageHeader
           title={vehicle.name}
-          fallbackHref={`/${sessionId}/vehicle`}
-          action={(
+          breadcrumbs={[{ label: tr("Kenderaan", "My Vehicle"), href: `/${sessionId}/vehicle` }]}
+          homeHref={`/${sessionId}`}
+          backHref={`/${sessionId}/vehicle`}
+          actions={(
             <button
               type="button"
               disabled={saving}
               onClick={confirmDeleteVehicle}
               className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-rose-500/25 bg-rose-500/10 px-2.5 text-xs font-bold text-rose-600 transition active:scale-95 disabled:opacity-60 dark:text-rose-400"
-              aria-label={tr("Padam kenderaan", "Delete vehicle")}
             >
               <Trash2 size={15} />
-              <span className="hidden sm:inline">{tr("Padam", "Delete")}</span>
+              {tr("Padam", "Delete")}
             </button>
           )}
         />
-
-        <div className="hidden md:block">
-          <DesktopPageHeader
+      </div>
+      <div className="mx-auto w-full max-w-lg space-y-3 px-3 pb-28 pt-0 md:max-w-6xl md:space-y-4 md:px-6 md:pb-16 lg:max-w-7xl">
+        <div className="md:hidden">
+          <MobilePageHeader
             title={vehicle.name}
-            breadcrumbs={[{ label: tr("Kenderaan", "My Vehicle"), href: `/${sessionId}/vehicle` }]}
-            homeHref={`/${sessionId}`}
-            backHref={`/${sessionId}/vehicle`}
+            fallbackHref={`/${sessionId}/vehicle`}
+            action={(
+              <button
+                type="button"
+                disabled={saving}
+                onClick={confirmDeleteVehicle}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-rose-500/25 bg-rose-500/10 px-2.5 text-xs font-bold text-rose-600 transition active:scale-95 disabled:opacity-60 dark:text-rose-400"
+                aria-label={tr("Padam kenderaan", "Delete vehicle")}
+              >
+                <Trash2 size={15} />
+                <span className="hidden sm:inline">{tr("Padam", "Delete")}</span>
+              </button>
+            )}
           />
         </div>
 

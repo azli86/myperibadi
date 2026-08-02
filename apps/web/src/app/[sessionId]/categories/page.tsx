@@ -831,14 +831,14 @@ export default function CategoriesPage() {
   })()
 
   const kindFilter = (
-    <div className="inline-flex rounded-full border border-[var(--border)] bg-[var(--surface-tint)]/40 p-0.5">
+    <div className="flex w-full rounded-[var(--card-radius-lg)] border border-[var(--border)] bg-[var(--surface-tint)]/40 p-1 md:inline-flex md:w-auto md:rounded-full md:p-0.5">
       {(["expense", "income"] as const).map((kind) => (
         <button
           key={kind}
           type="button"
           onClick={() => setActiveKindTab(kind)}
           className={cn(
-            "rounded-full px-3.5 py-1.5 text-[0.55rem] font-black uppercase tracking-[0.12em] transition",
+            "flex h-12 flex-1 items-center justify-center rounded-[var(--card-radius-md)] px-4 text-sm font-black uppercase tracking-[0.08em] transition md:h-auto md:flex-none md:rounded-full md:px-3.5 md:py-1.5 md:text-[0.55rem] md:tracking-[0.12em]", 
             activeKindTab === kind ? "bg-[var(--text)] text-[var(--bg)]" : "text-[var(--muted)]",
           )}
         >
@@ -948,16 +948,16 @@ export default function CategoriesPage() {
         key={c.id}
         type="button"
         onClick={() => openCategoryDetail(c.id)}
-        className="group w-full overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-3.5 text-left transition active:scale-[0.985] hover:border-[color-mix(in_srgb,var(--accent2)_30%,var(--border))]"
+        className="group w-full overflow-hidden rounded-[var(--card-radius-md)] border border-[var(--border)] bg-[var(--card)] p-2.5 text-left transition active:scale-[0.985] hover:border-[color-mix(in_srgb,var(--accent2)_30%,var(--border))] md:rounded-[1.35rem] md:p-3.5"
       >
         <div className="flex items-start gap-3">
           <div
             className={cn(
-              "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border md:h-11 md:w-11 md:rounded-2xl",
               categoryKindIconShellClass(c.kind),
             )}
           >
-            <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind={c.kind} size={20} />
+            <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind={c.kind} size={18} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
@@ -977,7 +977,7 @@ export default function CategoriesPage() {
                 <ChevronRight size={14} className="text-[var(--muted)] opacity-70" />
               </div>
             </div>
-            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+            <div className="mt-1.5 hidden flex-wrap items-center gap-1.5 md:flex">
               <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--muted)]">
                 <Hash size={10} />
                 {c.keywordCount}
@@ -994,6 +994,8 @@ export default function CategoriesPage() {
     )
   }
 
+  if (!mounted) return null
+
   return (
     <>
       <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
@@ -1009,9 +1011,7 @@ export default function CategoriesPage() {
             }
           />
 
-          <section className="px-1">{heroBlock(false)}</section>
-
-          <div className="flex items-center justify-between gap-2 px-1">
+          <div className="w-full px-1">
             {kindFilter}
           </div>
 
@@ -1066,12 +1066,12 @@ export default function CategoriesPage() {
                 )}
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {tabCategories.map(renderCategoryCard)}
                 <button
                   type="button"
                   onClick={openAddCategory}
-                  className="flex w-full flex-col items-center justify-center gap-2 rounded-[1.35rem] border-2 border-dashed border-[var(--border)] bg-[var(--surface-tint)]/20 px-4 py-6 text-[var(--muted)] transition active:scale-[0.98] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
+                  className="flex w-full items-center justify-center gap-2 rounded-[var(--card-radius-md)] border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/20 px-4 py-3 text-[var(--muted)] transition active:scale-[0.98] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
                 >
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-tint)]">
                     <Plus size={20} strokeWidth={2} />

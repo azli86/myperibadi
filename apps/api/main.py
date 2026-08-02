@@ -43,6 +43,7 @@ from io import StringIO
 from decimal import Decimal, ROUND_HALF_UP
 import models, schemas, auth_utils, database, email_service
 import push_service
+from llm_service import get_llm_config, _request_model_reply
 
 async def get_removed_business_user(*args, **kwargs):
     raise HTTPException(status_code=404, detail="RemovedBusiness moved to separate app")
@@ -9713,6 +9714,22 @@ async def _delete_storage_object_safe(file_key: str):
         print(f"[storage] Warning: failed to delete object '{file_key}': {exc}")
 
 # --- Stats & Transactions ---
+@app.post("/financial-analysis/insights")
+async def generate_financial_insights(payload: dict = Body(...), current_user: models.User = Depends(get_current_user)):
+    config = get_llm_config()
+    if not config.enabled or not config.api_key:
+        raise HTTPException(status_code=503, detail="AI analysis is not configured.")
+    metrics = payload.get("metrics")
+    if not isinstance(metrics, dict):
+        raise HTTPException(status_code=400, detail="Invalid analysis metrics.")
+    language = "Bahasa Melayu Malaysia" if str(payload.get("language", "BM")).upper() == "BM" else "English"
+    safe_metrics = {str(key)[:50]: value for key, value in list(metrics.items())[:30] if isinstance(value, (str, int, float, bool, type(None)))}
+    prompt = f"Act as a professional personal finance analyst. Reply in {language}. Using only these aggregate metrics, write 5 concise specific plain-text bullet insights covering strengths, risks, spending concentration, month comparison, commitments, and one practical action. Do not invent facts: {safe_metrics}"
+    reply = await _request_model_reply(config=config, model_name=config.model, payload={"messages": [{"role": "system", "content": "Give cautious, data-grounded personal finance analysis, not regulated financial advice."}, {"role": "user", "content": prompt}]}, user_message=prompt)
+    if not reply:
+        raise HTTPException(status_code=502, detail="AI analysis is temporarily unavailable.")
+    return {"insights": reply, "model": config.model}
+
 @app.get("/stats", response_model=schemas.DashboardStats)
 async def get_dashboard_stats(current_user: models.User = Depends(get_current_user), db: AsyncSession = Depends(database.get_db)):
     return await _module_get_dashboard_stats_route(

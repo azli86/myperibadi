@@ -321,66 +321,6 @@ export default function ConnectorPage() {
           }
         />
 
-        <section className="subscription-hero relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[#1a1a1a] p-5 text-[#f5f5f5]">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-          <div className="absolute -right-8 -top-10 h-28 w-28 rounded-full bg-white/[0.04] blur-2xl" />
-          <div className="absolute -bottom-10 left-6 h-24 w-24 rounded-full bg-white/[0.04] blur-2xl" />
-          <div className="relative">
-            {showSkeleton ? (
-              <>
-                <AmountSkeleton className="h-7 w-40 bg-white/10" />
-                <AmountSkeleton className="mt-2 h-4 w-52 bg-white/10" />
-              </>
-            ) : (
-              <>
-                <p className="force-white text-xl font-black leading-tight text-[#ffffff]">
-                  {tr("Sambungan Bot", "Bot Connections")}
-                </p>
-                <p className="mt-1 text-xs font-semibold text-[#a3a3a3]">{heroSubtitle}</p>
-              </>
-            )}
-
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              {[
-                {
-                  label: tr("Jumlah", "Total"),
-                  value: stats.total,
-                  color: "#bae6fd",
-                },
-                {
-                  label: tr("Disambung", "Connected"),
-                  value: stats.connected,
-                  color: "#6ee7b7",
-                },
-                {
-                  label: tr("Tiada", "None"),
-                  value: stats.disconnected,
-                  color: "#fcd34d",
-                },
-              ].map((stat) => (
-                <div
-                  key={stat.label}
-                  className="rounded-2xl px-2.5 py-2.5"
-                  style={{ backgroundColor: "rgba(255,255,255,0.08)" }}
-                >
-                  <p
-                    className="text-[0.55rem] font-bold tracking-wide"
-                    style={{ color: "#cbd5e1" }}
-                  >
-                    {stat.label}
-                  </p>
-                  <p
-                    className="mt-1 text-lg font-black tabular-nums leading-none"
-                    style={{ color: stat.color }}
-                  >
-                    {showSkeleton ? "—" : stat.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
         <section className="space-y-2.5 px-0.5">
           <p className="px-0.5 text-[0.7rem] font-bold tracking-wide text-[var(--muted)]">
             {tr("Senarai connector", "Connector list")}

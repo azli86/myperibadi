@@ -949,6 +949,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   ];
   const desktopMainNavigation = [
     { name: t.dashboard, href: `/${sessionId}`, icon: LayoutDashboard },
+    { name: lang === "BM" ? "Analisis Kewangan" : "Financial Analysis", href: `/${sessionId}/financial-analysis`, icon: BarChart3 },
     { name: t.transactions, href: `/${sessionId}/transactions`, icon: Receipt },
     { name: t.budget, href: `/${sessionId}/budget`, icon: Wallet },
     { name: t.receipts, href: `/${sessionId}/receipts`, icon: Images },
@@ -1289,8 +1290,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<ShellCategory[]>([]);
   const [wallets, setWallets] = useState<ShellWallet[]>([]);
   const [transactions, setTransactions] = useState<ShellTransaction[]>([]);
+  const [sidebarCalendarNow, setSidebarCalendarNow] = useState<Date | null>(null);
+  useEffect(() => setSidebarCalendarNow(new Date()), []);
   const sidebarCalendar = useMemo(() => {
-    const now = new Date();
+    if (!sidebarCalendarNow) return { label: "", cells: [] };
+    const now = sidebarCalendarNow;
     const year = now.getFullYear();
     const month = now.getMonth();
     const totals = transactions.reduce((map, tx) => {
@@ -1311,7 +1315,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         return { day, key, ...(totals.get(key) || { amount: 0, count: 0 }) };
       })],
     };
-  }, [lang, transactions]);
+  }, [lang, sidebarCalendarNow, transactions]);
   const [budgetItems, setBudgetItems] = useState<ShellBudgetItem[]>([]);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileSheetAccountSwitcher, setShowMobileSheetAccountSwitcher] = useState(false);
@@ -3323,15 +3327,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 : "translate-y-0",
             )}
           >
-            <div className="px-3 pb-[max(0.45rem,env(safe-area-inset-bottom,0px))] pt-1">
+            <div className="bg-[var(--bottom-nav-surface)] pb-[env(safe-area-inset-bottom,0px)]">
               {(() => {
                 const chatItem = mobileNavFlat.find((item) => item.nameKey === "chat");
                 const leftNavItems = mobileNavFlat.filter((item) =>
                   item.nameKey === "home" ||
-                  item.nameKey === "transactions" ||
-                  item.nameKey === "wallet",
+                  item.nameKey === "transactions",
                 );
-                const rightNavItems = mobileNavFlat.filter((item) => item.nameKey === "receipts");
+                const rightNavItems = mobileNavFlat.filter((item) => item.nameKey === "wallet");
                 const isChatActive = Boolean(
                   chatItem &&
                     (pathname === chatItem.href ||
@@ -3355,23 +3358,17 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       prefetch
                       onClick={(event) => handleBottomNavLinkClick(event, item.href)}
                       className={cn(
-                        "group relative flex h-12 flex-1 items-center justify-center rounded-[20px] transition-all duration-250 active:scale-90",
+                        "group relative flex h-14 w-full items-center justify-center transition-all duration-250 active:scale-95",
                         isActive
                           ? "text-[var(--bottom-nav-active-detail)]"
                           : "text-[var(--bottom-nav-muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--bottom-nav-text)]",
                       )}
                     >
-                      {isActive && (
-                        <span
-                          aria-hidden="true"
-                          className="pointer-events-none absolute left-1/2 top-1/2 h-11 w-11 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--bottom-nav-active-fill)] shadow-sm"
-                        />
-                      )}
                       <span className="relative inline-flex flex-col items-center gap-1">
                         <Icon
                           active={isActive}
                           size={
-                            item.nameKey === "wallet" || item.nameKey === "receipts" ? 26 : 24
+                            item.nameKey === "wallet" || item.nameKey === "receipts" ? 30 : 28
                           }
                         />
                       </span>
@@ -3381,19 +3378,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 return (
               <div
                 className={cn(
-                  "relative flex h-[62px] items-center rounded-[28px] border px-1.5 shadow-[0_10px_32px_rgba(0,0,0,0.14)] backdrop-blur-2xl",
-                  isLight
-                    ? "border-black/[0.06] bg-[var(--bottom-nav-surface)]/95"
-                    : "border-white/[0.08] bg-[var(--bottom-nav-surface)]/92",
+                  "relative mx-auto grid h-16 max-w-screen-md grid-cols-5 items-center px-2",
                 )}
               >
                 {/* Left cluster */}
-                <div className="flex min-w-0 flex-1 items-center justify-evenly gap-0.5">
+                <div className="contents">
                   {leftNavItems.map(renderSideLink)}
                 </div>
 
                 {/* Center spacer keeps layout balanced; chat sits on true center */}
-                <div className="h-12 w-[54px] shrink-0" aria-hidden="true" />
+                <div className="col-start-3 h-14" aria-hidden="true" />
 
                 {chatItem ? (
                   <Link
@@ -3403,59 +3397,32 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     prefetch
                     onClick={(event) => handleBottomNavLinkClick(event, chatItem.href)}
                     className={cn(
-                      "absolute left-1/2 top-1/2 z-10 flex h-[54px] w-[54px] -translate-x-1/2 -translate-y-1/2 items-center justify-center text-[var(--bottom-nav-text)] transition-all duration-250 active:scale-90",
+                      "absolute left-1/2 top-1/2 z-10 flex h-14 w-[54px] -translate-x-1/2 -translate-y-1/2 items-center justify-center text-[var(--bottom-nav-text)] transition-all duration-250 active:scale-95",
                       isChatActive
                         ? "text-[var(--bottom-nav-active-detail)]"
                         : "text-[var(--bottom-nav-text)]",
                     )}
                   >
-                    <ChatNavIcon active={isChatActive} size={48} />
+                    <ChatNavIcon active={isChatActive} size={54} />
                   </Link>
                 ) : null}
 
                 {/* Right cluster */}
-                <div className="flex min-w-0 flex-1 items-center justify-evenly gap-0.5">
+                <div className="contents">
                   {rightNavItems.map(renderSideLink)}
-                  <button
-                    type="button"
-                    aria-label="Calculator"
-                    onClick={() => setShowCalculator((v) => !v)}
-                    className={cn(
-                      "group relative flex h-12 flex-1 items-center justify-center rounded-[20px] transition-all duration-200 active:scale-90",
-                      showCalculator
-                        ? "text-[var(--bottom-nav-active-detail)]"
-                        : "text-[var(--bottom-nav-muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--bottom-nav-text)]",
-                    )}
-                  >
-                    {showCalculator && (
-                      <span
-                        aria-hidden="true"
-                        className="pointer-events-none absolute left-1/2 top-1/2 h-11 w-11 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--bottom-nav-active-fill)] shadow-sm"
-                      />
-                    )}
-                    <span className="relative inline-flex flex-col items-center">
-                      <NavCalcIcon active={showCalculator} size={24} />
-                    </span>
-                  </button>
                   <button
                     type="button"
                     aria-label={t.openMenu}
                     onClick={() => setShowMobileMenu(true)}
                     className={cn(
-                      "group relative flex h-12 flex-1 items-center justify-center rounded-[20px] transition-all duration-200 active:scale-90",
+                      "group relative flex h-14 w-full items-center justify-center transition-all duration-200 active:scale-95",
                       showMobileMenu
                         ? "text-[var(--bottom-nav-active-detail)]"
                         : "text-[var(--bottom-nav-muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--bottom-nav-text)]",
                     )}
                   >
-                    {showMobileMenu && (
-                      <span
-                        aria-hidden="true"
-                        className="pointer-events-none absolute left-1/2 top-1/2 h-11 w-11 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--bottom-nav-active-fill)] shadow-sm"
-                      />
-                    )}
                     <span className="relative inline-flex flex-col items-center">
-                      <NavMoreIcon active={showMobileMenu} size={24} />
+                      <NavMoreIcon active={showMobileMenu} size={28} />
                     </span>
                   </button>
                 </div>
@@ -3608,32 +3575,22 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       
         {showMobileMenu && !isChatFullscreen && (
           <div
-            className="fixed inset-0 z-[500] bg-transparent lg:hidden flex items-end"
+            className="fixed inset-0 z-[500] bg-[var(--sheet-bg)] lg:hidden flex items-stretch"
             onClick={requestMobileMenuClose}
           >
             <aside
               className={cn(
-                "app-sheet-panel app-sheet-panel--docked max-h-[82dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))]",
+                "app-sheet-panel h-[100dvh] max-h-none w-full rounded-none overflow-y-auto overflow-x-hidden overscroll-contain pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))]",
                 mobileSheetClass,
               )}
               onClick={(event) => event.stopPropagation()}
             >
               <div
                 className={cn(
-                  "app-sheet-panel-header sticky top-0 z-10 mb-3 border-b px-4 pt-2.5 pb-3 backdrop-blur-sm",
-                  isLight
-                    ? "border-neutral-200/80 bg-white/95"
-                    : "border-white/8 bg-[var(--sheet-bg)]/95",
+                  "relative z-10 mx-4 mb-5 mt-4 rounded-2xl p-3",
+                  isLight ? "bg-neutral-100" : "bg-white/[0.08]",
                 )}
               >
-                {/* Drag handle line */}
-                <div
-                  className={cn(
-                    "mx-auto mb-3 h-1 w-10 rounded-full",
-                    isLight ? "bg-neutral-200" : "bg-white/10",
-                  )}
-                />
-
                 <div className="relative flex items-center justify-between gap-3">
                   {/* Account display & switch trigger */}
                   <div className="relative min-w-0 flex-1">
@@ -3641,10 +3598,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       type="button"
                       onClick={() => setShowMobileSheetAccountSwitcher((open) => !open)}
                       className={cn(
-                        "flex w-full items-center gap-2.5 rounded-2xl border px-3 py-1.5 text-left transition-all active:scale-[0.98]",
-                        isLight
-                          ? "border-neutral-200/80 bg-neutral-50"
-                          : "border-white/10 bg-white/[0.04]",
+                        "flex w-full items-center gap-2.5 rounded-xl bg-[var(--card)] px-3 py-2 text-left transition-all active:scale-[0.98]", 
                       )}
                     >
                       <UserAvatar name={displayName || activeEmail} size={32} />
@@ -3732,7 +3686,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     <button
                       type="button"
                       onClick={() => setLang(lang === "EN" ? "BM" : "EN")}
-                      className={cn("flex h-9 min-w-9 items-center justify-center rounded-full px-2 text-[11px] font-black", mobileSheetMutedButtonClass)}
+                      className="flex h-10 min-w-10 items-center justify-center rounded-xl bg-[var(--card)] px-2 text-[11px] font-black text-[var(--text)]"
                       aria-label={lang === "BM" ? "Tukar bahasa" : "Switch language"}
                     >
                       {lang}
@@ -3740,12 +3694,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     <ThemeToggle
                       compact
                       inverted={!isLight}
-                      className={cn("h-9 w-9 rounded-full", mobileSheetMutedButtonClass)}
+                      className="h-10 w-10 rounded-xl bg-[var(--card)]"
                     />
                     <button
                       type="button"
                       onClick={requestMobileMenuClose}
-                      className={cn("flex h-9 w-9 items-center justify-center rounded-full", mobileSheetMutedButtonClass)}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--card)] text-[var(--text)]"
                     >
                       <X size={15} />
                     </button>
@@ -3755,14 +3709,23 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
               <div className="px-4 pb-10">
                 <div className="space-y-5">
-                  {mobileMenuSections.map((section, index) => (
-                    <section key={`${index}-${section.label}`}>
-                      <p className="mb-2.5 text-[0.62rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                        {section.label}
-                      </p>
-                      <div className="grid grid-cols-4 gap-x-1 gap-y-4">
-                        {section.items.map((item) => {
-                          const isActive = pathname === item.href;
+                  <section>
+                    <p className="mb-2.5 text-[0.62rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                      Personal
+                    </p>
+                    <div className="grid grid-cols-4 gap-x-1 gap-y-4">
+                      {mobileMenuSections.flatMap((section) => section.items).filter((item) => ![
+                        `/${sessionId}`,
+                        `/${sessionId}/chat`,
+                        `/${sessionId}/receipts`,
+                        `/${sessionId}/settings`,
+                        `/${sessionId}/map`,
+                        `/${sessionId}/places`,
+                        `/${sessionId}/map-analysis`,
+                        `/${sessionId}/connector`,
+                        `/${sessionId}/vehicle`,
+                        `/${sessionId}/warranty`,
+                      ].includes(item.href)).map((item) => {
                           return (
                             <button
                               key={item.href}
@@ -3781,30 +3744,20 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                               >
                                 <div
                                   className={cn(
-                                    "flex h-12 w-12 items-center justify-center rounded-2xl",
-                                    isActive
-                                      ? isLight
-                                        ? "bg-neutral-900 text-white"
-                                        : "bg-white text-neutral-950"
-                                      : isLight
-                                        ? "bg-neutral-100 text-neutral-800"
-                                        : "bg-white/[0.08] text-neutral-100",
+                                    "flex h-14 w-14 items-center justify-center rounded-2xl",
+                                    isLight ? "bg-neutral-100 text-neutral-800" : "bg-white/[0.08] text-neutral-100",
                                   )}
                                 >
                                   <item.icon
-                                    size={20}
-                                    strokeWidth={isActive ? 2.2 : 1.85}
+                                    size={25}
+                                    strokeWidth={1.85}
                                     className="shrink-0"
                                   />
                                 </div>
                                 <p
                                   className={cn(
-                                    "w-full line-clamp-2 px-0.5 text-[0.65rem] font-medium leading-[1.15]",
-                                    isActive
-                                      ? mobileSheetActiveTitleClass
-                                      : isLight
-                                        ? "text-neutral-600"
-                                        : "text-neutral-400",
+                                    "w-full line-clamp-2 px-0.5 text-xs font-semibold leading-tight",
+                                    isLight ? "text-neutral-600" : "text-neutral-400",
                                   )}
                                 >
                                   {item.name}
@@ -3812,9 +3765,111 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                               </button>
                             );
                           })}
-                        </div>
-                      </section>
-                  ))}
+                    </div>
+                  </section>
+
+                  <section className={cn("rounded-2xl p-4", isLight ? "bg-neutral-100" : "bg-white/[0.08]")}>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/receipts`))}
+                        className="flex items-center gap-3 rounded-xl bg-[var(--card)] p-3 text-left text-[var(--text)] transition active:scale-[0.97]"
+                      >
+                        <Images size={25} strokeWidth={1.85} />
+                        <span className="text-sm font-bold">Gallery</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { requestMobileMenuClose(); setShowCalculator(true); }}
+                        className="flex items-center gap-3 rounded-xl bg-[var(--card)] p-3 text-left text-[var(--text)] transition active:scale-[0.97]"
+                      >
+                        <CalculatorIcon size={25} strokeWidth={1.85} />
+                        <span className="text-sm font-bold">Calculator</span>
+                      </button>
+                    </div>
+                  </section>
+
+                  <section className={cn("rounded-2xl p-4", isLight ? "bg-neutral-100" : "bg-white/[0.08]")}>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { name: lang === "BM" ? "Kenderaan Saya" : "My Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
+                        { name: lang === "BM" ? "Waranti Saya" : "My Warranty", href: `/${sessionId}/warranty`, icon: Shield },
+                      ].map((item) => (
+                        <button
+                          key={item.href}
+                          type="button"
+                          onClick={() => requestMobileMenuCloseThen(() => router.push(item.href))}
+                          className="flex min-w-0 items-center gap-3 rounded-xl bg-[var(--card)] p-3 text-left text-[var(--text)] transition active:scale-[0.97]"
+                        >
+                          <item.icon size={25} strokeWidth={1.85} className="shrink-0" />
+                          <span className="text-sm font-bold">{item.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className={cn("rounded-2xl p-4", isLight ? "bg-neutral-100" : "bg-white/[0.08]")}>
+                    <div className="mb-3 flex items-center gap-3 text-[var(--text)]">
+                      <MapPinned size={25} strokeWidth={1.85} />
+                      <span className="text-sm font-bold">Maps</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { name: lang === "BM" ? "Peta" : "Map", href: `/${sessionId}/map`, icon: MapPinned },
+                        { name: lang === "BM" ? "Tempat Saya" : "My Places", href: `/${sessionId}/places`, icon: MapPin },
+                        { name: lang === "BM" ? "Analisis" : "Analysis", href: `/${sessionId}/map-analysis`, icon: BarChart3 },
+                      ].map((item) => (
+                        <button
+                          key={item.href}
+                          type="button"
+                          onClick={() => requestMobileMenuCloseThen(() => router.push(item.href))}
+                          className="flex min-w-0 flex-col items-center gap-2 rounded-xl bg-[var(--card)] p-3 text-center text-[var(--text)] transition active:scale-[0.97]"
+                        >
+                          <item.icon size={23} strokeWidth={1.85} />
+                          <span className="text-xs font-semibold">{item.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+
+                  <button
+                    type="button"
+                    onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/connector`))}
+                    className={cn(
+                      "flex w-full items-center gap-4 rounded-2xl p-4 text-left transition active:scale-[0.98]",
+                      isLight ? "bg-neutral-100 text-neutral-800" : "bg-white/[0.08] text-neutral-100",
+                    )}
+                  >
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--card)]">
+                      <Bot size={26} strokeWidth={1.85} />
+                    </span>
+                    <span>
+                      <span className="block text-sm font-bold">Connector</span>
+                      <span className="mt-0.5 block text-xs text-[var(--muted)]">WhatsApp & Telegram</span>
+                    </span>
+                  </button>
+
+                  <section className="grid grid-cols-2 gap-3">
+                    {[
+                      { name: "Help", href: `/${sessionId}/help`, icon: HelpCircle },
+                      { name: "Setting", href: `/${sessionId}/settings`, icon: Settings },
+                    ].map((item) => (
+                      <button
+                        key={item.href}
+                        type="button"
+                        onClick={() => requestMobileMenuCloseThen(() => router.push(item.href))}
+                        className={cn(
+                          "flex items-center gap-3 rounded-2xl p-4 text-left transition active:scale-[0.98]",
+                          isLight ? "bg-neutral-100 text-neutral-800" : "bg-white/[0.08] text-neutral-100",
+                        )}
+                      >
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--card)]">
+                          <item.icon size={24} strokeWidth={1.85} />
+                        </span>
+                        <span className="text-sm font-bold">{item.name}</span>
+                      </button>
+                    ))}
+                  </section>
                 </div>
               </div>
             </aside>

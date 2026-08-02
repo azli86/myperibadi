@@ -197,30 +197,6 @@ export default function LagiPage() {
           fallbackHref={`/${sessionId}`}
         />
 
-        {/* Profile Hero */}
-        <div className="px-1">
-          <Link
-            href={`/${sessionId}/account`}
-            className="relative flex items-center gap-4 overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-gradient-to-br from-[var(--card)] to-[var(--surface-tint)] p-4 active:scale-[0.99] transition-all"
-          >
-            <div className="absolute -right-6 -top-8 h-28 w-28 rounded-full bg-[var(--accent)]/8 blur-2xl" />
-            <div className="relative grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--text)] ring-1 ring-[var(--accent)]/15">
-              <Sparkles size={22} />
-            </div>
-            <div className="relative min-w-0 flex-1">
-              <p className="truncate text-base font-black text-[var(--text)]">{userProfile.name}</p>
-              <p className="mt-0.5 truncate text-xs font-semibold text-[var(--muted)]">{userProfile.email}</p>
-              <div className="mt-2 flex items-center gap-1.5">
-                <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)]/12 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-[var(--accent)]">
-                  <Sparkles size={9} />
-                  {tr("Bot Aktif", "Bot Active")}
-                </span>
-              </div>
-            </div>
-            <ChevronRight size={18} className="relative shrink-0 text-[var(--muted)]" />
-          </Link>
-        </div>
-
         {/* Preferences */}
         <section className="px-1">
           <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{t.preferences}</p>

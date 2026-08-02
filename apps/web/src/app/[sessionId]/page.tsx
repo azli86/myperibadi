@@ -387,6 +387,8 @@ export default function Dashboard() {
   const sessionId = params.sessionId as string || ""
   const isLight = resolvedTheme === "light"
 
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
   const [showAddModal, setShowAddModal] = useState(false)
   const [showBadgeModal, setShowBadgeModal] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -436,16 +438,10 @@ export default function Dashboard() {
   const dailyChartScrollRef = useRef<HTMLDivElement | null>(null)
   const dailyScrollInitializedRef = useRef(false)
   const analyticalTransactions = transactions.filter((tx) => !tx.is_wallet_transfer && !tx.is_debt_movement)
-  const currentYearInTimezone = Math.max(
-    1970,
-    Number(
-      new Intl.DateTimeFormat("en-US", {
-        year: "numeric",
-        timeZone: timezone,
-      }).format(new Date())
-    )
-  )
-  const dashboardCurrentMonthKey = getTodayDateInTimeZone(timezone).slice(0, 7)
+  const currentYearInTimezone = mounted
+    ? Math.max(1970, Number(new Intl.DateTimeFormat("en-US", { year: "numeric", timeZone: timezone }).format(new Date())))
+    : 1970
+  const dashboardCurrentMonthKey = mounted ? getTodayDateInTimeZone(timezone).slice(0, 7) : "1970-01"
   const dashboardMonthOptions = Array.from({ length: 12 }, (_, index) => {
     const monthDate = new Date(currentYearInTimezone, index, 1)
     const key = `${currentYearInTimezone}-${String(index + 1).padStart(2, "0")}`
@@ -2360,144 +2356,6 @@ export default function Dashboard() {
               </button>
             </div>
             )}
-          </div>
-
-          {/* Features Grid */}
-          <div className="px-1">
-            <section className="space-y-2">
-              <h3 className="px-2 text-sm font-bold text-[var(--text)]">{lang === "EN" ? "Features" : "Ciri"}</h3>
-              <div className="grid grid-cols-4 justify-items-center gap-x-2 gap-y-3">
-                {(() => {
-                  // Keep grey tile background like before; glyph content is full color
-                  const tile = isLight ? "#E5E5E5" : "#2A2A2A"
-                  return [
-                  {
-                    href: `/${sessionId}/budget`,
-                    label: lang === "BM" ? "Bajet" : "Budget",
-                    icon: (
-                      <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden="true">
-                        <rect width="64" height="64" rx="18" fill={tile} />
-                        <rect x="12" y="14" width="40" height="36" rx="10" fill="#4F46E5" />
-                        <rect x="18" y="35" width="5" height="9" rx="2.5" fill={tile} />
-                        <rect x="27" y="28" width="5" height="16" rx="2.5" fill="#A5B4FC" />
-                        <rect x="36" y="21" width="5" height="23" rx="2.5" fill="#818CF8" />
-                        <path d="M17 28.5 26 22l8 4 12-10" stroke="#FBBF24" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                        <circle cx="46" cy="16" r="3" fill="#FBBF24" />
-                      </svg>
-                    ),
-                  },
-                  {
-                    href: `/${sessionId}/categories`,
-                    label: lang === "BM" ? "Kategori" : "Categories",
-                    icon: (
-                      <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden="true">
-                        <rect width="64" height="64" rx="18" fill={tile} />
-                        <rect x="12" y="13" width="18" height="18" rx="6" fill="#A78BFA" />
-                        <rect x="34" y="13" width="18" height="18" rx="6" fill="#8B5CF6" />
-                        <rect x="12" y="35" width="18" height="18" rx="6" fill="#7C3AED" />
-                        <rect x="34" y="35" width="18" height="18" rx="6" fill="#6D28D9" />
-                        <path d="M39 44h8M43 40v8" stroke="#FBBF24" strokeWidth="2.6" strokeLinecap="round" />
-                      </svg>
-                    ),
-                  },
-                  {
-                    href: `/${sessionId}/map`,
-                    label: "Maps",
-                    icon: (
-                      <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden="true">
-                        <rect width="64" height="64" rx="18" fill={tile} />
-                        <path d="M14 17 25 12v35l-11 5V17Z" fill="#34D399" />
-                        <path d="M25 12 39 18v35l-14-6V12Z" fill="#10B981" />
-                        <path d="M39 18 50 13v35l-11 5V18Z" fill="#059669" />
-                        <path d="M22 31c0-6 4.5-10 10-10s10 4 10 10c0 7-10 16-10 16S22 38 22 31Z" fill="#EF4444" />
-                        <circle cx="32" cy="31" r="3.6" fill="#FFFFFF" />
-                      </svg>
-                    ),
-                  },
-                  {
-                    href: `/${sessionId}/wallet-settings`,
-                    label: "Wallet",
-                    icon: (
-                      <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden="true">
-                        <rect width="64" height="64" rx="18" fill={tile} />
-                        <rect x="11" y="18" width="42" height="30" rx="9" fill="#F97316" />
-                        <path d="M12 27h40" stroke="#FDBA74" strokeWidth="4" />
-                        <rect x="35" y="31" width="18" height="13" rx="5" fill={tile} />
-                        <circle cx="43" cy="37.5" r="3" fill="#EA580C" />
-                        <path d="M19 15h20c3 0 5 2 5 5H17c0-3 1-5 2-5Z" fill="#FB923C" />
-                      </svg>
-                    ),
-                  },
-                  {
-                    href: `/${sessionId}/map-analysis`,
-                    label: lang === "BM" ? "Maps Analisis" : "Maps Analysis",
-                    icon: (
-                      <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden="true">
-                        <rect width="64" height="64" rx="18" fill={tile} />
-                        <rect x="12" y="13" width="40" height="38" rx="10" fill="#2563EB" />
-                        <path d="M18 41 26 32l7 5 12-16" stroke="#93C5FD" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                        <circle cx="26" cy="32" r="3" fill="#FBBF24" />
-                        <circle cx="33" cy="37" r="3" fill="#FBBF24" />
-                        <circle cx="45" cy="21" r="3" fill="#FFFFFF" />
-                        <path d="M20 20h10" stroke="#BFDBFE" strokeWidth="3" strokeLinecap="round" />
-                        <path d="M20 26h6" stroke="#BFDBFE" strokeWidth="3" strokeLinecap="round" />
-                      </svg>
-                    ),
-                  },
-                  {
-                    href: `/${sessionId}/whatsapp`,
-                    label: "WhatsApp",
-                    icon: (
-                      <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden="true">
-                        <rect width="64" height="64" rx="18" fill={tile} />
-                        <path d="M16 49.5 18.5 41A18 18 0 1 1 25 47.5L16 49.5Z" fill="#22C55E" />
-                        <path d="M32 17.5A14.5 14.5 0 0 0 21.3 41.8l.4.5-1.2 4 4.2-1.1.6.3A14.5 14.5 0 1 0 32 17.5Z" fill="#16A34A" />
-                        <path d="M40 36c-.4-.2-2.3-1.1-2.7-1.3-.4-.1-.7-.2-1 .2-.3.4-1 1.3-1.3 1.5-.2.3-.5.3-.9.1-2.4-1.2-3.9-2.2-5.4-4.7-.4-.6.4-.6 1-1.8.1-.3.1-.5 0-.8-.1-.2-.9-2.2-1.3-3.1-.3-.8-.7-.7-1-.8h-.8c-.3 0-.8.1-1.2.5-.4.4-1.5 1.5-1.5 3.7s1.6 4.2 1.8 4.5c.2.3 3.1 4.8 7.7 6.7 2.8 1.1 4.6.8 5.3.1.7-.7.9-2.1.7-2.5-.2-.3-.4-.5-.8-.7Z" fill="#FFFFFF" />
-                      </svg>
-                    ),
-                  },
-                  {
-                    href: `/${sessionId}/telegram`,
-                    label: "Telegram",
-                    icon: (
-                      <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden="true">
-                        <rect width="64" height="64" rx="18" fill={tile} />
-                        <path d="M50 17 43.5 48c-.4 2-1.6 2.5-3.2 1.5l-9-6.6-4.4 4.2c-.5.5-.9.9-1.9.9l.7-9.4 17.2-15.5c.7-.7-.2-1-1.1-.4L20.5 36.1l-9-2.8c-2-.6-2-2 .5-2.9l35.5-13.7c1.7-.6 3.1.4 2.5 2.3Z" fill="#2AABEE" />
-                      </svg>
-                    ),
-                  },
-                  {
-                    href: `/${sessionId}/debt`,
-                    label: lang === "BM" ? "Hutang" : "Debt",
-                    icon: (
-                      <svg viewBox="0 0 64 64" className="h-full w-full" aria-hidden="true">
-                        <rect width="64" height="64" rx="18" fill={tile} />
-                        <rect x="16" y="9" width="32" height="46" rx="8" fill="#F43F5E" />
-                        <rect x="22" y="18" width="20" height="3" rx="1.5" fill="#FECDD3" opacity=".9" />
-                        <rect x="22" y="26" width="15" height="3" rx="1.5" fill="#FECDD3" opacity=".75" />
-                        <rect x="22" y="34" width="20" height="3" rx="1.5" fill="#FECDD3" opacity=".75" />
-                        <circle cx="32" cy="46" r="8" fill={tile} />
-                        <path d="M28.5 46 31 48.5 36 43" stroke="#F43F5E" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                      </svg>
-                    ),
-                  },
-                ]
-                })().map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="group flex h-[5.8rem] w-full min-w-0 flex-col items-center justify-start gap-2 rounded-[16px] px-0.5 py-1 text-[var(--text)] transition active:scale-[0.95]"
-                  >
-                    <span className="flex h-[3.6rem] w-[3.6rem] items-center justify-center overflow-hidden rounded-2xl transition group-hover:scale-105 duration-200">
-                      {item.icon}
-                    </span>
-                    <span className="line-clamp-1 max-w-full text-center text-xs font-bold leading-tight text-[var(--text)]">
-                      {item.label}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </section>
           </div>
 
           {/* Daily Budget */}

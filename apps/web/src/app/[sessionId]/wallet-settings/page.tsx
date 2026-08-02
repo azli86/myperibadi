@@ -599,50 +599,16 @@ export default function WalletSettingsPage() {
       <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
       <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.04] blur-2xl" />
 
-      <div className={cn("relative", desktop && "grid gap-6 lg:grid-cols-[1.15fr_1fr]")}>
-        <div>
-          <div>
-            <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[#cbd5e1]">
-              {tr("Jumlah Baki", "Total Balance")}
-            </p>
-            <p className="wallet-hero-amount mt-2 leading-none text-[#ffffff]">
-              {showDataSkeleton ? (
-                <AmountSkeleton className="h-7 w-32 bg-[rgba(255,255,255,0.12)]" />
-              ) : (
-                <MoneyAmount value={totalBalance} size={desktop ? "heroLg" : "hero"} className="text-[#ffffff]" currencyClassName="text-[#ffffff] opacity-55" />
-              )}
-            </p>
-          </div>
-        </div>
-
-        <div className={cn("grid grid-cols-3 gap-2.5", !desktop && "mt-5")}>
-          <div className="rounded-[1.15rem] bg-[rgba(255,255,255,0.08)] p-3">
-            <div className="flex items-center gap-1.5">
-              <Users size={12} className="text-[#6ee7b7]" />
-              <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#cbd5e1]">{tr("Dompet", "Wallets")}</p>
-            </div>
-            <p className="mt-2 text-sm font-black tabular-nums text-[#a7f3d0] md:text-base">
-              {showDataSkeleton ? <AmountSkeleton className="h-4 w-8 bg-[rgba(255,255,255,0.12)]" /> : wallets.length}
-            </p>
-          </div>
-          <div className="rounded-[1.15rem] bg-[rgba(255,255,255,0.08)] p-3">
-            <div className="flex items-center gap-1.5">
-              <Star size={12} className="text-[#fcd34d]" fill="currentColor" />
-              <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#cbd5e1]">{tr("Utama", "Default")}</p>
-            </div>
-            <p className="mt-2 truncate text-sm font-black text-[#fde68a] md:text-base">
-              {showDataSkeleton ? <AmountSkeleton className="h-4 w-12 bg-[rgba(255,255,255,0.12)]" /> : defaultWalletLabel}
-            </p>
-          </div>
-          <div className="rounded-[1.15rem] bg-[rgba(255,255,255,0.08)] p-3">
-            <div className="flex items-center gap-1.5">
-              <Wallet size={12} className="text-[#7dd3fc]" />
-              <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#cbd5e1]">{tr("E-Wallet", "E-Wallet")}</p>
-            </div>
-            <p className="mt-2 text-sm font-black tabular-nums text-[#bae6fd] md:text-base">
-              {showDataSkeleton ? <AmountSkeleton className="h-4 w-8 bg-[rgba(255,255,255,0.12)]" /> : ewalletCount}
-            </p>
-          </div>
+      <div className="relative flex min-h-24 flex-col items-center justify-center text-center md:min-h-28">
+        <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[#cbd5e1]">
+          {tr("Jumlah Baki", "Total Balance")}
+        </p>
+        <div className="wallet-hero-amount mt-2 leading-none text-[#ffffff]">
+          {showDataSkeleton ? (
+            <AmountSkeleton className="h-7 w-32 bg-[rgba(255,255,255,0.12)]" />
+          ) : (
+            <MoneyAmount value={totalBalance} size={desktop ? "heroLg" : "hero"} className="text-[#ffffff]" currencyClassName="text-[#ffffff] opacity-55" />
+          )}
         </div>
       </div>
     </div>

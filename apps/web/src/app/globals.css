@@ -30,6 +30,8 @@
 @theme {
   --color-background: var(--bg);
   --color-foreground: var(--text);
+  --color-card: var(--card);
+  --color-card-foreground: var(--text);
   --color-primary: var(--btn-primary-bg, #171717);
   --color-primary-foreground: var(--btn-primary-text, #ffffff);
   --color-border: var(--border);
@@ -61,6 +63,12 @@
   --brand-gradient: linear-gradient(135deg, #262626 0%, #1a1a1a 100%);
   --brand-hero-gradient: linear-gradient(145deg, #0d0d0d 0%, #161616 48%, #1a1a1a 100%);
   --brand-hero-gradient-wide: linear-gradient(120deg, #0d0d0d 0%, #161616 55%, #1a1a1a 100%);
+  --chart-1: #2563eb;
+  --chart-2: #0ea5e9;
+  --chart-3: #8b5cf6;
+  --chart-4: #14b8a6;
+  --chart-5: #ec4899;
+  --chart-6: #64748b;
 
   /* ── Dark Mode ── */
   --page-bg: #0d0d0d;

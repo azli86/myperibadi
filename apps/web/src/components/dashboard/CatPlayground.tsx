@@ -812,7 +812,7 @@ export function CatPlayground({
   const [hydrated, setHydrated] = useState(false)
   const [feedFlash, setFeedFlash] = useState(false)
   const [playFlash, setPlayFlash] = useState(false)
-  const [now, setNow] = useState(() => Date.now())
+  const [now, setNow] = useState(0)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState("Mimi")
   const [syncLabel, setSyncLabel] = useState<"idle" | "syncing" | "ok">("idle")

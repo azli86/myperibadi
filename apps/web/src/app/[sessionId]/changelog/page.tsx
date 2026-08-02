@@ -25,6 +25,20 @@ export default function ChangelogPage() {
   const entries: ChangelogEntry[] = isBm
     ? [
         {
+          version: "v2026.07.30",
+          date: "30 Julai 2026",
+          title: "Kitar Gaji, Langganan & Imej Dompet",
+          items: [
+            "Tambah kitar gaji bulanan (Mgaji/Msalary) untuk reset kitar belanjawan automatik.",
+            "Sistem langganan kini jejak tarikh bayaran dan papar tarikh matang seterusnya.",
+            "Imej dompet boleh diupload dan dipaparkan sebagai ikon serta latar kad.",
+            "Dashboard kini papar komitmen dan auto-tanda SUBX yang telah dibayar.",
+            "Tambah ringkasan bajet: pendapatan kitar, peruntukan, dan baki belum diagih.",
+            "Label transaksi automatik: SUBX = Langganan, Loan Payment = Pinjaman.",
+            "Icon kategori tersuai boleh diupload.",
+          ],
+        },
+        {
           version: "v2026.05.07",
           date: "7 Mei 2026",
           title: "Kemaskini Portal & Connector",
@@ -97,6 +111,20 @@ export default function ChangelogPage() {
         },
       ]
     : [
+        {
+          version: "v2026.07.30",
+          date: "30 July 2026",
+          title: "Salary Cycle, Subscriptions & Wallet Images",
+          items: [
+            "Added monthly salary cycle (Mgaji/Msalary) to auto-reset budget cycles.",
+            "Subscription system now tracks payment dates and shows next due date.",
+            "Wallet images can be uploaded and displayed as icon and card background.",
+            "Dashboard now shows commitments and auto-checks paid SUBX payments.",
+            "Added budget summary: cycle income, allocation, and unallocated balance.",
+            "Auto transaction labels: SUBX = Subscription, Loan Payment = Loan.",
+            "Custom category icons can now be uploaded.",
+          ],
+        },
         {
           version: "v2026.05.07",
           date: "7 May 2026",

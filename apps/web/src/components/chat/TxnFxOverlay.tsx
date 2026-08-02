@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
+import { TrendingUp, TrendingDown } from "lucide-react"
 
 export type TxnFxKind = "income" | "expense"
 
@@ -22,42 +23,74 @@ type Particle = {
   color: string
 }
 
-function MoneyBill({ className }: { className?: string }) {
+function MoneyBill({ className, tone }: { className?: string; tone: TxnFxKind }) {
+  const income = tone === "income"
+  const body = income ? "#059669" : "#475569"
+  const face = income ? "#10b981" : "#64748b"
+  const edge = income ? "#064e3b" : "#1e293b"
+  const mark = income ? "#a7f3d0" : "#cbd5e1"
+  const ink = income ? "#064e3b" : "#1e293b"
   return (
     <svg
       className={className}
-      width="44"
-      height="24"
+      width="40"
+      height="22"
       viewBox="0 0 44 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden
     >
-      <rect x="1" y="1" width="42" height="22" rx="3" fill="#16a34a" stroke="#14532d" strokeWidth="1.2" />
-      <rect x="4" y="4" width="36" height="16" rx="2" fill="#22c55e" opacity="0.85" />
-      <circle cx="22" cy="12" r="6" fill="#bbf7d0" opacity="0.95" />
+      <rect x="1" y="1" width="42" height="22" rx="3" fill={body} stroke={edge} strokeWidth="1" />
+      <rect x="4" y="4" width="36" height="16" rx="2" fill={face} opacity="0.9" />
+      <circle cx="22" cy="12" r="6" fill={mark} opacity="0.9" />
       <text
         x="22"
         y="15.5"
         textAnchor="middle"
         fontSize="9"
-        fontWeight="800"
-        fill="#14532d"
+        fontWeight="700"
+        fill={ink}
         fontFamily="system-ui, sans-serif"
       >
         RM
       </text>
-      <circle cx="8" cy="12" r="2.2" fill="#86efac" opacity="0.7" />
-      <circle cx="36" cy="12" r="2.2" fill="#86efac" opacity="0.7" />
     </svg>
   )
 }
 
-function ConfettiPiece({ color }: { color: string }) {
+function FxBadge({ kind }: { kind: TxnFxKind }) {
+  const income = kind === "income"
   return (
-    <svg width="10" height="14" viewBox="0 0 10 14" aria-hidden>
-      <rect x="1" y="1" width="8" height="12" rx="1.5" fill={color} />
-    </svg>
+    <motion.div
+      className="absolute left-1/2 top-[30%] -translate-x-1/2"
+      initial={{ opacity: 0, scale: 0.85, y: 12 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: -8 }}
+      transition={{ type: "spring", stiffness: 260, damping: 20 }}
+    >
+      <div
+        className={
+          income
+            ? "flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-4 py-2 shadow-lg shadow-emerald-500/10 backdrop-blur-sm"
+            : "flex items-center gap-2 rounded-full border border-rose-500/30 bg-rose-500/12 px-4 py-2 shadow-lg shadow-rose-500/10 backdrop-blur-sm"
+        }
+      >
+        {income ? (
+          <TrendingUp size={14} className="text-emerald-400" strokeWidth={2.5} />
+        ) : (
+          <TrendingDown size={14} className="text-rose-400" strokeWidth={2.5} />
+        )}
+        <span
+          className={
+            income
+              ? "text-[0.8125rem] font-bold tracking-wide text-emerald-400"
+              : "text-[0.8125rem] font-bold tracking-wide text-rose-400"
+          }
+        >
+          {income ? "Money In" : "Money Out"}
+        </span>
+      </div>
+    </motion.div>
   )
 }
 
@@ -120,16 +153,15 @@ export default function TxnFxOverlay({ kind, onDone, durationMs = 2200 }: Props)
 
   const particles = useMemo(() => {
     if (!kind) return [] as Particle[]
-    const colors = ["#22c55e", "#eab308", "#f97316", "#38bdf8", "#a855f7", "#f43f5e", "#14b8a6"]
-    const count = kind === "income" ? 36 : 18
+    const count = kind === "income" ? 14 : 10
     return Array.from({ length: count }, (_, i) => ({
       id: i,
-      x: Math.random() * 100,
-      delay: Math.random() * 0.35,
-      rot: (Math.random() - 0.5) * 720,
-      scale: 0.7 + Math.random() * 0.7,
-      drift: (Math.random() - 0.5) * 120,
-      color: colors[i % colors.length],
+      x: 15 + Math.random() * 70,
+      delay: Math.random() * 0.45,
+      rot: (Math.random() - 0.5) * 40,
+      scale: 0.75 + Math.random() * 0.45,
+      drift: (Math.random() - 0.5) * 90,
+      color: "",
     }))
   }, [kind])
 
@@ -144,7 +176,6 @@ export default function TxnFxOverlay({ kind, onDone, durationMs = 2200 }: Props)
         >
           {kind === "income" && (
             <>
-              {/* soft glow */}
               <motion.div
                 className="absolute inset-0"
                 initial={{ opacity: 0 }}
@@ -152,46 +183,29 @@ export default function TxnFxOverlay({ kind, onDone, durationMs = 2200 }: Props)
                 exit={{ opacity: 0 }}
                 style={{
                   background:
-                    "radial-gradient(circle at 50% 30%, rgba(34,197,94,0.22), transparent 55%)",
+                    "radial-gradient(circle at 50% 30%, rgba(16,185,129,0.16), transparent 55%)",
                 }}
               />
-              <motion.div
-                className="absolute left-1/2 top-[28%] -translate-x-1/2 text-center"
-                initial={{ opacity: 0, scale: 0.6, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                transition={{ type: "spring", stiffness: 320, damping: 18 }}
-              >
-                <div className="text-4xl drop-shadow-lg">🎉</div>
-                <div className="mt-1 text-sm font-black tracking-wide text-emerald-500 drop-shadow">
-                  Income!
-                </div>
-              </motion.div>
+              <FxBadge kind="income" />
               {particles.map((p) => (
                 <motion.div
                   key={p.id}
                   className="absolute top-[-8%]"
                   style={{ left: `${p.x}%` }}
-                  initial={{ y: "-10vh", opacity: 0, rotate: 0, scale: p.scale }}
+                  initial={{ y: "-10vh", opacity: 0, rotate: p.rot * 0.4, scale: p.scale }}
                   animate={{
                     y: "110vh",
-                    opacity: [0, 1, 1, 0],
+                    opacity: [0, 0.9, 0.9, 0],
                     rotate: p.rot,
                     x: p.drift,
                   }}
                   transition={{
-                    duration: 1.8 + Math.random() * 0.6,
+                    duration: 2 + Math.random() * 0.5,
                     delay: p.delay,
-                    ease: "easeIn",
+                    ease: [0.3, 0.6, 0.4, 1],
                   }}
                 >
-                  {p.id % 5 === 0 ? (
-                    <span className="text-lg">✨</span>
-                  ) : p.id % 4 === 0 ? (
-                    <span className="text-lg">💰</span>
-                  ) : (
-                    <ConfettiPiece color={p.color} />
-                  )}
+                  <MoneyBill tone="income" />
                 </motion.div>
               ))}
             </>
@@ -209,42 +223,32 @@ export default function TxnFxOverlay({ kind, onDone, durationMs = 2200 }: Props)
                     "radial-gradient(circle at 50% 70%, rgba(239,68,68,0.12), transparent 55%)",
                 }}
               />
-              <motion.div
-                className="absolute left-1/2 top-[32%] -translate-x-1/2 text-center"
-                initial={{ opacity: 0, scale: 0.7 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-              >
-                <div className="text-sm font-black tracking-wide text-rose-500/90 drop-shadow">
-                  Money out 💸
-                </div>
-              </motion.div>
+              <FxBadge kind="expense" />
               {particles.map((p) => (
                 <motion.div
                   key={p.id}
                   className="absolute"
-                  style={{ left: `${20 + (p.x % 60)}%`, bottom: "8%" }}
+                  style={{ left: `${p.x}%`, bottom: "8%" }}
                   initial={{
                     y: 0,
                     opacity: 0,
-                    rotate: 0,
+                    rotate: p.rot * 0.4,
                     scale: p.scale * 0.9,
                   }}
                   animate={{
-                    y: -Math.min(window.innerHeight * 0.85, 520 + Math.random() * 180),
-                    opacity: [0, 1, 1, 0],
-                    rotate: p.rot * 0.6,
-                    x: p.drift * 1.4,
+                    y: -Math.min(window.innerHeight * 0.8, 500 + Math.random() * 160),
+                    opacity: [0, 0.9, 0.9, 0],
+                    rotate: p.rot,
+                    x: p.drift,
                     scale: p.scale,
                   }}
                   transition={{
-                    duration: 1.55 + Math.random() * 0.55,
-                    delay: p.delay * 0.8,
-                    ease: [0.22, 0.8, 0.3, 1],
+                    duration: 1.7 + Math.random() * 0.5,
+                    delay: p.delay,
+                    ease: [0.25, 0.7, 0.35, 1],
                   }}
                 >
-                  <MoneyBill />
+                  <MoneyBill tone="expense" />
                 </motion.div>
               ))}
             </>
