@@ -464,6 +464,7 @@ export default function Dashboard() {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
   }
   const [selectedDashboardMonthKey, setSelectedDashboardMonthKey] = useState(dashboardCurrentMonthKey)
+  useEffect(() => setSelectedDashboardMonthKey(dashboardCurrentMonthKey), [dashboardCurrentMonthKey])
   const previousDashboardMonthKey = getPreviousDashboardMonthKey(selectedDashboardMonthKey)
   const txInCycleMonth = (tx: DashboardTransaction, monthKey: string) => {
     const dateKey = String(tx.txn_date).slice(0, 10)

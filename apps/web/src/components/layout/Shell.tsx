@@ -3473,7 +3473,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           {/* Balance only at top */}
           <div className="shrink-0 border-b border-[var(--border)] px-3 pb-3 pt-3">
             <div
-              className="balance-hero relative overflow-hidden rounded-[1.6rem] p-4 text-white shadow-[var(--shadow-card)]"
+              className="balance-hero relative overflow-hidden rounded-[var(--card-radius-xl)] p-4 text-white shadow-[var(--shadow-card)]"
               style={{ background: "var(--brand-gradient)" }}
             >
               <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -3518,76 +3518,40 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     {lang === "EN" ? "Live" : "Kini"}
                   </span>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-2.5">
-                  <div
-                    className="relative overflow-hidden rounded-2xl px-3 py-3 backdrop-blur-md ring-1 ring-white/15"
-                    style={{ background: "rgba(255,255,255,0.08)" }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-transparent" />
-                    <div className="relative">
-                      <div className="flex items-center gap-1.5">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/15">
-                          <ArrowDownRight size={11} strokeWidth={2.5} className="text-emerald-300" />
-                        </div>
-                        <p className="balance-hero-label text-[0.5rem] font-semibold uppercase tracking-wider text-[#c5d0e0]">
-                          {lang === "EN" ? "Income" : "Masuk"}
-                        </p>
-                      </div>
-                      <p className="mt-2 truncate text-sm font-bold leading-none text-white tabular-nums">
-                        <span className="balance-hero-label mr-0.5 text-[0.58em] font-medium text-[#c5d0e0]">RM</span>
-                        {(stats.income_month ?? 0).toLocaleString("en-MY", { maximumFractionDigits: 0 })}
+                <div className="mt-4 border-t border-white/15 pt-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div>
+                      <p className="balance-hero-label text-[0.52rem] font-bold uppercase tracking-[0.14em] text-[#c5d0e0]">
+                        {lang === "EN" ? "Transaction calendar" : "Kalendar transaksi"}
                       </p>
+                      <p className="mt-0.5 text-xs font-bold text-white">{sidebarCalendar.label}</p>
+                    </div>
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/15">
+                      <CalendarDays size={13} className="text-cyan-200" />
                     </div>
                   </div>
-                  <div
-                    className="relative overflow-hidden rounded-2xl px-3 py-3 backdrop-blur-md ring-1 ring-white/15"
-                    style={{ background: "rgba(255,255,255,0.08)" }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-rose-400/10 to-transparent" />
-                    <div className="relative">
-                      <div className="flex items-center gap-1.5">
-                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/15">
-                          <ArrowUpRight size={11} strokeWidth={2.5} className="text-rose-300" />
-                        </div>
-                        <p className="balance-hero-label text-[0.5rem] font-semibold uppercase tracking-wider text-[#c5d0e0]">
-                          {lang === "EN" ? "Expense" : "Keluar"}
-                        </p>
-                      </div>
-                      <p className="mt-2 truncate text-sm font-bold leading-none text-white tabular-nums">
-                        <span className="balance-hero-label mr-0.5 text-[0.58em] font-medium text-[#c5d0e0]">RM</span>
-                        {(stats.expense_month ?? 0).toLocaleString("en-MY", { maximumFractionDigits: 0 })}
-                      </p>
-                    </div>
+                  <div className="grid grid-cols-7 gap-1 text-center">
+                    {(lang === "EN" ? ["S", "M", "T", "W", "T", "F", "S"] : ["A", "I", "S", "R", "K", "J", "S"]).map((day, index) => (
+                      <span key={`${day}-${index}`} className="balance-hero-label py-0.5 text-[0.48rem] font-bold text-[#c5d0e0]">{day}</span>
+                    ))}
+                    {sidebarCalendar.cells.map((cell, index) => cell ? (
+                      <Link
+                        key={cell.key}
+                        href={`/${sessionId}/transactions?date=${cell.key}`}
+                        title={`${cell.count} ${lang === "EN" ? "transactions" : "transaksi"} · RM ${cell.amount.toFixed(2)}`}
+                        className={cn("mx-auto flex h-8 w-8 items-center justify-center rounded-full transition", cell.count ? "bg-amber-400 text-slate-950 shadow-sm hover:bg-amber-300" : "bg-[#232323] text-white hover:bg-[#303030]")} 
+                      >
+                        <span className="block text-[0.62rem] font-bold">{cell.day}</span>
+                      </Link>
+                    ) : <span key={`blank-${index}`} />)}
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Calendar + cat playground + calculator */}
+          {/* Cat playground + calculator */}
           <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-0 pt-2">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-xs font-bold text-[var(--text)]">{sidebarCalendar.label}</p>
-                <CalendarDays size={14} className="text-[var(--muted)]" />
-              </div>
-              <div className="grid grid-cols-7 gap-1 text-center">
-                {(lang === "EN" ? ["S", "M", "T", "W", "T", "F", "S"] : ["A", "I", "S", "R", "K", "J", "S"]).map((day, index) => (
-                  <span key={`${day}-${index}`} className="py-0.5 text-[0.5rem] font-bold text-[var(--muted)]">{day}</span>
-                ))}
-                {sidebarCalendar.cells.map((cell, index) => cell ? (
-                  <Link
-                    key={cell.key}
-                    href={`/${sessionId}/transactions?date=${cell.key}`}
-                    title={`${cell.count} ${lang === "EN" ? "transactions" : "transaksi"} · RM ${cell.amount.toFixed(2)}`}
-                    className={cn("min-h-8 rounded-md px-0.5 py-1 ring-1 transition hover:bg-[var(--surface-tint-strong)]", cell.count ? "bg-[var(--surface-tint)] ring-[var(--border-strong)]" : "ring-[var(--border)]")}
-                  >
-                    <span className="block text-[0.58rem] font-bold text-[var(--text)]">{cell.day}</span>
-                    <span className="block truncate text-[0.42rem] font-semibold text-[var(--muted)]">{cell.count ? `RM${cell.amount.toLocaleString("en-MY", { maximumFractionDigits: 0 })}` : ""}</span>
-                  </Link>
-                ) : <span key={`blank-${index}`} />)}
-              </div>
-            </div>
             <CatPlayground
               lang={lang === "BM" ? "BM" : "EN"}
               userKey={sessionId}
