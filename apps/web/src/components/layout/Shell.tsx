@@ -60,6 +60,7 @@ import {
   UserPlus,
   ChevronRight,
   Calculator as CalculatorIcon,
+  CalendarDays,
   Award,
   ChevronDown,
   Briefcase,
@@ -1288,6 +1289,29 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<ShellCategory[]>([]);
   const [wallets, setWallets] = useState<ShellWallet[]>([]);
   const [transactions, setTransactions] = useState<ShellTransaction[]>([]);
+  const sidebarCalendar = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const totals = transactions.reduce((map, tx) => {
+      const key = String(tx.txn_date || "").slice(0, 10);
+      if (!key || tx.is_wallet_transfer || tx.is_debt_movement) return map;
+      const current = map.get(key) || { amount: 0, count: 0 };
+      current.amount += Number(tx.amount || 0);
+      current.count += 1;
+      map.set(key, current);
+      return map;
+    }, new Map<string, { amount: number; count: number }>());
+    const days = new Date(year, month + 1, 0).getDate();
+    return {
+      label: now.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", { month: "long", year: "numeric" }),
+      cells: [...Array(new Date(year, month, 1).getDay()).fill(null), ...Array.from({ length: days }, (_, i) => {
+        const day = i + 1;
+        const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        return { day, key, ...(totals.get(key) || { amount: 0, count: 0 }) };
+      })],
+    };
+  }, [lang, transactions]);
   const [budgetItems, setBudgetItems] = useState<ShellBudgetItem[]>([]);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileSheetAccountSwitcher, setShowMobileSheetAccountSwitcher] = useState(false);
@@ -3014,18 +3038,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={() => setShowLeftAccountSwitcher((prev) => !prev)}
                 className={cn(
-                  "flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition active:scale-[0.99]",
+                  "flex w-full items-center gap-2.5 rounded-2xl border px-3 py-2.5 text-left shadow-sm transition active:scale-[0.99]",
                   showLeftAccountSwitcher
-                    ? "bg-[var(--surface-tint-strong)]"
-                    : "hover:bg-[var(--surface-tint)]",
+                    ? "border-[var(--border-strong)] bg-[var(--surface-tint)]"
+                    : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-tint)]",
                 )}
               >
-                <UserAvatar name={displayName} size={32} />
+                <UserAvatar name={displayName} size={30} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[0.78rem] font-bold leading-tight text-[var(--text)]">
-                    {displayName}
-                  </p>
-                  <p className="mt-0.5 truncate text-[0.58rem] font-medium text-[var(--muted)]">
+                  <p className="truncate text-[0.75rem] font-bold leading-tight text-[var(--text)]">{displayName}</p>
+                  <p className="mt-0.5 truncate text-[0.56rem] font-medium text-[var(--muted)]">
                     {activeEmail || (lang === "BM" ? "Akaun aktif" : "Active account")}
                   </p>
                 </div>
@@ -3043,13 +3065,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   <div
                     className="absolute bottom-[calc(100%+0.5rem)] left-0 right-0 z-[120] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[0_16px_48px_rgba(0,0,0,0.18)]"
                   >
-                    {/* Active account header */}
                     <div className="border-b border-[var(--border)] px-3.5 py-3">
                       <div className="flex items-center gap-2.5">
-                        <UserAvatar name={displayName} size={40} />
+                        <UserAvatar name={displayName} size={36} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-bold text-[var(--text)]">{displayName}</p>
-                          <p className="mt-0.5 truncate text-[0.65rem] font-medium text-[var(--muted)]">
+                          <p className="mt-0.5 truncate text-[0.62rem] font-medium text-[var(--muted)]">
                             {activeEmail || "—"}
                           </p>
                         </div>
@@ -3086,7 +3107,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                             >
                               <UserAvatar
                                 name={acct.name || acct.email}
-                                size={32}
+                                size={30}
                                 active={isActive}
                               />
                               <div className="min-w-0 flex-1">
@@ -3116,9 +3137,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         }}
                         className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition hover:bg-[var(--surface-tint)]"
                       >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-dashed border-[var(--border-strong)] text-[var(--muted)]">
-                          <UserPlus size={14} />
-                        </div>
+                        <UserPlus size={14} className="shrink-0 text-[var(--muted)]" />
                         <span className="text-xs font-semibold text-[var(--text)]">
                           {lang === "BM" ? "Tambah akaun" : "Add account"}
                         </span>
@@ -3131,9 +3150,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         }}
                         className="flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left transition hover:bg-[var(--expense-bg)]"
                       >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--border-strong)] text-[var(--muted)]">
-                          <LogOut size={14} />
-                        </div>
+                        <LogOut size={14} className="shrink-0 text-[var(--muted)]" />
                         <span className="text-xs font-semibold text-[var(--expense)]">
                           {lang === "BM" ? "Log keluar" : "Logout"}
                         </span>
@@ -3547,8 +3564,30 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          {/* Cat playground + calculator */}
+          {/* Calendar + cat playground + calculator */}
           <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-0 pt-2">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-bold text-[var(--text)]">{sidebarCalendar.label}</p>
+                <CalendarDays size={14} className="text-[var(--muted)]" />
+              </div>
+              <div className="grid grid-cols-7 gap-1 text-center">
+                {(lang === "EN" ? ["S", "M", "T", "W", "T", "F", "S"] : ["A", "I", "S", "R", "K", "J", "S"]).map((day, index) => (
+                  <span key={`${day}-${index}`} className="py-0.5 text-[0.5rem] font-bold text-[var(--muted)]">{day}</span>
+                ))}
+                {sidebarCalendar.cells.map((cell, index) => cell ? (
+                  <Link
+                    key={cell.key}
+                    href={`/${sessionId}/transactions?date=${cell.key}`}
+                    title={`${cell.count} ${lang === "EN" ? "transactions" : "transaksi"} · RM ${cell.amount.toFixed(2)}`}
+                    className={cn("min-h-8 rounded-md px-0.5 py-1 ring-1 transition hover:bg-[var(--surface-tint-strong)]", cell.count ? "bg-[var(--surface-tint)] ring-[var(--border-strong)]" : "ring-[var(--border)]")}
+                  >
+                    <span className="block text-[0.58rem] font-bold text-[var(--text)]">{cell.day}</span>
+                    <span className="block truncate text-[0.42rem] font-semibold text-[var(--muted)]">{cell.count ? `RM${cell.amount.toLocaleString("en-MY", { maximumFractionDigits: 0 })}` : ""}</span>
+                  </Link>
+                ) : <span key={`blank-${index}`} />)}
+              </div>
+            </div>
             <CatPlayground
               lang={lang === "BM" ? "BM" : "EN"}
               userKey={sessionId}
@@ -3561,62 +3600,40 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
 
-          {/* Account + Settings */}
-          <div className="shrink-0 border-t border-[var(--border)] px-3 pt-2.5">
-            <div className="grid grid-cols-2 gap-1.5">
-              {[
-                {
-                  href: `/${sessionId}/account`,
-                  label: lang === "BM" ? "Akaun" : "Account",
-                  icon: User,
-                  active: pathname === `/${sessionId}/account`,
-                },
-                {
-                  href: `/${sessionId}/settings`,
-                  label: lang === "BM" ? "Tetapan" : "Settings",
-                  icon: Settings,
-                  active: ["settings", "security", "help", "about", "changelog", "login-logs"].some(
-                    (segment) => pathname === `/${sessionId}/${segment}`,
-                  ),
-                },
-              ].map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  title={item.label}
-                  className={cn(
-                    "flex h-10 items-center justify-center gap-1.5 rounded-xl border text-[0.68rem] font-bold transition active:scale-[0.98]",
-                    item.active
-                      ? "border-[color-mix(in_srgb,var(--accent2)_28%,var(--border))] bg-[var(--accent-bg)] text-[var(--accent2)]"
-                      : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]",
-                  )}
-                >
-                  <item.icon size={14} strokeWidth={2.2} />
-                  <span>{item.label}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-
           {/* Footer tools */}
-          <div className="shrink-0 px-3 pb-3 pt-2">
-            <div className="grid grid-cols-3 gap-1.5">
+          <div className="shrink-0 border-t border-[var(--border)] px-3 pb-3 pt-2.5">
+            <div className="flex items-center gap-1.5">
+              <Link
+                href={`/${sessionId}/settings`}
+                title={lang === "BM" ? "Tetapan" : "Settings"}
+                className={cn(
+                  "flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl border text-[0.62rem] font-bold transition active:scale-[0.98]",
+                  ["settings", "security", "help", "about", "changelog", "login-logs"].some(
+                    (segment) => pathname === `/${sessionId}/${segment}`,
+                  )
+                    ? "border-[color-mix(in_srgb,var(--accent2)_28%,var(--border))] bg-[var(--accent-bg)] text-[var(--accent2)]"
+                    : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]",
+                )}
+              >
+                <Settings size={13} strokeWidth={2.2} />
+                <span>{lang === "BM" ? "Tetapan" : "Settings"}</span>
+              </Link>
               <button
                 type="button"
                 onClick={() => setShowChatOverlay(true)}
-                className="flex h-11 flex-col items-center justify-center gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-none transition-all hover:opacity-95 active:scale-[0.98]"
+                title="Chat"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] transition hover:opacity-95 active:scale-[0.98]"
               >
-                <ChatNavIcon active size={18} />
-                <span className="text-[0.55rem] font-bold">Chat</span>
+                <ChatNavIcon active size={15} />
               </button>
-              <ThemeToggle compact inverted={!isLight} className="!h-11 !w-full !rounded-xl !border !border-[var(--border)] !bg-[var(--surface-tint)]" />
+              <ThemeToggle compact inverted={!isLight} className="!h-9 !w-9 !rounded-xl !border !border-[var(--border)] !bg-[var(--surface-tint)]" />
               <button
                 type="button"
                 onClick={() => setLang(lang === "EN" ? "BM" : "EN")}
-                className="flex h-11 flex-col items-center justify-center gap-0.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] transition-all hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+                title={lang}
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] text-[0.62rem] font-black text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
               >
-                <Globe size={14} strokeWidth={2.2} />
-                <span className="text-[0.55rem] font-black">{lang}</span>
+                {lang}
               </button>
             </div>
           </div>

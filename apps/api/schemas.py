@@ -297,6 +297,7 @@ class TransactionBase(BaseModel):
     txn_date: Optional[date] = None
     notes: Optional[str] = None
     wallet_id: Optional[int] = None
+    subscription_id: Optional[int] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     location_name: Optional[str] = None

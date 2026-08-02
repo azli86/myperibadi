@@ -87,6 +87,12 @@ async def update_transaction_route(
         location_name=location_name,
     )
 
+    subscription_id = txn_in.subscription_id
+    if subscription_id is not None:
+        subscription = await db.scalar(select(models.Subscription).where(models.Subscription.id == subscription_id, models.Subscription.user_id == current_user.id))
+        if not subscription:
+            raise HTTPException(status_code=404, detail="Subscription not found.")
+
     await db.execute(
         update(models.Transaction).where(models.Transaction.id == existing.id).values(
             wallet_id=resolved_wallet_id,
@@ -94,6 +100,7 @@ async def update_transaction_route(
             amount=resolved_amount,
             vendor_or_source=txn_in.vendor_or_source,
             category_id=resolved_category_id,
+            subscription_id=subscription_id,
             txn_date=txn_date,
             notes=txn_in.notes,
             latitude=latitude,

@@ -957,6 +957,7 @@ async def _process_subx_command(
             vendor_or_source=f"SUBX {sub.name}"[:190],
             amount=pay_amount,
             category_id=category.id if category else None,
+            subscription_id=sub.id,
             notes=f"SUBX payment for {sub.name}"[:255],
             source_channel=source_channel,
         )

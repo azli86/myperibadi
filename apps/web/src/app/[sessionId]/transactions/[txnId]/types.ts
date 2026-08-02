@@ -9,6 +9,7 @@ export interface TransactionDetail {
   vendor_or_source: string
   amount: number
   category_id: number | null
+  subscription_id?: number | null
   category_name: string | null
   category_icon_name?: string | null
   category_is_internal?: boolean

@@ -303,6 +303,7 @@ export default function TransactionDetailPage() {
   const [loans, setLoans] = useState<LoanOption[]>([])
   const [subscriptions, setSubscriptions] = useState<SubscriptionOption[]>([])
   const [linkedLoanId, setLinkedLoanId] = useState<string>("")
+  const [linkedSubscriptionId, setLinkedSubscriptionId] = useState<string>("")
   const [vehicleLink, setVehicleLink] = useState<{
     vehicle_id: number | null
     vehicle_name: string | null
@@ -578,6 +579,7 @@ export default function TransactionDetailPage() {
           const transactionKey = data.reference_id || txnId
           void pollForAttachments(fetchId, transactionKey, data.id, token || "")
         }
+        setLinkedSubscriptionId(data.subscription_id ? String(data.subscription_id) : "")
         setEditForm({
           description: data.vendor_or_source,
           amount: String(data.amount),
@@ -842,6 +844,7 @@ export default function TransactionDetailPage() {
           notes: editForm.notes || null,
           category_id: editForm.category_id ? parseInt(editForm.category_id) : null,
           wallet_id: editForm.wallet_id ? parseInt(editForm.wallet_id) : null,
+          subscription_id: linkedSubscriptionId ? parseInt(linkedSubscriptionId) : null,
           items: editForm.type === "income" ? null : (itemManagerActive
             ? editItems
                 .filter(item => item.name.trim())
@@ -1534,11 +1537,13 @@ export default function TransactionDetailPage() {
         editForm={editForm}
         editItems={editItems}
         linkedLoanId={linkedLoanId}
+        linkedSubscriptionId={linkedSubscriptionId}
         saving={saving}
         saveSuccess={saveSuccess}
         onEditFormChange={(next) => setEditForm((f) => ({ ...f, ...next }))}
         onEditItemsChange={setEditItems}
         onLinkedLoanIdChange={setLinkedLoanId}
+        onLinkedSubscriptionIdChange={setLinkedSubscriptionId}
         onEditFileChange={setEditFile}
         onSubmit={handleEdit}
         onClose={() => { setShowEditModal(false); setEditFile(null) }}

@@ -210,6 +210,7 @@ async def get_transaction_detail_route(
         "vendor_or_source": txn.vendor_or_source,
         "amount": float(txn.amount),
         "category_id": txn.category_id,
+        "subscription_id": txn.subscription_id,
         "category_name": row[1],
         "category_icon_name": row[2],
         "category_is_internal": category_is_internal,

@@ -842,6 +842,9 @@ async def ensure_database_schema():
     async with database.engine.begin() as conn:
         await conn.run_sync(database.Base.metadata.create_all)
         if conn.dialect.name == "postgresql":
+            await conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS subscription_id BIGINT NULL REFERENCES subscriptions(id) ON DELETE SET NULL"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_transactions_subscription_id ON transactions (subscription_id)"))
+            await conn.execute(text("UPDATE transactions t SET subscription_id = s.id FROM subscriptions s WHERE t.subscription_id IS NULL AND t.user_id = s.user_id AND LOWER(TRIM(t.vendor_or_source)) = LOWER(TRIM('SUBX ' || s.name))"))
             await conn.execute(
                 text("CREATE INDEX IF NOT EXISTS ix_transactions_user_date_id ON transactions (user_id, txn_date, id)")
             )
@@ -10441,7 +10444,13 @@ async def get_subscription_transactions(
         select(models.Transaction)
         .where(
             models.Transaction.user_id == current_user.id,
-            models.Transaction.vendor_or_source == vendor_prefix,
+            or_(
+                models.Transaction.subscription_id == sub.id,
+                and_(
+                    models.Transaction.subscription_id.is_(None),
+                    func.lower(func.trim(models.Transaction.vendor_or_source)) == vendor_prefix.strip().lower(),
+                ),
+            ),
         )
         .order_by(models.Transaction.txn_date.desc(), models.Transaction.id.desc())
     )

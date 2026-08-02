@@ -33,11 +33,13 @@ export type TxnEditSheetProps = {
   editForm: EditFormState
   editItems: EditItem[]
   linkedLoanId: string
+  linkedSubscriptionId: string
   saving: boolean
   saveSuccess: boolean
   onEditFormChange: (next: Partial<EditFormState>) => void
   onEditItemsChange: (next: EditItem[]) => void
   onLinkedLoanIdChange: (value: string) => void
+  onLinkedSubscriptionIdChange: (value: string) => void
   onEditFileChange: (file: File | null) => void
   onSubmit: (e: React.FormEvent) => void
   onClose: () => void
@@ -52,11 +54,13 @@ export default function TxnEditSheet({
   editForm,
   editItems,
   linkedLoanId,
+  linkedSubscriptionId,
   saving,
   saveSuccess,
   onEditFormChange,
   onEditItemsChange,
   onLinkedLoanIdChange,
+  onLinkedSubscriptionIdChange,
   onEditFileChange,
   onSubmit,
   onClose,
@@ -541,19 +545,19 @@ export default function TxnEditSheet({
                 <>
                   <button
                     type="button"
-                    onClick={() => selectOption((v) => onEditFormChange({ description: v }), "", () => setShowSubscriptionPicker(false))}
+                    onClick={() => { onLinkedSubscriptionIdChange(""); selectOption((v) => onEditFormChange({ description: v }), "", () => setShowSubscriptionPicker(false)) }}
                     className={cn("flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium transition-colors", !editForm.description.startsWith("SUBX ") ? selectedOption : unselectedOption)}
                   >
                     <span>{isBm ? "Tiada subscribe link" : "No subscribe link"}</span>
                   </button>
                   {subscriptions.map((sub) => {
                     const subPrefix = `SUBX ${sub.name}`
-                    const selected = editForm.description === subPrefix
+                    const selected = linkedSubscriptionId === String(sub.id)
                     return (
                       <button
                         key={sub.id}
                         type="button"
-                        onClick={() => selectOption((v) => onEditFormChange({ description: v }), subPrefix, () => setShowSubscriptionPicker(false))}
+                        onClick={() => { onLinkedSubscriptionIdChange(String(sub.id)); selectOption((v) => onEditFormChange({ description: v }), subPrefix, () => setShowSubscriptionPicker(false)) }}
                         className={cn("flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium transition-colors", selected ? selectedOption : unselectedOption)}
                       >
                         <span>{sub.name}</span>

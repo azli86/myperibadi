@@ -185,6 +185,7 @@ class Transaction(Base):
     vendor_or_source: Mapped[str] = mapped_column(String(190), nullable=False)
     amount: Mapped[float] = mapped_column(DECIMAL(12, 2), nullable=False)
     category_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("categories.id"), nullable=True)
+    subscription_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("subscriptions.id"), nullable=True, index=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     latitude: Mapped[Optional[float]] = mapped_column(DECIMAL(10, 7), nullable=True)
     longitude: Mapped[Optional[float]] = mapped_column(DECIMAL(11, 8), nullable=True)

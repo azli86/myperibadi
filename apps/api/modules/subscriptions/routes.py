@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Awaitable, Callable, Optional
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
@@ -30,7 +30,7 @@ async def get_subscriptions_route(
         paid = await db.scalar(
             select(func.max(models.Transaction.txn_date)).where(
                 models.Transaction.user_id == current_user.id,
-                models.Transaction.vendor_or_source == f"SUBX {c.name}",
+                models.Transaction.subscription_id == c.id,
             )
         )
         response.append(_serialize_subscription(c, paid))
@@ -126,6 +126,11 @@ async def update_subscription_route(
             raise HTTPException(status_code=400, detail="Subscription already exists.")
         c.name = name
         c.key = key
+        await db.execute(
+            update(models.Transaction)
+            .where(models.Transaction.user_id == current_user.id, models.Transaction.subscription_id == c.id)
+            .values(vendor_or_source=f"SUBX {name}")
+        )
     if "amount" in updates:
         amt = float(payload.amount or 0)
         if amt <= 0:
