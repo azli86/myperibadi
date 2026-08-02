@@ -60,6 +60,20 @@ export default function LoanPage() {
   const params = useParams()
   const router = useRouter()
   const { lang } = useLang()
+  const [detailId, setDetailId] = useState<string | number | null>(null)
+  const openDetail = (id: string | number) => {
+    window.history.pushState({ detailSlide: true }, "")
+    setDetailId(id)
+  }
+  useEffect(() => {
+    const closeDetailOnBack = () => setDetailId(null)
+    window.addEventListener("popstate", closeDetailOnBack)
+    return () => window.removeEventListener("popstate", closeDetailOnBack)
+  }, [])
+  const closeDetail = () => {
+    if (window.history.state?.detailSlide) window.history.back()
+    else setDetailId(null)
+  }
   const [mounted, setMounted] = useState(false)
   const sessionId = (params.sessionId as string) || ""
   const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
@@ -293,7 +307,7 @@ export default function LoanPage() {
         <div className="flex items-center gap-3 md:gap-4">
           <button
             type="button"
-            onClick={() => router.push(`/${sessionId}/loan/${loan.id}`)}
+            onClick={() => openDetail(loan.id)}
             className={cn(
               "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-sm font-black",
               isSettled
@@ -307,7 +321,7 @@ export default function LoanPage() {
 
           <button
             type="button"
-            onClick={() => router.push(`/${sessionId}/loan/${loan.id}`)}
+            onClick={() => openDetail(loan.id)}
             className="min-w-0 flex-1 text-left md:w-[12rem] md:flex-none md:shrink-0"
           >
             <p className="truncate text-sm font-black leading-tight text-[var(--text)]">{loan.name}</p>
@@ -345,7 +359,7 @@ export default function LoanPage() {
 
           <button
             type="button"
-            onClick={() => router.push(`/${sessionId}/loan/${loan.id}`)}
+            onClick={() => openDetail(loan.id)}
             className="hidden min-w-0 flex-1 items-center gap-4 text-left md:flex"
           >
             <div className="min-w-[7.5rem] shrink-0">
@@ -391,22 +405,7 @@ export default function LoanPage() {
             <span className="mr-0.5 hidden rounded-full bg-[var(--surface-tint)] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] text-[var(--muted)] sm:inline">
               {isSettled ? tr("Selesai", "Settled") : tr("Aktif", "Active")}
             </span>
-            <button
-              type="button"
-              onClick={() => openEditSheet(loan)}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-tint)] active:scale-95"
-              aria-label={tr("Edit loan", "Edit loan")}
-            >
-              <Pencil size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDeleteLoan(loan)}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-tint)] hover:text-rose-500 active:scale-95"
-              aria-label={tr("Padam loan", "Delete loan")}
-            >
-              <Trash2 size={13} />
-            </button>
+
           </div>
         </div>
       </div>
@@ -453,94 +452,19 @@ export default function LoanPage() {
         />
 
         <section className="px-1">
-          <div className="loan-detail-hero relative overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[#1a1a1a] p-5 text-white">
+          <div className="loan-detail-hero relative overflow-hidden rounded-[2rem] bg-[#1a1a1a] p-5 text-center text-white">
             <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-            <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-            <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.04] blur-2xl" />
-
-            <div className="relative">
-              <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">
-                  {tr("Bayaran Bulanan", "Monthly Payment")}
-                </p>
-                <p className="loan-detail-amount mt-2 leading-none text-[#ffffff]">
-                  {showDataSkeleton ? (
-                    <AmountSkeleton className="h-7 w-32 bg-white/10" />
-                  ) : (
-                    <MoneyAmount
-                      value={Number(summary.totalMonthly || 0)}
-                      size="hero"
-                      className="text-[#ffffff]"
-                      currencyClassName="text-[#ffffff] opacity-55"
-                    />
-                  )}
-                </p>
-              </div>
-
-              <div className="mt-5 grid grid-cols-3 gap-2.5">
-                <div className="rounded-[1.15rem] bg-white/[0.06] p-3">
-                  <div className="flex items-center gap-1.5">
-                    <CreditCard size={12} className="text-[#b3b3b3]" />
-                    <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{tr("Jumlah", "Total")}</p>
-                  </div>
-                  <p className="mt-2 text-[#e5e5e5]">
-                    {showDataSkeleton ? (
-                      <AmountSkeleton className="h-4 w-12 bg-white/10" />
-                    ) : (
-                      <MoneyAmount value={Number(summary.totalLoan || 0)} digits={0} size="xs" className="text-[#e5e5e5]" currencyClassName="text-[#e5e5e5] opacity-55" />
-                    )}
-                  </p>
-                </div>
-                <div className="rounded-[1.15rem] bg-white/[0.06] p-3">
-                  <div className="flex items-center gap-1.5">
-                    <Wallet size={12} className="text-[#fdba74]" />
-                    <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{tr("Baki", "Due")}</p>
-                  </div>
-                  <p className="mt-2 text-[#fdba74]">
-                    {showDataSkeleton ? (
-                      <AmountSkeleton className="h-4 w-12 bg-white/10" />
-                    ) : (
-                      <MoneyAmount value={Number(summary.totalOutstanding || 0)} digits={0} size="xs" className="text-[#fdba74]" currencyClassName="text-[#fdba74] opacity-55" />
-                    )}
-                  </p>
-                </div>
-                <div className="rounded-[1.15rem] bg-white/[0.06] p-3">
-                  <div className="flex items-center gap-1.5">
-                    <BadgeCheck size={12} className="text-[#b3b3b3]" />
-                    <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{tr("Dibayar", "Paid")}</p>
-                  </div>
-                  <p className="mt-2 text-[#e5e5e5]">
-                    {showDataSkeleton ? (
-                      <AmountSkeleton className="h-4 w-12 bg-white/10" />
-                    ) : (
-                      <MoneyAmount value={Number(summary.totalPaid || 0)} digits={0} size="xs" className="text-[#e5e5e5]" currencyClassName="text-[#e5e5e5] opacity-55" />
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-3.5">
-                <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold text-[#a3a3a3]">
-                  <span>{tr("Progress keseluruhan", "Overall progress")}</span>
-                  <span className="tabular-nums text-[#b3b3b3]">{paidPercent.toFixed(0)}%</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all"
-                    style={{ width: `${paidPercent}%` }}
-                  />
-                </div>
+            <div className="relative flex min-h-24 flex-col items-center justify-center">
+              <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">{tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}</p>
+              <div className="mt-2 text-[#ffffff]">
+                {showDataSkeleton ? <AmountSkeleton className="h-7 w-32 bg-white/10" /> : <MoneyAmount value={Number(summary.totalMonthly || 0)} size="hero" className="text-[#ffffff]" currencyClassName="text-[#ffffff] opacity-55" />}
               </div>
             </div>
           </div>
         </section>
 
         <section className="px-1">
-          <div className="flex items-center justify-end px-1.5">
-            {filterToggle}
-          </div>
-
-          <div className="mt-3.5 space-y-3">
+          <div className="space-y-3">
             {showDataSkeleton ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-4">
@@ -583,90 +507,17 @@ export default function LoanPage() {
         />
 
         <DesktopPageBody className="space-y-5">
-        <div className="loan-detail-hero relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[#1a1a1a] p-6 text-white">
+        <div className="loan-detail-hero relative overflow-hidden rounded-[1.75rem] bg-[#1a1a1a] p-6 text-center text-[#ffffff]">
           <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-          <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/[0.04] blur-2xl" />
-          <div className="absolute -bottom-14 left-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-          <div className="relative flex items-center gap-5">
-            <div className="min-w-[10rem] shrink-0">
-              <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">
-                {tr("Bayaran Bulanan", "Monthly Payment")}
-              </p>
-              <p className="loan-detail-amount mt-2 leading-none text-[#ffffff]">
-                {showDataSkeleton ? (
-                  <AmountSkeleton className="h-10 w-40 bg-white/10" />
-                ) : (
-                  <MoneyAmount
-                    value={Number(summary.totalMonthly || 0)}
-                    size="heroLg"
-                    className="text-[#ffffff]"
-                    currencyClassName="text-[#ffffff] opacity-55"
-                  />
-                )}
-              </p>
-              <div className="mt-4 max-w-md">
-                <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold text-[#a3a3a3]">
-                  <span>{tr("Progress keseluruhan", "Overall progress")}</span>
-                  <span className="tabular-nums text-[#b3b3b3]">{paidPercent.toFixed(0)}%</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all"
-                    style={{ width: `${paidPercent}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="min-w-0 flex-1 grid grid-cols-3 gap-3">
-              {[
-                {
-                  label: tr("Jumlah", "Total"),
-                  value: Number(summary.totalLoan || 0),
-                  icon: <CreditCard size={16} className="text-[#b3b3b3]" />,
-                  color: "text-[#e5e5e5]",
-                },
-                {
-                  label: tr("Baki", "Outstanding"),
-                  value: Number(summary.totalOutstanding || 0),
-                  icon: <Wallet size={16} className="text-[#fdba74]" />,
-                  color: "text-[#fdba74]",
-                },
-                {
-                  label: tr("Dibayar", "Paid"),
-                  value: Number(summary.totalPaid || 0),
-                  icon: <BadgeCheck size={16} className="text-[#b3b3b3]" />,
-                  color: "text-[#e5e5e5]",
-                },
-              ].map((item) => (
-                <div key={item.label} className="rounded-2xl bg-white/[0.06] p-4">
-                  <div className="flex items-center gap-2">
-                    {item.icon}
-                    <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[#a3a3a3]">{item.label}</p>
-                  </div>
-                  <p className={cn("mt-3 leading-none", item.color)}>
-                    {showDataSkeleton ? (
-                      <AmountSkeleton className="h-6 w-16 bg-white/10" />
-                    ) : (
-                      <MoneyAmount
-                        value={item.value}
-                        digits={0}
-                        size="md"
-                        className={item.color}
-                        currencyClassName={cn(item.color, "opacity-55")}
-                      />
-                    )}
-                  </p>
-                </div>
-              ))}
+          <div className="relative flex min-h-28 flex-col items-center justify-center">
+            <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">{tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}</p>
+            <div className="mt-2 text-[#ffffff]">
+              {showDataSkeleton ? <AmountSkeleton className="h-10 w-40 bg-white/10" /> : <MoneyAmount value={Number(summary.totalMonthly || 0)} size="heroLg" className="text-[#ffffff]" currencyClassName="text-[#ffffff] opacity-55" />}
             </div>
           </div>
         </div>
 
         <div>
-          <div className="mb-3 flex items-center justify-end gap-3">
-            {filterToggle}
-          </div>
-
           <div className="space-y-3">
             {showDataSkeleton ? (
               Array.from({ length: 4 }).map((_, i) => (
@@ -819,6 +670,16 @@ export default function LoanPage() {
             document.body,
           )
         : null}
+
+      {detailId !== null && (
+        <div className="fixed inset-0 z-[500]">
+          <button type="button" aria-label={tr("Tutup butiran", "Close details")} onClick={closeDetail} className="absolute inset-0 bg-black/45" />
+          <section className="absolute bottom-0 right-0 top-0 h-[100dvh] w-full overflow-hidden animate-in slide-in-from-right duration-300 bg-[var(--page-bg)] md:w-[min(760px,72vw)] md:border-l md:border-[var(--border)] md:shadow-2xl">
+            <iframe title={tr("Butiran loan", "Loan details")} src={`/${sessionId}/loan/${detailId}`} className="block h-[100dvh] w-full border-0" />
+            <button type="button" aria-label={tr("Kembali", "Back")} onClick={closeDetail} className="absolute left-0 top-0 z-[600] h-16 w-16 bg-transparent md:hidden" />
+          </section>
+        </div>
+      )}
 
       {alertModal}
     </div>

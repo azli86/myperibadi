@@ -1545,9 +1545,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const isChatFullscreen = pathname === `/${sessionId}/chat`;
   const isMapFullscreen =
     pathname === `/${sessionId}/map` || pathname === `/${sessionId}/places`;
-  const isTransactionDetailPage =
-    pathname.startsWith(`/${sessionId}/transactions/`) &&
-    pathname !== `/${sessionId}/transactions`;
+  const isTransactionDetailPage = ["transactions", "loan", "subscription"].some(
+    (module) => pathname.startsWith(`/${sessionId}/${module}/`) && pathname !== `/${sessionId}/${module}`,
+  );
   const personalRootPath = `/${sessionId}`;
   const pinVerifiedStorageKey = `pin_verified_${sessionId}_personal`;
   const mobileChatHref = `/${sessionId}/chat`;

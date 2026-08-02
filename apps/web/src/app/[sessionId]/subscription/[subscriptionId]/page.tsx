@@ -99,6 +99,14 @@ function daysUntilDueDay(dueDay: number): number {
   return Math.round((dueDate.getTime() - kl.getTime()) / (1000 * 60 * 60 * 24))
 }
 
+
+function formatDueDay(day: number, lang: string) {
+  if (lang === "BM") return `${day}HB`
+  const mod100 = day % 100
+  const suffix = mod100 >= 11 && mod100 <= 13 ? "th" : day % 10 === 1 ? "st" : day % 10 === 2 ? "nd" : day % 10 === 3 ? "rd" : "th"
+  return `${day}${suffix}`
+}
+
 export default function SubscriptionDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -204,10 +212,10 @@ export default function SubscriptionDetailPage() {
   )
 
   const dueLabel = useMemo(() => {
-    if (days < 0) return tr(`${Math.abs(days)}h lewat`, `${Math.abs(days)}d overdue`)
+    if (days < 0) return tr(`${Math.abs(days)} hari lewat`, `${Math.abs(days)} ${Math.abs(days) === 1 ? "Day" : "Days"} overdue`)
     if (days === 0) return tr("Hari ini", "Due today")
     if (days === 1) return tr("Esok", "Tomorrow")
-    return tr(`${days} hari lagi`, `in ${days}d`)
+    return tr(`${days} hari lagi`, `in ${days} Days`)
   }, [days, tr])
 
   const urgency = useMemo(() => {
@@ -487,7 +495,7 @@ export default function SubscriptionDetailPage() {
                   )}
                 </p>
                 <p className="mt-1.5 text-[0.625rem] font-semibold text-[#8c8c8c]">
-                  {summary.dueDay}HB
+                  {formatDueDay(summary.dueDay, lang)}
                   {isActive ? ` · ${dueLabel}` : ""}
                   {summary.transactionCount > 0 ? ` · ${summary.transactionCount} ${tr("rekod", "records")}` : ""}
                 </p>
@@ -504,7 +512,7 @@ export default function SubscriptionDetailPage() {
                   <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{tr("Due Day", "Due Day")}</p>
                 </div>
                 <p className="mt-2 text-sm font-black tabular-nums text-[#f5f5f5]">
-                  {showDataSkeleton ? <AmountSkeleton className="h-4 w-10 bg-white/10" /> : `${summary.dueDay}HB`}
+                  {showDataSkeleton ? <AmountSkeleton className="h-4 w-10 bg-white/10" /> : `${formatDueDay(summary.dueDay, lang)}`}
                 </p>
               </div>
               <div className="rounded-[1.15rem] bg-white/[0.06] p-3">
@@ -595,7 +603,7 @@ export default function SubscriptionDetailPage() {
               <div className="grid grid-cols-2 gap-2.5">
                 {[
                   { label: tr("Jumlah", "Amount"), value: formatCurrency(summary.amount) },
-                  { label: tr("Due Day", "Due Day"), value: `${summary.dueDay}HB` },
+                  { label: tr("Due Day", "Due Day"), value: `${formatDueDay(summary.dueDay, lang)}` },
                   { label: tr("Transaksi", "Transactions"), value: String(summary.transactionCount) },
                   { label: tr("Jumlah dibayar", "Total paid"), value: formatCurrency(summary.paidTotal) },
                   { label: tr("Mula", "Start"), value: formatDateLabel(subscription?.start_date) },
@@ -808,7 +816,7 @@ export default function SubscriptionDetailPage() {
                           }
                           className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 pr-12 text-sm text-[var(--text)] outline-none"
                         />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--muted)]">HB</span>
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--muted)]">{lang === "BM" ? "HB" : "Day"}</span>
                       </div>
                     </label>
                   </div>

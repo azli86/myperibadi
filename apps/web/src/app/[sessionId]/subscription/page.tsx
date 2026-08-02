@@ -87,9 +87,31 @@ function urgencyTone(days: number): "overdue" | "today" | "soon" | "ok" {
   return "ok"
 }
 
+
+function formatDueDay(day: number, lang: string) {
+  if (lang === "BM") return `${day}HB`
+  const mod100 = day % 100
+  const suffix = mod100 >= 11 && mod100 <= 13 ? "th" : day % 10 === 1 ? "st" : day % 10 === 2 ? "nd" : day % 10 === 3 ? "rd" : "th"
+  return `${day}${suffix}`
+}
+
 export default function SubscriptionPage() {
   const params = useParams()
   const router = useRouter()
+  const [detailId, setDetailId] = useState<string | number | null>(null)
+  const openDetail = (id: string | number) => {
+    window.history.pushState({ detailSlide: true }, "")
+    setDetailId(id)
+  }
+  useEffect(() => {
+    const closeDetailOnBack = () => setDetailId(null)
+    window.addEventListener("popstate", closeDetailOnBack)
+    return () => window.removeEventListener("popstate", closeDetailOnBack)
+  }, [])
+  const closeDetail = () => {
+    if (window.history.state?.detailSlide) window.history.back()
+    else setDetailId(null)
+  }
   const [mounted, setMounted] = useState(false)
   const sessionId = (params.sessionId as string) || ""
   const { lang } = useLang()
@@ -306,10 +328,10 @@ export default function SubscriptionPage() {
 
   const dueLabel = useCallback(
     (days: number) => {
-      if (days < 0) return tr(`${Math.abs(days)}h lewat`, `${Math.abs(days)}d overdue`)
+      if (days < 0) return tr(`${Math.abs(days)} hari lewat`, `${Math.abs(days)} ${Math.abs(days) === 1 ? "Day" : "Days"} overdue`)
       if (days === 0) return tr("Hari ini", "Due today")
       if (days === 1) return tr("Esok", "Tomorrow")
-      return tr(`${days} hari lagi`, `in ${days}d`)
+      return tr(`${days} hari lagi`, `in ${days} Days`)
     },
     [tr],
   )
@@ -347,7 +369,7 @@ export default function SubscriptionPage() {
         <div className="flex items-center gap-2.5 md:gap-4">
           <button
             type="button"
-            onClick={() => router.push(`/${sessionId}/subscription/${c.id}`)}
+            onClick={() => openDetail(c.id)}
             className={cn(
               "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-sm font-black md:h-11 md:w-11 md:rounded-2xl",
               avatarClass,
@@ -359,19 +381,18 @@ export default function SubscriptionPage() {
 
           <button
             type="button"
-            onClick={() => router.push(`/${sessionId}/subscription/${c.id}`)}
+            onClick={() => openDetail(c.id)}
             className="min-w-0 flex-1 text-left md:w-[14rem] md:flex-none md:shrink-0"
           >
             <p className="truncate text-sm font-black leading-tight text-[var(--text)]">{c.name}</p>
             <p className="mt-0.5 truncate text-[11px] font-semibold text-[var(--muted)]">
-              {c.due_day_of_month}HB
-              {isActive ? ` · ${dueLabel(days)}` : ` · ${tr("Tak aktif", "Inactive")}`}
+              {formatDueDay(c.due_day_of_month, lang)} · {isActive ? <span className={tone === "overdue" ? "text-red-500" : undefined}>{dueLabel(days)}</span> : tr("Tak aktif", "Inactive")}
             </p>
           </button>
 
           <button
             type="button"
-            onClick={() => router.push(`/${sessionId}/subscription/${c.id}`)}
+            onClick={() => openDetail(c.id)}
             className="flex shrink-0 items-baseline gap-0.5 whitespace-nowrap text-right md:hidden"
           >
             <MoneyAmount value={Number(c.amount || 0)} size="xs" className="text-[var(--text)]" />
@@ -380,7 +401,7 @@ export default function SubscriptionPage() {
 
           <button
             type="button"
-            onClick={() => router.push(`/${sessionId}/subscription/${c.id}`)}
+            onClick={() => openDetail(c.id)}
             className="hidden min-w-0 flex-1 items-center gap-6 text-left md:flex"
           >
             <div className="min-w-[7.5rem] shrink-0">
@@ -395,7 +416,7 @@ export default function SubscriptionPage() {
               <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
                 {tr("Due seterusnya", "Next due")}
               </p>
-              <p className="mt-0.5 truncate text-sm font-semibold leading-none text-[var(--text)]">
+              <p className={cn("mt-0.5 truncate text-sm font-semibold leading-none", tone === "overdue" ? "text-red-500" : "text-[var(--text)]")}>
                 {isActive ? dueLabel(days) : "–"}
               </p>
             </div>
@@ -404,7 +425,7 @@ export default function SubscriptionPage() {
                 {tr("Tarikh", "Due day")}
               </p>
               <p className="mt-0.5 truncate text-sm font-semibold leading-none text-[var(--text)]">
-                {c.due_day_of_month}HB
+                {formatDueDay(c.due_day_of_month, lang)}
               </p>
             </div>
           </button>
@@ -418,22 +439,7 @@ export default function SubscriptionPage() {
             >
               {statusLabel}
             </span>
-            <button
-              type="button"
-              onClick={() => openEditSheet(c)}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-tint)] active:scale-95"
-              aria-label={tr("Edit subscription", "Edit subscription")}
-            >
-              <Pencil size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDeleteSubscription(c)}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-tint)] hover:text-[var(--text)] active:scale-95"
-              aria-label={tr("Padam subscription", "Delete subscription")}
-            >
-              <Trash2 size={13} />
-            </button>
+
           </div>
         </div>
       </div>
@@ -467,7 +473,7 @@ export default function SubscriptionPage() {
 
   const nearestHint =
     summary.activeCount > 0 && Number.isFinite(summary.nearestDays)
-      ? `${summary.nearestName} · ${summary.nearestDueDay}HB · ${dueLabel(summary.nearestDays)}`
+      ? `${summary.nearestName} · ${formatDueDay(summary.nearestDueDay, lang)} · ${dueLabel(summary.nearestDays)}`
       : tr("Tiada langganan aktif", "No active subscriptions")
 
   return (
@@ -485,78 +491,19 @@ export default function SubscriptionPage() {
         />
 
         <section className="px-1">
-          <div className="subscription-hero relative overflow-hidden rounded-[2rem] border border-[#2a2a2a] bg-[#1a1a1a] p-5 text-[#f5f5f5]">
+          <div className="subscription-hero relative overflow-hidden rounded-[2rem] bg-[#1a1a1a] p-5 text-center text-[#f5f5f5]">
             <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-            <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-            <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
-
-            <div className="relative">
-              <div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">
-                  {tr("Jumlah Bulanan", "Monthly Total")}
-                </p>
-                <p className="subscription-hero-amount mt-2 leading-none text-[#f5f5f5]">
-                  {showDataSkeleton ? (
-                    <AmountSkeleton className="h-7 w-32 bg-white/10" />
-                  ) : (
-                    <MoneyAmount
-                      value={Number(summary.totalMonthly || 0)}
-                      size="hero"
-                      className="text-[#f5f5f5]"
-                      currencyClassName="text-[#f5f5f5] opacity-55"
-                    />
-                  )}
-                </p>
-              </div>
-
-              <div className="mt-4 rounded-[1.15rem] bg-white/[0.06] px-3 py-2.5">
-                <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">
-                  {tr("Due terdekat", "Nearest due")}
-                </p>
-                <p className="mt-1 truncate text-[11px] font-semibold text-[#e5e5e5]">
-                  {showDataSkeleton ? <AmountSkeleton className="h-3 w-40 bg-white/10" /> : nearestHint}
-                </p>
-              </div>
-
-              <div className="mt-3 grid grid-cols-3 gap-2.5">
-                <div className="rounded-[1.15rem] bg-white/[0.06] p-3">
-                  <div className="flex items-center gap-1.5">
-                    <BadgeCheck size={12} className="text-[#b3b3b3]" />
-                    <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{tr("Aktif", "Active")}</p>
-                  </div>
-                  <p className="mt-2 text-sm font-semibold tabular-nums tracking-tight text-[#f5f5f5]">
-                    {showDataSkeleton ? <AmountSkeleton className="h-4 w-8 bg-white/10" /> : summary.activeCount}
-                  </p>
-                </div>
-                <div className="rounded-[1.15rem] bg-white/[0.06] p-3">
-                  <div className="flex items-center gap-1.5">
-                    <AlertTriangle size={12} className="text-[#b3b3b3]" />
-                    <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{tr("Hampir", "Soon")}</p>
-                  </div>
-                  <p className="mt-2 text-sm font-semibold tabular-nums tracking-tight text-[#f5f5f5]">
-                    {showDataSkeleton ? <AmountSkeleton className="h-4 w-8 bg-white/10" /> : summary.dueSoonCount}
-                  </p>
-                </div>
-                <div className="rounded-[1.15rem] bg-white/[0.06] p-3">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar size={12} className="text-[#b3b3b3]" />
-                    <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{tr("Semua", "All")}</p>
-                  </div>
-                  <p className="mt-2 text-sm font-semibold tabular-nums tracking-tight text-[#f5f5f5]">
-                    {showDataSkeleton ? <AmountSkeleton className="h-4 w-8 bg-white/10" /> : subscriptions.length}
-                  </p>
-                </div>
+            <div className="relative flex min-h-24 flex-col items-center justify-center">
+              <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">{tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}</p>
+              <div className="mt-2 text-[#f5f5f5]">
+                {showDataSkeleton ? <AmountSkeleton className="h-7 w-32 bg-white/10" /> : <MoneyAmount value={Number(summary.totalMonthly || 0)} size="hero" className="text-[#f5f5f5]" currencyClassName="text-[#f5f5f5] opacity-55" />}
               </div>
             </div>
           </div>
         </section>
 
         <section className="px-1">
-          <div className="flex items-center justify-end px-1.5">
-            {filterToggle}
-          </div>
-
-          <div className="mt-3.5 space-y-3">
+          <div className="space-y-3">
             {showDataSkeleton ? (
               Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-4">
@@ -602,78 +549,17 @@ export default function SubscriptionPage() {
         />
 
         <DesktopPageBody className="space-y-5">
-        <div className="subscription-hero relative overflow-hidden rounded-[1.75rem] border border-[#2a2a2a] bg-[#1a1a1a] p-6 text-[#f5f5f5]">
+        <div className="subscription-hero relative overflow-hidden rounded-[1.75rem] bg-[#1a1a1a] p-6 text-center text-[#f5f5f5]">
           <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-          <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/[0.04] blur-2xl" />
-          <div className="absolute -bottom-14 left-10 h-36 w-36 rounded-full bg-white/[0.03] blur-2xl" />
-          <div className="relative flex items-center gap-5">
-            <div className="min-w-[10rem] shrink-0">
-              <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">
-                {tr("Jumlah Bulanan", "Monthly Total")}
-              </p>
-              <p className="subscription-hero-amount mt-2 leading-none text-[#f5f5f5]">
-                {showDataSkeleton ? (
-                  <AmountSkeleton className="h-10 w-40 bg-white/10" />
-                ) : (
-                  <MoneyAmount
-                    value={Number(summary.totalMonthly || 0)}
-                    size="heroLg"
-                    className="text-[#f5f5f5]"
-                    currencyClassName="text-[#f5f5f5] opacity-55"
-                  />
-                )}
-              </p>
-            </div>
-            <div className="min-w-0 flex-1 space-y-3">
-              <div className="rounded-2xl bg-white/[0.06] px-4 py-3">
-                <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[#a3a3a3]">
-                  {tr("Due terdekat", "Nearest due")}
-                </p>
-                <p className="mt-1.5 text-sm font-semibold text-[#e5e5e5]">
-                  {showDataSkeleton ? <AmountSkeleton className="h-4 w-48 bg-white/10" /> : nearestHint}
-                </p>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  {
-                    label: tr("Aktif", "Active"),
-                    value: String(summary.activeCount),
-                    icon: <BadgeCheck size={16} className="text-[#b3b3b3]" />,
-                    color: "text-[#f5f5f5]",
-                  },
-                  {
-                    label: tr("Hampir Due", "Due Soon"),
-                    value: String(summary.dueSoonCount),
-                    icon: <AlertTriangle size={16} className="text-[#b3b3b3]" />,
-                    color: "text-[#f5f5f5]",
-                  },
-                  {
-                    label: tr("Semua", "All"),
-                    value: String(subscriptions.length),
-                    icon: <Calendar size={16} className="text-[#b3b3b3]" />,
-                    color: "text-[#f5f5f5]",
-                  },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-2xl bg-white/[0.06] p-4">
-                    <div className="flex items-center gap-2">
-                      {item.icon}
-                      <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[#a3a3a3]">{item.label}</p>
-                    </div>
-                    <p className={cn("mt-3 text-xl font-semibold tabular-nums tracking-tight", item.color)}>
-                      {showDataSkeleton ? <AmountSkeleton className="h-6 w-12 bg-white/10" /> : item.value}
-                    </p>
-                  </div>
-                ))}
-              </div>
+          <div className="relative flex min-h-28 flex-col items-center justify-center">
+            <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">{tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}</p>
+            <div className="mt-2 text-[#f5f5f5]">
+              {showDataSkeleton ? <AmountSkeleton className="h-10 w-40 bg-white/10" /> : <MoneyAmount value={Number(summary.totalMonthly || 0)} size="heroLg" className="text-[#f5f5f5]" currencyClassName="text-[#f5f5f5] opacity-55" />}
             </div>
           </div>
         </div>
 
         <div>
-          <div className="mb-3 flex items-center justify-end gap-3">
-            {filterToggle}
-          </div>
-
           <div className="space-y-3">
             {showDataSkeleton ? (
               Array.from({ length: 4 }).map((_, i) => (
@@ -776,7 +662,7 @@ export default function SubscriptionPage() {
                           className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 pr-12 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
                           placeholder="15"
                         />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--muted)]">HB</span>
+                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--muted)]">{lang === "BM" ? "HB" : "Day"}</span>
                       </div>
                     </div>
                   </div>
@@ -796,10 +682,10 @@ export default function SubscriptionPage() {
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-4">
                     <p className="mb-3 text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">SUBX</p>
                     <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 font-mono text-xs text-[var(--text)]">
-                      SUBX {form.name || "BIL"} {form.amount || "89.90"} {form.due_day || "15"}HB
+                      SUBX {form.name || "BIL"} {form.amount || "89.90"} {form.due_day || "15"}{lang === "BM" ? "HB" : ""}
                     </div>
                     <p className="mt-2 text-[0.58rem] text-[var(--muted)]">
-                      {tr("Format: SUBX [nama] [jumlah] [due day]HB", "Format: SUBX [name] [amount] [due day]HB")}
+                      {tr("Format: SUBX [nama] [jumlah] [hari]HB", "Format: SUBX [name] [amount] [day]")}
                     </p>
                     <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 font-mono text-xs text-[var(--text)]">
                       SUBX PAY {form.name || "BIL"} {form.amount || "89.90"} WALLET
@@ -835,6 +721,16 @@ export default function SubscriptionPage() {
             document.body,
           )
         : null}
+
+      {detailId !== null && (
+        <div className="fixed inset-0 z-[500]">
+          <button type="button" aria-label={tr("Tutup butiran", "Close details")} onClick={closeDetail} className="absolute inset-0 bg-black/45" />
+          <section className="absolute bottom-0 right-0 top-0 h-[100dvh] w-full overflow-hidden animate-in slide-in-from-right duration-300 bg-[var(--page-bg)] md:w-[min(760px,72vw)] md:border-l md:border-[var(--border)] md:shadow-2xl">
+            <iframe title={tr("Butiran langganan", "Subscription details")} src={`/${sessionId}/subscription/${detailId}`} className="block h-[100dvh] w-full border-0" />
+            <button type="button" aria-label={tr("Kembali", "Back")} onClick={closeDetail} className="absolute left-0 top-0 z-[600] h-16 w-16 bg-transparent md:hidden" />
+          </section>
+        </div>
+      )}
 
       {alertModal}
     </div>
