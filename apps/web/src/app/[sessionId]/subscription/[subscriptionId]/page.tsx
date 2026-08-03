@@ -554,6 +554,28 @@ export default function SubscriptionDetailPage() {
                 <p className="mt-1 text-[12px] font-medium leading-snug text-[#e5e5e5]">{subscription.notes}</p>
               </div>
             ) : null}
+
+            <div className="mt-4 flex items-center justify-center gap-6">
+              <button
+                type="button"
+                onClick={() => setShowEditSheet(true)}
+                disabled={loading || !subscription}
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-[#d4d4d4] underline-offset-4 transition hover:text-[#f5f5f5] hover:underline disabled:opacity-40"
+              >
+                <Pencil size={15} />
+                {tr("Edit", "Edit")}
+              </button>
+              <span className="h-3.5 w-px bg-white/15" aria-hidden />
+              <button
+                type="button"
+                onClick={handleDeleteSubscription}
+                disabled={deleting || loading || !subscription}
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-rose-400 underline-offset-4 transition hover:text-rose-300 hover:underline disabled:opacity-40"
+              >
+                {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                {tr("Padam", "Delete")}
+              </button>
+            </div>
           </div>
         </div>
       </div>

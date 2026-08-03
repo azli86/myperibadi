@@ -2268,7 +2268,12 @@ async def get_category_suggestions_by_keywords(
         category for category in fallback_result.scalars().all()
         if (category.name or "").strip().lower() not in default_names
     ]
-    return fallback_categories[:limit]
+    # OCR appends an exact portal category name. Put that choice first, then
+    # nearby names; never return the previous arbitrary alphabetical first three.
+    normalized = normalized_text.lower()
+    exact = [category for category in fallback_categories if normalize_message_text(category.name).lower() in normalized]
+    rest = [category for category in fallback_categories if category not in exact]
+    return (exact + rest)[:limit]
 
 
 async def get_category_by_keywords(db: AsyncSession, text: str, household_id: Optional[int] = None, preferred_kind: Optional[str] = None) -> Optional[models.Category]:
@@ -2998,6 +3003,7 @@ async def _process_whatsapp_message_impl(
         household_id = user.default_household_id
         # 1. Cleaning & Normalization
         raw_text = (text or "").strip()
+        full_raw_text = raw_text  # keep original incl. date token for pending-selection reprocessing
         explicit_txn_date, text_without_date_token, has_invalid_date_token = extract_explicit_txn_date(raw_text)
         if has_invalid_date_token:
             return t["invalid_date_token"], None
@@ -3089,6 +3095,52 @@ async def _process_whatsapp_message_impl(
                     forced_category_id=int(selected_option.get("id")),
                     skip_category_prompt=True,
                 )
+            # User typed a category name or keyword not in the shortlist: match against all user categories.
+            if selected_index is None:
+                all_rows = (await db.execute(
+                    select(models.Category).where(
+                        models.Category.household_id == user.default_household_id,
+                        models.Category.kind == "expense",
+                        models.Category.is_internal == False,
+                    )
+                )).scalars().all()
+                normalized_typed = normalize_message_text(text or "").strip().lower()
+                exact_match = next((c for c in all_rows if normalize_message_text(c.name).lower() == normalized_typed), None)
+                keyword_match = None
+                if not exact_match:
+                    kw_rows = (await db.execute(
+                        select(models.CategoryKeyword, models.Category)
+                        .join(models.Category, models.CategoryKeyword.category_id == models.Category.id)
+                        .where(
+                            models.CategoryKeyword.is_active == True,
+                            models.Category.is_internal == False,
+                            models.Category.household_id == user.default_household_id,
+                        )
+                    )).all()
+                    for kw, category in kw_rows:
+                        kw_norm = normalize_message_text(kw.keyword or "").lower()
+                        if kw_norm and (kw_norm == normalized_typed or kw_norm in normalized_typed or normalized_typed in kw_norm):
+                            keyword_match = category
+                            break
+                matched = exact_match or keyword_match
+                if matched:
+                    _clear_pending_category_selection(user_id, source_channel)
+                    return await _process_whatsapp_message_impl(
+                        db,
+                        user_id=user_id,
+                        phone=phone,
+                        text=str(pending_selection.get("original_text") or ""),
+                        latitude=pending_selection.get("latitude"),
+                        longitude=pending_selection.get("longitude"),
+                        location_name=pending_selection.get("location_name"),
+                        source_channel=source_channel,
+                        show_current_balance=show_current_balance,
+                        show_expense_amount=show_expense_amount,
+                        show_income_amount=show_income_amount,
+                        allow_llm_fallback=allow_llm_fallback,
+                        forced_category_id=int(matched.id),
+                        skip_category_prompt=True,
+                    )
 
         
         # 1.5. Ensure legacy category scope exists for budget/category mapping.
@@ -3744,7 +3796,7 @@ async def _process_whatsapp_message_impl(
                     user_id,
                     source_channel,
                     {
-                        "original_text": raw_text,
+                        "original_text": full_raw_text,
                         "latitude": resolved_latitude,
                         "longitude": resolved_longitude,
                         "location_name": resolved_location_name,
@@ -3752,11 +3804,8 @@ async def _process_whatsapp_message_impl(
                     },
                 )
                 lines = [
-                    "Transaksi masih pending dan belum disimpan. Sila masukkan kategori:" if user_lang == "BM" else "This transaction is still pending and has not been saved yet. Please choose a category:"
+                    ("Transaksi belum disimpan. Sila taip keyword kategori untuk simpan (contoh: makan, grab), atau taip 'batal' untuk batal." if user_lang == "BM" else "Transaction not saved yet. Type a category keyword to save (e.g. food, grab), or type 'cancel' to cancel.")
                 ]
-                for idx_option, option in enumerate(prompt_options, start=1):
-                    lines.append(f"{idx_option}. {option['name']}")
-                lines.append("Balas nombor 1, 2, atau 3." if user_lang == "BM" else "Reply with 1, 2, or 3.")
                 return "\n".join(lines), None
             category = await get_default_category(db, txn_type, household_id=household_id)
 
@@ -3994,6 +4043,20 @@ async def _process_whatsapp_message_impl(
 async def process_whatsapp_message(*args, **kwargs) -> Tuple[Optional[str], Optional[models.Transaction]]:
     reply, txn = await _process_whatsapp_message_impl(*args, **kwargs)
     return format_corporate_bot_reply(reply), txn
+
+
+def _looks_like_category_prompt(text: Optional[str]) -> bool:
+    lowered = (text or "").lower()
+    return (
+        "sila masukkan kategori" in lowered
+        or "pilih kategori" in lowered
+        or "please choose a category" in lowered
+        or "pick one first" in lowered
+        or "reply with 1, 2, or 3" in lowered
+        or "balas nombor 1, 2, atau 3" in lowered
+        or "transaction not saved yet" in lowered
+        or "transaksi belum disimpan" in lowered
+    )
 
 
 def _extract_transaction_reference(text: Optional[str]) -> Optional[str]:

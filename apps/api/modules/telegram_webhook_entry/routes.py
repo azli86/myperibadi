@@ -39,9 +39,20 @@ async def process_telegram_webhook_payload_background_route(
             )
             processing_message_id = int((((processing_response or {}).get("result") or {}).get("message_id") or 0) or 0) or None
         async with session_factory() as db:
-            await handle_telegram_webhook_payload(payload, db)
+            print(f"[telegram-media] processing started chat={processing_chat_id}", flush=True)
+            await asyncio.wait_for(handle_telegram_webhook_payload(payload, db), timeout=60)
+            print(f"[telegram-media] processing completed chat={processing_chat_id}", flush=True)
     except Exception as exc:
-        print(f"[telegram] Background webhook processing failed: {exc}")
+        print(f"[telegram] Background webhook processing failed: {type(exc).__name__}: {exc}", flush=True)
+        if processing_chat_id:
+            try:
+                await send_telegram_message(
+                    processing_chat_id,
+                    "Gambar gagal diproses. Sila cuba semula atau hantar gambar bersama teks seperti `makan 12.50`.\n\nImage processing failed. Please retry or send the image with text such as `lunch 12.50`.",
+                    linked=True,
+                )
+            except Exception:
+                pass
     finally:
         if processing_chat_id and processing_message_id:
             await delete_telegram_message(processing_chat_id, processing_message_id)

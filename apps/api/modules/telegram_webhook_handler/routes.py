@@ -549,13 +549,8 @@ async def handle_telegram_webhook_payload_route(
             reply = (reply + "\n\n" + media_reply) if reply else media_reply
     if reply:
         lowered_reply = reply.lower()
-        is_saved_reply = (
-            "txn" in lowered_reply
-            or "transaksi" in lowered_reply
-            or "transaction" in lowered_reply
-            or "resit" in lowered_reply
-            or "receipt" in lowered_reply
-        )
+        # OCR previews mention receipts but have not saved a transaction yet.
+        is_saved_reply = "txn" in lowered_reply
         has_lifespan = (
             "boleh tahan" in lowered_reply
             or "status duit" in lowered_reply
@@ -567,7 +562,7 @@ async def handle_telegram_webhook_payload_route(
             user = user_res.scalar_one_or_none()
             user_lang = getattr(user, "language", "BM") if user else "BM"
             balance = await whatsapp_service.get_user_balance(db, link.user_id)
-            reply += whatsapp_service._format_money_lifespan_message(balance, user_lang)
+            reply += await whatsapp_service._format_money_lifespan_message(db, link.user_id, balance, user_lang)
         await _send_telegram_message(
             chat_id,
             reply,

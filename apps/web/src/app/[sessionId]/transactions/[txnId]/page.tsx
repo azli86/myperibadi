@@ -1258,7 +1258,7 @@ export default function TransactionDetailPage() {
           className="hidden md:block"
         />
 
-        <DesktopPageBody className="max-w-2xl px-4 pb-16 md:max-w-6xl lg:max-w-7xl">
+        <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
           <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-5 text-center">
             {error && (
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/10">
@@ -1329,6 +1329,44 @@ export default function TransactionDetailPage() {
     : "border-rose-500/20 bg-rose-500/10 text-rose-500"
 
   const transactionDetailTitle = lang === "BM" ? "Butiran Transaksi" : "Transaction Details"
+
+  const summaryCardActions = (
+    <>
+      <button
+        type="button"
+        onClick={() => setShowEditModal(true)}
+        disabled={saving || !txn}
+        className="inline-flex items-center gap-1.5 text-sm font-bold text-[#d4d4d4] underline-offset-4 transition hover:text-[#f5f5f5] hover:underline disabled:opacity-40"
+      >
+        <Edit3 size={15} />
+        {langT.edit}
+      </button>
+      {refundButtonState !== "hidden" ? (
+        <>
+          <span className="h-3.5 w-px bg-white/15" aria-hidden />
+          <button
+            type="button"
+            onClick={handleRefundClick}
+            disabled={refundButtonState === "loading" || !txn}
+            className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-400 underline-offset-4 transition hover:text-emerald-300 hover:underline disabled:opacity-40"
+          >
+            {refundButtonState === "loading" ? <Loader2 size={15} className="animate-spin" /> : <Undo2 size={15} />}
+            Refund
+          </button>
+        </>
+      ) : null}
+      <span className="h-3.5 w-px bg-white/15" aria-hidden />
+      <button
+        type="button"
+        onClick={() => setShowDeleteModal(true)}
+        disabled={saving || !txn}
+        className="inline-flex items-center gap-1.5 text-sm font-bold text-rose-400 underline-offset-4 transition hover:text-rose-300 hover:underline disabled:opacity-40"
+      >
+        <Trash2 size={15} />
+        {langT.delete}
+      </button>
+    </>
+  )
 
   const heroActions = (
     <>
@@ -1423,13 +1461,14 @@ export default function TransactionDetailPage() {
           actions={heroActions}
         />
 
-        <DesktopPageBody className="max-w-2xl px-4 pb-16 md:max-w-6xl lg:max-w-7xl">
+        <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
           <TxnSummaryCard
             txn={txn}
             transactionDateLabel={transactionDateLabel}
             formattedAmount={formattedAmount}
             amountClass={amountClass}
             badgeClass={badgeClass}
+            actions={summaryCardActions}
           />
 
           {vehicleLink?.vehicle_id ? (

@@ -54,3 +54,6 @@ apps/api/env
 apps/api/.env
 .env
 *.env
+
+# runtime user data
+apps/worker/lid_mapping/

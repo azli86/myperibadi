@@ -13,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import location_service
 import models
 import whatsapp_service
+import receipt_ocr_service
+import storage_service
 
 
 async def process_bot_input_route(
@@ -167,14 +169,31 @@ async def process_bot_input_route(
                 )
             }
         if not normalized_target_txn_ref and not has_amount:
-            return {
-                "reply": (
-                    "Receipt upload failed. Please reply to a saved transaction first, or send the image together with a new transaction like `lunch 12.50`."
-                    if is_en
-                    else "Upload lampiran gagal. Sila reply transaksi yang sudah disimpan dahulu, atau hantar gambar sekali dengan transaksi baru seperti `makan 12.50`."
+            try:
+                ocr_payload = media_payload
+                if not ocr_payload and media_object_key:
+                    ocr_payload, stored_mime = await asyncio.to_thread(storage_service.download_receipt_object, media_object_key)
+                    media_mime_type = media_mime_type or stored_mime
+                category_rows = (await db.execute(select(models.Category).where(models.Category.household_id == user.default_household_id, models.Category.kind == "expense", models.Category.is_internal == False).order_by(models.Category.name))).scalars().all()
+                category_names = [category.name for category in category_rows]
+                draft = await receipt_ocr_service.extract_receipt(
+                    ocr_payload or b"",
+                    media_mime_type or "",
+                    "EN" if is_en else "BM",
+                    category_names,
                 )
-            }
-        import storage_service
+                # Telegram legacy Markdown rejects merchant names containing `_`, `[`, etc.
+                safe_description = re.sub(r"[^\w .,&'()-]", "", draft.description, flags=re.UNICODE).replace("_", " ").strip()
+                # Merchant reference tokens containing digits must not be parsed as amounts.
+                safe_description = re.sub(r"\b\S*\d\S*\b", "", safe_description).strip()
+                # Hint is never mixed into transaction text; AI categories are unreliable.
+                text = f"{safe_description} {draft.amount} @{draft.txn_date.strftime('%d%m%Y')}".replace("  ", " ")
+                has_amount = True
+                print(f"[receipt-ocr] draft description={draft.description!r} amount={draft.amount} date={draft.txn_date} category_options={len(category_rows)}")
+                print(f"[receipt-ocr] built text={text!r}")
+            except Exception as exc:
+                print(f"[receipt-ocr] failed user={user_id} channel={source_channel}: {type(exc).__name__}")
+                return {"reply": "Receipt details could not be read. Send the image with text like `lunch 12.50`." if is_en else "Butiran resit tidak dapat dibaca. Hantar gambar bersama teks seperti `makan 12.50`."}
         try:
             if media_payload:
                 storage_service.validate_receipt_file(media_file_name, media_mime_type, media_payload)
@@ -203,10 +222,25 @@ async def process_bot_input_route(
             show_income_amount=show_income_amount,
             allow_llm_fallback=True,
         )
-        if txt_reply and not has_media:
+        # Keep the transaction confirmation together with the later receipt-upload reply.
+        if txt_reply:
             replies.append(txt_reply)
 
-    if has_media:
+    # If OCR asked the user to pick a category, do not attach media yet.
+    # Telegram pending-media flow attaches after the transaction is saved.
+    category_prompt_pending = bool(
+        has_media
+        and not target_txn_ref
+        and not normalized_target_txn_ref
+        and replies
+        and whatsapp_service._looks_like_category_prompt("".join(replies) or "")
+    )
+    print(
+        f"[WA][debug] has_media={has_media} target_ref={target_txn_ref!r} norm={normalized_target_txn_ref!r} replies={len(replies)} cat_prompt_pending={category_prompt_pending} reply_preview={(''.join(replies) or '')[:120]!r}",
+        flush=True,
+    )
+
+    if has_media and not category_prompt_pending:
         print(
             f"[WA][media-timing] route_start user={user_id} channel={source_channel} file={media_file_name or '-'} mime={media_mime_type or '-'} has_text={'yes' if bool(text) else 'no'} target_ref={target_txn_ref or '-'} total_ms={(datetime.utcnow() - started_at).total_seconds() * 1000:.1f}"
         )
