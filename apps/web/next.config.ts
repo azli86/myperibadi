@@ -110,6 +110,10 @@ const nextConfig: NextConfig = {
     return {
       beforeFiles: [
         {
+          source: "/mcp",
+          destination: `${apiInternalOrigin}/mcp`,
+        },
+        {
           source: "/api/whatsapp/webhook",
           destination: "/_not-found",
         },

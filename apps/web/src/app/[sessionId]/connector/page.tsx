@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 
-type ConnectorKey = "whatsapp" | "telegram"
+type ConnectorKey = "whatsapp" | "telegram" | "hermes"
 type ConnectionState = "loading" | "connected" | "disconnected" | "error"
 
 type ConnectorCard = {
@@ -169,8 +169,17 @@ export default function ConnectorPage() {
         state: tgState,
         detail: tgDetail,
       },
+      {
+        key: "hermes",
+        name: "Hermes MCP",
+        href: `/${sessionId}/hermes-mcp`,
+        icon: Plug,
+        accent: "bg-[var(--surface-tint)] text-[var(--text)]",
+        state: "disconnected",
+        detail: tr("Token peribadi selamat", "Secure personal token"),
+      },
     ],
-    [sessionId, tgDetail, tgState, waDetail, waState],
+    [sessionId, tgDetail, tgState, tr, waDetail, waState],
   )
 
   const stats = useMemo(() => {
@@ -199,7 +208,7 @@ export default function ConnectorPage() {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <p className="text-xl font-black tracking-tight text-[var(--text)]">{item.name}</p>
+            <p className="flex items-center gap-2 text-xl font-black tracking-tight text-[var(--text)]">{item.name}{item.key === "hermes" && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-600">Beta</span>}</p>
             <ChevronRight size={16} className="mt-0.5 shrink-0 text-[var(--muted)]" />
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -248,8 +257,8 @@ export default function ConnectorPage() {
             >
               <Icon size={26} strokeWidth={1.7} />
             </div>
-            <p className="truncate text-2xl font-black tracking-tight text-[var(--text)]">
-              {item.name}
+            <p className="flex items-center gap-2 truncate text-2xl font-black tracking-tight text-[var(--text)]">
+              {item.name}{item.key === "hermes" && <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-amber-600">Beta</span>}
             </p>
           </div>
           <span

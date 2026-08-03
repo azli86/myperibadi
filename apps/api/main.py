@@ -26,7 +26,7 @@ except Exception:
 
 import httpx
 from fastapi import FastAPI, Depends, HTTPException, status, Query, Request, UploadFile, File, Form, Response, Body
-from fastapi.responses import StreamingResponse, HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import StreamingResponse, HTMLResponse, PlainTextResponse, RedirectResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update, or_, and_, text, case, delete as sa_delete
@@ -13033,6 +13033,168 @@ app.include_router(
         send_worker_message=_send_worker_message,
     )
 )
+
+MCP_SCOPES = "finance:read,transactions:create,transactions:update"
+
+@app.get("/mcp-tokens")
+async def list_mcp_tokens(current_user: models.User = Depends(get_current_user), db: AsyncSession = Depends(database.get_db)):
+    rows = (await db.execute(select(models.McpAccessToken).where(models.McpAccessToken.user_id == current_user.id).order_by(models.McpAccessToken.created_at.desc()))).scalars().all()
+    return [{"id": row.id, "name": row.name, "prefix": row.token_prefix, "scopes": row.scopes.split(","), "created_at": row.created_at, "last_used_at": row.last_used_at, "revoked_at": row.revoked_at} for row in rows]
+
+@app.post("/mcp-tokens")
+async def create_mcp_token(payload: dict = Body(default={}), current_user: models.User = Depends(get_current_user), db: AsyncSession = Depends(database.get_db)):
+    # Plaintext is intentionally returned once; only its digest is persisted.
+    raw = "bdp_mcp_" + secrets.token_urlsafe(32)
+    row = models.McpAccessToken(user_id=current_user.id, name=str(payload.get("name") or "Hermes")[:80], token_hash=hashlib.sha256(raw.encode()).hexdigest(), token_prefix=raw[:16], scopes=MCP_SCOPES)
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return {"id": row.id, "token": raw, "prefix": row.token_prefix, "scopes": MCP_SCOPES.split(",")}
+
+@app.delete("/mcp-tokens/{token_id}")
+async def delete_mcp_token(token_id: int, current_user: models.User = Depends(get_current_user), db: AsyncSession = Depends(database.get_db)):
+    row = (await db.execute(select(models.McpAccessToken).where(models.McpAccessToken.id == token_id, models.McpAccessToken.user_id == current_user.id))).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=404, detail="MCP token not found")
+    await db.delete(row)
+    await db.commit()
+    return {"ok": True}
+
+async def _mcp_user(request: Request, db: AsyncSession) -> tuple[models.User, models.McpAccessToken]:
+    authorization = request.headers.get("authorization", "")
+    if not authorization.startswith("Bearer bdp_mcp_"):
+        raise HTTPException(status_code=401, detail="Invalid MCP token")
+    digest = hashlib.sha256(authorization[7:].encode()).hexdigest()
+    row = (await db.execute(select(models.McpAccessToken).where(models.McpAccessToken.token_hash == digest, models.McpAccessToken.revoked_at.is_(None)))).scalar_one_or_none()
+    if row is None or (row.expires_at and row.expires_at <= datetime.utcnow()):
+        raise HTTPException(status_code=401, detail="Invalid MCP token")
+    user = (await db.execute(select(models.User).where(models.User.id == row.user_id, models.User.is_active.is_(True)))).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=401, detail="Invalid MCP token")
+    row.last_used_at = datetime.utcnow()
+    await db.commit()
+    return user, row
+
+MCP_TOOLS = [
+    {"name": "list_transactions", "description": "List the authenticated user's recent transactions.", "inputSchema": {"type": "object", "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 100}}, "additionalProperties": False}},
+    {"name": "get_transaction", "description": "Get one transaction owned by the authenticated user.", "inputSchema": {"type": "object", "properties": {"transaction_id": {"type": "integer"}}, "required": ["transaction_id"], "additionalProperties": False}},
+    {"name": "list_wallets", "description": "List wallets owned by the authenticated user.", "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
+    {"name": "list_categories", "description": "List available transaction categories.", "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False}},
+    {"name": "create_transaction", "description": "Create one transaction for the authenticated user. Ask the user to confirm first.", "inputSchema": {"type": "object", "properties": {"type": {"type": "string", "enum": ["expense", "income"]}, "amount": {"type": "number", "exclusiveMinimum": 0, "maximum": 9999999999}, "description": {"type": "string", "minLength": 1, "maxLength": 190}, "date": {"type": "string", "format": "date"}, "wallet_id": {"type": "integer"}, "category_id": {"type": "integer"}, "notes": {"type": "string", "maxLength": 2000}, "idempotency_key": {"type": "string", "minLength": 8, "maxLength": 100}}, "required": ["type", "amount", "description", "date", "wallet_id", "category_id", "idempotency_key"], "additionalProperties": False}},
+    {"name": "preview_transaction_update", "description": "Preview allowed changes and receive a five-minute single-use confirmation token.", "inputSchema": {"type": "object", "properties": {"transaction_id": {"type": "integer"}, "patch": {"type": "object", "properties": {"type": {"type": "string", "enum": ["expense", "income"]}, "amount": {"type": "number", "exclusiveMinimum": 0, "maximum": 9999999999}, "description": {"type": "string", "minLength": 1, "maxLength": 190}, "date": {"type": "string", "format": "date"}, "wallet_id": {"type": "integer"}, "category_id": {"type": "integer"}, "notes": {"type": ["string", "null"], "maxLength": 2000}}, "minProperties": 1, "additionalProperties": False}}, "required": ["transaction_id", "patch"], "additionalProperties": False}},
+    {"name": "update_transaction", "description": "Apply an exact previewed update using its single-use confirmation token.", "inputSchema": {"type": "object", "properties": {"confirmation_token": {"type": "string", "minLength": 20}}, "required": ["confirmation_token"], "additionalProperties": False}},
+]
+
+def _mcp_result(data: Any) -> dict:
+    import json
+    return {"content": [{"type": "text", "text": json.dumps(data, default=str, ensure_ascii=False)}], "structuredContent": data}
+
+async def _mcp_validate_transaction_args(db: AsyncSession, user: models.User, args: dict, partial: bool = False) -> dict:
+    import json
+    allowed = {"type", "amount", "description", "date", "wallet_id", "category_id", "notes"}
+    if not isinstance(args, dict) or not args or set(args) - allowed:
+        raise HTTPException(status_code=400, detail="Invalid transaction fields")
+    required = {"type", "amount", "description", "date", "wallet_id", "category_id"}
+    if not partial and not required <= set(args):
+        raise HTTPException(status_code=400, detail="Missing transaction fields")
+    clean = {}
+    if "type" in args:
+        if args["type"] not in {"expense", "income"}: raise HTTPException(status_code=400, detail="Invalid transaction type")
+        clean["type"] = args["type"]
+    if "amount" in args:
+        amount = Decimal(str(args["amount"]));
+        if amount <= 0 or amount > Decimal("9999999999"): raise HTTPException(status_code=400, detail="Invalid amount")
+        clean["amount"] = str(amount.quantize(Decimal("0.01")))
+    if "description" in args:
+        value = str(args["description"]).strip()
+        if not value or len(value) > 190: raise HTTPException(status_code=400, detail="Invalid description")
+        clean["description"] = value
+    if "date" in args:
+        try: clean["date"] = date.fromisoformat(str(args["date"])).isoformat()
+        except ValueError: raise HTTPException(status_code=400, detail="Invalid date")
+    if "notes" in args:
+        if args["notes"] is not None and len(str(args["notes"])) > 2000: raise HTTPException(status_code=400, detail="Invalid notes")
+        clean["notes"] = None if args["notes"] is None else str(args["notes"])
+    if "wallet_id" in args:
+        wallet = (await db.execute(select(models.Wallet).where(models.Wallet.id == int(args["wallet_id"]), models.Wallet.owner_user_id == user.id, models.Wallet.status == "active"))).scalar_one_or_none()
+        if wallet is None: raise HTTPException(status_code=400, detail="Invalid wallet")
+        clean["wallet_id"] = wallet.id
+    if "category_id" in args:
+        category = (await db.execute(select(models.Category).where(models.Category.id == int(args["category_id"]), or_(models.Category.household_id == user.default_household_id, and_(models.Category.household_id.is_(None), models.Category.is_default.is_(True))), models.Category.is_internal.is_(False)))).scalar_one_or_none()
+        if category is None: raise HTTPException(status_code=400, detail="Invalid category")
+        clean["category_id"] = category.id
+    return clean
+
+@app.api_route("/mcp", methods=["GET", "POST"])
+async def mcp_endpoint(request: Request, db: AsyncSession = Depends(database.get_db)):
+    if request.method == "GET":
+        return JSONResponse({"error": "Use MCP Streamable HTTP POST"}, status_code=405, headers={"Allow": "POST"})
+    user, _token = await _mcp_user(request, db)
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Parse error"}}, status_code=400)
+    request_id, method = body.get("id"), body.get("method")
+    if method == "notifications/initialized":
+        return Response(status_code=202)
+    if method == "initialize":
+        result = {"protocolVersion": body.get("params", {}).get("protocolVersion", "2025-03-26"), "capabilities": {"tools": {"listChanged": False}}, "serverInfo": {"name": "MyPeribadi", "version": "0.1.0"}, "instructions": "Financial data is user-scoped. Read-only beta tools."}
+    elif method == "tools/list":
+        result = {"tools": MCP_TOOLS}
+    elif method == "tools/call":
+        params = body.get("params") or {}; name = params.get("name"); args = params.get("arguments") or {}
+        if name == "list_transactions":
+            limit = max(1, min(int(args.get("limit", 50)), 100))
+            rows = (await db.execute(select(models.Transaction).where(models.Transaction.user_id == user.id).order_by(models.Transaction.txn_date.desc(), models.Transaction.id.desc()).limit(limit))).scalars().all()
+            result = _mcp_result([{"id": r.id, "reference_id": r.reference_id, "date": r.txn_date.isoformat(), "type": r.type, "description": r.vendor_or_source, "amount": str(r.amount), "wallet_id": r.wallet_id, "category_id": r.category_id, "notes": r.notes} for r in rows])
+        elif name == "get_transaction":
+            row = (await db.execute(select(models.Transaction).where(models.Transaction.id == int(args.get("transaction_id", 0)), models.Transaction.user_id == user.id))).scalar_one_or_none()
+            if row is None: raise HTTPException(status_code=404, detail="Transaction not found")
+            result = _mcp_result({"id": row.id, "reference_id": row.reference_id, "date": row.txn_date.isoformat(), "type": row.type, "description": row.vendor_or_source, "amount": str(row.amount), "wallet_id": row.wallet_id, "category_id": row.category_id, "notes": row.notes})
+        elif name == "list_wallets":
+            rows = (await db.execute(select(models.Wallet).where(models.Wallet.owner_user_id == user.id, models.Wallet.status == "active").order_by(models.Wallet.name))).scalars().all()
+            result = _mcp_result([{"id": r.id, "name": r.name, "type": r.type, "currency": r.currency} for r in rows])
+        elif name == "list_categories":
+            rows = (await db.execute(select(models.Category).where(or_(models.Category.household_id == user.default_household_id, and_(models.Category.household_id.is_(None), models.Category.is_default.is_(True))), models.Category.is_internal.is_(False)).order_by(models.Category.kind, models.Category.name))).scalars().all()
+            result = _mcp_result([{"id": r.id, "name": r.name, "kind": r.kind} for r in rows])
+        elif name == "create_transaction":
+            idem = str(args.get("idempotency_key") or "")
+            if len(idem) < 8 or len(idem) > 100: raise HTTPException(status_code=400, detail="Invalid idempotency key")
+            existing = (await db.execute(select(models.McpIdempotencyKey).where(models.McpIdempotencyKey.token_id == _token.id, models.McpIdempotencyKey.idempotency_key == idem))).scalar_one_or_none()
+            if existing:
+                result = _mcp_result({"transaction_id": existing.transaction_id, "duplicate": True})
+            else:
+                clean = await _mcp_validate_transaction_args(db, user, {k: v for k, v in args.items() if k != "idempotency_key"})
+                row = models.Transaction(user_id=user.id, household_id=user.default_household_id, type=clean["type"], amount=Decimal(clean["amount"]), vendor_or_source=clean["description"], txn_date=date.fromisoformat(clean["date"]), wallet_id=clean["wallet_id"], category_id=clean["category_id"], notes=clean.get("notes"), source_channel="mcp")
+                db.add(row); await db.flush(); db.add(models.McpIdempotencyKey(token_id=_token.id, idempotency_key=idem, transaction_id=row.id)); await db.commit()
+                result = _mcp_result({"transaction_id": row.id, "reference_id": row.reference_id, "duplicate": False})
+        elif name == "preview_transaction_update":
+            import json
+            transaction_id = int(args.get("transaction_id", 0)); patch = await _mcp_validate_transaction_args(db, user, args.get("patch"), partial=True)
+            row = (await db.execute(select(models.Transaction).where(models.Transaction.id == transaction_id, models.Transaction.user_id == user.id))).scalar_one_or_none()
+            if row is None: raise HTTPException(status_code=404, detail="Transaction not found")
+            before = {"type": row.type, "amount": str(row.amount), "description": row.vendor_or_source, "date": row.txn_date.isoformat(), "wallet_id": row.wallet_id, "category_id": row.category_id, "notes": row.notes}
+            raw_confirmation = "bdp_confirm_" + secrets.token_urlsafe(32)
+            db.add(models.McpUpdateConfirmation(mcp_token_id=_token.id, user_id=user.id, transaction_id=row.id, token_hash=hashlib.sha256(raw_confirmation.encode()).hexdigest(), patch_json=json.dumps(patch, sort_keys=True), expires_at=datetime.utcnow() + timedelta(minutes=5))); await db.commit()
+            result = _mcp_result({"transaction_id": row.id, "before": before, "after": {**before, **patch}, "confirmation_token": raw_confirmation, "expires_in_seconds": 300})
+        elif name == "update_transaction":
+            import json
+            raw_confirmation = str(args.get("confirmation_token") or "")
+            confirmation = (await db.execute(select(models.McpUpdateConfirmation).where(models.McpUpdateConfirmation.token_hash == hashlib.sha256(raw_confirmation.encode()).hexdigest(), models.McpUpdateConfirmation.mcp_token_id == _token.id, models.McpUpdateConfirmation.user_id == user.id, models.McpUpdateConfirmation.used_at.is_(None), models.McpUpdateConfirmation.expires_at > datetime.utcnow()).with_for_update())).scalar_one_or_none()
+            if confirmation is None: raise HTTPException(status_code=400, detail="Invalid or expired confirmation token")
+            row = (await db.execute(select(models.Transaction).where(models.Transaction.id == confirmation.transaction_id, models.Transaction.user_id == user.id).with_for_update())).scalar_one_or_none()
+            if row is None: raise HTTPException(status_code=404, detail="Transaction not found")
+            patch = json.loads(confirmation.patch_json)
+            mapping = {"description": "vendor_or_source", "date": "txn_date"}
+            for key, value in patch.items(): setattr(row, mapping.get(key, key), date.fromisoformat(value) if key == "date" else Decimal(value) if key == "amount" else value)
+            confirmation.used_at = datetime.utcnow(); await db.commit()
+            result = _mcp_result({"transaction_id": row.id, "updated": True})
+        else:
+            return JSONResponse({"jsonrpc": "2.0", "id": request_id, "error": {"code": -32601, "message": "Tool not found"}})
+    elif method == "ping": result = {}
+    else:
+        return JSONResponse({"jsonrpc": "2.0", "id": request_id, "error": {"code": -32601, "message": "Method not found"}})
+    return JSONResponse({"jsonrpc": "2.0", "id": request_id, "result": result}, media_type="application/json")
 
 # Vehicle ↔ Transaction link (same pattern as loan-link)
 @app.get("/transactions/{txn_id}/vehicle-link")
