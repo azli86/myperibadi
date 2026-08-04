@@ -3055,6 +3055,7 @@ async def _process_whatsapp_message_impl(
     forced_wallet_id: Optional[int] = None,
     forced_kind: Optional[str] = None,
     skip_category_prompt: bool = False,
+    force_category_prompt: bool = False,
 ) -> Tuple[str, Optional[models.Transaction]]:
     try:
         # 1. Fetch the user directly from the multi-tenant hook
@@ -3899,7 +3900,9 @@ async def _process_whatsapp_message_impl(
 
         
         # 4. Find category from portal mapping (web-app source of truth)
-        category = await get_category_by_keywords(db, text, household_id=household_id)
+        # When force_category_prompt is set (OCR media flow), always ask the user to
+        # pick a category instead of auto-matching a keyword inside the scan text.
+        category = None if force_category_prompt else await get_category_by_keywords(db, text, household_id=household_id)
         
         # 5. Determine Transaction Type (Income vs Expense)
         category_suggestions: list[models.Category] = []
@@ -3925,7 +3928,7 @@ async def _process_whatsapp_message_impl(
                 household_id=household_id,
                 preferred_kind=txn_type,
             )
-            if category_suggestions and not skip_category_prompt:
+            if (category_suggestions or force_category_prompt) and not skip_category_prompt:
                 default_category = await get_default_category(db, txn_type, household_id=household_id)
                 prompt_options = []
                 if default_category:

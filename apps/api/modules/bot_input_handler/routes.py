@@ -246,6 +246,7 @@ async def process_bot_input_route(
             show_income_amount=show_income_amount,
             allow_llm_fallback=True,
             forced_kind=ocr_forced_kind,
+            force_category_prompt=bool(ocr_summary),
         )
         # Keep the transaction confirmation together with the later receipt-upload reply.
         if txt_reply:
