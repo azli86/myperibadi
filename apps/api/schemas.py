@@ -12,6 +12,12 @@ class UserCreate(UserBase):
     password: str
     turnstile_token: Optional[str] = None
 
+class OnboardingRequest(BaseModel):
+    language: Optional[str] = "BM"
+    timezone: Optional[str] = "Asia/Kuala_Lumpur"
+    time_format: Optional[str] = "24h"
+    category_mode: str  # 'bm' | 'en' | 'manual'
+
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
@@ -41,6 +47,7 @@ class UserResponse(UserBase):
     bot_personality: Optional[str] = None
     cycle_start_day: int = 1
     cycle_mode: str = "day"
+    onboarding_done: bool = True
     created_at: datetime
 
     class Config:

@@ -16,6 +16,7 @@ import {
  Wallet,
  Download,
  ArrowDown,
+ ChevronUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Doughnut, Bar } from "react-chartjs-2"
@@ -290,6 +291,7 @@ export default function TransactionsPage() {
  const [startDate, setStartDate] = useState("")
  const [endDate, setEndDate] = useState("")
  const [showDateFilterPopup, setShowDateFilterPopup] = useState(false)
+ const [filtersExpanded, setFiltersExpanded] = useState(false)
  const [draftStartDate, setDraftStartDate] = useState("")
  const [draftEndDate, setDraftEndDate] = useState("")
  const [calendarViewMonth, setCalendarViewMonth] = useState(() => startOfMonth(new Date()))
@@ -1111,8 +1113,23 @@ const currentCycleKeyStr = useMemo(
  />
 
  <DesktopPageBody className="flex flex-col gap-4 md:gap-6">
- {/* Search + filters (mobile keeps full width via portal-page-body only on md+) */}
- <div className="flex flex-col gap-4 border-b border-[color:var(--border)] pb-5 md:border-b-0 md:pb-0">
+ {/* Search + filters (collapsible) */}
+ <div className="flex flex-col gap-2 border-b border-[color:var(--border)] pb-5 md:border-b-0 md:pb-0">
+ {/* Toggle button: show/hide all filters */}
+ <button
+ type="button"
+ onClick={() => setFiltersExpanded((v) => !v)}
+ className="mx-auto flex w-full max-w-2xl items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[var(--muted)] transition-all hover:border-[var(--text)]/25 hover:text-[var(--text)] md:max-w-none"
+ >
+ {filtersExpanded ? (
+   <><ChevronUp size={15} /> {lang === "EN" ? "Hide Filters" : "Sembunyi Penapis"}</>
+ ) : (
+   <><SlidersHorizontal size={15} /> {lang === "EN" ? "Show Filters" : "Tunjuk Penapis"}</>
+ )}
+ </button>
+
+ {filtersExpanded && (
+ <>
  {/* Search Bar */}
  <div className="w-full">
  <div className="mx-auto flex w-full max-w-2xl items-center gap-2 md:max-w-none">
@@ -1261,6 +1278,8 @@ const currentCycleKeyStr = useMemo(
  ]}
  />
  </div>
+ </>
+ )}
 
  </div>
 

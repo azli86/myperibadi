@@ -52,6 +52,7 @@ import { VehicleOverdueWidget } from "@/components/dashboard/VehicleOverdueWidge
 import { DashboardVehicleHeroRow } from "@/components/dashboard/DashboardVehicleHeroRow"
 import { CatPlayground } from "@/components/dashboard/CatPlayground"
 import { WeatherClockMini } from "@/components/layout/SidebarWeatherClock"
+import Onboarding from "@/components/onboarding/Onboarding"
 import { ChartContainer } from "@/components/ui/chart"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 import { 
@@ -211,6 +212,7 @@ type DashboardUserProfile = {
   show_hero_amounts?: boolean | null
   cycle_start_day?: number | null
   cycle_mode?: "day" | "category" | string | null
+  onboarding_done?: boolean | null
 }
 
 type DashboardCycleInfo = {
@@ -403,6 +405,7 @@ export default function Dashboard() {
   const [wallets, setWallets] = useState<DashboardWallet[]>([])
   const [budgetItems, setBudgetItems] = useState<DashboardBudgetItem[]>([])
   const [userName, setUserName] = useState("User")
+  const [onboardingPending, setOnboardingPending] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
   const [addForm, setAddForm] = useState({
     description: "", 
@@ -520,6 +523,7 @@ export default function Dashboard() {
       }
       if (typeof me?.cycle_start_day === "number") setCycleStartDay(Math.min(28, Math.max(1, me.cycle_start_day)))
       if (me?.cycle_mode === "category" || me?.cycle_mode === "day") setCycleMode(me.cycle_mode)
+      if (me?.onboarding_done === false) setOnboardingPending(true)
     }
 
     try {
@@ -2012,6 +2016,11 @@ export default function Dashboard() {
 
   return (
     <>
+      {/* ─── Onboarding (first login) ─── */}
+      {onboardingPending && (
+        <Onboarding onDone={() => { setOnboardingPending(false); window.location.reload() }} />
+      )}
+
       {/* ─── Support Modal ─── */}
       {supportOpen ? (
  <div className="fixed inset-0 z-[999999] flex items-end justify-center bg-transparent p-0 sm:items-center sm:p-4">

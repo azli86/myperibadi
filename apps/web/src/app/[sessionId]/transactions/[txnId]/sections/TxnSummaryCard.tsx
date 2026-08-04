@@ -32,7 +32,7 @@ export default function TxnSummaryCard({
   const categoryName = txn.category_name || (isBm ? "Tiada Kategori" : "No Category")
 
   return (
-    <div className="relative overflow-hidden rounded-[1.5rem] border border-[#2a2a2a] bg-[#1a1a1a] p-6 text-[#f5f5f5] md:p-8">
+    <div className="relative overflow-hidden rounded-[1.5rem] bg-[#1a1a1a] p-6 text-[#f5f5f5] md:p-8">
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
       <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
       <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />

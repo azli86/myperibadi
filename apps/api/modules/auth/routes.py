@@ -39,6 +39,7 @@ async def register_route(
         email=normalized_email,
         phone=user_in.phone,
         password_hash=hashed_password,
+        onboarding_done=False,
     )
     db.add(db_user)
     await db.commit()

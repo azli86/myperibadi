@@ -181,7 +181,7 @@ export function DesktopPageHeader({
   return (
     <header
       className={cn(
-        "portal-desktop-topbar sticky top-0 z-50 w-full shrink-0 border-b border-[var(--border)] bg-[var(--bg)]",
+        "portal-desktop-topbar sticky top-0 z-50 w-full shrink-0 border-b border-[var(--border)] bg-[var(--sidebar)]",
         className,
       )}
     >

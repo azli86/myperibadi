@@ -849,6 +849,8 @@ async def ensure_database_schema():
             await conn.execute(
                 text("CREATE INDEX IF NOT EXISTS ix_transactions_user_date_id ON transactions (user_id, txn_date, id)")
             )
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_done BOOLEAN NOT NULL DEFAULT TRUE"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS category_language VARCHAR(10) NULL"))
         elif conn.dialect.name in {"mysql", "mariadb"}:
             index_exists = await conn.execute(
                 text(
@@ -862,6 +864,8 @@ async def ensure_database_schema():
                 await conn.execute(
                     text("CREATE INDEX ix_transactions_user_date_id ON transactions (user_id, txn_date, id)")
                 )
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_done BOOLEAN NOT NULL DEFAULT TRUE"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS category_language VARCHAR(10) NULL"))
         if conn.dialect.name != "postgresql":
             print(f"INFO:  PostgreSQL-only schema patch block skipped for {conn.dialect.name}.")
         else:
@@ -2041,6 +2045,7 @@ async def _handle_google_login(
             email=email,
             auth_provider="google",
             firebase_uid=firebase_uid,
+            onboarding_done=False,
         )
         db.add(user)
         await db.flush()
@@ -9783,6 +9788,43 @@ async def update_my_profile(user_in: schemas.UserUpdate, db: AsyncSession = Depe
         normalize_theme_mode=_normalize_theme_mode,
         normalize_bot_personality=_normalize_bot_personality,
     )
+
+@app.post("/users/me/onboarding", response_model=schemas.UserResponse)
+async def complete_my_onboarding(payload: schemas.OnboardingRequest, db: AsyncSession = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
+    language = _normalize_language(payload.language)
+    category_mode = (payload.category_mode or "bm").strip().lower()
+    if category_mode not in {"bm", "en", "manual"}:
+        raise HTTPException(status_code=400, detail="category_mode must be 'bm', 'en', or 'manual'.")
+
+    timezone = (payload.timezone or "Asia/Kuala_Lumpur").strip()
+    time_format = (payload.time_format or "24h").strip().lower()
+    if time_format not in {"12h", "24h"}:
+        raise HTTPException(status_code=400, detail="time_format must be '12h' or '24h'.")
+
+    current_user.language = language
+    current_user.category_language = category_mode
+    current_user.onboarding_done = True
+
+    setting_updates = {
+        "timezone": timezone,
+        "time_format": time_format,
+    }
+    for key, value in setting_updates.items():
+        row = (await db.execute(
+            select(models.UserSetting).where(
+                models.UserSetting.user_id == current_user.id,
+                models.UserSetting.key == key,
+            )
+        )).scalar_one_or_none()
+        if row:
+            row.value = value
+        else:
+            db.add(models.UserSetting(user_id=current_user.id, key=key, value=value))
+
+    await whatsapp_service.ensure_standard_categories(db, current_user.id)
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
 
 CAT_PET_SETTING_KEY = "cat_playground_v1"
 

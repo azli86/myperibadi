@@ -41,6 +41,7 @@ async def process_bot_input_route(
 ):
     started_at = datetime.utcnow()
     replies: List[str] = []
+    ocr_summary: str | None = None
     text = (text or "").strip()
     has_media = bool(media_payload) or bool(media_object_key)
     has_location = latitude is not None and longitude is not None
@@ -189,6 +190,13 @@ async def process_bot_input_route(
                 # Hint is never mixed into transaction text; AI categories are unreliable.
                 text = f"{safe_description} {draft.amount} @{draft.txn_date.strftime('%d%m%Y')}".replace("  ", " ")
                 has_amount = True
+                # Tell the user what the bot scanned before asking them to type a keyword.
+                draft_date_display = draft.txn_date.strftime("%d/%m/%Y")
+                ocr_summary = (
+                    f"🧾 I read your receipt:\n• Details: *{safe_description}*\n• Amount: *RM {draft.amount}*\n• Date: *{draft_date_display}*"
+                    if is_en
+                    else f"🧾 Saya dapat baca resit anda:\n• Butiran: *{safe_description}*\n• Jumlah: *RM {draft.amount}*\n• Tarikh: *{draft_date_display}*"
+                )
                 print(f"[receipt-ocr] draft description={draft.description!r} amount={draft.amount} date={draft.txn_date} category_options={len(category_rows)}")
                 print(f"[receipt-ocr] built text={text!r}")
             except Exception as exc:
@@ -225,6 +233,11 @@ async def process_bot_input_route(
         # Keep the transaction confirmation together with the later receipt-upload reply.
         if txt_reply:
             replies.append(txt_reply)
+
+    # For OCR scans awaiting a category keyword, show the scanned details first
+    # so the user can verify what was read before typing the keyword.
+    if ocr_summary and replies and whatsapp_service._looks_like_category_prompt("\n\n".join(replies) or ""):
+        replies = [ocr_summary] + replies
 
     # If OCR asked the user to pick a category, do not attach media yet.
     # Telegram pending-media flow attaches after the transaction is saved.

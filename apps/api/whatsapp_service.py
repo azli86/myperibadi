@@ -45,6 +45,16 @@ STANDARD_CATEGORIES = [
     {"name": "Lain-lain", "kind": "expense", "icon_name": "tag", "keywords": ["lain", "benda"]}
 ]
 
+STANDARD_CATEGORIES_EN = [
+    {"name": "Food & Drinks", "kind": "expense", "icon_name": "utensils-crossed", "keywords": ["food", "eat", "drink", "mcd", "starbucks", "cafe"]},
+    {"name": "Transport", "kind": "expense", "icon_name": "car-front", "keywords": ["grab", "fuel", "parking", "toll", "petrol", "train"]},
+    {"name": "Health", "kind": "expense", "icon_name": "heart-pulse", "keywords": ["clinic", "medicine", "hospital", "pharmacy"]},
+    {"name": "Loan / Commitment", "kind": "expense", "icon_name": "wallet", "keywords": ["loan", "rent", "installment", "bill"]},
+    {"name": "Entertainment", "kind": "expense", "icon_name": "film", "keywords": ["movie", "netflix", "game", "spotify"]},
+    {"name": "Income", "kind": "income", "icon_name": "banknote", "keywords": ["salary", "bonus", "profit", "dividend"]},
+    {"name": "Others", "kind": "expense", "icon_name": "tag", "keywords": ["other", "misc"]}
+]
+
 INTERNAL_TRANSFER_CATEGORY_NAME = "Transfer Wallet"
 INTERNAL_TRANSFER_CATEGORY_CODE = "wallet_transfer"
 INTERNAL_DEBT_OUT_CATEGORY_NAME = "Debt Out"
@@ -2369,17 +2379,33 @@ async def ensure_standard_categories(db: AsyncSession, user_id: str):
         ))
         await db.flush()
 
-    # 3. Check if this legacy scope already has seeded categories
+    # 3. Ensure internal plumbing categories are always present.
+    await ensure_internal_transfer_category(db, household_id)
+    await ensure_internal_debt_categories(db, household_id)
+    await ensure_monthly_salary_category(db, household_id)
+
     res = await db.execute(select(models.Category).where(models.Category.household_id == household_id))
     existing = res.scalars().all()
-    if len(existing) >= 3:
-        await ensure_internal_transfer_category(db, household_id)
-        await ensure_internal_debt_categories(db, household_id)
-        await ensure_monthly_salary_category(db, household_id)
+
+    # New users: do not seed user-facing categories until onboarding is completed
+    # (user chooses auto BM / auto EN / manual).
+    if not user.onboarding_done:
         await db.flush()
         return household_id
-    
-    for cat_data in STANDARD_CATEGORIES:
+
+    category_language = (user.category_language or "bm").strip().lower()
+    if category_language == "manual":
+        # Manual mode: no auto categories; only internal plumbing categories.
+        await db.flush()
+        return household_id
+
+    existing_names = {c.name for c in existing}
+    seed_list = STANDARD_CATEGORIES_EN if category_language == "en" else STANDARD_CATEGORIES
+    if all(cat_data["name"] in existing_names for cat_data in seed_list):
+        await db.flush()
+        return household_id
+
+    for cat_data in seed_list:
         exists = any(c.name == cat_data["name"] for c in existing)
         if not exists:
             new_cat = models.Category(

@@ -40,6 +40,8 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     language: Mapped[str] = mapped_column(String(5), default="BM") # 'EN' or 'BM'
+    onboarding_done: Mapped[bool] = mapped_column(Boolean, default=True)  # False => new user sees onboarding intro after first login
+    category_language: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)  # 'bm' | 'en' | 'manual' (auto-seeded category set)
     theme_mode: Mapped[str] = mapped_column(String(12), default="system") # dark / light / system
     show_hero_amounts: Mapped[bool] = mapped_column(Boolean, default=True)
     bot_personality: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)

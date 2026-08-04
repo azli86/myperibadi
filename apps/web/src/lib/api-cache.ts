@@ -61,6 +61,32 @@ export function writeApiCache<T>(url: string, token: string | null | undefined, 
   }
 }
 
+export function invalidateApiCache(url: string, token: string | null | undefined) {
+  const storage = getStorage()
+  if (!storage) return
+  try {
+    storage.removeItem(cacheKey(url, token))
+  } catch {
+    // Best-effort.
+  }
+}
+
+export function invalidateApiCachePrefix(prefix: string, token: string | null | undefined) {
+  const storage = getStorage()
+  if (!storage) return
+  try {
+    const needle = `${CACHE_PREFIX}:${tokenScope(token)}:${prefix}`
+    const keys: string[] = []
+    for (let i = 0; i < storage.length; i += 1) {
+      const key = storage.key(i)
+      if (key && key.startsWith(needle)) keys.push(key)
+    }
+    keys.forEach((key) => storage.removeItem(key))
+  } catch {
+    // Best-effort.
+  }
+}
+
 export async function fetchApiJson<T>(url: string, token: string | null | undefined, options: FetchApiJsonOptions = {}): Promise<T> {
   const key = cacheKey(url, token)
   const existing = inflight.get(key)
