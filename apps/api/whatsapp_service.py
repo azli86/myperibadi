@@ -3911,9 +3911,9 @@ async def _process_whatsapp_message_impl(
                 )
                 lines = [
                     (
-                        f"Balas kategori + dompet, cth `income tng`"
+                        f"Balas kategori/subx/loanx + dompet, cth `income tng`"
                         if user_lang == "BM"
-                        else f"Reply category + wallet, e.g. `income tng`"
+                        else f"Reply category/subx/loanx + wallet, e.g. `income tng`"
                     )
                 ]
                 return "\n".join(lines), None
