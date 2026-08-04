@@ -52,7 +52,10 @@ async def extract_receipt(payload: bytes, mime_type: str, language: str, categor
     category_options = ", ".join((category_names or [])[:80])
     prompt = (
         "Read this receipt. Return JSON only: "
-        '{"description":"merchant name","amount":12.34,"amount_label":"exact label beside chosen amount","amount_evidence":"exact receipt line containing chosen amount","date":"YYYY-MM-DD","category_hint":"one category from options","type":"expense"}. '
+        '{"description":"counterparty name","amount":12.34,"amount_label":"exact label beside chosen amount","amount_evidence":"exact receipt line containing chosen amount","date":"YYYY-MM-DD","category_hint":"one category from options","type":"expense"}. '
+        "description is the counterparty name: for expense use the merchant/vendor/business name printed on the receipt (restaurant, shop, store, company); "
+        "for income use the payer/sender/company name (employer name, sender of the transfer, refund source). "
+        "Never output the literal word 'note', a payment note text, a reference number, a transaction type like TRANSFER/PAYMENT/REFUND, or a section label as the description. "
         "type is 'expense' when the document is a purchase/sales receipt (money paid out), or 'income' when it is a payment received, salary slip, transfer-in confirmation, bank-in slip, or refund (money received). "
         "AMOUNT RULES: extract only the final amount charged/paid. Prefer labels GRAND TOTAL, TOTAL, JUMLAH, AMOUNT DUE, NET TOTAL, TOTAL SALES, or card/e-wallet charged amount. "
         "Never use subtotal, tax, service charge, discount, rounding, cash tendered, payment received, balance, change, item price, quantity, savings, previous balance, account balance, or receipt/reference numbers. "

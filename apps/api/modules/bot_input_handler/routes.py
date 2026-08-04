@@ -188,11 +188,20 @@ async def process_bot_input_route(
                 safe_description = re.sub(r"[^\w .,&'()-]", "", draft.description, flags=re.UNICODE).replace("_", " ").strip()
                 # Merchant reference tokens containing digits must not be parsed as amounts.
                 safe_description = re.sub(r"\b\S*\d\S*\b", "", safe_description).strip()
+                # Drop literal junk descriptions: payment notes, transaction types, section labels.
+                junk_lower = safe_description.lower().strip()
+                junk_types = ("note", "nota", "payment", "bayaran", "transfer", "pindahan", "refund", "pulangan", "receipt", "resit", "transaction", "transaksi", "duitnow", "tnc ewallet", "tng ewallet", "ewallet")
+                if not junk_lower or junk_lower in junk_types or junk_lower.startswith(("type: ", "jenis: ", "note: ", "nota: ")):
+                    safe_description = ""
                 # Income/expense type flows through the same category+wallet selection
                 # prompt below; the user confirms the category (income ones included).
                 ocr_forced_kind = draft.transaction_type
                 # Hint is never mixed into transaction text; AI categories are unreliable.
-                text = f"{safe_description} {draft.amount} @{draft.txn_date.strftime('%d%m%Y')}".replace("  ", " ")
+                txn_text = f"{safe_description} {draft.amount} @{draft.txn_date.strftime('%d%m%Y')}".replace("  ", " ").strip()
+                if not safe_description:
+                    # Keep a generic label so the transaction can still be saved.
+                    txn_text = f"Resit {draft.amount} @{draft.txn_date.strftime('%d%m%Y')}"
+                text = txn_text
                 has_amount = True
                 # Tell the user what the bot scanned before asking them to type a keyword.
                 draft_date_display = draft.txn_date.strftime("%d/%m/%Y")
