@@ -45,6 +45,27 @@ class ReceiptDraft:
     txn_date: date
     category_hint: str = ""
     transaction_type: str = "expense"
+    txn_time: str = ""
+
+
+def _normalize_time(raw: str) -> str:
+    """Normalize a time string to 24-hour HH:MM, supporting 12h AM/PM and 24h."""
+    value = (raw or "").strip().lower().replace(".", ":")
+    if not value:
+        return ""
+    m = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", value)
+    if not m:
+        return ""
+    hour = int(m.group(1))
+    minute = int(m.group(2) or 0)
+    meridiem = m.group(3)
+    if meridiem == "am":
+        hour = 0 if hour == 12 else hour
+    elif meridiem == "pm":
+        hour = 12 if hour == 12 else (hour + 12) % 24
+    elif hour > 23 or minute > 59:
+        return ""
+    return f"{hour:02d}:{minute:02d}"
 
 
 def _json_object(text: str) -> dict:
@@ -80,7 +101,7 @@ async def extract_receipt(payload: bytes, mime_type: str, language: str, categor
     category_options = ", ".join((category_names or [])[:80])
     prompt = (
         "Read this receipt. Return JSON only: "
-        '{"description":"counterparty name","amount":12.34,"amount_label":"exact label beside chosen amount","amount_evidence":"exact receipt line containing chosen amount","date":"YYYY-MM-DD","category_hint":"one category from options","type":"expense"}. '
+        '{"description":"counterparty name","amount":12.34,"amount_label":"exact label beside chosen amount","amount_evidence":"exact receipt line containing chosen amount","date":"YYYY-MM-DD","time":"HH:MM","category_hint":"one category from options","type":"expense"}. '
         "description is the counterparty name: for expense use the merchant/vendor/business name printed on the receipt (restaurant, shop, store, company); "
         "for income use the payer/sender/company name (employer name, sender of the transfer, refund source). "
         "Never output the literal word 'note', a payment note text, a reference number, a transaction type like TRANSFER/PAYMENT/REFUND, or a section label as the description. "
@@ -90,6 +111,9 @@ async def extract_receipt(payload: bytes, mime_type: str, language: str, categor
         "If several totals exist, use the final payable total after tax, discount, service charge, and rounding. Verify that amount against visible line items. If uncertain, set amount to null; never guess. "
         "DATE RULES: extract the purchase/transaction date from the receipt (labels DATE, TARIKH, TRANSACTION DATE, PURCHASE DATE, or the date near the total). "
         "Use the receipt date even if it differs from today. If the receipt shows only a time, use the date printed next to it. If no date is visible, set date to today. Output format YYYY-MM-DD. "
+        "TIME RULES: extract the transaction time printed on the receipt (labels TIME, MASA, TRANSACTION TIME, or the timestamp near the total). "
+        "Support 12-hour with AM/PM and 24-hour formats; normalize to 24-hour HH:MM. "
+        "If a time is visible, set time to it; otherwise set time to null. "
         "Choose category_hint as the single most suitable category name from CATEGORY OPTIONS; never invent one. "
         "Use visible line items to decide. Never guess unreadable values; use null. "
         f"CATEGORY OPTIONS: {category_options}. Today is {date.today().isoformat()}. User language is {language}."
@@ -129,4 +153,5 @@ async def extract_receipt(payload: bytes, mime_type: str, language: str, categor
     if not description or len(description) > 190 or amount <= 0 or amount > Decimal("9999999999") or data.get("type") not in {"expense", "income"}:
         raise ValueError("Incomplete receipt details")
     category_hint = " ".join(str(data.get("category_hint") or "").split())[:120]
-    return ReceiptDraft(description=description, amount=amount.quantize(Decimal("0.01")), txn_date=txn_date, category_hint=category_hint, transaction_type=str(data.get("type")))
+    txn_time = _normalize_time(str(data.get("time") or ""))
+    return ReceiptDraft(description=description, amount=amount.quantize(Decimal("0.01")), txn_date=txn_date, category_hint=category_hint, transaction_type=str(data.get("type")), txn_time=txn_time)

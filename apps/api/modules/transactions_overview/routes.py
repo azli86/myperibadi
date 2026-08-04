@@ -107,6 +107,7 @@ async def get_transactions_route(
                 is_wallet_transfer=is_wallet_transfer,
                 is_debt_movement=is_debt_movement,
                 txn_date=txn.txn_date.strftime("%Y-%m-%d"),
+                txn_time=txn.txn_time.strftime("%H:%M") if txn.txn_time else None,
                 notes=txn.notes,
                 wallet_id=txn.wallet_id,
                 latitude=float(txn.latitude) if txn.latitude is not None else None,

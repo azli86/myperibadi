@@ -302,6 +302,7 @@ class TransactionBase(BaseModel):
     vendor_or_source: str
     category_id: Optional[int] = None
     txn_date: Optional[date] = None
+    txn_time: Optional[str] = None
     notes: Optional[str] = None
     wallet_id: Optional[int] = None
     subscription_id: Optional[int] = None
@@ -324,6 +325,7 @@ class TransactionResponse(TransactionBase):
     is_wallet_transfer: bool = False
     is_debt_movement: bool = False
     source_channel: Optional[str] = None
+    txn_time: Optional[str] = None
     created_at: datetime
 
     class Config:

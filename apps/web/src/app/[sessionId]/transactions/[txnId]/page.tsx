@@ -321,6 +321,7 @@ export default function TransactionDetailPage() {
     wallet_id: string
     type: "expense" | "income"
     date: string
+    time: string
     notes: string
   }>({
     description: "",
@@ -329,6 +330,7 @@ export default function TransactionDetailPage() {
     wallet_id: "",
     type: "expense",
     date: "",
+    time: "",
     notes: ""
   })
   const [editItems, setEditItems] = useState<EditItem[]>([])
@@ -587,6 +589,7 @@ export default function TransactionDetailPage() {
           wallet_id: data.wallet_id ? String(data.wallet_id) : "",
           type: data.type,
           date: data.txn_date || "",
+          time: data.txn_time || "",
           notes: data.notes || ""
         })
         const existingItems = (data.items || []).map((item: NonNullable<TransactionDetail["items"]>[number]) => ({
@@ -841,6 +844,7 @@ export default function TransactionDetailPage() {
           amount: editForm.type === "income" ? parseFloat(editForm.amount) : (itemManagerActive ? editItemsTotal : parseFloat(editForm.amount)),
           vendor_or_source: editForm.type === "income" ? editForm.description : (editForm.description.startsWith("SUBX ") ? editForm.description : (itemManagerActive ? editItems.filter(item => item.name.trim()).map(item => item.name.trim()).join(", ").slice(0, 50) : editForm.description)),
           txn_date: editForm.date,
+          txn_time: editForm.time || null,
           notes: editForm.notes || null,
           category_id: editForm.category_id ? parseInt(editForm.category_id) : null,
           wallet_id: editForm.wallet_id ? parseInt(editForm.wallet_id) : null,
@@ -1302,9 +1306,10 @@ export default function TransactionDetailPage() {
     try {
       const rawDate = txn.txn_date
       const dateStr = rawDate.includes("Z") || rawDate.includes("+") ? rawDate : (rawDate.includes("T") || rawDate.includes(" ") ? `${rawDate.replace(" ", "T")}Z` : `${rawDate}T00:00:00Z`)
-      return new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric", timeZone: timezone }).format(new Date(dateStr))
+      const dateLabel = new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric", timeZone: timezone }).format(new Date(dateStr))
+      return txn.txn_time ? `${dateLabel} · ${txn.txn_time}` : dateLabel
     } catch {
-      return txn.txn_date
+      return txn.txn_date + (txn.txn_time ? ` · ${txn.txn_time}` : "")
     }
   })() : "-"
   const issuedDateLabel = new Intl.DateTimeFormat(locale, {

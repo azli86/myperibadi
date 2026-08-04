@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, time, datetime
 from typing import Awaitable, Callable
 
 from fastapi import HTTPException
@@ -102,6 +102,7 @@ async def update_transaction_route(
             category_id=resolved_category_id,
             subscription_id=subscription_id,
             txn_date=txn_date,
+            txn_time=_parse_txn_time(txn_in.txn_time),
             notes=txn_in.notes,
             latitude=latitude,
             longitude=longitude,
@@ -456,6 +457,7 @@ async def create_transaction_route(
         vendor_or_source=txn_in.vendor_or_source,
         category_id=resolved_category_id,
         txn_date=txn_date,
+        txn_time=_parse_txn_time(txn_in.txn_time),
         notes=txn_in.notes,
         latitude=latitude,
         longitude=longitude,
@@ -469,3 +471,12 @@ async def create_transaction_route(
     await db.commit()
     await db.refresh(db_txn)
     return db_txn
+
+
+def _parse_txn_time(raw: str | None) -> time | None:
+    if not raw:
+        return None
+    try:
+        return datetime.strptime(str(raw).strip(), "%H:%M").time()
+    except ValueError:
+        return None

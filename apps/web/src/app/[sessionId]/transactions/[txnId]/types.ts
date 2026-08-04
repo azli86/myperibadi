@@ -6,6 +6,7 @@ export interface TransactionDetail {
   wallet_name: string
   type: string
   txn_date: string
+  txn_time?: string | null
   vendor_or_source: string
   amount: number
   category_id: number | null

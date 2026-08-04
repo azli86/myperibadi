@@ -207,9 +207,32 @@ async def process_bot_input_route(
                 draft_date_display = draft.txn_date.strftime("%d/%m/%Y")
                 ocr_summary = (
                     f"🧾 I read your receipt:\n• Details: *{safe_description}*\n• Amount: *RM {draft.amount}*\n• Date: *{draft_date_display}*"
+                    + (f"\n• Time: *{draft.txn_time}*" if draft.txn_time else "")
                     if is_en
                     else f"🧾 Saya dapat baca resit anda:\n• Butiran: *{safe_description}*\n• Jumlah: *RM {draft.amount}*\n• Tarikh: *{draft_date_display}*"
+                    + (f"\n• Masa: *{draft.txn_time}*" if draft.txn_time else "")
                 )
+                # Dedup guard: warn when an identical receipt was already saved.
+                if safe_description and draft.amount > 0:
+                    dup_res = await db.execute(
+                        select(models.Transaction).where(
+                            models.Transaction.user_id == user_id,
+                            models.Transaction.txn_date == draft.txn_date,
+                            models.Transaction.amount == float(draft.amount),
+                            models.Transaction.vendor_or_source.ilike(f"%{safe_description[:40]}%"),
+                        )
+                    )
+                    dup_txn = dup_res.scalars().first()
+                    if dup_txn:
+                        dup_txn_date_display = dup_txn.txn_date.strftime("%d/%m/%Y")
+                        dup_msg = (
+                            f"⚠️ You already have a receipt on *{dup_txn_date_display}* for *{safe_description}* (*RM {draft.amount}*). "
+                            "If this is a duplicate scan, reply `batal`. Otherwise choose a category to save it anyway."
+                            if is_en
+                            else f"⚠️ Anda sudah ada resit pada *{dup_txn_date_display}* untuk *{safe_description}* (*RM {draft.amount}*). "
+                            "Jika ini scan berganda, balas `batal`. Jika tidak, pilih kategori untuk simpan juga."
+                        )
+                        ocr_summary = f"{ocr_summary}\n\n{dup_msg}"
                 print(f"[receipt-ocr] draft description={draft.description!r} amount={draft.amount} date={draft.txn_date} category_options={len(category_rows)}")
                 print(f"[receipt-ocr] built text={text!r}")
             except Exception as exc:
@@ -247,6 +270,7 @@ async def process_bot_input_route(
             allow_llm_fallback=True,
             forced_kind=ocr_forced_kind,
             force_category_prompt=bool(ocr_summary),
+            txn_time=draft.txn_time if ocr_summary else None,
         )
         # Keep the transaction confirmation together with the later receipt-upload reply.
         if txt_reply:

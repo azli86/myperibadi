@@ -1,6 +1,6 @@
-from sqlalchemy import String, Boolean, DateTime, BigInteger, DECIMAL, ForeignKey, Integer, Text, Date, UniqueConstraint, Index
+from sqlalchemy import String, Boolean, DateTime, BigInteger, DECIMAL, ForeignKey, Integer, Text, Date, Time, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import List, Optional
 from database import Base
 
@@ -220,6 +220,7 @@ class Transaction(Base):
     household_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("households.id"), nullable=True)
     type: Mapped[str] = mapped_column(String(20)) # income / expense
     txn_date: Mapped[datetime] = mapped_column(Date, nullable=False)
+    txn_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
     vendor_or_source: Mapped[str] = mapped_column(String(190), nullable=False)
     amount: Mapped[float] = mapped_column(DECIMAL(12, 2), nullable=False)
     category_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("categories.id"), nullable=True)

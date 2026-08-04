@@ -207,6 +207,7 @@ async def get_transaction_detail_route(
         "wallet_name": row[5] if row[5] else "Cash",
         "type": txn.type,
         "txn_date": txn.txn_date.strftime("%Y-%m-%d") if txn.txn_date else None,
+        "txn_time": txn.txn_time.strftime("%H:%M") if txn.txn_time else None,
         "vendor_or_source": txn.vendor_or_source,
         "amount": float(txn.amount),
         "category_id": txn.category_id,

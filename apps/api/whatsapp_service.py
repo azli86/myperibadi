@@ -3056,6 +3056,7 @@ async def _process_whatsapp_message_impl(
     forced_kind: Optional[str] = None,
     skip_category_prompt: bool = False,
     force_category_prompt: bool = False,
+    txn_time: Optional[str] = None,
 ) -> Tuple[str, Optional[models.Transaction]]:
     try:
         # 1. Fetch the user directly from the multi-tenant hook
@@ -3183,6 +3184,7 @@ async def _process_whatsapp_message_impl(
                     forced_category_id=int(selected_option.get("id")),
                     forced_wallet_id=forced_wallet_id,
                     skip_category_prompt=True,
+                    txn_time=pending_selection.get("txn_time"),
                 )
             # User typed a category name or keyword not in the shortlist: match against all user categories.
             if selected_index is None:
@@ -3228,6 +3230,7 @@ async def _process_whatsapp_message_impl(
                         forced_category_id=int(matched.id),
                         forced_wallet_id=forced_wallet_id,
                         skip_category_prompt=True,
+                        txn_time=pending_selection.get("txn_time"),
                     )
             # subx/loanx link: reply like `subx astro tng` / `loanx akpk tng` links the
             # OCR amount (taken from the pending transaction) to a subscription/loan payment.
@@ -3947,6 +3950,7 @@ async def _process_whatsapp_message_impl(
                         "longitude": resolved_longitude,
                         "location_name": resolved_location_name,
                         "options": prompt_options,
+                        "txn_time": txn_time,
                     },
                 )
                 lines = [
@@ -4068,13 +4072,20 @@ async def _process_whatsapp_message_impl(
 
         # 7. Save transaction
         txn_date = explicit_txn_date or current_business_date()
-        
+        parsed_txn_time = None
+        if txn_time:
+            try:
+                parsed_txn_time = datetime.strptime(txn_time, "%H:%M").time()
+            except ValueError:
+                parsed_txn_time = None
+
         txn = models.Transaction(
             wallet_id=wallet.id,
             user_id=user_id,
             reference_id=models.generate_txn_reference(txn_date),
             type=txn_type,
             txn_date=txn_date,
+            txn_time=parsed_txn_time,
             vendor_or_source=vendor_name[:50],
             amount=amount,
             category_id=cat.id if cat else None,

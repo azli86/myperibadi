@@ -873,6 +873,9 @@ async def ensure_database_schema():
                 text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS last_payment_date DATE NULL")
             )
             await conn.execute(
+                text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS txn_time TIME NULL")
+            )
+            await conn.execute(
                 text("ALTER TABLE loans ADD COLUMN IF NOT EXISTS monthly_payment NUMERIC(12,2) NULL")
             )
             await conn.execute(

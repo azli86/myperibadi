@@ -21,6 +21,7 @@ export type EditFormState = {
   wallet_id: string
   type: "expense" | "income"
   date: string
+  time: string
   notes: string
 }
 
@@ -230,6 +231,13 @@ export default function TxnEditSheet({
                     aria-label={langT.date}
                     value={editForm.date}
                     onChange={(e) => onEditFormChange({ date: e.target.value })}
+                    className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium text-[var(--text)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
+                  />
+                  <input
+                    type="time"
+                    aria-label={langT.time}
+                    value={editForm.time}
+                    onChange={(e) => onEditFormChange({ time: e.target.value })}
                     className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium text-[var(--text)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
                   />
                 </div>
