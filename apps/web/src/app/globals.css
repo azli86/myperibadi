@@ -1524,48 +1524,6 @@ html[data-theme="light"] .portal-personal-shell .loan-detail-hero [class*="text-
   color: #6ee7b7 !important;
 }
 
-/* Categories hero: light-mode protection on dark finance cards */
-.categories-hero,
-.categories-hero p,
-.categories-hero span,
-.categories-hero svg,
-html[data-theme="light"] .categories-hero,
-html[data-theme="light"] .categories-hero p,
-html[data-theme="light"] .categories-hero span,
-html[data-theme="light"] .categories-hero svg,
-html[data-theme="light"] .portal-personal-shell .categories-hero,
-html[data-theme="light"] .portal-personal-shell .categories-hero p,
-html[data-theme="light"] .portal-personal-shell .categories-hero span,
-html[data-theme="light"] .portal-personal-shell .categories-hero svg,
-html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-["],
-html[data-theme="light"] .portal-personal-shell .categories-hero .categories-hero-amount {
-  color: #ffffff !important;
-}
-
-html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#cbd5e1]"],
-html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#94a3b8]"] {
-  color: #cbd5e1 !important;
-}
-
-html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#fda4af]"],
-html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#fecdd3]"] {
-  color: #fecdd3 !important;
-}
-
-html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#6ee7b7]"],
-html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#a7f3d0]"] {
-  color: #6ee7b7 !important;
-}
-
-html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#7dd3fc]"],
-html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#bae6fd]"] {
-  color: #7dd3fc !important;
-}
-
-html[data-theme="light"] .portal-personal-shell .categories-hero [class*="text-[#fb923c]"] {
-  color: #fb923c !important;
-}
-
 /* Map analysis hero: light-mode protection on dark finance cards */
 .map-analysis-hero,
 .map-analysis-hero p,

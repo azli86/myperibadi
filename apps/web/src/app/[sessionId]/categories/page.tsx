@@ -16,7 +16,6 @@ import {
   Hash,
   TrendingDown,
   TrendingUp,
-  ArrowLeft,
   ChevronRight,
   Upload,
 } from "lucide-react"
@@ -830,169 +829,225 @@ export default function CategoriesPage() {
     return lang === "EN" ? "Keyword" : "Keyword"
   })()
 
-  const kindFilter = (
-    <div className="flex w-full rounded-[var(--card-radius-lg)] border border-[var(--border)] bg-[var(--surface-tint)]/40 p-1 md:inline-flex md:w-auto md:rounded-full md:p-0.5">
-      {(["expense", "income"] as const).map((kind) => (
-        <button
-          key={kind}
-          type="button"
-          onClick={() => setActiveKindTab(kind)}
-          className={cn(
-            "flex h-12 flex-1 items-center justify-center rounded-[var(--card-radius-md)] px-4 text-sm font-black uppercase tracking-[0.08em] transition md:h-auto md:flex-none md:rounded-full md:px-3.5 md:py-1.5 md:text-[0.55rem] md:tracking-[0.12em]", 
-            activeKindTab === kind ? "bg-[var(--text)] text-[var(--bg)]" : "text-[var(--muted)]",
-          )}
-        >
-          {kind === "expense" ? t.expense : t.income}
-          <span className="ml-1 opacity-70">
-            ({kind === "expense" ? stats.expenseCount : stats.incomeCount})
-          </span>
-        </button>
-      ))}
+  const kindTabs = (
+    <div
+      role="tablist"
+      aria-label={lang === "EN" ? "Category type" : "Jenis kategori"}
+      className="flex w-full gap-2"
+    >
+      {(["expense", "income"] as const).map((kind) => {
+        const active = activeKindTab === kind
+        const count = kind === "expense" ? stats.expenseCount : stats.incomeCount
+        const amount = kind === "expense" ? stats.monthSpend : stats.monthIncome
+        const Icon = kind === "expense" ? TrendingDown : TrendingUp
+        return (
+          <button
+            key={kind}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => setActiveKindTab(kind)}
+            className={cn(
+              "flex-1 rounded-[var(--card-radius-lg)] border p-3 text-left transition active:scale-[0.98] md:p-4",
+              active
+                ? kind === "expense"
+                  ? "border-rose-500/40 bg-rose-500/[0.08]"
+                  : "border-emerald-500/40 bg-emerald-500/[0.08]"
+                : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--border-strong)]",
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <Icon
+                size={14}
+                className={cn(
+                  kind === "expense" ? "text-rose-500" : "text-emerald-500",
+                  !active && "opacity-60",
+                )}
+              />
+              <span className={cn(
+                "text-[0.625rem] font-black uppercase tracking-[0.14em]",
+                active ? "text-[var(--text)]" : "text-[var(--muted)]",
+              )}>
+                {kind === "expense" ? t.expense : t.income}
+              </span>
+            </div>
+            <div className="mt-2 flex items-baseline gap-1.5">
+              {showDataSkeleton ? (
+                <AmountSkeleton className="h-6 w-8" />
+              ) : (
+                <span className="text-xl font-black tabular-nums leading-none text-[var(--text)] md:text-2xl">{count}</span>
+              )}
+              <span className="text-[0.625rem] font-bold text-[var(--muted)]">
+                {lang === "EN" ? "categories" : "kategori"}
+              </span>
+            </div>
+            <div className="mt-1.5 flex items-center gap-1 text-[var(--muted)]">
+              <span className="text-[0.625rem] font-semibold">{lang === "EN" ? "This month" : "Bulan ini"}</span>
+              {showDataSkeleton ? (
+                <AmountSkeleton className="h-3 w-12" />
+              ) : (
+                <MoneyAmount value={amount} digits={0} size="xs" className="text-[var(--muted)]" />
+              )}
+            </div>
+          </button>
+        )
+      })}
     </div>
   )
 
-  const heroBlock = (desktop = false) => (
-    <div
-      className={cn(
-        "categories-hero relative overflow-hidden border border-[var(--border)] bg-[#1a1a1a] text-[#f5f5f5]",
-        desktop ? "rounded-[1.75rem] p-6" : "rounded-[2rem] p-5",
+  const searchField = (
+    <div className="relative w-full">
+      <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
+      <input
+        type="search"
+        placeholder={t.searchCategory}
+        aria-label={t.searchCategory}
+        className="h-11 w-full rounded-[var(--card-radius-lg)] border border-[var(--border)] bg-[var(--card)] pl-10 pr-9 text-sm font-semibold text-[var(--text)] outline-none transition placeholder:font-medium placeholder:text-[var(--muted)]/60 focus:border-[var(--border-strong)] md:h-10"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+      />
+      {searchQuery && (
+        <button
+          type="button"
+          onClick={() => setSearchQuery("")}
+          aria-label={lang === "EN" ? "Clear search" : "Kosongkan carian"}
+          className="absolute right-2.5 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full bg-[var(--surface-tint)] text-[var(--muted)] transition hover:text-[var(--text)]"
+        >
+          <X size={13} strokeWidth={2.5} />
+        </button>
       )}
-    >
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-      <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.03] blur-2xl" />
-      <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.04] blur-2xl" />
-
-      <div className={cn("relative", desktop && "flex items-center gap-5")}>
-        <div className={cn(desktop && "min-w-[9rem] shrink-0")}>
-          <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[#cbd5e1]">
-            {lang === "EN" ? "All Categories" : "Semua Kategori"}
-          </p>
-          <p className="categories-hero-amount mt-2 font-semibold tabular-nums tracking-tight leading-none text-[#ffffff]">
-            {showDataSkeleton ? (
-              <AmountSkeleton className="h-7 w-16 bg-[rgba(255,255,255,0.12)]" />
-            ) : (
-              <span className={cn(desktop ? "text-4xl" : "text-[1.85rem]")}>{stats.total}</span>
-            )}
-          </p>
-        </div>
-
-        <div className={cn(
-          "grid grid-cols-2 gap-2.5 sm:grid-cols-4",
-          desktop ? "min-w-0 flex-1" : "mt-5",
-        )}>
-          <div className="rounded-[1.15rem] bg-[rgba(255,255,255,0.08)] p-3">
-            <div className="flex items-center gap-1.5">
-              <TrendingDown size={12} className="text-[#fda4af]" />
-              <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#cbd5e1]">{t.expense}</p>
-            </div>
-            <p className="mt-2 text-sm font-black tabular-nums text-[#fecdd3] md:text-base">
-              {showDataSkeleton ? <AmountSkeleton className="h-4 w-8 bg-[rgba(255,255,255,0.12)]" /> : stats.expenseCount}
-            </p>
-          </div>
-          <div className="rounded-[1.15rem] bg-[rgba(255,255,255,0.08)] p-3">
-            <div className="flex items-center gap-1.5">
-              <TrendingUp size={12} className="text-[#6ee7b7]" />
-              <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#cbd5e1]">{t.income}</p>
-            </div>
-            <p className="mt-2 text-sm font-black tabular-nums text-[#a7f3d0] md:text-base">
-              {showDataSkeleton ? <AmountSkeleton className="h-4 w-8 bg-[rgba(255,255,255,0.12)]" /> : stats.incomeCount}
-            </p>
-          </div>
-          <div className="rounded-[1.15rem] bg-[rgba(255,255,255,0.08)] p-3">
-            <div className="flex items-center gap-1.5">
-              <Hash size={12} className="text-[#7dd3fc]" />
-              <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#cbd5e1]">
-                {lang === "EN" ? "Keywords" : "Keyword"}
-              </p>
-            </div>
-            <p className="mt-2 text-sm font-black tabular-nums text-[#bae6fd] md:text-base">
-              {showDataSkeleton ? <AmountSkeleton className="h-4 w-8 bg-[rgba(255,255,255,0.12)]" /> : stats.keywordTotal}
-            </p>
-          </div>
-          <div className="rounded-[1.15rem] bg-[rgba(255,255,255,0.08)] p-3">
-            <div className="flex items-center gap-1.5">
-              <Tag size={12} className={activeKindTab === "expense" ? "text-[#fda4af]" : "text-[#6ee7b7]"} />
-              <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#cbd5e1]">
-                {lang === "EN" ? "This month" : "Bulan ini"}
-              </p>
-            </div>
-            <p
-              className={cn(
-                "mt-2 truncate",
-                activeKindTab === "expense" ? "text-[#fecdd3]" : "text-[#a7f3d0]",
-              )}
-            >
-              {showDataSkeleton ? (
-                <AmountSkeleton className="h-4 w-12 bg-[rgba(255,255,255,0.12)]" />
-              ) : (
-                <MoneyAmount
-                  value={activeKindTab === "expense" ? stats.monthSpend : stats.monthIncome}
-                  digits={0}
-                  size="xs"
-                  className={activeKindTab === "expense" ? "text-[#fecdd3]" : "text-[#a7f3d0]"}
-                  currencyClassName={activeKindTab === "expense" ? "text-[#fecdd3] opacity-55" : "text-[#a7f3d0] opacity-55"}
-                />
-              )}
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
+  )
+
+  const summaryStrip = (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[0.625rem] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+      <span className="inline-flex items-center gap-1.5">
+        <FolderTree size={12} />
+        {showDataSkeleton ? "—" : stats.total} {lang === "EN" ? "total" : "jumlah"}
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <Hash size={12} />
+        {showDataSkeleton ? "—" : stats.keywordTotal} {lang === "EN" ? "keywords" : "keyword"}
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <Tag size={12} />
+        {tabCategories.length} {lang === "EN" ? "shown" : "dipapar"}
+      </span>
+    </div>
+  )
+
+  const emptyState = (
+    <div className="flex flex-col items-center justify-center rounded-[var(--card-radius-lg)] border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-14 text-center">
+      <div className="grid h-14 w-14 place-items-center rounded-2xl bg-[var(--surface-tint)]">
+        <FolderTree size={26} className="text-[var(--muted)]" />
+      </div>
+      <p className="mt-4 text-sm font-black text-[var(--text)]">
+        {searchQuery ? (lang === "EN" ? "No matches" : "Tiada padanan") : t.noCategories}
+      </p>
+      <p className="mt-1.5 max-w-xs text-xs font-medium leading-relaxed text-[var(--muted)]">
+        {searchQuery
+          ? lang === "EN"
+            ? "Try another search term."
+            : "Cuba kata carian lain."
+          : lang === "EN"
+            ? `Create your first ${activeKindTab} category for auto-matching.`
+            : `Cipta kategori ${activeKindTab === "expense" ? "belanja" : "pendapatan"} pertama untuk auto-padanan.`}
+      </p>
+      <button
+        type="button"
+        onClick={searchQuery ? () => setSearchQuery("") : openAddCategory}
+        className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[var(--text)] px-4 py-2 text-[0.625rem] font-black uppercase tracking-[0.12em] text-[var(--bg)] transition active:scale-95"
+      >
+        {searchQuery ? (
+          <>
+            <X size={13} strokeWidth={3} />
+            {lang === "EN" ? "Clear search" : "Kosongkan carian"}
+          </>
+        ) : (
+          <>
+            <Plus size={13} strokeWidth={3} />
+            {t.addCategory}
+          </>
+        )}
+      </button>
+    </div>
+  )
+
+  const addCategoryTile = (
+    <button
+      type="button"
+      onClick={openAddCategory}
+      className="flex items-center justify-center gap-2 rounded-[var(--card-radius-lg)] border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-4 py-3.5 text-[var(--muted)] transition active:scale-[0.98] hover:border-[var(--border-strong)] hover:text-[var(--text)] md:min-h-[5.25rem] md:py-4"
+    >
+      <Plus size={16} strokeWidth={2.5} />
+      <span className="text-[0.625rem] font-black uppercase tracking-[0.14em]">{t.addCategory}</span>
+    </button>
   )
 
   const renderCategoryCard = (c: Category) => {
-    const isExpense = c.kind === "expense"
     const monthAmt = Number(c.amountMonth || 0)
+    const txnCount = Number(c.transactionCountMonth || 0)
     return (
       <button
         key={c.id}
         type="button"
         onClick={() => openCategoryDetail(c.id)}
-        className="group w-full overflow-hidden rounded-[var(--card-radius-md)] border border-[var(--border)] bg-[var(--card)] p-2.5 text-left transition active:scale-[0.985] hover:border-[color-mix(in_srgb,var(--accent2)_30%,var(--border))] md:rounded-[1.35rem] md:p-3.5"
+        className="group flex w-full items-center gap-3 rounded-[var(--card-radius-lg)] border border-[var(--border)] bg-[var(--card)] p-3 text-left transition active:scale-[0.985] hover:border-[var(--border-strong)] md:p-3.5"
       >
-        <div className="flex items-start gap-3">
-          <div
-            className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border md:h-11 md:w-11 md:rounded-2xl",
-              categoryKindIconShellClass(c.kind),
-            )}
-          >
-            <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind={c.kind} size={18} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-black leading-tight text-[var(--text)]">{c.name}</p>
-                <p className="mt-0.5 text-[11px] font-semibold text-[var(--muted)]">
-                  {c.keywordCount} {lang === "EN" ? "keyword" : "keyword"}
-                  {typeof c.transactionCountMonth === "number" && c.transactionCountMonth > 0
-                    ? ` · ${c.transactionCountMonth} ${lang === "EN" ? "txns" : "rekod"}`
-                    : ""}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <span className="rounded-full bg-[var(--surface-tint)] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] text-[var(--muted)]">
-                  {isExpense ? t.expense : t.income}
-                </span>
-                <ChevronRight size={14} className="text-[var(--muted)] opacity-70" />
-              </div>
-            </div>
-            <div className="mt-1.5 hidden flex-wrap items-center gap-1.5 md:flex">
-              <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--muted)]">
-                <Hash size={10} />
-                {c.keywordCount}
+        <div
+          className={cn(
+            "grid h-10 w-10 shrink-0 place-items-center rounded-xl border md:h-11 md:w-11 md:rounded-2xl",
+            categoryKindIconShellClass(c.kind),
+          )}
+        >
+          <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind={c.kind} size={19} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-black leading-tight text-[var(--text)]">{c.name}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.625rem] font-semibold text-[var(--muted)]">
+            <span className="inline-flex items-center gap-1">
+              <Hash size={10} />
+              {c.keywordCount}
+            </span>
+            {txnCount > 0 && (
+              <span>
+                {txnCount} {lang === "EN" ? "txns" : "rekod"}
               </span>
-              {monthAmt > 0 && (
-                <span className="inline-flex items-center rounded-full bg-[var(--surface-tint)] px-2.5 py-1 text-[var(--text)]">
-                  <MoneyAmount value={monthAmt} digits={0} size="xs" className="text-[var(--text)]" />
-                </span>
-              )}
-            </div>
+            )}
           </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          {monthAmt > 0 && (
+            <MoneyAmount
+              value={monthAmt}
+              digits={0}
+              size="xs"
+              className={c.kind === "expense" ? "text-rose-500" : "text-emerald-500"}
+              currencyClassName="opacity-55"
+            />
+          )}
+          <ChevronRight size={15} className="text-[var(--muted)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
         </div>
       </button>
     )
   }
+
+  const listBody = showDataSkeleton ? (
+    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="h-[4.75rem] animate-pulse rounded-[var(--card-radius-lg)] border border-[var(--border)] bg-[var(--card)]" />
+      ))}
+    </div>
+  ) : tabCategories.length === 0 ? (
+    emptyState
+  ) : (
+    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+      {tabCategories.map(renderCategoryCard)}
+      {addCategoryTile}
+    </div>
+  )
 
   if (!mounted) return null
 
@@ -1000,7 +1055,7 @@ export default function CategoriesPage() {
     <>
       <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
         {/* ─── Mobile ─── */}
-        <div className="space-y-5 md:hidden">
+        <div className="space-y-4 md:hidden">
           <MobilePageHeader
             title={t.categories_title}
             fallbackHref={`/${sessionId}`}
@@ -1011,82 +1066,19 @@ export default function CategoriesPage() {
             }
           />
 
-          <div className="w-full px-1">
-            {kindFilter}
+          <div className="space-y-3 px-1">
+            {kindTabs}
+            {searchField}
+            {summaryStrip}
           </div>
 
-          <div className="px-1">
-            <div className="relative">
-              <Search size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
-              <input
-                type="text"
-                placeholder={t.searchCategory}
-                className="h-11 w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] pl-10 pr-4 text-sm font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]/50"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <section className="px-1">
-            {showDataSkeleton ? (
-              <div className="space-y-3">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-24 animate-pulse rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)]" />
-                ))}
-              </div>
-            ) : tabCategories.length === 0 ? (
-              <div className="rounded-[1.5rem] border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center">
-                <FolderTree size={32} className="mx-auto text-[var(--muted)]/40" />
-                <p className="mt-3 text-sm font-bold text-[var(--muted)]">
-                  {searchQuery
-                    ? lang === "EN"
-                      ? "No matches"
-                      : "Tiada padanan"
-                    : t.noCategories}
-                </p>
-                <p className="mt-1 text-[11px] font-medium text-[var(--muted)]/80">
-                  {searchQuery
-                    ? lang === "EN"
-                      ? "Try another search term."
-                      : "Cuba kata carian lain."
-                    : lang === "EN"
-                      ? `Create your first ${activeKindTab} category for auto-matching.`
-                      : `Cipta kategori ${activeKindTab === "expense" ? "belanja" : "pendapatan"} pertama untuk auto-padanan.`}
-                </p>
-                {!searchQuery && (
-                  <button
-                    type="button"
-                    onClick={openAddCategory}
-                    className="mt-4 rounded-full bg-[var(--text)] px-4 py-2 text-[0.625rem] font-black uppercase tracking-wider text-[var(--bg)] transition active:scale-95"
-                  >
-                    <Plus size={14} className="mr-1 inline" />
-                    {t.addCategory}
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {tabCategories.map(renderCategoryCard)}
-                <button
-                  type="button"
-                  onClick={openAddCategory}
-                  className="flex w-full items-center justify-center gap-2 rounded-[var(--card-radius-md)] border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/20 px-4 py-3 text-[var(--muted)] transition active:scale-[0.98] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
-                >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-tint)]">
-                    <Plus size={20} strokeWidth={2} />
-                  </div>
-                  <span className="text-xs font-black uppercase tracking-wider">{t.addCategory}</span>
-                </button>
-              </div>
-            )}
-          </section>
+          <section className="px-1">{listBody}</section>
         </div>
 
         {/* ─── Desktop ─── */}
         <div className="hidden md:block">
           <DesktopPageHeader
-            title={lang === "EN" ? "Category Board" : "Papan Kategori"}
+            title={t.categories_title}
             homeHref={`/${sessionId}`}
             actions={
               <DesktopPageAction onClick={openAddCategory}>
@@ -1096,63 +1088,17 @@ export default function CategoriesPage() {
             }
           />
 
-          <DesktopPageBody className="space-y-5">
-          {heroBlock(true)}
+          <DesktopPageBody className="space-y-4">
+            <p className="text-sm font-medium text-[var(--muted)]">{subtitle}</p>
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {kindFilter}
-            <div className="relative min-w-[240px] max-w-xs flex-1">
-              <Search size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
-              <input
-                type="text"
-                placeholder={t.searchCategory}
-                className="h-10 w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] pl-10 pr-4 text-sm font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]/50"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+            <div className="max-w-3xl">{kindTabs}</div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {summaryStrip}
+              <div className="min-w-[240px] max-w-xs flex-1">{searchField}</div>
             </div>
-          </div>
 
-          <div>
-            {showDataSkeleton ? (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="h-28 animate-pulse rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)]" />
-                ))}
-              </div>
-            ) : tabCategories.length === 0 ? (
-              <div className="flex min-h-[240px] flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[var(--border)] bg-[var(--card)]/70 px-6 text-center">
-                <FolderTree size={36} className="text-[var(--muted)]/30" />
-                <p className="mt-3 text-sm font-bold text-[var(--muted)]">
-                  {searchQuery ? (lang === "EN" ? "No matches" : "Tiada padanan") : t.noCategories}
-                </p>
-                {!searchQuery && (
-                  <button
-                    type="button"
-                    onClick={openAddCategory}
-                    className="mt-4 rounded-full bg-[var(--text)] px-4 py-2 text-xs font-black uppercase tracking-wider text-[var(--bg)]"
-                  >
-                    <Plus size={14} className="mr-1.5 inline" />
-                    {t.addCategory}
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                {tabCategories.map(renderCategoryCard)}
-                <button
-                  type="button"
-                  onClick={openAddCategory}
-                  className="flex min-h-[108px] flex-col items-center justify-center gap-2 rounded-[1.35rem] border-2 border-dashed border-[var(--border)] bg-[var(--surface-tint)]/20 text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--text)] active:scale-[0.98]"
-                >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-tint)]">
-                    <Plus size={20} />
-                  </div>
-                  <span className="text-xs font-black uppercase tracking-wider">{t.addCategory}</span>
-                </button>
-              </div>
-            )}
-          </div>
+            {listBody}
           </DesktopPageBody>
         </div>
       </div>
