@@ -1,16 +1,41 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import os
 import re
+import subprocess
+import tempfile
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-
 import httpx
 
 import llm_service
+
+
+def _pdf_to_png(payload: bytes) -> tuple[bytes, str]:
+    """Render the first page of a PDF to PNG via ghostscript."""
+    with tempfile.TemporaryDirectory() as tmp:
+        pdf_path = os.path.join(tmp, "receipt.pdf")
+        out_path = os.path.join(tmp, "page.png")
+        with open(pdf_path, "wb") as fh:
+            fh.write(payload)
+        proc = subprocess.run(
+            [
+                "gs", "-q", "-dSAFER", "-dBATCH", "-dNOPAUSE",
+                "-sDEVICE=png16m", "-r150",
+                "-dFirstPage=1", "-dLastPage=1",
+                f"-sOutputFile={out_path}", pdf_path,
+            ],
+            capture_output=True,
+            timeout=60,
+        )
+        if proc.returncode != 0 or not os.path.exists(out_path):
+            raise ValueError("PDF could not be rendered")
+        with open(out_path, "rb") as fh:
+            return fh.read(), "image/png"
 
 
 @dataclass(frozen=True)
@@ -46,7 +71,10 @@ async def extract_receipt(payload: bytes, mime_type: str, language: str, categor
     model = (os.getenv("OCR_OPENAI_MODEL") or "gpt-4.1-mini").strip()
     if not api_key:
         raise RuntimeError("Receipt OCR is not configured")
-    if mime_type not in {"image/jpeg", "image/png", "image/webp"} or not payload or len(payload) > 10 * 1024 * 1024:
+    allowed = {"image/jpeg", "image/png", "image/webp"}
+    if mime_type == "application/pdf":
+        payload, mime_type = await asyncio.to_thread(_pdf_to_png, payload)
+    if mime_type not in allowed or not payload or len(payload) > 10 * 1024 * 1024:
         raise ValueError("Unsupported receipt image")
 
     category_options = ", ".join((category_names or [])[:80])
