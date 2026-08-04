@@ -3911,19 +3911,11 @@ async def _process_whatsapp_message_impl(
                 )
                 lines = [
                     (
-                        f"Balas kategori + dompet, cth `income tng` / `expense tng`"
+                        f"Balas kategori + dompet, cth `income tng`"
                         if user_lang == "BM"
-                        else f"Reply category + wallet, e.g. `income tng` / `expense tng`"
+                        else f"Reply category + wallet, e.g. `income tng`"
                     )
                 ]
-                if prompt_options:
-                    lines.append(
-                        ", ".join(f"{opt.get('name') or ''}" for opt in prompt_options)
-                    )
-                # Also let the user pick a wallet in the same reply, e.g. "makan tng".
-                wallet_prompt_lines = await _format_category_wallet_prompt(db, user_id, user_lang)
-                if wallet_prompt_lines:
-                    lines.extend(wallet_prompt_lines)
                 return "\n".join(lines), None
             category = await get_default_category(db, txn_type, household_id=household_id)
 
