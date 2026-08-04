@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useParams } from "next/navigation"
-import { ArrowLeft, CalendarDays, ScrollText, Sparkles } from "lucide-react"
+import { ArrowLeft, CalendarDays, ChevronDown, Rocket, Sparkles } from "lucide-react"
 import { useLang } from "@/lib/lang"
 import HistoryBackButton from "@/components/navigation/HistoryBackButton"
 import { DesktopPageBody, DesktopPageHeader } from "@/components/layout/PageHeader"
@@ -224,12 +224,78 @@ export default function ChangelogPage() {
         },
       ]
 
+  const [latest, ...past] = entries
+
+  const Hero = (
+    <div className="relative overflow-hidden rounded-[20px] border border-[var(--border)] bg-gradient-to-br from-amber-500/12 via-[var(--card)] to-[var(--card)] p-5 md:p-6">
+      <Sparkles className="pointer-events-none absolute -right-4 -top-4 text-amber-500/15" size={110} strokeWidth={1.2} />
+      <div className="relative">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-[0.625rem] font-black uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">
+            <Rocket size={12} />
+            {tr("Terkini", "Latest")}
+          </span>
+          <span className="text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{latest.version}</span>
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--muted)]">
+            <CalendarDays size={13} />
+            {latest.date}
+          </span>
+        </div>
+        <h2 className="mt-3 text-xl font-black leading-tight text-[var(--text)] md:text-2xl">{latest.title}</h2>
+        <ul className="mt-4 space-y-2.5">
+          {latest.items.map((item) => (
+            <li key={item} className="flex gap-2.5 text-sm leading-relaxed text-[var(--text)]">
+              <span className="mt-[0.45rem] h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+
+  const Timeline = (
+    <div className="space-y-2">
+      <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.18em] text-[var(--muted)]">
+        {tr("Keluaran Terdahulu", "Earlier Releases")}
+      </p>
+      <div className="relative space-y-2 pl-6">
+        <span className="absolute left-[0.42rem] top-2 bottom-2 w-px bg-[var(--border)]" aria-hidden="true" />
+        {past.map((entry) => (
+          <details key={entry.version} className="group relative rounded-2xl border border-[var(--border)] bg-[var(--card)]">
+            <span className="absolute -left-[1.19rem] top-[1.15rem] h-2.5 w-2.5 rounded-full border-2 border-[var(--card)] bg-[var(--border)] group-open:bg-amber-500" aria-hidden="true" />
+            <summary className="flex cursor-pointer list-none items-center gap-3 p-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{entry.version}</span>
+                  <span className="inline-flex items-center gap-1 text-[0.625rem] font-bold text-[var(--muted)]">
+                    <CalendarDays size={11} />
+                    {entry.date}
+                  </span>
+                </div>
+                <p className="mt-1 truncate text-sm font-bold text-[var(--text)]">{entry.title}</p>
+              </div>
+              <ChevronDown size={16} className="shrink-0 text-[var(--muted)] transition-transform group-open:rotate-180" />
+            </summary>
+            <ul className="space-y-2 border-t border-[var(--border)] px-4 py-3.5">
+              {entry.items.map((item) => (
+                <li key={item} className="flex gap-2.5 text-sm leading-relaxed text-[var(--muted)]">
+                  <span className="mt-[0.45rem] h-1 w-1 shrink-0 rounded-full bg-[var(--muted)]" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        ))}
+      </div>
+    </div>
+  )
+
   return (
     <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
 
       {/* ─── Mobile View ─── */}
       <div className="space-y-5 md:hidden">
-        {/* Header */}
         <div className="px-1 pt-1">
           <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 pt-4">
             <HistoryBackButton fallbackHref={`/${sessionId}/settings`} className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-tint)] text-[var(--text)]">
@@ -240,93 +306,19 @@ export default function ChangelogPage() {
             </h1>
             <div className="h-10 w-10" aria-hidden="true" />
           </div>
-
-          {/* Intro Card */}
-          <div className="mt-4 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
-            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]">
-              <Sparkles size={20} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-lg font-black text-[var(--text)]">{tr("Apa Baru", "What's New")}</p>
-              <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
-                {tr("Kemaskini terkini dan ciri baru sistem.", "Latest updates and new features.")}
-              </p>
-            </div>
-          </div>
         </div>
-
-        {/* Timeline entries */}
-        <div className="px-1 space-y-3">
-          {entries.map((entry) => (
-            <div key={entry.version} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{entry.version}</p>
-                <div className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint)]/30 px-2.5 py-1 text-[0.625rem] font-bold text-[var(--muted)]">
-                  <CalendarDays size={12} />
-                  {entry.date}
-                </div>
-              </div>
-              <h3 className="mt-2 text-base font-bold text-[var(--text)]">{entry.title}</h3>
-              <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
-                <div className="mb-2 flex items-center gap-1.5 text-[0.625rem] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
-                  <ScrollText size={13} />
-                  {tr("Perubahan", "Changes")}
-                </div>
-                <ul className="space-y-1.5 text-sm list-disc pl-5 text-[var(--muted)]">
-                  {entry.items.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          ))}
+        <div className="space-y-4 px-1">
+          {Hero}
+          {Timeline}
         </div>
       </div>
 
       {/* ─── Desktop View ─── */}
       <div className="hidden md:block">
         <DesktopPageHeader title={tr("Apa Baru", "What's New")} homeHref={`/${sessionId}`} />
-        <DesktopPageBody className="space-y-6">
-        {/* Timeline Grid */}
-        <div className="grid gap-4">
-          {entries.map((entry, i) => (
-            <div key={entry.version} className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                    <Sparkles size={16} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-3">
-                      <p className="text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{entry.version}</p>
-                      <span className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-[var(--muted)]">
-                        <CalendarDays size={13} />
-                        {entry.date}
-                      </span>
-                    </div>
-                    <h3 className="mt-1 text-lg font-black text-[var(--text)]">{entry.title}</h3>
-                  </div>
-                </div>
-                <span className="flex sm:hidden items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint)]/30 px-2.5 py-1 text-[0.625rem] font-bold text-[var(--muted)]">
-                  <CalendarDays size={12} />
-                  {entry.date}
-                </span>
-              </div>
-
-              <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-4">
-                <div className="mb-2 flex items-center gap-1.5 text-[0.625rem] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
-                  <ScrollText size={14} />
-                  {tr("Perubahan", "Changes")}
-                </div>
-                <ul className="space-y-1.5 text-sm list-disc pl-5 text-[var(--muted)]">
-                  {entry.items.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          ))}
-        </div>
+        <DesktopPageBody className="space-y-5">
+          {Hero}
+          {Timeline}
         </DesktopPageBody>
       </div>
     </div>
