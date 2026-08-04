@@ -828,7 +828,7 @@ function getMobileHeaderMeta(
     };
   }
 
-  if (pathname === `${base}/changelog`) {
+  if (pathname === `${base}/whatsnew`) {
     return {
       title: t.changelog,
       subtitle: t.headerChangelogSubtitle,
@@ -988,7 +988,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { label: "Personal", items: desktopPersonalNavigation },
     { label: "Maps", items: desktopMapNavigation },
     { label: "Connector", items: desktopConnectorNavigation },
-    { label: lang === "BM" ? "Bantuan" : "Help", items: [{ name: t.helpSupport, href: `/${sessionId}/help`, icon: HelpCircle }] },
+    { label: lang === "BM" ? "Bantuan" : "Help", items: [{ name: t.helpSupport, href: `/${sessionId}/help`, icon: HelpCircle }, { name: t.changelog, href: `/${sessionId}/whatsnew`, icon: ScrollText }] },
   ];
   const mobileNavLeft = [
     { nameKey: "home" as const, href: `/${sessionId}`, icon: Home },
@@ -1218,6 +1218,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         {
           label: lang === "BM" ? "Tetapan" : "Settings",
           items: [
+            {
+              name: t.changelog,
+              subtitle:
+                lang === "BM"
+                  ? "Kemaskini terkini dan ciri baru"
+                  : "Latest updates and new features",
+              href: `/${sessionId}/whatsnew`,
+              icon: ScrollText,
+            },
             {
               name: t.more,
               subtitle:
@@ -1590,7 +1599,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           `${base}/security`,
           `${base}/help`,
           `${base}/about`,
-          `${base}/changelog`,
+          `${base}/whatsnew`,
           `${base}/households`,
         ].includes(pathname);
       }
@@ -2986,12 +2995,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <SidebarHeader className="shrink-0 gap-0 px-0 pb-3 pt-1.5">
             <Link
               href={`/${sessionId}`}
-              className="group/brand flex w-full items-center justify-center rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60"
+              className="group/brand flex w-full items-center justify-start rounded-2xl pl-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60"
             >
               <img
                 src={isLight ? "/logoweb.png" : "/logowebdark.png"}
                 alt="MyPeribadi"
-                className="h-16 w-full object-contain"
+                className="h-9 w-full max-w-[180px] object-contain"
               />
             </Link>
           </SidebarHeader>
@@ -3537,7 +3546,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 title={lang === "BM" ? "Tetapan" : "Settings"}
                 className={cn(
                   "flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl border text-[0.62rem] font-bold transition active:scale-[0.98]",
-                  ["settings", "security", "help", "about", "changelog", "login-logs"].some(
+                  ["settings", "security", "help", "about", "whatsnew", "login-logs"].some(
                     (segment) => pathname === `/${sessionId}/${segment}`,
                   )
                     ? "border-[color-mix(in_srgb,var(--accent2)_28%,var(--border))] bg-[var(--accent-bg)] text-[var(--accent2)]"

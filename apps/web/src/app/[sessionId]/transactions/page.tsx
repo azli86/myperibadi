@@ -17,6 +17,7 @@ import {
  Download,
  ArrowDown,
  ChevronUp,
+ X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Doughnut, Bar } from "react-chartjs-2"
@@ -2069,12 +2070,12 @@ const currentCycleKeyStr = useMemo(
  {mobileDetailId !== null && (
    <div className="fixed inset-0 z-[500]">
      <button type="button" aria-label={lang === "EN" ? "Close transaction details" : "Tutup butiran transaksi"} onClick={closeMobileDetail} className="absolute inset-0 bg-black/45" />
-     <section className="absolute bottom-0 right-0 top-0 h-[100dvh] w-full overflow-hidden bg-[var(--page-bg)] md:w-[min(760px,72vw)] md:border-l md:border-[var(--border)] md:shadow-2xl">
+     <section className="absolute bottom-0 right-0 top-0 h-[100dvh] w-full overflow-hidden bg-[var(--page-bg)] md:w-[min(420px,80vw)] md:border-l md:border-[var(--border)] md:shadow-2xl">
        <iframe
          title={lang === "EN" ? "Transaction details" : "Butiran transaksi"}
          src={`/${sessionId}/transactions/${mobileDetailId}`}
          onLoad={armDetailHistory}
-         className="block h-[100dvh] w-full border-0"
+         className="block h-[100dvh] w-full border-0 md:h-full"
        />
        <button
          type="button"
@@ -2082,6 +2083,14 @@ const currentCycleKeyStr = useMemo(
          onClick={closeMobileDetail}
          className="absolute left-0 top-0 z-[600] h-16 w-16 bg-transparent md:hidden"
        />
+       <button
+         type="button"
+         aria-label={lang === "EN" ? "Close transaction details" : "Tutup butiran transaksi"}
+         onClick={closeMobileDetail}
+         className="absolute right-3 top-3 z-[600] hidden h-8 w-8 items-center justify-center rounded-full bg-[var(--surface-tint)] text-[var(--muted)] shadow transition hover:text-[var(--text)] md:flex"
+       >
+         <X size={16} />
+       </button>
      </section>
    </div>
  )}

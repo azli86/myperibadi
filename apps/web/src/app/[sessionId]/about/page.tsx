@@ -129,7 +129,7 @@ export default function AboutPage() {
         {/* Changelog */}
         <div className="px-1">
           <Link
-            href={`/${sessionId}/changelog`}
+            href={`/${sessionId}/whatsnew`}
             className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 active:scale-[0.98] transition-all"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]">
@@ -243,7 +243,7 @@ export default function AboutPage() {
           <div className="space-y-5">
             {/* Changelog */}
             <Link
-              href={`/${sessionId}/changelog`}
+              href={`/${sessionId}/whatsnew`}
               className="block rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm transition-colors hover:border-[var(--text)]"
             >
               <div className="flex items-center justify-between gap-4">

@@ -135,7 +135,7 @@ export default function LagiPage() {
     { icon: User, label: t.myAccount, href: `/${sessionId}/account` },
     { icon: Shield, label: t.security, href: `/${sessionId}/security` },
     { icon: HelpCircle, label: t.helpSupport, href: `/${sessionId}/help` },
-    { icon: ScrollText, label: t.changelog, href: `/${sessionId}/changelog` },
+    { icon: ScrollText, label: t.changelog, href: `/${sessionId}/whatsnew` },
     { icon: Award, label: tr("Reward Badge", "Reward Badge"), href: `/${sessionId}/badges` },
     { icon: Info, label: t.about, href: `/${sessionId}/about` },
   ]

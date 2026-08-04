@@ -135,6 +135,57 @@ def _clear_pending_category_selection(user_id: str, source_channel: str) -> None
     PENDING_CATEGORY_SELECTIONS.pop(_pending_category_key(user_id, source_channel), None)
 
 
+async def _format_category_wallet_prompt(db, user_id: str, user_lang: str) -> list[str]:
+    """Append a wallet picker to the category prompt so the user can choose a wallet
+    in the same reply, e.g. 'makan tng'. Returns prompt lines (empty if one wallet)."""
+    user = await db.scalar(select(models.User).where(models.User.id == user_id))
+    if not user:
+        return []
+    query = select(models.Wallet).where(
+        or_(models.Wallet.owner_user_id == user_id, models.Wallet.household_id == user.default_household_id)
+    )
+    wallets = list((await db.execute(query)).scalars().all())
+    if len(wallets) <= 1:
+        return []
+    wallets_sorted = sorted(wallets, key=lambda x: (not bool(getattr(x, "is_bot_default", False)), wallet_display_name(x) or x.name or ""))
+    names = [wallet_display_name(w) or (w.name or "") for w in wallets_sorted]
+    if user_lang == "BM":
+        intro = "\n*Pilih dompet (pilihan)*: taip nama dompet selepas kategori, contoh `makan tng`."
+    else:
+        intro = "\n*Pick a wallet (optional)*: type the wallet name after the category, e.g. `food tng`."
+    list_lines = "\n".join(f"• {n}" for n in names)
+    return [intro, list_lines]
+
+
+async def _split_reply_category_wallet(db, user_id: str, reply_text: str) -> Tuple[str, Optional[int]]:
+    """Split a category reply that may include a wallet, e.g. 'makan tng' or 'loanx akpk tng'.
+    Returns (category_part, wallet_id_or_None)."""
+    normalized = normalize_message_text(reply_text or "").strip().lower()
+    if not normalized:
+        return (reply_text or ""), None
+    user = await db.scalar(select(models.User).where(models.User.id == user_id))
+    if not user:
+        return (reply_text or ""), None
+    query = select(models.Wallet).where(
+        or_(models.Wallet.owner_user_id == user_id, models.Wallet.household_id == user.default_household_id)
+    )
+    wallets = list((await db.execute(query)).scalars().all())
+    # Longest names first so multi-word wallets match before short tokens.
+    for w in sorted(wallets, key=lambda x: len(wallet_display_name(x) or x.name or ""), reverse=True):
+        name = (w.name or "").strip()
+        label = (getattr(w, "label", None) or "").strip()
+        for candidate in (label or name, name):
+            if not candidate:
+                continue
+            c_norm = normalize_message_text(candidate).lower()
+            if c_norm and (c_norm == normalized or f" {c_norm} " in f" {normalized} "):
+                # Remove the wallet token from the reply, keeping only the category part.
+                remaining = re.sub(rf"\b{re.escape(c_norm)}\b", " ", normalized).strip()
+                remaining = re.sub(r"\s{2,}", " ", remaining).strip()
+                return remaining, int(w.id)
+    return (reply_text or ""), None
+
+
 BOT_TRANSLATIONS = {
     "BM": {
         "welcome": "*Hai! Saya Budget by DigitalPort.*\nGuna saya untuk simpan belanja terus ke portal anda.\n\n*Command Asas:*\n-Makan 10 : Simpan RM10 (dompet default)\n-Makan 10 Cash : Simpan RM10 ke dompet Cash\n-transfer : Pindah duit\n-checkwallet : Semak baki dompet\n-category : Senarai kategori & keyword\n-summary : Ringkasan bulanan\n-list : 5 rekod terakhir\n\n*Command Budget:*\n-budget set makanan 600 : Set budget kategori\n-budget summary : Ringkasan budget bulanan\n\n*Command Backdate:*\n-grab 18.50 @05042026 : Rekod ikut tarikh (format @DDMMYYYY)\n\n*Bahasa:*\nlang en : Tukar ke English",
@@ -2998,6 +3049,7 @@ async def _process_whatsapp_message_impl(
     show_income_amount: bool = True,
     allow_llm_fallback: bool = True,
     forced_category_id: Optional[int] = None,
+    forced_wallet_id: Optional[int] = None,
     skip_category_prompt: bool = False,
 ) -> Tuple[str, Optional[models.Transaction]]:
     try:
@@ -3093,12 +3145,17 @@ async def _process_whatsapp_message_impl(
             if normalized_selection in {"batal", "cancel", "x"}:
                 _clear_pending_category_selection(user_id, source_channel)
                 return ("Pilihan kategori dibatalkan." if user_lang == "BM" else "Category selection cancelled."), None
+            # Allow a wallet to be chosen together with the category, e.g. "makan tng"
+            # or "loanx akpk tng". Extract the trailing wallet token so category matching
+            # only considers the category portion of the reply.
+            category_reply, forced_wallet_id = await _split_reply_category_wallet(db, user_id, text or "")
+            normalized_typed = normalize_message_text(category_reply).strip().lower()
             selected_index = None
-            if normalized_selection.isdigit():
-                selected_index = int(normalized_selection) - 1
+            if normalized_typed.isdigit():
+                selected_index = int(normalized_typed) - 1
             else:
                 for idx_option, option in enumerate(pending_selection.get("options") or []):
-                    if normalize_message_text(option.get("name") or "") == normalized_selection:
+                    if normalize_message_text(option.get("name") or "") == normalized_typed:
                         selected_index = idx_option
                         break
             options = pending_selection.get("options") or []
@@ -3119,6 +3176,7 @@ async def _process_whatsapp_message_impl(
                     show_income_amount=show_income_amount,
                     allow_llm_fallback=allow_llm_fallback,
                     forced_category_id=int(selected_option.get("id")),
+                    forced_wallet_id=forced_wallet_id,
                     skip_category_prompt=True,
                 )
             # User typed a category name or keyword not in the shortlist: match against all user categories.
@@ -3130,7 +3188,6 @@ async def _process_whatsapp_message_impl(
                         models.Category.is_internal == False,
                     )
                 )).scalars().all()
-                normalized_typed = normalize_message_text(text or "").strip().lower()
                 exact_match = next((c for c in all_rows if normalize_message_text(c.name).lower() == normalized_typed), None)
                 keyword_match = None
                 if not exact_match:
@@ -3165,6 +3222,7 @@ async def _process_whatsapp_message_impl(
                         show_income_amount=show_income_amount,
                         allow_llm_fallback=allow_llm_fallback,
                         forced_category_id=int(matched.id),
+                        forced_wallet_id=forced_wallet_id,
                         skip_category_prompt=True,
                     )
 
@@ -3832,6 +3890,10 @@ async def _process_whatsapp_message_impl(
                 lines = [
                     ("Transaksi belum disimpan. Sila taip keyword kategori untuk simpan (contoh: makan, grab), atau taip 'batal' untuk batal." if user_lang == "BM" else "Transaction not saved yet. Type a category keyword to save (e.g. food, grab), or type 'cancel' to cancel.")
                 ]
+                # Also let the user pick a wallet in the same reply, e.g. "makan tng".
+                wallet_prompt_lines = await _format_category_wallet_prompt(db, user_id, user_lang)
+                if wallet_prompt_lines:
+                    lines.extend(wallet_prompt_lines)
                 return "\n".join(lines), None
             category = await get_default_category(db, txn_type, household_id=household_id)
 
@@ -3850,13 +3912,19 @@ async def _process_whatsapp_message_impl(
         
         selected_wallet = None
         used_explicit_wallet_prefix = False
-        # Sort by length descending, so "maybank cash" matches before "cash"
-        for w in sorted(user_wallets, key=lambda x: len(x.name), reverse=True):
-            if re.search(rf"\b{re.escape(w.name.lower())}\b", lowered):
-                selected_wallet = w
-                used_explicit_wallet_prefix = True
-                break
-                
+        if forced_wallet_id is not None:
+            # Receipt OCR flow: category + wallet chosen together in one reply.
+            forced_wallet = next((w for w in user_wallets if int(w.id) == int(forced_wallet_id)), None)
+            if forced_wallet:
+                selected_wallet = forced_wallet
+        if not selected_wallet:
+            # Sort by length descending, so "maybank cash" matches before "cash"
+            for w in sorted(user_wallets, key=lambda x: len(x.name), reverse=True):
+                if re.search(rf"\b{re.escape(w.name.lower())}\b", lowered):
+                    selected_wallet = w
+                    used_explicit_wallet_prefix = True
+                    break
+
         if not selected_wallet:
             # Priority 1: Check if user has explicitly set a bot default wallet in portal
             for w in user_wallets:

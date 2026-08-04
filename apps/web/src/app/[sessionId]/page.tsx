@@ -2735,9 +2735,9 @@ export default function Dashboard() {
             {/* Vehicle details — large desktop showcase */}
             <DashboardVehicleHeroRow variant="card" layout="desktop" className="mt-0" />
 
-            {/* Charts — monthly + daily — full width */}
-            <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
+            {/* Charts — monthly + daily — 3 split cards */}
+            <div className="flex flex-col gap-4">
+              <div className="mb-1 flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-bold text-[var(--text)]">{lang === "EN" ? "Expense Trends" : "Trend Perbelanjaan"}</h3>
                   <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">{lang === "EN" ? "Tap card for full graph" : "Tekan kad untuk graf penuh"}</p>
@@ -2750,13 +2750,13 @@ export default function Dashboard() {
                 )}
               </div>
               {showDataSkeleton ? (
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3" aria-busy="true">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" aria-busy="true">
                   {chartMiniSkeleton("d-month")}
                   {chartMiniSkeleton("d-day")}
                   {chartMiniSkeleton("d-net")}
                 </div>
               ) : (
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                 <button type="button" onClick={() => openChartModal("monthly")} className="relative overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-4 text-left text-[var(--text)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-bold text-[var(--text)]">{t.monthlyTab}</p>

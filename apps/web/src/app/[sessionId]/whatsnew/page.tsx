@@ -25,6 +25,20 @@ export default function ChangelogPage() {
   const entries: ChangelogEntry[] = isBm
     ? [
         {
+          version: "v2026.08.04",
+          date: "4 Ogos 2026",
+          title: "Onboarding, Resit OCR & Penapis Transaksi",
+          items: [
+            "Aliran onboarding selepas login: pilih bahasa, zon masa, format masa, dan auto-generate kategori.",
+            "Animasi pemasangan akaun dengan semakan berasingan untuk kategori, zon masa, dan bahasa.",
+            "Pilih zon masa tersuai dengan dropdown carian.",
+            "OCR resit: bot tunjuk butiran yang dibaca (pembekal, jumlah, tarikh) sebelum minta keyword.",
+            "Pilih dompet sekali dengan kategori selepas resit, contoh `makan tng`.",
+            "Halaman transaksi: penapis & carian disembunyikan di sebalik butang tunggal.",
+            "Logo sidebar lebih kecil dan dijajarkan kiri; kad Trend Perbelanjaan dipisahkan menjadi 3 kad.",
+          ],
+        },
+        {
           version: "v2026.07.30",
           date: "30 Julai 2026",
           title: "Kitar Gaji, Langganan & Imej Dompet",
@@ -75,7 +89,7 @@ export default function ChangelogPage() {
           title: "Kestabilan & Navigasi",
           items: [
             "Butang back kini ikut halaman sebelumnya (history) di lebih banyak skrin.",
-            "Tambah halaman Log Perubahan untuk rujukan update sistem.",
+            "Tambah halaman Apa Baru untuk rujukan update sistem.",
             "Kemaskini menu Tetapan untuk akses cepat ke changelog.",
           ],
         },
@@ -111,6 +125,20 @@ export default function ChangelogPage() {
         },
       ]
     : [
+        {
+          version: "v2026.08.04",
+          date: "4 August 2026",
+          title: "Onboarding, Receipt OCR & Transaction Filters",
+          items: [
+            "Onboarding flow after login: pick language, timezone, time format, and auto-generate categories.",
+            "Account setup animation with separate ticks for categories, timezone, and language.",
+            "Custom timezone selection with searchable dropdown.",
+            "Receipt OCR: bot shows what it read (vendor, amount, date) before asking for a keyword.",
+            "Choose a wallet together with the category after a receipt, e.g. `food tng`.",
+            "Transactions page: filters & search collapsed behind a single button.",
+            "Smaller, left-aligned sidebar logo; Expense Trends split into 3 separate cards.",
+          ],
+        },
         {
           version: "v2026.07.30",
           date: "30 July 2026",
@@ -221,9 +249,9 @@ export default function ChangelogPage() {
               <Sparkles size={20} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-lg font-black text-[var(--text)]">{tr("Log Perubahan", "Changelog")}</p>
+              <p className="text-lg font-black text-[var(--text)]">{tr("Apa Baru", "What's New")}</p>
               <p className="mt-1 text-sm leading-relaxed text-[var(--muted)]">
-                {tr("Rekod kemaskini dan perubahan sistem.", "System update and change record.")}
+                {tr("Kemaskini terkini dan ciri baru sistem.", "Latest updates and new features.")}
               </p>
             </div>
           </div>
@@ -259,7 +287,7 @@ export default function ChangelogPage() {
 
       {/* ─── Desktop View ─── */}
       <div className="hidden md:block">
-        <DesktopPageHeader title={tr("Log Perubahan", "Changelog")} homeHref={`/${sessionId}`} />
+        <DesktopPageHeader title={tr("Apa Baru", "What's New")} homeHref={`/${sessionId}`} />
         <DesktopPageBody className="space-y-6">
         {/* Timeline Grid */}
         <div className="grid gap-4">
