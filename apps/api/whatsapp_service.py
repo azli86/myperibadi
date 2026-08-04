@@ -3224,6 +3224,33 @@ async def _process_whatsapp_message_impl(
                         forced_wallet_id=forced_wallet_id,
                         skip_category_prompt=True,
                     )
+            # subx/loanx link: reply like `subx astro tng` / `loanx akpk tng` links the
+            # OCR amount (taken from the pending transaction) to a subscription/loan payment.
+            if normalized_typed.startswith("subx ") or normalized_typed.startswith("loanx "):
+                ocr_amount = extract_amount(str(pending_selection.get("original_text") or ""))
+                if ocr_amount and ocr_amount > 0:
+                    _clear_pending_category_selection(user_id, source_channel)
+                    wallet_name = ""
+                    if forced_wallet_id is not None:
+                        wrow = await db.execute(select(models.Wallet).where(models.Wallet.id == int(forced_wallet_id)))
+                        w = wrow.scalar_one_or_none()
+                        if w:
+                            wallet_name = f" {wallet_display_name(w)}"
+                    cmd = f"loanx pay {normalized_typed[6:]} {ocr_amount:.2f}{wallet_name}" if normalized_typed.startswith("loanx ") else f"subx pay {normalized_typed[5:]} {ocr_amount:.2f}{wallet_name}"
+                    if normalized_typed.startswith("loanx "):
+                        reply = await _process_loanx_command(
+                            db, user_id=user_id, household_id=household_id,
+                            text=cmd, language=user_lang, source_channel=source_channel,
+                            hide_balance=hide_group_balance, private_value=private_value,
+                        )
+                    else:
+                        res = await _process_subx_command(
+                            db, user_id=user_id, household_id=household_id,
+                            text=cmd, language=user_lang, source_channel=source_channel,
+                            hide_balance=hide_group_balance, private_value=private_value,
+                        )
+                        reply = res[0] if isinstance(res, tuple) else res
+                    return reply, None
             # Generic kind alias: reply 'income' or 'expense' picks the default category of that kind.
             if normalized_typed in {"income", "pendapatan", "gaji", "salary", "expense", "expenses", "belanja", "perbelanjaan"}:
                 alias_kind = "income" if normalized_typed in {"income", "pendapatan", "gaji", "salary"} else "expense"
