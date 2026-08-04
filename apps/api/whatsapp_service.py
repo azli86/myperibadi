@@ -150,11 +150,10 @@ async def _format_category_wallet_prompt(db, user_id: str, user_lang: str) -> li
     wallets_sorted = sorted(wallets, key=lambda x: (not bool(getattr(x, "is_bot_default", False)), wallet_display_name(x) or x.name or ""))
     names = [wallet_display_name(w) or (w.name or "") for w in wallets_sorted]
     if user_lang == "BM":
-        intro = "\n*Pilih dompet (pilihan)*: taip nama dompet selepas kategori, contoh `makan tng`."
+        intro = f"\n*Dompet*: {', '.join(names)} (cth `income cash`)"
     else:
-        intro = "\n*Pick a wallet (optional)*: type the wallet name after the category, e.g. `food tng`."
-    list_lines = "\n".join(f"• {n}" for n in names)
-    return [intro, list_lines]
+        intro = f"\n*Wallets*: {', '.join(names)} (e.g. `income cash`)"
+    return [intro]
 
 
 async def _split_reply_category_wallet(db, user_id: str, reply_text: str) -> Tuple[str, Optional[int]]:
@@ -3910,16 +3909,17 @@ async def _process_whatsapp_message_impl(
                         "options": prompt_options,
                     },
                 )
-                option_lines = [f"{idx + 1}. {opt.get('name') or ''}" for idx, opt in enumerate(prompt_options)]
                 lines = [
                     (
-                        f"Transaksi belum disimpan. Taip nombor atau keyword kategori, tambah dompet jika perlu (contoh: `income tng` / `expense tng`), atau taip 'batal' untuk batal."
+                        f"Balas kategori + dompet, cth `income tng` / `expense tng`"
                         if user_lang == "BM"
-                        else f"Transaction not saved yet. Reply a category number or keyword, add wallet if needed (e.g. `income tng` / `expense tng`), or type 'cancel' to cancel."
+                        else f"Reply category + wallet, e.g. `income tng` / `expense tng`"
                     )
                 ]
-                if option_lines:
-                    lines.append("\n".join(option_lines))
+                if prompt_options:
+                    lines.append(
+                        ", ".join(f"{opt.get('name') or ''}" for opt in prompt_options)
+                    )
                 # Also let the user pick a wallet in the same reply, e.g. "makan tng".
                 wallet_prompt_lines = await _format_category_wallet_prompt(db, user_id, user_lang)
                 if wallet_prompt_lines:

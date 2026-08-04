@@ -157,11 +157,11 @@ async def process_bot_input_route(
         except Exception as vehicle_exc:
             print(f"[vehicle-bot] command handling failed: {vehicle_exc}")
 
+    ocr_forced_kind = None
     if has_media:
         user_res = await db.execute(select(models.User).where(models.User.id == user_id))
         user = user_res.scalar_one_or_none()
         is_en = getattr(user, "language", "BM") == "EN" if user else False
-        ocr_forced_kind = None
         if is_reply_message and not normalized_target_txn_ref:
             return {
                 "reply": (
