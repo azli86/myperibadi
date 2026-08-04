@@ -767,6 +767,7 @@ async def _process_loanx_command(
         return None
 
     is_en = language == "EN"
+    explicit_txn_date, normalized, _has_invalid = extract_explicit_txn_date(normalized)
     rest = normalized[5:].strip()
     if not rest:
         return _build_loanx_help_text(language)
@@ -895,7 +896,7 @@ async def _process_loanx_command(
                 ).order_by(models.Category.name.asc()).limit(1)
             )
             category = fallback_result.scalars().first()
-        payment_date = current_business_date()
+        payment_date = explicit_txn_date or current_business_date()
         txn = models.Transaction(
             wallet_id=selected_wallet.id,
             user_id=user_id,
@@ -957,6 +958,8 @@ async def _process_subx_command(
 
     is_en = language == "EN"
 
+    explicit_txn_date, normalized, _has_invalid = extract_explicit_txn_date(normalized)
+
     # subx pay <name> <amount> <wallet>
     pay_match = re.match(r"^subx\s+pay\s+(.+?)\s+(?:rm\s*)?(\d+(?:\.\d{1,2})?)(?:\s+(.+))?$", normalized, flags=re.IGNORECASE)
     if pay_match:
@@ -1006,7 +1009,7 @@ async def _process_subx_command(
             )
             category = fallback_result.scalars().first()
 
-        payment_date = current_business_date()
+        payment_date = explicit_txn_date or current_business_date()
         txn = models.Transaction(
             wallet_id=selected_wallet.id,
             user_id=user_id,
@@ -1023,6 +1026,7 @@ async def _process_subx_command(
         )
         db.add(txn)
         await db.flush()
+        sub.last_payment_date = payment_date
         await db.commit()
         ref_id = txn.reference_id
         message = (
@@ -3228,6 +3232,7 @@ async def _process_whatsapp_message_impl(
             # OCR amount (taken from the pending transaction) to a subscription/loan payment.
             if normalized_typed.startswith("subx ") or normalized_typed.startswith("loanx "):
                 ocr_amount = extract_amount(str(pending_selection.get("original_text") or ""))
+                ocr_date, _cleaned, _inv = extract_explicit_txn_date(str(pending_selection.get("original_text") or ""))
                 if ocr_amount and ocr_amount > 0:
                     _clear_pending_category_selection(user_id, source_channel)
                     wallet_name = ""
@@ -3236,7 +3241,12 @@ async def _process_whatsapp_message_impl(
                         w = wrow.scalar_one_or_none()
                         if w:
                             wallet_name = f" {wallet_display_name(w)}"
-                    cmd = f"loanx pay {normalized_typed[6:]} {ocr_amount:.2f}{wallet_name}" if normalized_typed.startswith("loanx ") else f"subx pay {normalized_typed[5:]} {ocr_amount:.2f}{wallet_name}"
+                    date_token = f" @{ocr_date.strftime('%d%m%Y')}" if ocr_date else ""
+                    cmd = (
+                        f"loanx pay {normalized_typed[6:]} {ocr_amount:.2f}{wallet_name}{date_token}"
+                        if normalized_typed.startswith("loanx ")
+                        else f"subx pay {normalized_typed[5:]} {ocr_amount:.2f}{wallet_name}{date_token}"
+                    )
                     if normalized_typed.startswith("loanx "):
                         reply = await _process_loanx_command(
                             db, user_id=user_id, household_id=household_id,
@@ -4199,6 +4209,8 @@ def _looks_like_category_prompt(text: Optional[str]) -> bool:
         or "balas nombor 1, 2, atau 3" in lowered
         or "transaction not saved yet" in lowered
         or "transaksi belum disimpan" in lowered
+        or "balas kategori" in lowered
+        or "reply category" in lowered
     )
 
 

@@ -870,6 +870,9 @@ async def ensure_database_schema():
             print(f"INFO:  PostgreSQL-only schema patch block skipped for {conn.dialect.name}.")
         else:
             await conn.execute(
+                text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS last_payment_date DATE NULL")
+            )
+            await conn.execute(
                 text("ALTER TABLE loans ADD COLUMN IF NOT EXISTS monthly_payment NUMERIC(12,2) NULL")
             )
             await conn.execute(
@@ -10480,6 +10483,25 @@ async def delete_commitment(
         db=db,
         current_user=current_user,
     )
+
+@app.post("/subscriptions/{subscription_id}/reset")
+async def reset_subscription_due(
+    subscription_id: int,
+    db: AsyncSession = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    sub_result = await db.execute(
+        select(models.Subscription).where(
+            models.Subscription.id == subscription_id,
+            models.Subscription.user_id == current_user.id,
+        )
+    )
+    sub = sub_result.scalars().first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Subscription not found.")
+    sub.last_payment_date = None
+    await db.commit()
+    return {"ok": True}
 
 
 @app.get("/subscriptions/{subscription_id}/transactions", response_model=List[schemas.TransactionResponse])

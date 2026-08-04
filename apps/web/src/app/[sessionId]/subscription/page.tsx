@@ -61,23 +61,42 @@ const defaultForm = (): SubscriptionFormState => ({
   notes: "",
 })
 
-/** Days until this month's due (KL). Negative = overdue this cycle. */
-function daysUntilDueDay(dueDay: number, lastPaymentDate?: string | null): number {
+/** Days until next due (KL). Negative = overdue. */
+function daysUntilDueDay(dueDay: number, lastPaymentDate?: string | null, startDate?: string | null): number {
   const day = Math.min(31, Math.max(1, Math.floor(dueDay || 1)))
   const now = new Date()
   const kl = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" }))
   kl.setHours(0, 0, 0, 0)
   const year = kl.getFullYear()
   const month = kl.getMonth()
-  const lastDayThisMonth = new Date(year, month + 1, 0).getDate()
-  const dueThisMonth = Math.min(day, lastDayThisMonth)
-  let dueDate = new Date(year, month, dueThisMonth)
-  dueDate.setHours(0, 0, 0, 0)
-  if (lastPaymentDate?.slice(0, 7) === `${year}-${String(month + 1).padStart(2, "0")}`) {
-    const nextMonthLastDay = new Date(year, month + 2, 0).getDate()
-    dueDate = new Date(year, month + 1, Math.min(day, nextMonthLastDay))
+  const due = (y: number, m: number) => {
+    const last = new Date(y, m + 1, 0).getDate()
+    const d = new Date(y, m, Math.min(day, last))
+    d.setHours(0, 0, 0, 0)
+    return d
   }
-  return Math.round((dueDate.getTime() - kl.getTime()) / (1000 * 60 * 60 * 24))
+  const dueThis = due(year, month)
+  const lastDue = due(year, month - 1)
+  const start = startDate ? new Date(`${String(startDate).slice(0, 10)}T12:00:00`) : null
+  start?.setHours(0, 0, 0, 0)
+  const lp = lastPaymentDate ? new Date(`${String(lastPaymentDate).slice(0, 10)}T12:00:00`) : null
+  lp?.setHours(0, 0, 0, 0)
+  if (lp) {
+    // Bayaran cover kitaran due yang paling hampir dengan tarikh bayar.
+    const lpDue = due(lp.getFullYear(), lp.getMonth())
+    const nextLpDue = due(lp.getFullYear(), lp.getMonth() + 1)
+    const toLpDue = lp.getTime() - lpDue.getTime()
+    const toNextLpDue = nextLpDue.getTime() - lp.getTime()
+    const paidDue = toLpDue <= toNextLpDue ? lpDue : nextLpDue
+    const nextDue = due(paidDue.getFullYear(), paidDue.getMonth() + 1)
+    return Math.round((nextDue.getTime() - kl.getTime()) / (1000 * 60 * 60 * 24))
+  }
+  // Tiada bayar: anchor = due terakhir yang dah lepas & belum dibayar.
+  const anchor = kl >= dueThis ? dueThis : lastDue
+  if (start && start > anchor) {
+    return Math.round((dueThis.getTime() - kl.getTime()) / (1000 * 60 * 60 * 24))
+  }
+  return Math.round((anchor.getTime() - kl.getTime()) / (1000 * 60 * 60 * 24))
 }
 
 function urgencyTone(days: number): "overdue" | "today" | "soon" | "ok" {
@@ -197,7 +216,7 @@ export default function SubscriptionPage() {
     return subscriptions.reduce(
       (acc, c) => {
         const amt = Number(c.amount || 0)
-        const days = daysUntilDueDay(Number(c.due_day_of_month || 1), c.last_payment_date)
+        const days = daysUntilDueDay(Number(c.due_day_of_month || 1), c.last_payment_date, c.start_date)
         if (c.status === "active") {
           acc.totalMonthly += amt
           acc.activeCount += 1
@@ -230,8 +249,8 @@ export default function SubscriptionPage() {
       const aActive = a.status === "active" ? 0 : 1
       const bActive = b.status === "active" ? 0 : 1
       if (aActive !== bActive) return aActive - bActive
-      const aDays = daysUntilDueDay(Number(a.due_day_of_month || 1), a.last_payment_date)
-      const bDays = daysUntilDueDay(Number(b.due_day_of_month || 1), b.last_payment_date)
+      const aDays = daysUntilDueDay(Number(a.due_day_of_month || 1), a.last_payment_date, a.start_date)
+      const bDays = daysUntilDueDay(Number(b.due_day_of_month || 1), b.last_payment_date, b.start_date)
       if (aDays !== bDays) return aDays - bDays
       return Number(a.due_day_of_month || 1) - Number(b.due_day_of_month || 1)
     })
@@ -347,7 +366,7 @@ export default function SubscriptionPage() {
 
   const renderSubscriptionCard = (c: SubscriptionItem, compact = false) => {
     const isActive = c.status === "active"
-    const days = daysUntilDueDay(Number(c.due_day_of_month || 1), c.last_payment_date)
+    const days = daysUntilDueDay(Number(c.due_day_of_month || 1), c.last_payment_date, c.start_date)
     const tone = isActive ? urgencyTone(days) : "ok"
     const initial = (c.name?.[0] || "S").toUpperCase()
 

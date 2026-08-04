@@ -4,7 +4,7 @@ from datetime import date
 from typing import Awaitable, Callable
 
 from fastapi import HTTPException
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
@@ -209,6 +209,16 @@ async def delete_transaction_route(
             )
             linked_loan = linked_loan_result.scalars().first()
 
+        linked_subscription = None
+        if txn.subscription_id is not None:
+            sub_result = await db.execute(
+                select(models.Subscription).where(
+                    models.Subscription.id == txn.subscription_id,
+                    models.Subscription.user_id == current_user.id,
+                )
+            )
+            linked_subscription = sub_result.scalars().first()
+
         attachment_result = await db.execute(
             select(models.Attachment).where(models.Attachment.transaction_id == txn.id)
         )
@@ -245,6 +255,16 @@ async def delete_transaction_route(
                 linked_loan.status = (
                     "active" if float(linked_loan.outstanding_amount or 0) > 0.004 else "settled"
                 )
+
+        if linked_subscription:
+            remaining_paid = await db.scalar(
+                select(func.max(models.Transaction.txn_date)).where(
+                    models.Transaction.user_id == current_user.id,
+                    models.Transaction.subscription_id == linked_subscription.id,
+                    models.Transaction.id != txn.id,
+                )
+            )
+            linked_subscription.last_payment_date = remaining_paid
 
         await db.execute(models.Transaction.__table__.delete().where(models.Transaction.id == txn.id))
 

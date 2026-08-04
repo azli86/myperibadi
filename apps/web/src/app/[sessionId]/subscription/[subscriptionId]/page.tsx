@@ -16,6 +16,7 @@ import {
   Check,
   AlertTriangle,
   History,
+  RotateCcw,
 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { getAccessToken } from "@/lib/auth-session"
@@ -45,6 +46,7 @@ type SubscriptionItem = {
   notes?: string | null
   status: string
   start_date: string
+  last_payment_date?: string | null
   created_at: string
   updated_at: string
 }
@@ -84,19 +86,41 @@ function formatDateLabel(value?: string | null) {
   return date.toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" })
 }
 
-/** Days until this month's due (KL). Negative = overdue this cycle. */
-function daysUntilDueDay(dueDay: number): number {
+/** Days until next due (KL). Negative = overdue. */
+function daysUntilDueDay(dueDay: number, lastPaymentDate?: string | null, startDate?: string | null): number {
   const day = Math.min(31, Math.max(1, Math.floor(dueDay || 1)))
   const now = new Date()
   const kl = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" }))
   kl.setHours(0, 0, 0, 0)
   const year = kl.getFullYear()
   const month = kl.getMonth()
-  const lastDayThisMonth = new Date(year, month + 1, 0).getDate()
-  const dueThisMonth = Math.min(day, lastDayThisMonth)
-  const dueDate = new Date(year, month, dueThisMonth)
-  dueDate.setHours(0, 0, 0, 0)
-  return Math.round((dueDate.getTime() - kl.getTime()) / (1000 * 60 * 60 * 24))
+  const due = (y: number, m: number) => {
+    const last = new Date(y, m + 1, 0).getDate()
+    const d = new Date(y, m, Math.min(day, last))
+    d.setHours(0, 0, 0, 0)
+    return d
+  }
+  const dueThis = due(year, month)
+  const lastDue = due(year, month - 1)
+  const start = startDate ? new Date(`${String(startDate).slice(0, 10)}T12:00:00`) : null
+  start?.setHours(0, 0, 0, 0)
+  const lp = lastPaymentDate ? new Date(`${String(lastPaymentDate).slice(0, 10)}T12:00:00`) : null
+  lp?.setHours(0, 0, 0, 0)
+  if (lp) {
+    // Bayaran cover kitaran due yang paling hampir dengan tarikh bayar.
+    const lpDue = due(lp.getFullYear(), lp.getMonth())
+    const nextLpDue = due(lp.getFullYear(), lp.getMonth() + 1)
+    const toLpDue = lp.getTime() - lpDue.getTime()
+    const toNextLpDue = nextLpDue.getTime() - lp.getTime()
+    const paidDue = toLpDue <= toNextLpDue ? lpDue : nextLpDue
+    const nextDue = due(paidDue.getFullYear(), paidDue.getMonth() + 1)
+    return Math.round((nextDue.getTime() - kl.getTime()) / (1000 * 60 * 60 * 24))
+  }
+  const anchor = kl >= dueThis ? dueThis : lastDue
+  if (start && start > anchor) {
+    return Math.round((dueThis.getTime() - kl.getTime()) / (1000 * 60 * 60 * 24))
+  }
+  return Math.round((anchor.getTime() - kl.getTime()) / (1000 * 60 * 60 * 24))
 }
 
 
@@ -207,8 +231,8 @@ export default function SubscriptionDetailPage() {
   }, [showEditSheet])
 
   const days = useMemo(
-    () => daysUntilDueDay(Number(subscription?.due_day_of_month || 1)),
-    [subscription?.due_day_of_month],
+    () => daysUntilDueDay(Number(subscription?.due_day_of_month || 1), subscription?.last_payment_date, subscription?.start_date),
+    [subscription?.due_day_of_month, subscription?.last_payment_date, subscription?.start_date],
   )
 
   const dueLabel = useMemo(() => {
@@ -347,6 +371,37 @@ export default function SubscriptionDetailPage() {
     [form.amount, form.due_day, form.name, form.notes, loadData, showAlert, subscription, tr],
   )
 
+  const handleResetDue = useCallback(() => {
+    if (!subscription) return
+    showConfirm(
+      tr("Reset status?", "Reset status?"),
+      tr(`Kira semula status ${subscription.name} dari rekod transaksi?`, `Recompute ${subscription.name} status from transaction records?`),
+      async () => {
+        try {
+          const token = getAccessToken()
+          const res = await fetch(`/api/subscriptions/${subscription.id}/reset`, {
+            method: "POST",
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          })
+          if (!res.ok) throw new Error(await readApiErrorMessage(res, tr("Gagal reset status.", "Failed to reset status.")))
+          await loadData({ forceSkeleton: false })
+          showAlert(
+            tr("Status diset semula", "Status reset"),
+            tr("Status subscription dikira semula dari rekod transaksi.", "Subscription status recomputed from transaction records."),
+            "success",
+          )
+        } catch (err) {
+          showAlert(
+            tr("Gagal reset", "Reset failed"),
+            err instanceof Error ? err.message : tr("Gagal reset status.", "Failed to reset status."),
+            "error",
+          )
+        }
+      },
+      "warning",
+    )
+  }, [loadData, showAlert, showConfirm, subscription, tr])
+
   const handleDeleteSubscription = useCallback(() => {
     if (!subscription) return
     showConfirm(
@@ -417,6 +472,15 @@ export default function SubscriptionDetailPage() {
                   </button>
                   <button
                     type="button"
+                    onClick={() => { setMobileMenuOpen(false); handleResetDue() }}
+                    disabled={loading || !subscription}
+                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--text)] transition active:scale-[0.98] disabled:opacity-40"
+                  >
+                    <RotateCcw size={16} className="text-emerald-500" />
+                    {tr("Reset Due", "Reset Due")}
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => { setMobileMenuOpen(false); handleDeleteSubscription() }}
                     disabled={deleting || loading || !subscription}
                     className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-rose-500 transition active:scale-[0.98] disabled:opacity-40"
@@ -438,6 +502,16 @@ export default function SubscriptionDetailPage() {
         className="hidden md:block"
         actions={
           <>
+            <button
+              type="button"
+              onClick={handleResetDue}
+              disabled={loading || !subscription}
+              className="inline-flex h-8 min-w-0 flex-1 shrink items-center justify-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-2 text-xs font-bold leading-none text-emerald-500 transition active:scale-[0.98] disabled:opacity-40 sm:flex-none sm:px-3 [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:shrink-0"
+              aria-label={tr("Reset due date", "Reset due date")}
+            >
+              <RotateCcw size={16} />
+              {tr("Reset", "Reset")}
+            </button>
             <DesktopPageAction
               onClick={() => setShowEditSheet(true)}
               disabled={loading || !subscription}
@@ -556,6 +630,16 @@ export default function SubscriptionDetailPage() {
             ) : null}
 
             <div className="mt-4 flex items-center justify-center gap-6">
+              <button
+                type="button"
+                onClick={handleResetDue}
+                disabled={loading || !subscription}
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-[#d4d4d4] underline-offset-4 transition hover:text-[#f5f5f5] hover:underline disabled:opacity-40"
+              >
+                <RotateCcw size={15} />
+                {tr("Reset", "Reset")}
+              </button>
+              <span className="h-3.5 w-px bg-white/15" aria-hidden />
               <button
                 type="button"
                 onClick={() => setShowEditSheet(true)}

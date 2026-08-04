@@ -12,6 +12,17 @@ import schemas
 import whatsapp_service
 
 
+async def _last_payment_date(db: AsyncSession, user_id: str, subscription_id: int, column_date: Optional[date] = None) -> Optional[date]:
+    txn_max = await db.scalar(
+        select(func.max(models.Transaction.txn_date)).where(
+            models.Transaction.user_id == user_id,
+            models.Transaction.subscription_id == subscription_id,
+        )
+    )
+    if txn_max:
+        return txn_max
+    return column_date
+
 async def get_subscriptions_route(
     *,
     include_settled: bool,
@@ -27,12 +38,7 @@ async def get_subscriptions_route(
     rows = list(result.scalars().all())
     response = []
     for c in rows:
-        paid = await db.scalar(
-            select(func.max(models.Transaction.txn_date)).where(
-                models.Transaction.user_id == current_user.id,
-                models.Transaction.subscription_id == c.id,
-            )
-        )
+        paid = await _last_payment_date(db, current_user.id, c.id, c.last_payment_date)
         response.append(_serialize_subscription(c, paid))
     return response
 
@@ -91,7 +97,7 @@ async def create_subscription_route(
     db.add(c)
     await db.commit()
     await db.refresh(c)
-    return _serialize_subscription(c)
+    return _serialize_subscription(c, c.last_payment_date)
 
 
 async def update_subscription_route(
@@ -147,7 +153,7 @@ async def update_subscription_route(
         c.status = payload.status
     await db.commit()
     await db.refresh(c)
-    return _serialize_subscription(c)
+    return _serialize_subscription(c, c.last_payment_date)
 
 
 async def get_subscription_route(
@@ -162,7 +168,13 @@ async def get_subscription_route(
     c = result.scalars().first()
     if not c:
         raise HTTPException(status_code=404, detail="Subscription not found.")
-    return _serialize_subscription(c)
+    paid = await db.scalar(
+        select(func.max(models.Transaction.txn_date)).where(
+            models.Transaction.user_id == current_user.id,
+            models.Transaction.subscription_id == c.id,
+        )
+    )
+    return _serialize_subscription(c, paid)
 
 
 async def delete_subscription_route(
