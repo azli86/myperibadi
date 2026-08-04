@@ -53,6 +53,7 @@ async def extract_receipt(payload: bytes, mime_type: str, language: str, categor
     prompt = (
         "Read this receipt. Return JSON only: "
         '{"description":"merchant name","amount":12.34,"amount_label":"exact label beside chosen amount","amount_evidence":"exact receipt line containing chosen amount","date":"YYYY-MM-DD","category_hint":"one category from options","type":"expense"}. '
+        "type is 'expense' when the document is a purchase/sales receipt (money paid out), or 'income' when it is a payment received, salary slip, transfer-in confirmation, bank-in slip, or refund (money received). "
         "AMOUNT RULES: extract only the final amount charged/paid. Prefer labels GRAND TOTAL, TOTAL, JUMLAH, AMOUNT DUE, NET TOTAL, TOTAL SALES, or card/e-wallet charged amount. "
         "Never use subtotal, tax, service charge, discount, rounding, cash tendered, payment received, balance, change, item price, quantity, savings, previous balance, account balance, or receipt/reference numbers. "
         "If several totals exist, use the final payable total after tax, discount, service charge, and rounding. Verify that amount against visible line items. If uncertain, set amount to null; never guess. "
@@ -94,7 +95,7 @@ async def extract_receipt(payload: bytes, mime_type: str, language: str, categor
         # Preserve OCR extraction for user review; never silently substitute another number.
         amount = max(evidence_amounts) if has_total_label and evidence_amounts else amount
     txn_date = date.fromisoformat(str(data.get("date")))
-    if not description or len(description) > 190 or amount <= 0 or amount > Decimal("9999999999") or data.get("type") != "expense":
+    if not description or len(description) > 190 or amount <= 0 or amount > Decimal("9999999999") or data.get("type") not in {"expense", "income"}:
         raise ValueError("Incomplete receipt details")
     category_hint = " ".join(str(data.get("category_hint") or "").split())[:120]
-    return ReceiptDraft(description=description, amount=amount.quantize(Decimal("0.01")), txn_date=txn_date, category_hint=category_hint)
+    return ReceiptDraft(description=description, amount=amount.quantize(Decimal("0.01")), txn_date=txn_date, category_hint=category_hint, transaction_type=str(data.get("type")))

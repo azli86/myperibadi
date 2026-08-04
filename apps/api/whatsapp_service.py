@@ -3050,6 +3050,7 @@ async def _process_whatsapp_message_impl(
     allow_llm_fallback: bool = True,
     forced_category_id: Optional[int] = None,
     forced_wallet_id: Optional[int] = None,
+    forced_kind: Optional[str] = None,
     skip_category_prompt: bool = False,
 ) -> Tuple[str, Optional[models.Transaction]]:
     try:
@@ -3184,7 +3185,6 @@ async def _process_whatsapp_message_impl(
                 all_rows = (await db.execute(
                     select(models.Category).where(
                         models.Category.household_id == user.default_household_id,
-                        models.Category.kind == "expense",
                         models.Category.is_internal == False,
                     )
                 )).scalars().all()
@@ -3222,6 +3222,29 @@ async def _process_whatsapp_message_impl(
                         show_income_amount=show_income_amount,
                         allow_llm_fallback=allow_llm_fallback,
                         forced_category_id=int(matched.id),
+                        forced_wallet_id=forced_wallet_id,
+                        skip_category_prompt=True,
+                    )
+            # Generic kind alias: reply 'income' or 'expense' picks the default category of that kind.
+            if normalized_typed in {"income", "pendapatan", "gaji", "salary", "expense", "expenses", "belanja", "perbelanjaan"}:
+                alias_kind = "income" if normalized_typed in {"income", "pendapatan", "gaji", "salary"} else "expense"
+                alias_cat = await get_default_category(db, alias_kind, household_id=user.default_household_id)
+                if alias_cat:
+                    _clear_pending_category_selection(user_id, source_channel)
+                    return await _process_whatsapp_message_impl(
+                        db,
+                        user_id=user_id,
+                        phone=phone,
+                        text=str(pending_selection.get("original_text") or ""),
+                        latitude=pending_selection.get("latitude"),
+                        longitude=pending_selection.get("longitude"),
+                        location_name=pending_selection.get("location_name"),
+                        source_channel=source_channel,
+                        show_current_balance=show_current_balance,
+                        show_expense_amount=show_expense_amount,
+                        show_income_amount=show_income_amount,
+                        allow_llm_fallback=allow_llm_fallback,
+                        forced_category_id=int(alias_cat.id),
                         forced_wallet_id=forced_wallet_id,
                         skip_category_prompt=True,
                     )
@@ -3859,7 +3882,7 @@ async def _process_whatsapp_message_impl(
         else:
             # Fallback ONLY if no keyword mapping exists in the portal
             # We default to 'expense' for safety
-            txn_type = "expense"
+            txn_type = forced_kind or "expense"
             category_suggestions = await get_category_suggestions_by_keywords(
                 db,
                 text,
@@ -3887,9 +3910,16 @@ async def _process_whatsapp_message_impl(
                         "options": prompt_options,
                     },
                 )
+                option_lines = [f"{idx + 1}. {opt.get('name') or ''}" for idx, opt in enumerate(prompt_options)]
                 lines = [
-                    ("Transaksi belum disimpan. Sila taip keyword kategori untuk simpan (contoh: makan, grab), atau taip 'batal' untuk batal." if user_lang == "BM" else "Transaction not saved yet. Type a category keyword to save (e.g. food, grab), or type 'cancel' to cancel.")
+                    (
+                        f"Transaksi belum disimpan. Taip nombor atau keyword kategori, tambah dompet jika perlu (contoh: `income tng` / `expense tng`), atau taip 'batal' untuk batal."
+                        if user_lang == "BM"
+                        else f"Transaction not saved yet. Reply a category number or keyword, add wallet if needed (e.g. `income tng` / `expense tng`), or type 'cancel' to cancel."
+                    )
                 ]
+                if option_lines:
+                    lines.append("\n".join(option_lines))
                 # Also let the user pick a wallet in the same reply, e.g. "makan tng".
                 wallet_prompt_lines = await _format_category_wallet_prompt(db, user_id, user_lang)
                 if wallet_prompt_lines:

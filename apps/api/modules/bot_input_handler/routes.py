@@ -161,6 +161,7 @@ async def process_bot_input_route(
         user_res = await db.execute(select(models.User).where(models.User.id == user_id))
         user = user_res.scalar_one_or_none()
         is_en = getattr(user, "language", "BM") == "EN" if user else False
+        ocr_forced_kind = None
         if is_reply_message and not normalized_target_txn_ref:
             return {
                 "reply": (
@@ -175,7 +176,7 @@ async def process_bot_input_route(
                 if not ocr_payload and media_object_key:
                     ocr_payload, stored_mime = await asyncio.to_thread(storage_service.download_receipt_object, media_object_key)
                     media_mime_type = media_mime_type or stored_mime
-                category_rows = (await db.execute(select(models.Category).where(models.Category.household_id == user.default_household_id, models.Category.kind == "expense", models.Category.is_internal == False).order_by(models.Category.name))).scalars().all()
+                category_rows = (await db.execute(select(models.Category).where(models.Category.household_id == user.default_household_id, models.Category.is_internal == False).order_by(models.Category.name))).scalars().all()
                 category_names = [category.name for category in category_rows]
                 draft = await receipt_ocr_service.extract_receipt(
                     ocr_payload or b"",
@@ -187,6 +188,9 @@ async def process_bot_input_route(
                 safe_description = re.sub(r"[^\w .,&'()-]", "", draft.description, flags=re.UNICODE).replace("_", " ").strip()
                 # Merchant reference tokens containing digits must not be parsed as amounts.
                 safe_description = re.sub(r"\b\S*\d\S*\b", "", safe_description).strip()
+                # Income/expense type flows through the same category+wallet selection
+                # prompt below; the user confirms the category (income ones included).
+                ocr_forced_kind = draft.transaction_type
                 # Hint is never mixed into transaction text; AI categories are unreliable.
                 text = f"{safe_description} {draft.amount} @{draft.txn_date.strftime('%d%m%Y')}".replace("  ", " ")
                 has_amount = True
@@ -229,6 +233,7 @@ async def process_bot_input_route(
             show_expense_amount=show_expense_amount,
             show_income_amount=show_income_amount,
             allow_llm_fallback=True,
+            forced_kind=ocr_forced_kind,
         )
         # Keep the transaction confirmation together with the later receipt-upload reply.
         if txt_reply:
