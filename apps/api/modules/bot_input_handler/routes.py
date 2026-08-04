@@ -170,7 +170,7 @@ async def process_bot_input_route(
                     else "Upload lampiran gagal. Mesej yang direply tiada rujukan transaksi yang sah. Sila reply mesej transaksi yang ada TXN."
                 )
             }
-        if not normalized_target_txn_ref and not has_amount:
+        if not normalized_target_txn_ref:
             try:
                 ocr_payload = media_payload
                 if not ocr_payload and media_object_key:
@@ -214,7 +214,10 @@ async def process_bot_input_route(
                 print(f"[receipt-ocr] built text={text!r}")
             except Exception as exc:
                 print(f"[receipt-ocr] failed user={user_id} channel={source_channel}: {type(exc).__name__}")
-                return {"reply": "Receipt details could not be read. Send the image with text like `lunch 12.50`." if is_en else "Butiran resit tidak dapat dibaca. Hantar gambar bersama teks seperti `makan 12.50`."}
+                if not text or not has_amount:
+                    return {"reply": "Receipt details could not be read. Send the image with text like `lunch 12.50`." if is_en else "Butiran resit tidak dapat dibaca. Hantar gambar bersama teks seperti `makan 12.50`."}
+                # OCR failed but a caption exists: fall back to the text and keep the media.
+                ocr_forced_kind = None
         try:
             if media_payload:
                 storage_service.validate_receipt_file(media_file_name, media_mime_type, media_payload)
