@@ -148,7 +148,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[999999] flex flex-col overflow-y-auto bg-[var(--page-bg)] text-[var(--text)] font-sans">
+    <div className={`fixed inset-0 z-[999999] flex flex-col overflow-y-auto font-sans ${step === "welcome" ? "bg-black text-white" : "bg-[var(--page-bg)] text-[var(--text)]"}`}>
       {/* Account setup loading graphic */}
       <AnimatePresence>
         {saving && (
@@ -187,52 +187,39 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
               animate="show"
               exit="exit"
               variants={STEP_WRAPPER_VARIANTS}
-              drag="x"
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.6}
-              dragMomentum={false}
-              onDragStart={() => setDragging(true)}
-              onDragEnd={onDragEnd}
-              className={`space-y-6 ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
+              className={`relative space-y-8 ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
             >
-              {/* Logo + Welcome hero */}
+              {/* Gravity wall: floating geometric particles, pure black & white */}
+              <GravityWall />
+
+              {/* Logo + Welcome (solid card) */}
               <motion.div
                 variants={SLIDE_RIGHT_VARIANTS}
-                className="relative overflow-hidden rounded-[28px] border border-[var(--border)] bg-gradient-to-br from-[var(--btn-primary-bg)]/25 via-[var(--surface-tint)] to-[var(--page-bg)] p-8 text-center"
+                className="relative z-10 mx-auto w-full rounded-[32px] border border-white/15 bg-white/[0.06] p-8 text-center backdrop-blur-xl"
               >
-                <motion.div
-                  className="pointer-events-none absolute -right-10 -top-12 h-44 w-44 rounded-full bg-[var(--btn-primary-bg)]/20 blur-3xl"
-                  animate={{ y: [0, -14, 0], scale: [1, 1.1, 1] }}
-                  transition={{ repeat: Infinity, duration: 7, ease: "easeInOut" }}
-                />
-                <motion.div
-                  className="pointer-events-none absolute -bottom-16 -left-10 h-40 w-40 rounded-full bg-[var(--btn-primary-bg)]/12 blur-3xl"
-                  animate={{ y: [0, 12, 0], scale: [1, 1.08, 1] }}
-                  transition={{ repeat: Infinity, duration: 9, ease: "easeInOut", delay: 1 }}
-                />
                 <div className="relative flex flex-col items-center">
                   <motion.div
                     initial={{ scale: 0, rotate: -18 }}
                     animate={{ scale: 1, rotate: 0 }}
                     transition={{ type: "spring", stiffness: 260, damping: 15, mass: 1 }}
-                    className="relative overflow-hidden rounded-[28px] border border-[var(--border)] bg-[var(--card)] p-2 shadow-xl shadow-[var(--btn-primary-bg)]/20"
+                    className="relative overflow-hidden rounded-full border border-white/20 bg-white p-1.5 shadow-[0_20px_60px_-15px_rgba(255,255,255,0.45)]"
                   >
                     <img
                       src="/icon-512-v3.png"
                       alt={tr("Logo", "Logo")}
-                      className="h-24 w-24 rounded-[20px] object-cover"
+                      className="h-28 w-28 rounded-full object-cover"
                     />
                   </motion.div>
                   <motion.div
                     initial={{ opacity: 0, y: 14 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25, type: "spring", stiffness: 260, damping: 20 }}
-                    className="mt-5"
+                    transition={{ delay: 0.3, type: "spring", stiffness: 260, damping: 20 }}
+                    className="mt-6"
                   >
-                    <h1 className="text-3xl font-black leading-tight tracking-tight text-[var(--text)]">
+                    <h1 className="text-4xl font-black leading-tight tracking-tight text-white">
                       {tr("Selamat datang!", "Welcome!")}
                     </h1>
-                    <p className="mt-2 text-sm font-medium leading-relaxed text-[var(--muted)]">
+                    <p className="mx-auto mt-3 max-w-xs text-sm font-medium leading-relaxed text-white/70">
                       {tr(
                         "Jejak wang anda dengan mudah. Sediakan akaun dalam masa kurang seminit.",
                         "Track your money effortlessly. Set up your account in under a minute.",
@@ -242,11 +229,17 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
                 </div>
               </motion.div>
 
-              <motion.div variants={SLIDE_RIGHT_VARIANTS}>
-                <PrimaryButton onClick={() => go("category")}>
+              <motion.div variants={SLIDE_RIGHT_VARIANTS} className="relative z-10">
+                <motion.button
+                  type="button"
+                  onClick={() => go("category")}
+                  whileTap={{ scale: 0.95, y: 4 }}
+                  transition={{ type: "spring", stiffness: 380, damping: 19, mass: 1.1 }}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-4 text-lg font-bold text-black shadow-[0_16px_40px_-10px_rgba(255,255,255,0.4)]"
+                >
                   {tr("Mula", "Get Started")}
                   <ArrowRight size={20} />
-                </PrimaryButton>
+                </motion.button>
               </motion.div>
             </motion.div>
           )}
@@ -631,6 +624,69 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between gap-4 py-3.5">
       <span className="font-semibold text-[var(--muted)]">{label}</span>
       <span className="text-right font-bold text-[var(--text)]">{value}</span>
+    </div>
+  )
+}
+
+// Gravity wall: a full-screen field of geometric shapes (black & white) drifting
+// like particles under gentle gravity. Pure decor — pointer-events off.
+function GravityWall() {
+  const particles = React.useMemo(() => {
+    // Each: x% (left), size px, delay s, duration s, type (circle/square/ring/cross/x), drift px
+    const shapes: { l: string; s: number; d: number; dur: number; t: string; dr: number; op: number }[] = []
+    const rnd = (a: number, b: number) => a + Math.random() * (b - a)
+    const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
+    const types = ["circle", "square", "ring", "cross", "dot"]
+    for (let i = 0; i < 26; i++) {
+      shapes.push({
+        l: rnd(0, 100).toFixed(1),
+        s: rnd(10, 44),
+        d: rnd(0, 4),
+        dur: rnd(7, 16),
+        t: pick(types),
+        dr: rnd(12, 40),
+        op: rnd(0.15, 0.6),
+      })
+    }
+    return shapes
+  }, [])
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden>
+      {particles.map((p, i) => {
+        const base: React.CSSProperties = {
+          left: `${p.l}%`,
+          width: p.s,
+          height: p.s,
+          opacity: p.op,
+        }
+        let el: React.ReactNode
+        switch (p.t) {
+          case "circle":
+            el = <motion.div animate={{ y: [-p.dr, p.dr, -p.dr], scale: [1, 1.12, 1] }} transition={{ repeat: Infinity, duration: p.dur, ease: "easeInOut", delay: p.d }} style={base} className="absolute rounded-full border-2 border-white" />
+            break
+          case "dot":
+            el = <motion.div animate={{ y: [-p.dr, p.dr, -p.dr] }} transition={{ repeat: Infinity, duration: p.dur, ease: "easeInOut", delay: p.d }} style={{ ...base, width: p.s / 2, height: p.s / 2 }} className="absolute rounded-full bg-white" />
+            break
+          case "square":
+            el = <motion.div animate={{ y: [-p.dr, p.dr, -p.dr], rotate: [-12, 12, -12] }} transition={{ repeat: Infinity, duration: p.dur, ease: "easeInOut", delay: p.d }} style={base} className="absolute rounded-lg border-2 border-white/80" />
+            break
+          case "ring":
+            el = <motion.div animate={{ y: [-p.dr, p.dr, -p.dr], scale: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: p.dur, ease: "easeInOut", delay: p.d }} style={base} className="absolute rounded-full border-[3px] border-white/70" />
+            break
+          case "cross":
+            el = (
+              <motion.div animate={{ y: [-p.dr, p.dr, -p.dr], rotate: [0, 90, 0] }} transition={{ repeat: Infinity, duration: p.dur, ease: "easeInOut", delay: p.d }} style={{ ...base, width: p.s * 1.4, height: p.s * 1.4 }} className="absolute">
+                <div className="absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-white/70" />
+                <div className="absolute left-0 top-1/2 h-[2px] w-full -translate-y-1/2 bg-white/70" />
+              </motion.div>
+            )
+            break
+        }
+        return <div key={i} className="absolute" style={{ left: `${p.l}%` }}>{el}</div>
+      })}
+      {/* faint vignette to seat the logo on top */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.55)_78%)]" />
     </div>
   )
 }
