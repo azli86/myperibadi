@@ -76,6 +76,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   const [tf, setTf] = useState<"12h" | "24h">("24h")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [splitDir, setSplitDir] = useState<"next" | "prev" | null>(null)
   const [setupPhase, setSetupPhase] = useState<0 | 1 | 2 | 3 | 4>(0) // 0=off 1=categories 2=timezone 3=language 4=done
   const tr = (bm: string, en: string) => (appLang === "BM" ? bm : en)
   const stepIndex = STEP_ORDER.indexOf(step)
@@ -127,6 +128,8 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
 
   const go = (next: Step) => {
     setError("")
+    const goingForward = STEP_ORDER.indexOf(next) > STEP_ORDER.indexOf(step)
+    setSplitDir(goingForward ? "next" : "prev")
     setStep(next)
   }
 
@@ -148,7 +151,21 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <div className={`fixed inset-0 z-[999999] flex flex-col overflow-y-auto font-sans ${step === "welcome" ? "bg-black text-white" : "bg-[var(--page-bg)] text-[var(--text)]"}`}>
+    <div
+      className="fixed inset-0 z-[999999] flex flex-col overflow-y-auto bg-black font-sans text-white"
+      style={{
+        // Override theme vars to a black & white glass palette for the whole onboarding.
+        ["--page-bg" as string]: "#000000",
+        ["--text" as string]: "#ffffff",
+        ["--muted" as string]: "rgba(255,255,255,0.55)",
+        ["--card" as string]: "rgba(255,255,255,0.06)",
+        ["--surface-tint" as string]: "rgba(255,255,255,0.04)",
+        ["--border" as string]: "rgba(255,255,255,0.12)",
+        ["--border-strong" as string]: "rgba(255,255,255,0.25)",
+        ["--btn-primary-bg" as string]: "#ffffff",
+        ["--btn-primary-text" as string]: "#000000",
+      } as React.CSSProperties}
+    >
       {/* Account setup loading graphic */}
       <AnimatePresence>
         {saving && (
@@ -156,17 +173,25 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
         )}
       </AnimatePresence>
 
+      {/* Persistent abstract wall behind every step */}
+      <AbstractWall />
+
+      {/* Split curtain: two panels slide from centre to reveal the next page */}
+      <AnimatePresence onExitComplete={() => setSplitDir(null)}>
+        {splitDir && <SplitCurtain key="curtain" dir={splitDir} />}
+      </AnimatePresence>
+
       {/* Top progress bar */}
-      <div className="fixed left-0 right-0 top-0 z-10 h-1 bg-[var(--border)]">
+      <div className="fixed left-0 right-0 top-0 z-20 h-1 bg-white/10">
         <motion.div
-          className="h-full rounded-r-full bg-[var(--btn-primary-bg)]"
+          className="h-full rounded-r-full bg-white"
           initial={false}
           animate={{ width: `${((stepIndex + 1) / STEP_ORDER.length) * 100}%` }}
           transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
         />
       </div>
 
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-10">
+      <div className="relative z-10 mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-10">
         {/* Tali tarik: elastic band that stretches when step changes */}
         <AnimatePresence mode="popLayout">
           <motion.div
@@ -175,7 +200,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
             animate={{ scaleY: 1, opacity: 1 }}
             exit={{ scaleY: 0.4, opacity: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 15, mass: 0.7 }}
-            className="mx-auto mb-8 h-1.5 w-24 origin-center rounded-full bg-gradient-to-r from-[var(--btn-primary-bg)] via-[var(--btn-primary-bg)]/60 to-transparent"
+            className="mx-auto mb-8 h-1.5 w-24 origin-center rounded-full bg-gradient-to-r from-white via-white/60 to-transparent"
             style={{ transformOrigin: "center" }}
           />
         </AnimatePresence>
@@ -189,9 +214,6 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
               variants={STEP_WRAPPER_VARIANTS}
               className={`relative space-y-8 ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
             >
-              {/* Gravity wall: floating geometric particles, pure black & white */}
-              <GravityWall />
-
               {/* Logo + Welcome (solid card) */}
               <motion.div
                 variants={SLIDE_RIGHT_VARIANTS}
@@ -628,65 +650,99 @@ function Row({ label, value }: { label: string; value: string }) {
   )
 }
 
-// Gravity wall: a full-screen field of geometric shapes (black & white) drifting
-// like particles under gentle gravity. Pure decor — pointer-events off.
-function GravityWall() {
-  const particles = React.useMemo(() => {
-    // Each: x% (left), size px, delay s, duration s, type (circle/square/ring/cross/x), drift px
-    const shapes: { l: string; s: number; d: number; dur: number; t: string; dr: number; op: number }[] = []
-    const rnd = (a: number, b: number) => a + Math.random() * (b - a)
-    const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
-    const types = ["circle", "square", "ring", "cross", "dot"]
-    for (let i = 0; i < 26; i++) {
-      shapes.push({
-        l: rnd(0, 100).toFixed(1),
-        s: rnd(10, 44),
-        d: rnd(0, 4),
-        dur: rnd(7, 16),
-        t: pick(types),
-        dr: rnd(12, 40),
-        op: rnd(0.15, 0.6),
-      })
-    }
-    return shapes
-  }, [])
-
+// Abstract wall: a calm, premium black & white composition — big geometric rings,
+// a faint grid, a flowing curve and a few tasteful accents. Pure decor.
+function AbstractWall() {
   return (
     <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden>
-      {particles.map((p, i) => {
-        const base: React.CSSProperties = {
-          left: `${p.l}%`,
-          width: p.s,
-          height: p.s,
-          opacity: p.op,
-        }
-        let el: React.ReactNode
-        switch (p.t) {
-          case "circle":
-            el = <motion.div animate={{ y: [-p.dr, p.dr, -p.dr], scale: [1, 1.12, 1] }} transition={{ repeat: Infinity, duration: p.dur, ease: "easeInOut", delay: p.d }} style={base} className="absolute rounded-full border-2 border-white" />
-            break
-          case "dot":
-            el = <motion.div animate={{ y: [-p.dr, p.dr, -p.dr] }} transition={{ repeat: Infinity, duration: p.dur, ease: "easeInOut", delay: p.d }} style={{ ...base, width: p.s / 2, height: p.s / 2 }} className="absolute rounded-full bg-white" />
-            break
-          case "square":
-            el = <motion.div animate={{ y: [-p.dr, p.dr, -p.dr], rotate: [-12, 12, -12] }} transition={{ repeat: Infinity, duration: p.dur, ease: "easeInOut", delay: p.d }} style={base} className="absolute rounded-lg border-2 border-white/80" />
-            break
-          case "ring":
-            el = <motion.div animate={{ y: [-p.dr, p.dr, -p.dr], scale: [1, 1.15, 1] }} transition={{ repeat: Infinity, duration: p.dur, ease: "easeInOut", delay: p.d }} style={base} className="absolute rounded-full border-[3px] border-white/70" />
-            break
-          case "cross":
-            el = (
-              <motion.div animate={{ y: [-p.dr, p.dr, -p.dr], rotate: [0, 90, 0] }} transition={{ repeat: Infinity, duration: p.dur, ease: "easeInOut", delay: p.d }} style={{ ...base, width: p.s * 1.4, height: p.s * 1.4 }} className="absolute">
-                <div className="absolute left-1/2 top-0 h-full w-[2px] -translate-x-1/2 bg-white/70" />
-                <div className="absolute left-0 top-1/2 h-[2px] w-full -translate-y-1/2 bg-white/70" />
-              </motion.div>
-            )
-            break
-        }
-        return <div key={i} className="absolute" style={{ left: `${p.l}%` }}>{el}</div>
-      })}
-      {/* faint vignette to seat the logo on top */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.55)_78%)]" />
+      {/* soft centre glow */}
+      <motion.div
+        className="absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/[0.07] blur-3xl"
+        animate={{ scale: [1, 1.08, 1] }}
+        transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
+      />
+
+      {/* large rings top right */}
+      <motion.div
+        className="absolute -right-24 -top-24 h-72 w-72 rounded-full border border-white/10"
+        animate={{ rotate: [0, 12, 0] }}
+        transition={{ repeat: Infinity, duration: 22, ease: "easeInOut" }}
+      />
+      <div className="absolute -right-14 -top-14 h-56 w-56 rounded-full border border-white/5" />
+
+      {/* large rings bottom left */}
+      <motion.div
+        className="absolute -bottom-20 -left-20 h-80 w-80 rounded-full border border-white/10"
+        animate={{ rotate: [0, -10, 0] }}
+        transition={{ repeat: Infinity, duration: 26, ease: "easeInOut" }}
+      />
+      <div className="absolute -bottom-12 -left-12 h-60 w-60 rounded-full border border-white/5" />
+
+      {/* faint grid */}
+      <div
+        className="absolute inset-0 opacity-[0.05]"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
+          backgroundSize: "48px 48px",
+        }}
+      />
+
+      {/* flowing curve bottom */}
+      <svg className="absolute inset-x-0 bottom-0 h-44 w-full text-white/[0.06]" viewBox="0 0 400 140" fill="none" preserveAspectRatio="none">
+        <path d="M0 90 C 100 20, 220 140, 400 60 V140 H0 Z" fill="currentColor" />
+      </svg>
+
+      {/* tasteful accents */}
+      <motion.div
+        className="absolute left-[12%] top-[18%] h-10 w-10 rotate-12 rounded-2xl border border-white/20"
+        animate={{ y: [0, -8, 0], rotate: [12, 18, 12] }}
+        transition={{ repeat: Infinity, duration: 9, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute right-[14%] top-[30%] h-6 w-6 rounded-full border-2 border-white/15"
+        animate={{ y: [0, 10, 0] }}
+        transition={{ repeat: Infinity, duration: 7, ease: "easeInOut", delay: 0.5 }}
+      />
+      <div className="absolute bottom-[24%] left-[18%] h-4 w-4 rounded-full bg-white/20" />
+      <motion.div
+        className="absolute bottom-[30%] right-[20%] h-14 w-14 rounded-full border border-white/10"
+        animate={{ scale: [1, 1.15, 1] }}
+        transition={{ repeat: Infinity, duration: 11, ease: "easeInOut", delay: 1 }}
+      />
+
+      {/* vignette to seat the logo */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.6)_80%)]" />
+    </div>
+  )
+}
+
+// Split curtain: two black panels close from the centre (covering the old page),
+// then open outward like a door to reveal the new page underneath.
+function SplitCurtain({ dir }: { dir: "next" | "prev" }) {
+  const cover = { type: "tween" as const, duration: 0.3, ease: [0.4, 0, 0.2, 1] as const }
+  const open = { type: "spring" as const, stiffness: 240, damping: 26, mass: 0.8, delay: 0.05 }
+  const leftExit = dir === "next" ? { x: "-105%" } : { x: "105%" }
+  const rightExit = dir === "next" ? { x: "105%" } : { x: "-105%" }
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[60] flex">
+      <motion.div
+        className="h-full w-1/2 bg-black"
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: 1 }}
+        exit={leftExit}
+        transition={{ scaleX: cover, x: open }}
+        style={{ transformOrigin: "right", boxShadow: "8px 0 30px rgba(0,0,0,0.6)" }}
+      />
+      <motion.div
+        className="h-full w-1/2 bg-black"
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: 1 }}
+        exit={rightExit}
+        transition={{ scaleX: cover, x: open }}
+        style={{ transformOrigin: "left", boxShadow: "-8px 0 30px rgba(0,0,0,0.6)" }}
+      />
     </div>
   )
 }
