@@ -2610,24 +2610,34 @@ async def get_default_category(
 
 
 async def ensure_personal_wallet(db: AsyncSession, user_id: str) -> models.Wallet:
+    user = await db.get(models.User, user_id)
+    stmt = select(models.Wallet).where(models.Wallet.owner_user_id == user_id)
+    if user and user.default_household_id:
+        stmt = select(models.Wallet).where(
+            or_(models.Wallet.owner_user_id == user_id, models.Wallet.household_id == user.default_household_id)
+        )
     wallet_result = await db.execute(
-        select(models.Wallet)
-        .where(models.Wallet.owner_user_id == user_id)
-        .order_by(models.Wallet.is_bot_default.desc(), models.Wallet.created_at.asc(), models.Wallet.id.asc())
-        .limit(1)
+        stmt.order_by(models.Wallet.is_bot_default.desc(), models.Wallet.created_at.asc(), models.Wallet.id.asc()).limit(1)
     )
     wallet = wallet_result.scalar_one_or_none()
     if wallet:
         return wallet
 
-    wallet = models.Wallet(
-        owner_user_id=user_id,
-        name="Cash",
-        type="personal",
-        currency="MYR",
-        status="active",
-    )
-    db.add(wallet)
+    try:
+        wallet = models.Wallet(
+            owner_user_id=user_id,
+            name="Cash",
+            type="personal",
+            currency="MYR",
+            status="active",
+        )
+        db.add(wallet)
+        await db.flush()
+    except Exception:
+        # Race: another request created it first — return the existing wallet.
+        await db.rollback()
+        existing = (await db.execute(stmt.order_by(models.Wallet.is_bot_default.desc(), models.Wallet.created_at.asc(), models.Wallet.id.asc()).limit(1))).scalar_one_or_none()
+        return existing
     await db.commit()
     await db.refresh(wallet)
     return wallet
@@ -3237,6 +3247,7 @@ async def _process_whatsapp_message_impl(
             if normalized_typed.startswith("subx ") or normalized_typed.startswith("loanx "):
                 ocr_amount = extract_amount(str(pending_selection.get("original_text") or ""))
                 ocr_date, _cleaned, _inv = extract_explicit_txn_date(str(pending_selection.get("original_text") or ""))
+                print(f"[WA][debug] pending loanx/subx branch: typed={normalized_typed!r} ocr_amount={ocr_amount!r} ocr_date={ocr_date!r}")
                 if ocr_amount and ocr_amount > 0:
                     _clear_pending_category_selection(user_id, source_channel)
                     wallet_name = ""
@@ -3998,8 +4009,24 @@ async def _process_whatsapp_message_impl(
                     selected_wallet = w
                     break
             
-            # Priority 2: Fallback to ensure_personal_wallet (usually the "Cash" wallet)
+            # Priority 2: Fallback to the most recently used wallet (owner or household),
+            # so a stale "Cash" created first doesn't keep swallowing new transactions.
+            if not selected_wallet and user_wallets:
+                recent_res = await db.execute(
+                    select(models.Transaction.wallet_id, func.max(models.Transaction.txn_date))
+                    .where(models.Transaction.user_id == user_id)
+                    .where(models.Transaction.wallet_id.in_([int(w.id) for w in user_wallets]))
+                    .group_by(models.Transaction.wallet_id)
+                    .order_by(func.max(models.Transaction.txn_date).desc())
+                )
+                recent_rows = recent_res.all()
+                if recent_rows:
+                    most_recent_wallet_id = int(recent_rows[0][0])
+                    selected_wallet = next((w for w in user_wallets if int(w.id) == most_recent_wallet_id), None)
+                if not selected_wallet:
+                    selected_wallet = user_wallets[0]
             if not selected_wallet:
+                # Only create a fresh "Cash" wallet when the user has NO wallet at all.
                 selected_wallet = await ensure_personal_wallet(db, user_id)
             
         wallet = selected_wallet

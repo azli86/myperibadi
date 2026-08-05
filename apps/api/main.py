@@ -873,6 +873,12 @@ async def ensure_database_schema():
                 text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS last_payment_date DATE NULL")
             )
             await conn.execute(
+                text("CREATE UNIQUE INDEX IF NOT EXISTS uq_wallets_owner_name ON wallets (owner_user_id, LOWER(name)) WHERE owner_user_id IS NOT NULL")
+            )
+            await conn.execute(
+                text("CREATE UNIQUE INDEX IF NOT EXISTS uq_category_keywords_cat_keyword ON category_keywords (category_id, LOWER(keyword))")
+            )
+            await conn.execute(
                 text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS txn_time TIME NULL")
             )
             await conn.execute(
@@ -8959,15 +8965,28 @@ async def read_users_me(current_user: models.User = Depends(get_current_user)):
 
 # --- Helper: Ensure Wallet exists ---
 async def ensure_wallet(db: AsyncSession, user_id: str):
-    res = await db.execute(select(models.Wallet).where(models.Wallet.owner_user_id == user_id))
+    user = await db.get(models.User, user_id)
+    stmt = select(models.Wallet).where(models.Wallet.owner_user_id == user_id)
+    if user and user.default_household_id:
+        stmt = select(models.Wallet).where(
+            or_(models.Wallet.owner_user_id == user_id, models.Wallet.household_id == user.default_household_id)
+        )
+    res = await db.execute(stmt)
     wallet = res.scalars().first()
     if not wallet:
-        wallet = models.Wallet(
-            owner_user_id=user_id,
-            name="Cash",
-            type="personal"
-        )
-        db.add(wallet)
+        try:
+            wallet = models.Wallet(
+                owner_user_id=user_id,
+                name="Cash",
+                type="personal"
+            )
+            db.add(wallet)
+            await db.flush()
+        except Exception:
+            # Race: another request created it first — return the existing wallet.
+            await db.rollback()
+            existing = (await db.execute(stmt)).scalars().first()
+            return existing
         await db.commit()
         await db.refresh(wallet)
     return wallet

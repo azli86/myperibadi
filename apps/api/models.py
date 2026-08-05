@@ -1,4 +1,4 @@
-from sqlalchemy import String, Boolean, DateTime, BigInteger, DECIMAL, ForeignKey, Integer, Text, Date, Time, UniqueConstraint, Index
+from sqlalchemy import String, Boolean, DateTime, BigInteger, DECIMAL, ForeignKey, Integer, Text, Date, Time, UniqueConstraint, Index, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import date, datetime, time
 from typing import List, Optional
@@ -153,6 +153,15 @@ class HouseholdMember(Base):
 
 class Wallet(Base):
     __tablename__ = "wallets"
+    __table_args__ = (
+        Index(
+            "uq_wallets_owner_name",
+            "owner_user_id",
+            func.lower("name"),
+            unique=True,
+            postgresql_where=text("owner_user_id IS NOT NULL"),
+        ),
+    )
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     household_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("households.id"), nullable=True)
     owner_user_id: Mapped[Optional[str]] = mapped_column(String(16), ForeignKey("users.id"), nullable=True)
@@ -199,6 +208,9 @@ class CategoryBudget(Base):
 
 class CategoryKeyword(Base):
     __tablename__ = "category_keywords"
+    __table_args__ = (
+        Index("uq_category_keywords_cat_keyword", "category_id", func.lower("keyword"), unique=True),
+    )
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     category_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("categories.id"))
     keyword: Mapped[str] = mapped_column(String(190), nullable=False)

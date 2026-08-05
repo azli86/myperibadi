@@ -162,6 +162,15 @@ async def add_category_keyword_route(
             detail="Kategori Monthly Salary tidak boleh tambah kata kunci lain.",
         )
 
+    existing_kw = await db.execute(
+        select(models.CategoryKeyword).where(
+            models.CategoryKeyword.category_id == cat_id,
+            func.lower(models.CategoryKeyword.keyword) == keyword.lower(),
+        )
+    )
+    if existing_kw.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Kata kunci ini sudah wujud untuk kategori ini.")
+
     db_kw = models.CategoryKeyword(
         category_id=cat_id,
         keyword=keyword,
