@@ -290,6 +290,20 @@ async def process_bot_input_route(
         and replies
         and whatsapp_service._looks_like_category_prompt("".join(replies) or "")
     )
+    # When media awaits a category choice, stash the receipt object metadata so the
+    # later category/wallet reply can attach it to the just-saved transaction.
+    if category_prompt_pending:
+        whatsapp_service._set_pending_receipt_media(
+            user_id,
+            source_channel,
+            {
+                "object_key": media_object_key,
+                "mime_type": media_mime_type,
+                "file_name": media_file_name,
+                "size_bytes": media_size_bytes,
+                "payload": media_payload,
+            },
+        )
     print(
         f"[WA][debug] has_media={has_media} target_ref={target_txn_ref!r} norm={normalized_target_txn_ref!r} replies={len(replies)} cat_prompt_pending={category_prompt_pending} reply_preview={(''.join(replies) or '')[:120]!r}",
         flush=True,

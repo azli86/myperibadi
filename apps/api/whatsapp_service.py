@@ -107,10 +107,32 @@ DEBT_EVENT_SIGNS = {
 
 PENDING_CATEGORY_SELECTIONS: dict[str, dict[str, Any]] = {}
 PENDING_CATEGORY_SELECTION_TTL_SECONDS = 600
+# Receipt media awaiting a category choice, keyed by user:channel.
+# Stored separately so it survives pending-selection clearing.
+PENDING_RECEIPT_MEDIA: dict[str, dict[str, Any]] = {}
 
 
 def _pending_category_key(user_id: str, source_channel: str) -> str:
     return f"{user_id}:{source_channel}"
+
+
+def _set_pending_receipt_media(user_id: str, source_channel: str, media: dict[str, Any]) -> None:
+    media = dict(media)
+    media["created_at_ts"] = datetime.utcnow().timestamp()
+    PENDING_RECEIPT_MEDIA[_pending_category_key(user_id, source_channel)] = media
+
+
+def _take_pending_receipt_media(user_id: str, source_channel: str) -> Optional[dict[str, Any]]:
+    key = _pending_category_key(user_id, source_channel)
+    media = PENDING_RECEIPT_MEDIA.get(key)
+    if not media:
+        return None
+    created_at_ts = float(media.get("created_at_ts") or 0)
+    if created_at_ts and datetime.utcnow().timestamp() - created_at_ts > PENDING_CATEGORY_SELECTION_TTL_SECONDS:
+        PENDING_RECEIPT_MEDIA.pop(key, None)
+        return None
+    PENDING_RECEIPT_MEDIA.pop(key, None)
+    return media
 
 
 def _set_pending_category_selection(user_id: str, source_channel: str, payload: dict[str, Any]) -> None:
@@ -928,6 +950,28 @@ async def _process_loanx_command(
         loan.outstanding_amount = remaining
         loan.status = "settled" if remaining <= 0.004 else "active"
         await db.commit()
+        pending_media = _take_pending_receipt_media(user_id, source_channel)
+        if pending_media and txn:
+            try:
+                await process_whatsapp_media_message(
+                    db=db,
+                    user_id=user_id,
+                    phone="",
+                    payload=pending_media.get("payload"),
+                    mime_type=pending_media.get("mime_type"),
+                    file_name=pending_media.get("file_name"),
+                    caption="",
+                    target_txn_ref=None,
+                    target_txn_override=txn,
+                    source_channel=source_channel,
+                    show_current_balance=True,
+                    show_expense_amount=True,
+                    show_income_amount=True,
+                    existing_object_key=pending_media.get("object_key"),
+                    media_size_bytes=pending_media.get("size_bytes"),
+                )
+            except Exception as exc:
+                _safe_print(f"[WA] Failed to attach receipt media to loan payment: {exc}")
         remaining_text = private_value if hide_balance else f"RM {remaining:,.2f}"
         paid_text = private_value if hide_balance else f"RM {pay_amount:,.2f}"
         ref_id = txn.reference_id
@@ -1028,6 +1072,28 @@ async def _process_subx_command(
         await db.flush()
         sub.last_payment_date = payment_date
         await db.commit()
+        pending_media = _take_pending_receipt_media(user_id, source_channel)
+        if pending_media and txn:
+            try:
+                await process_whatsapp_media_message(
+                    db=db,
+                    user_id=user_id,
+                    phone="",
+                    payload=pending_media.get("payload"),
+                    mime_type=pending_media.get("mime_type"),
+                    file_name=pending_media.get("file_name"),
+                    caption="",
+                    target_txn_ref=None,
+                    target_txn_override=txn,
+                    source_channel=source_channel,
+                    show_current_balance=True,
+                    show_expense_amount=True,
+                    show_income_amount=True,
+                    existing_object_key=pending_media.get("object_key"),
+                    media_size_bytes=pending_media.get("size_bytes"),
+                )
+            except Exception as exc:
+                _safe_print(f"[WA] Failed to attach receipt media to subx payment: {exc}")
         ref_id = txn.reference_id
         message = (
             f"*{ref_id}*\n✅ {sub.name} paid: *RM {pay_amount:,.2f}* via *{wallet_display_name(selected_wallet)}*.\nTransaction recorded."
@@ -3160,6 +3226,7 @@ async def _process_whatsapp_message_impl(
             normalized_selection = normalize_message_text(text or "").strip().lower()
             if normalized_selection in {"batal", "cancel", "x"}:
                 _clear_pending_category_selection(user_id, source_channel)
+                _take_pending_receipt_media(user_id, source_channel)
                 return ("Pilihan kategori dibatalkan." if user_lang == "BM" else "Category selection cancelled."), None
             # Allow a wallet to be chosen together with the category, e.g. "makan tng"
             # or "loanx akpk tng". Extract the trailing wallet token so category matching
@@ -4147,6 +4214,33 @@ async def _process_whatsapp_message_impl(
             ])
         await db.commit()
         await db.refresh(txn)
+
+        # Attach the receipt media that was scanned earlier but deferred until the
+        # user chose a category/wallet (OCR media flow).
+        pending_media = _take_pending_receipt_media(user_id, source_channel)
+        if pending_media and txn:
+            try:
+                media_reply = await process_whatsapp_media_message(
+                    db=db,
+                    user_id=user_id,
+                    phone=phone,
+                    payload=pending_media.get("payload"),
+                    mime_type=pending_media.get("mime_type"),
+                    file_name=pending_media.get("file_name"),
+                    caption="",
+                    target_txn_ref=None,
+                    target_txn_override=txn,
+                    source_channel=source_channel,
+                    show_current_balance=show_current_balance,
+                    show_expense_amount=show_expense_amount,
+                    show_income_amount=show_income_amount,
+                    existing_object_key=pending_media.get("object_key"),
+                    media_size_bytes=pending_media.get("size_bytes"),
+                )
+                if media_reply:
+                    _safe_print(f"[WA] Receipt attached to {txn.reference_id}")
+            except Exception as exc:
+                _safe_print(f"[WA] Failed to attach receipt media: {exc}")
         
         # 8. Calculate total balance
         balance = await get_user_balance(db, user_id)
