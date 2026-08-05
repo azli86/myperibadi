@@ -465,6 +465,65 @@ export default function LoanDetailPage() {
   const canPay = !loading && !!loan && !isSettled
   const loanListHref = `/${sessionId}/loan`
 
+  if (loading && !hasLoadedData) {
+    // Initial load: keep the header (with its actions) and show a skeleton body
+    // so no raw text flashes before data arrives.
+    const loadTitle = tr("Detail Loan", "Loan Detail")
+    return (
+      <div className="relative min-h-[calc(100vh-4rem)] max-w-full text-[var(--text)]">
+        <div className="sticky top-0 z-50 bg-[var(--page-bg)] pb-2 pt-1 md:hidden">
+          <MobilePageHeader title={loadTitle} fallbackHref={loanListHref} backPreferHistory />
+        </div>
+        <DesktopPageHeader
+          title={loadTitle}
+          breadcrumbs={[{ label: tr("Loan", "Loan"), href: loanListHref }]}
+          homeHref={`/${sessionId}`}
+          showBack={false}
+          className="hidden md:block"
+          actions={
+            <>
+              <DesktopPageAction
+                onClick={() => setShowPaymentForm(true)}
+                disabled
+                aria-label={tr("Bayar loan", "Pay loan")}
+                className="min-w-0 flex-1 justify-center px-2 sm:flex-none sm:px-3"
+              >
+                <Plus size={16} />
+                {tr("Bayar", "Pay")}
+              </DesktopPageAction>
+              <DesktopPageAction
+                onClick={openEditLoanSheet}
+                disabled
+                variant="solid"
+                aria-label={tr("Edit loan", "Edit loan")}
+                className="min-w-0 flex-1 justify-center px-2 sm:flex-none sm:px-3"
+              >
+                <Pencil size={16} />
+                {tr("Edit", "Edit")}
+              </DesktopPageAction>
+              <button
+                type="button"
+                disabled
+                className="inline-flex h-8 min-w-0 flex-1 shrink items-center justify-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-2 text-xs font-bold leading-none text-rose-500 transition active:scale-[0.98] disabled:opacity-40 sm:flex-none sm:px-3 [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:shrink-0"
+                aria-label={tr("Padam loan", "Delete loan")}
+              >
+                <Trash2 size={16} />
+                {tr("Padam", "Delete")}
+              </button>
+            </>
+          }
+        />
+        <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
+          <div className="animate-pulse space-y-4">
+            <div className="h-44 rounded-[2rem] bg-[var(--surface-tint)]" />
+            <div className="h-64 rounded-[16px] bg-[var(--surface-tint)]" />
+            <div className="h-40 rounded-[16px] bg-[var(--surface-tint)]" />
+          </div>
+        </DesktopPageBody>
+      </div>
+    )
+  }
+
   return (
     <div className="relative min-h-[calc(100vh-4rem)] max-w-full text-[var(--text)]">
       <div className="sticky top-0 z-50 bg-[var(--page-bg)] pb-2 pt-1 md:hidden">
