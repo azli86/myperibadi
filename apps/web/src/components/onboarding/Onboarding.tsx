@@ -76,7 +76,6 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
   const [tf, setTf] = useState<"12h" | "24h">("24h")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
-  const [splitDir, setSplitDir] = useState<"next" | "prev" | null>(null)
   const [setupPhase, setSetupPhase] = useState<0 | 1 | 2 | 3 | 4>(0) // 0=off 1=categories 2=timezone 3=language 4=done
   const tr = (bm: string, en: string) => (appLang === "BM" ? bm : en)
   const stepIndex = STEP_ORDER.indexOf(step)
@@ -128,8 +127,6 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
 
   const go = (next: Step) => {
     setError("")
-    const goingForward = STEP_ORDER.indexOf(next) > STEP_ORDER.indexOf(step)
-    setSplitDir(goingForward ? "next" : "prev")
     setStep(next)
   }
 
@@ -158,12 +155,6 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
           <SetupLoading phase={setupPhase} lang={appLang} />
         )}
       </AnimatePresence>
-
-      {/* Persistent abstract wall behind every step */}
-      <AbstractWall />
-
-      {/* Split curtain: two panels slide from centre to reveal the next page */}
-      {splitDir && <SplitCurtain dir={splitDir} onDone={() => setSplitDir(null)} />}
 
       {/* Top progress bar */}
       <div className="fixed left-0 right-0 top-0 z-20 h-1 bg-[var(--border)]">
@@ -624,129 +615,6 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between gap-4 py-3.5">
       <span className="font-semibold text-[var(--muted)]">{label}</span>
       <span className="text-right font-bold text-[var(--text)]">{value}</span>
-    </div>
-  )
-}
-
-// Abstract wall: a calm, premium composition — big geometric rings, a faint grid,
-// a flowing curve and a few tasteful accents. Uses theme colors. Pure decor.
-function AbstractWall() {
-  const accent = "var(--btn-primary-bg)"
-  return (
-    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden>
-      {/* soft centre glow */}
-      <motion.div
-        className="absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
-        style={{ backgroundColor: "color-mix(in srgb, " + accent + " 8%, transparent)" }}
-        animate={{ scale: [1, 1.08, 1] }}
-        transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}
-      />
-
-      {/* large rings top right */}
-      <motion.div
-        className="absolute -right-24 -top-24 h-72 w-72 rounded-full border"
-        style={{ borderColor: "color-mix(in srgb, " + accent + " 14%, transparent)" }}
-        animate={{ rotate: [0, 12, 0] }}
-        transition={{ repeat: Infinity, duration: 22, ease: "easeInOut" }}
-      />
-      <div
-        className="absolute -right-14 -top-14 h-56 w-56 rounded-full border"
-        style={{ borderColor: "color-mix(in srgb, " + accent + " 8%, transparent)" }}
-      />
-
-      {/* large rings bottom left */}
-      <motion.div
-        className="absolute -bottom-20 -left-20 h-80 w-80 rounded-full border"
-        style={{ borderColor: "color-mix(in srgb, " + accent + " 14%, transparent)" }}
-        animate={{ rotate: [0, -10, 0] }}
-        transition={{ repeat: Infinity, duration: 26, ease: "easeInOut" }}
-      />
-      <div
-        className="absolute -bottom-12 -left-12 h-60 w-60 rounded-full border"
-        style={{ borderColor: "color-mix(in srgb, " + accent + " 8%, transparent)" }}
-      />
-
-      {/* faint grid */}
-      <div
-        className="absolute inset-0 opacity-[0.05]"
-        style={{
-          backgroundImage:
-            "linear-gradient(to right, " + accent + " 1px, transparent 1px), linear-gradient(to bottom, " + accent + " 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-        }}
-      />
-
-      {/* flowing curve bottom */}
-      <svg
-        className="absolute inset-x-0 bottom-0 h-44 w-full"
-        viewBox="0 0 400 140"
-        fill="none"
-        preserveAspectRatio="none"
-        style={{ color: "color-mix(in srgb, " + accent + " 10%, transparent)" }}
-      >
-        <path d="M0 90 C 100 20, 220 140, 400 60 V140 H0 Z" fill="currentColor" />
-      </svg>
-
-      {/* tasteful accents */}
-      <motion.div
-        className="absolute left-[12%] top-[18%] h-10 w-10 rotate-12 rounded-2xl border"
-        style={{ borderColor: "color-mix(in srgb, " + accent + " 25%, transparent)" }}
-        animate={{ y: [0, -8, 0], rotate: [12, 18, 12] }}
-        transition={{ repeat: Infinity, duration: 9, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute right-[14%] top-[30%] h-6 w-6 rounded-full border-2"
-        style={{ borderColor: "color-mix(in srgb, " + accent + " 18%, transparent)" }}
-        animate={{ y: [0, 10, 0] }}
-        transition={{ repeat: Infinity, duration: 7, ease: "easeInOut", delay: 0.5 }}
-      />
-      <div
-        className="absolute bottom-[24%] left-[18%] h-4 w-4 rounded-full"
-        style={{ backgroundColor: "color-mix(in srgb, " + accent + " 25%, transparent)" }}
-      />
-      <motion.div
-        className="absolute bottom-[30%] right-[20%] h-14 w-14 rounded-full border"
-        style={{ borderColor: "color-mix(in srgb, " + accent + " 14%, transparent)" }}
-        animate={{ scale: [1, 1.15, 1] }}
-        transition={{ repeat: Infinity, duration: 11, ease: "easeInOut", delay: 1 }}
-      />
-
-      {/* vignette to seat the logo */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,color-mix(in srgb,var(--page-bg) 60%,transparent)_80%)]" />
-    </div>
-  )
-}
-
-// Split curtain: two black panels close from the centre (covering the old page),
-// then open outward like a door to reveal the new page underneath.
-function SplitCurtain({ dir, onDone }: { dir: "next" | "prev"; onDone: () => void }) {
-  const leftOpen = dir === "next" ? { x: "-105%" } : { x: "105%" }
-  const rightOpen = dir === "next" ? { x: "105%" } : { x: "-105%" }
-
-  const done = React.useRef(false)
-  const handleDone = () => {
-    if (done.current) return
-    done.current = true
-    onDone()
-  }
-
-  return (
-    <div className="pointer-events-none fixed inset-0 z-[60] flex">
-      <motion.div
-        className="h-full w-1/2 bg-[var(--page-bg)]"
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: [0, 1, 1, 0], x: ["0%", "0%", leftOpen.x, leftOpen.x] }}
-        transition={{ duration: 0.5, times: [0, 0.4, 0.5, 1], ease: [0.4, 0, 0.2, 1] }}
-        style={{ transformOrigin: "right", boxShadow: "8px 0 30px rgba(0,0,0,0.35)" }}
-        onAnimationComplete={handleDone}
-      />
-      <motion.div
-        className="h-full w-1/2 bg-[var(--page-bg)]"
-        initial={{ scaleX: 0 }}
-        animate={{ scaleX: [0, 1, 1, 0], x: ["0%", "0%", rightOpen.x, rightOpen.x] }}
-        transition={{ duration: 0.5, times: [0, 0.4, 0.5, 1], ease: [0.4, 0, 0.2, 1] }}
-        style={{ transformOrigin: "left", boxShadow: "-8px 0 30px rgba(0,0,0,0.35)" }}
-      />
     </div>
   )
 }
