@@ -25,6 +25,19 @@ export default function ChangelogPage() {
   const entries: ChangelogEntry[] = isBm
     ? [
         {
+          version: "v2026.08.06",
+          date: "6 Ogos 2026",
+          title: "Masa Resit, Resit Terlekat Selepas Kategori & Dompet Unik",
+          items: [
+            "OCR resit kini baca masa pada resit (12 jam/24 jam, AM/PM) dan simpan masa transaksi — dipapar dalam butiran & boleh ubah dalam edit.",
+            "Lampiran resit kini terlekat automatik pada transaksi selepas anda pilih kategori & dompet (atau `subx`/`loanx`).",
+            "Amaran resit berganda bila scan yang sama dikesan, supaya tak tersimpan dua kali secara tak sengaja.",
+            "Dompet & kata kunci kategori kini unik — sistem tak akan cipta duplikat `Cash` lagi, walaupun dua permintaan datang serentak.",
+            "Pembersihan duplikat: dompet Cash ganda dan kata kunci kategori terbuang; transaksi sedia ada dipindah ke dompet asal yang betul.",
+            "Dompet lalai kini paling baru digunakan, bukan sentiasa Cash.",
+          ],
+        },
+        {
           version: "v2026.08.04",
           date: "4 Ogos 2026",
           title: "OCR Income, Resit Subskripsi/Loan & Due Date Langganan",
@@ -124,6 +137,19 @@ export default function ChangelogPage() {
         },
       ]
     : [
+        {
+          version: "v2026.08.06",
+          date: "6 August 2026",
+          title: "Receipt Time, Receipt Attached After Category & Unique Wallets",
+          items: [
+            "Receipt OCR now reads the time printed on the receipt (12h/24h, AM/PM) and stores the transaction time — shown in details and editable.",
+            "Receipt attachment now auto-attaches to the transaction after you pick category & wallet (or `subx`/`loanx`).",
+            "Duplicate receipt warning when the same scan is detected, preventing accidental double-saves.",
+            "Wallets & category keywords are now unique — the system can no longer create duplicate `Cash` wallets, even with simultaneous requests.",
+            "Duplicate cleanup: extra Cash wallets and duplicate category keywords removed; existing transactions moved to the correct original wallet.",
+            "Default wallet is now the most recently used, not always Cash.",
+          ],
+        },
         {
           version: "v2026.08.04",
           date: "4 August 2026",
