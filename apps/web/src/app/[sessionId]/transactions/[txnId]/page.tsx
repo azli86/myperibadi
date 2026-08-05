@@ -18,7 +18,6 @@ import { useLang } from "@/lib/lang"
 import { DesktopPageAction, DesktopPageBody, DesktopPageHeader, MobilePageHeader } from "@/components/layout/PageHeader"
 import { usePageAlert } from "@/hooks/usePageAlert"
 import { splitWalletTaggedDescription } from "@/lib/transaction-display"
-import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import TxnHeader from "./sections/TxnHeader"
 import TxnSummaryCard from "./sections/TxnSummaryCard"
 import TxnDetailsList from "./sections/TxnDetailsList"
@@ -289,7 +288,6 @@ export default function TransactionDetailPage() {
 
   const [txn, setTxn] = useState<TransactionDetail | null>(null)
   const [loading, setLoading] = useState(true)
-  const showDataSkeleton = useDelayedSkeleton(loading)
   const [error, setError] = useState("")
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -1239,6 +1237,37 @@ export default function TransactionDetailPage() {
   }
 
   if (!txn) {
+    if (loading) {
+      // Initial load: show a skeleton so no raw text flashes before data arrives.
+      const pendingTitle = lang === "BM" ? "Transaksi" : "Transaction"
+      return (
+        <div className="relative min-h-[calc(100vh-4rem)] max-w-full text-[var(--text)]">
+          <div className="sticky top-0 z-50 bg-[var(--page-bg)] pb-2 pt-1 md:hidden">
+            <MobilePageHeader
+              title={pendingTitle}
+              fallbackHref={`/${sessionId}/transactions`}
+              backPreferHistory
+            />
+          </div>
+          <DesktopPageHeader
+            title={pendingTitle}
+            breadcrumbs={[{ label: langT.transactions, href: `/${sessionId}/transactions` }]}
+            homeHref={`/${sessionId}`}
+            backHref={`/${sessionId}/transactions`}
+            backPreferHistory
+            className="hidden md:block"
+          />
+          <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
+            <div className="animate-pulse space-y-4">
+              <div className="h-40 rounded-[16px] bg-[var(--surface-tint)]" />
+              <div className="h-64 rounded-[16px] bg-[var(--surface-tint)]" />
+              <div className="h-40 rounded-[16px] bg-[var(--surface-tint)]" />
+            </div>
+          </DesktopPageBody>
+        </div>
+      )
+    }
+
     const pendingTitle = error || (lang === "BM" ? "Transaksi" : "Transaction")
     const pendingDesc = error
       ? langT.transactionBackToList
@@ -1526,7 +1555,7 @@ export default function TransactionDetailPage() {
               <TxnItemsTable
                 txn={txn}
                 receiptItems={receiptItems}
-                showDataSkeleton={showDataSkeleton}
+                showDataSkeleton={loading}
                 formatReceiptLineAmount={formatReceiptLineAmount}
                 formatReceiptLineQty={formatReceiptLineQty}
               />
