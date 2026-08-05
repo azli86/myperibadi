@@ -215,9 +215,13 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
                     initial={{ scale: 0, rotate: -18 }}
                     animate={{ scale: 1, rotate: 0 }}
                     transition={{ type: "spring", stiffness: 260, damping: 15, mass: 1 }}
-                    className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-xl shadow-[var(--btn-primary-bg)]/30"
+                    className="relative overflow-hidden rounded-[28px] border border-[var(--border)] bg-[var(--card)] p-2 shadow-xl shadow-[var(--btn-primary-bg)]/20"
                   >
-                    <Wallet size={38} strokeWidth={2.2} />
+                    <img
+                      src="/icon-512-v3.png"
+                      alt={tr("Logo", "Logo")}
+                      className="h-24 w-24 rounded-[20px] object-cover"
+                    />
                   </motion.div>
                   <motion.div
                     initial={{ opacity: 0, y: 14 }}
