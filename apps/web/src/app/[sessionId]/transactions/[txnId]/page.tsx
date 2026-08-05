@@ -1239,7 +1239,7 @@ export default function TransactionDetailPage() {
   if (!txn) {
     if (loading) {
       // Initial load: show a skeleton so no raw text flashes before data arrives.
-      const pendingTitle = lang === "BM" ? "Transaksi" : "Transaction"
+      const pendingTitle = lang === "BM" ? "Butiran Transaksi" : "Transaction Details"
       return (
         <div className="relative min-h-[calc(100vh-4rem)] max-w-full text-[var(--text)]">
           <div className="sticky top-0 z-50 bg-[var(--page-bg)] pb-2 pt-1 md:hidden">
@@ -1256,6 +1256,45 @@ export default function TransactionDetailPage() {
             backHref={`/${sessionId}/transactions`}
             backPreferHistory
             className="hidden md:block"
+            actions={
+              <>
+                <DesktopPageAction
+                  onClick={downloadStandardReceipt}
+                  disabled={receiptDownloading || true}
+                  variant="solid"
+                  aria-label={lang === "BM" ? "Muat turun resit" : "Download receipt"}
+                  className="sm:px-2.5"
+                >
+                  <Download size={16} />
+                </DesktopPageAction>
+                <DesktopPageAction
+                  onClick={() => setShowEditModal(true)}
+                  disabled
+                  aria-label={langT.editTransaction}
+                  className="sm:px-2.5"
+                >
+                  <Edit3 size={16} />
+                </DesktopPageAction>
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex h-8 min-w-0 flex-1 shrink items-center justify-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-2 text-xs font-bold leading-none text-emerald-500 transition active:scale-[0.98] disabled:opacity-40 sm:flex-none sm:px-3 [&_svg]:h-3.5 [&_svg]:w-3.5"
+                  aria-label={lang === "BM" ? "Refund transaksi" : "Refund transaction"}
+                >
+                  <Undo2 size={16} />
+                  Refund
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  className="inline-flex h-8 min-w-0 flex-1 shrink items-center justify-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-2 text-xs font-bold leading-none text-rose-500 transition active:scale-[0.98] disabled:opacity-40 sm:flex-none sm:px-3 [&_svg]:h-3.5 [&_svg]:w-3.5"
+                  aria-label={langT.delete}
+                >
+                  <Trash2 size={16} />
+                  {langT.delete}
+                </button>
+              </>
+            }
           />
           <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
             <div className="animate-pulse space-y-4">
