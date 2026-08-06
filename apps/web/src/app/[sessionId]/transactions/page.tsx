@@ -34,6 +34,7 @@ import {
   MobileIconButton,
   MobilePageHeader,
 } from "@/components/layout/PageHeader"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { CategoryIconGlyph } from "@/lib/category-icons"
 import { splitWalletTaggedDescription } from "@/lib/transaction-display"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
@@ -1119,24 +1120,15 @@ const currentCycleKeyStr = useMemo(
  aria-label="Close filters"
  className="absolute inset-0 bg-black/45"
  />
- <section
- className="absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-3xl border border-[var(--border)] bg-[var(--card)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl"
+ <div
+ className="app-sheet-panel app-sheet-panel--lg absolute inset-x-0 bottom-0 max-h-[88dvh] w-full overflow-y-auto overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[max(1rem,env(safe-area-inset-bottom))] will-change-transform"
  onClick={(e) => e.stopPropagation()}
  >
- <div className="mb-3 h-1 w-10 rounded-full bg-[var(--surface-tint-strong)]" />
- <div className="mb-3 flex items-center justify-between">
- <p className="text-lg font-black text-[var(--text)]">
- {lang === "EN" ? "Filter Transactions" : "Tapis Transaksi"}
- </p>
- <button
- type="button"
- onClick={() => setFiltersExpanded(false)}
- aria-label={lang === "EN" ? "Close" : "Tutup"}
- className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] transition hover:text-[var(--text)]"
- >
- <X size={17} />
- </button>
- </div>
+ <AppSheetHeader
+ title={lang === "EN" ? "Filter Transactions" : "Tapis Transaksi"}
+ onClose={() => setFiltersExpanded(false)}
+ />
+ <div className="px-4 pb-4 pt-1 sm:px-6">
 
  {/* Search */}
  <div className="relative flex-1">
@@ -1231,7 +1223,8 @@ const currentCycleKeyStr = useMemo(
  {lang === "EN" ? "Done" : "Siap"}
  </button>
  </div>
- </section>
+ </div>
+ </div>
  </div>
  )}
 
