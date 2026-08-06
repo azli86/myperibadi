@@ -936,11 +936,12 @@ const currentCycleKeyStr = useMemo(
  .replace(/"/g, "&quot;")
 
  const rows = filteredTxns.map(tx => {
- const d = tx.txn_date ? new Date(tx.txn_date) : new Date()
+ const d = tx.txn_date ? new Date(`${tx.txn_date}T00:00:00Z`) : new Date()
  const formattedDate = new Intl.DateTimeFormat('en-MY', {
  day: '2-digit',
  month: '2-digit',
  year: 'numeric',
+ timeZone: 'UTC',
  }).format(d)
  return `
  <tr>
@@ -1762,17 +1763,18 @@ const currentCycleKeyStr = useMemo(
  const hasRealDate = date !== langT.noDate
  const showIncomeRow = incomeTotal > 0
  const showTransferRow = transferTotal > 0
- const dateObj = hasRealDate ? new Date(`${date}T12:00:00`) : null
+ const dateObj = hasRealDate ? new Date(`${date}T12:00:00Z`) : null
  const dayNumber = dateObj
- ? dateObj.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", { day: "numeric" })
+ ? dateObj.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", { day: "numeric", timeZone: "UTC" })
  : "--"
  const weekdayLabel = dateObj
- ? dateObj.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", { weekday: "long" })
+ ? dateObj.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", { weekday: "long", timeZone: "UTC" })
  : date
  const monthYearLabel = dateObj
  ? dateObj.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", {
  month: "long",
  year: "numeric",
+ timeZone: "UTC",
  })
  : ""
 
@@ -1829,9 +1831,7 @@ const currentCycleKeyStr = useMemo(
  if (tx.txn_time) {
  const [h, m] = tx.txn_time.split(":").map(Number)
  if (!isNaN(h) && !isNaN(m)) {
- const d = new Date(0)
- d.setHours(h, m)
- return d.toLocaleTimeString(lang === "EN" ? "en-MY" : "ms-MY", { hour: "2-digit", minute: "2-digit", hour12: timeFormat === "12h", timeZone: "UTC" })
+ return new Date(Date.UTC(1970, 0, 1, h, m)).toLocaleTimeString(lang === "EN" ? "en-MY" : "ms-MY", { hour: "2-digit", minute: "2-digit", hour12: timeFormat === "12h", timeZone: "UTC" })
  }
  }
  if (!tx.created_at) return ""
@@ -1908,17 +1908,18 @@ const currentCycleKeyStr = useMemo(
  const hasRealDate = date !== langT.noDate
  const showIncomeRow = incomeTotal > 0
  const showTransferRow = transferTotal > 0
- const dateObj = hasRealDate ? new Date(`${date}T12:00:00`) : null
+ const dateObj = hasRealDate ? new Date(`${date}T12:00:00Z`) : null
  const dayNumber = dateObj
- ? dateObj.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", { day: "numeric" })
+ ? dateObj.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", { day: "numeric", timeZone: "UTC" })
  : "--"
  const weekdayLabel = dateObj
- ? dateObj.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", { weekday: "long" })
+ ? dateObj.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", { weekday: "long", timeZone: "UTC" })
  : date
  const monthYearLabel = dateObj
  ? dateObj.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", {
  month: "long",
  year: "numeric",
+ timeZone: "UTC",
  })
  : ""
 
@@ -2024,9 +2025,7 @@ const currentCycleKeyStr = useMemo(
  if (tx.txn_time) {
  const [h, m] = tx.txn_time.split(':').map(Number)
  if (!isNaN(h) && !isNaN(m)) {
- const d = new Date(0)
- d.setHours(h, m)
- return d.toLocaleTimeString(lang === 'EN' ? 'en-MY' : 'ms-MY', { hour: '2-digit', minute: '2-digit', hour12: timeFormat === '12h', timeZone: 'UTC' })
+ return new Date(Date.UTC(1970, 0, 1, h, m)).toLocaleTimeString(lang === 'EN' ? 'en-MY' : 'ms-MY', { hour: '2-digit', minute: '2-digit', hour12: timeFormat === '12h', timeZone: 'UTC' })
  }
  }
  const rawDate = tx.created_at || tx.txn_date;

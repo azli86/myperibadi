@@ -1371,17 +1371,17 @@ export default function TransactionDetailPage() {
     ? txn.items
     : [{ id: 0, name: txnDisplay.title || txn.vendor_or_source, quantity: 1, unit_price: txn.amount, subtotal: txn.amount, sort_order: 0 }]
   const transactionDateLabel = (() => {
-    // Prefer receipt date + receipt time (txn_time). Fall back to issued/created datetime when empty.
+    // Receipt date/time are LOCAL (printed on the receipt) — render as-is, no timezone shift.
+    // Fall back to issued/created datetime which IS an instant → convert to user timezone.
     const formatTime = (hhmm: string) => {
       const [h, m] = hhmm.split(":").map(Number)
       if (isNaN(h) || isNaN(m)) return hhmm
-      const d = new Date(0)
-      d.setHours(h, m)
-      return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", hour12: timeFormat === "12h", timeZone: "UTC" }).format(d)
+      return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", hour12: timeFormat === "12h", timeZone: "UTC" }).format(new Date(Date.UTC(1970, 0, 1, h, m)))
     }
     const formatDate = (raw: string) => {
-      const dateStr = raw.includes("Z") || raw.includes("+") ? raw : (raw.includes("T") || raw.includes(" ") ? `${raw.replace(" ", "T")}Z` : `${raw}T00:00:00Z`)
-      return new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric", timeZone: timezone }).format(new Date(dateStr))
+      const [y, mo, dd] = raw.slice(0, 10).split("-").map(Number)
+      if (isNaN(y) || isNaN(mo) || isNaN(dd)) return raw
+      return new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(y, mo - 1, dd)))
     }
     try {
       if (txn.txn_date && txn.txn_time) {
