@@ -2,8 +2,7 @@
 
 import React from "react"
 import Link from "next/link"
-import { ArrowLeft, ChevronRight } from "lucide-react"
-import HistoryBackButton from "@/components/navigation/HistoryBackButton"
+import { ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 /** Shared mobile header — same visual language as desktop top bar. */
@@ -22,18 +21,11 @@ export function MobilePageHeader({
 }) {
   return (
     <div className={cn("px-1 pb-1 pt-0", className)}>
-      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 pt-0.5">
-        <HistoryBackButton
-          fallbackHref={fallbackHref}
-          preferHistory={backPreferHistory}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)] transition active:scale-95"
-        >
-          <ArrowLeft size={18} strokeWidth={2.5} />
-        </HistoryBackButton>
-        <h1 className="min-w-0 truncate text-center text-2xl font-extrabold tracking-tight text-[var(--text)] sm:text-3xl">
+      <div className="flex items-center gap-3 pt-0.5">
+        <h1 className="min-w-0 flex-1 truncate text-left text-2xl font-extrabold tracking-tight text-[var(--text)] sm:text-3xl">
           {title}
         </h1>
-        <div className="flex min-h-9 min-w-9 shrink-0 items-center justify-end gap-1.5">
+        <div className="flex shrink-0 items-center justify-end gap-1.5">
           {action ?? <span className="h-9 w-9" aria-hidden />}
         </div>
       </div>
@@ -187,16 +179,6 @@ export function DesktopPageHeader({
     >
       <div className="flex h-8 w-full items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-2.5">
-          {showBack && backHref ? (
-            <HistoryBackButton
-              fallbackHref={backHref}
-              preferHistory={backPreferHistory}
-              aria-label="Back"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)] transition active:scale-95"
-            >
-              <ArrowLeft size={16} strokeWidth={2.5} />
-            </HistoryBackButton>
-          ) : null}
           <nav className="flex min-w-0 items-center gap-1.5 text-sm font-medium tracking-tight md:text-[0.9375rem]" aria-label="Breadcrumb">
             {breadcrumbItems.map((item, index) => {
               const isLast = index === breadcrumbItems.length - 1
