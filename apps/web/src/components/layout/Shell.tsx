@@ -3889,7 +3889,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               {...shellAddSheetSwipe}
               className="app-sheet-panel app-sheet-panel--lg bg-[var(--sheet-bg)] border border-[var(--border)] w-full sm:max-w-[30rem] max-h-[92vh] overflow-y-auto overscroll-contain touch-pan-y shadow-2xl"
             >
-              <div className="app-sheet-panel-header sticky top-0 z-30 mb-3 flex items-center justify-between border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-3 shadow-sm sm:px-6 sm:py-4">
+              <div className="app-sheet-panel-header sticky top-0 z-30 mb-3 flex items-center justify-between border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 sm:px-6">
                 <h3 className="text-base font-black text-[var(--text)]">
                   {t.addNewRecord}
                 </h3>

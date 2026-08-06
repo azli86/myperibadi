@@ -1522,7 +1522,7 @@ export default function WarrantyDetailPage() {
                 className="app-sheet-panel relative z-10 flex max-h-[82dvh] w-full flex-col overflow-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl touch-pan-y md:max-h-[85vh] md:max-w-[30rem] md:rounded-[1.75rem]"
                 {...editSwipe}
               >
-                <div className="shrink-0 rounded-t-[36px] border-b border-[var(--border)] bg-[var(--sheet-bg)] px-5 py-4 shadow-sm sm:px-6">
+                <div className="shrink-0 rounded-t-[36px] border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 sm:px-6">
                   <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--surface-tint-strong)] sm:hidden" />
                   <div className="flex items-center justify-between">
                     <p className="text-base font-black">{tr("Edit Peranti", "Edit Device")}</p>
@@ -1567,7 +1567,7 @@ export default function WarrantyDetailPage() {
                 className="app-sheet-panel relative z-10 flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] touch-pan-y md:max-h-[86vh] md:max-w-xl md:rounded-[1.75rem]"
                 {...claimSwipe}
               >
-                <div className="shrink-0 rounded-t-[36px] border-b border-[var(--border)] bg-[var(--sheet-bg)] px-5 py-4 shadow-sm sm:px-6">
+                <div className="shrink-0 rounded-t-[36px] border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 sm:px-6">
                   <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--surface-tint-strong)] sm:hidden" />
                   <div className="flex items-center justify-between">
                     <p className="text-base font-black">

@@ -1122,7 +1122,7 @@ export default function CategoriesPage() {
                   modal === "categoryDetail" ? "md:max-w-lg" : "md:max-w-md"
                 )}
               >
-                <div className="app-sheet-panel-header sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 pt-2 pb-3 md:px-6 md:py-4">
+                <div className="app-sheet-panel-header sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 md:px-6">
                   <div className="mx-auto mb-3 h-1 w-8 rounded-full bg-[var(--surface-tint-strong)] md:hidden" />
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">

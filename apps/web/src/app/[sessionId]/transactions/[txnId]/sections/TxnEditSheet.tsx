@@ -175,7 +175,7 @@ export default function TxnEditSheet({
           {...swipe}
           className="w-full max-h-[82dvh] overflow-y-auto overscroll-contain touch-pan-y rounded-t-[36px] border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] shadow-2xl sm:max-h-[85vh] sm:max-w-[30rem] sm:rounded-[16px]"
         >
-          <div className="sticky top-0 z-30 mb-3 rounded-t-[36px] bg-[var(--sheet-bg)] px-5 py-4 sm:px-6">
+          <div className="sticky top-0 z-30 mb-3 rounded-t-[36px] bg-[var(--sheet-bg)] px-4 py-4 sm:px-6">
             <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--surface-tint-strong)] sm:hidden" />
             {/* Header: Cancel left, title center, Update right */}
             <div className="flex items-center justify-between gap-3">

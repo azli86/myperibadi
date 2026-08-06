@@ -2837,7 +2837,7 @@ export default function Dashboard() {
               {...dashboardAddSheetSwipe}
               className="app-sheet-panel app-sheet-panel--lg max-h-[92vh] w-full touch-pan-y flex-col overflow-y-auto overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl sm:max-w-[32rem]"
             >
-              <div className="sticky top-0 z-30 mb-3 flex items-center justify-between border-b border-[var(--border)] bg-[var(--sheet-bg)] px-5 py-4 shadow-sm sm:rounded-t-3xl sm:px-6">
+              <div className="sticky top-0 z-30 mb-3 flex items-center justify-between border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 shadow-sm sm:rounded-t-3xl sm:px-6">
                 <h3 className="text-base font-black text-[var(--text)]">{t.addNewRecord}</h3>
                 <button
                   onClick={requestDashboardAddClose}

@@ -906,7 +906,7 @@ export default function VehicleListPage() {
               className="app-sheet-panel max-h-[82dvh] w-full overflow-y-auto overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] shadow-2xl touch-pan-y md:max-h-[85vh] md:max-w-[30rem] md:rounded-[1.75rem]"
               {...sheetSwipe}
             >
-              <div className="sticky top-0 z-30 mb-3 flex items-center justify-between rounded-t-[36px] border-b border-[var(--border)] bg-[var(--sheet-bg)] px-5 py-4 shadow-sm sm:px-6">
+              <div className="sticky top-0 z-30 mb-3 flex items-center justify-between rounded-t-[36px] border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 sm:px-6">
                 <div>
                   <p className="text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
                     {tr("Kenderaan baru", "New vehicle")}

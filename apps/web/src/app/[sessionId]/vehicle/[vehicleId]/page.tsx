@@ -1269,7 +1269,7 @@ export default function VehicleDetailPage() {
               className="app-sheet-panel flex max-h-[82dvh] w-full flex-col overflow-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl touch-pan-y md:max-h-[85vh] md:max-w-[30rem] md:rounded-[1.75rem]"
               {...sheetSwipe}
             >
-              <div className="flex shrink-0 items-center justify-between rounded-t-[36px] border-b border-[var(--border)] bg-[var(--sheet-bg)] px-5 py-4 shadow-sm sm:px-6">
+              <div className="flex shrink-0 items-center justify-between rounded-t-[36px] border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 sm:px-6">
                 <h2 className="text-base font-black text-[var(--text)]">{sheetTitle}</h2>
                 <button
                   type="button"
