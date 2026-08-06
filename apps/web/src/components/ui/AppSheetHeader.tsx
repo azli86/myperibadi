@@ -50,7 +50,7 @@ export function AppSheetHeader({
     >
       <div className="mx-auto mb-3 h-1 w-8 rounded-full bg-[var(--surface-tint-strong)] md:hidden" />
       <div className="flex items-center justify-between gap-3">
-        {showCancel ? (
+        {showCancel && action && !hideClose ? (
           <button
             type="button"
             onClick={onClose}
