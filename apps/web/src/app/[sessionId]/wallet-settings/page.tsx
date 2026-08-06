@@ -949,8 +949,8 @@ export default function WalletSettingsPage() {
                     />
 
                     {createWalletStep === 1 && (
-                      <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
-                        <p className="mb-3 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                      <div className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+                        <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                           {tr("Warna kad", "Card color")}
                         </p>
                         <div className="flex flex-wrap items-center justify-center gap-3">
@@ -981,11 +981,12 @@ export default function WalletSettingsPage() {
                     )}
 
                     {createWalletStep === 2 && (
-                      <div className="space-y-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
-                        <div>
-                          <label className="mb-2 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                      <>
+                        {/* Jenis card */}
+                        <div className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+                          <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                             {tr("Jenis", "Type")}
-                          </label>
+                          </p>
                           <div className="grid grid-cols-2 gap-2">
                             {WALLET_TYPE_OPTIONS.map((opt) => {
                               const selected =
@@ -999,23 +1000,25 @@ export default function WalletSettingsPage() {
                                     setDraft((prev) => ({ ...prev, type: opt.value }))
                                   }
                                   className={cn(
-                                    "flex items-center justify-center gap-2 rounded-[var(--radius)] px-3 py-3 text-base font-bold transition active:scale-[0.98]",
+                                    "flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--card)] px-3 py-2.5 text-sm font-semibold transition active:scale-[0.98]",
                                     selected
                                       ? "bg-[var(--text)] text-[var(--bg)]"
-                                      : "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)]",
+                                      : "border border-[var(--border)] text-[var(--text)]",
                                   )}
                                 >
-                                  <Icon size={18} />
+                                  <Icon size={16} />
                                   {isBm ? opt.bm : opt.en}
                                 </button>
                               )
                             })}
                           </div>
                         </div>
-                        <div>
-                          <label className="mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+
+                        {/* Mata wang card */}
+                        <div className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+                          <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                             {tr("Mata wang", "Currency")}
-                          </label>
+                          </p>
                           <input
                             value={draft.currency}
                             onChange={(e) =>
@@ -1024,41 +1027,50 @@ export default function WalletSettingsPage() {
                                 currency: e.target.value.toUpperCase().slice(0, 5),
                               }))
                             }
-                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
+                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
                             placeholder="RM"
                           />
                         </div>
-                        <div>
-                          <label className="mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+
+                        {/* Nama pada dompet card */}
+                        <div className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+                          <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                             {tr("Nama pada dompet", "Name on wallet")}
-                          </label>
+                          </p>
                           <input
                             value={draft.label}
                             onChange={(e) => setDraft((prev) => ({ ...prev, label: e.target.value }))}
-                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium outline-none focus:border-[var(--border-strong)]"
+                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm font-medium outline-none focus:border-[var(--border-strong)]"
                             placeholder={tr("Contoh: Maybank Utama", "Example: Main Maybank")}
                           />
                         </div>
-                        <div>
-                          <label className="mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+
+                        {/* Prefix bot card */}
+                        <div className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+                          <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                             {tr("Prefix bot", "Bot prefix")}
-                          </label>
+                          </p>
                           <input
                             value={draft.name}
                             onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value.toLowerCase() }))}
-                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
+                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
                             placeholder={tr("Contoh: cash", "Example: cash")}
                           />
                         </div>
-                      </div>
+                      </>
                     )}
 
                     {createWalletStep === 3 && (
                       <div className="space-y-3">
-                        <label className="flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)] text-xs font-bold text-[var(--muted)]">
-                          <Upload size={14} /> {uploadingDraftImage ? tr("Sedang upload…", "Uploading…") : tr("Upload imej (maks 512 KB)", "Upload image (max 512 KB)")}
-                          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadDraftWalletImage(file); e.target.value = "" }} />
-                        </label>
+                        <div className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+                          <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                            {tr("Imej Dompet", "Wallet Image")}
+                          </p>
+                          <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-[var(--border-strong)] bg-[var(--card)] text-xs font-semibold text-[var(--muted)]">
+                            <Upload size={14} /> {uploadingDraftImage ? tr("Sedang upload…", "Uploading…") : tr("Upload imej (maks 512 KB)", "Upload image (max 512 KB)")}
+                            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadDraftWalletImage(file); e.target.value = "" }} />
+                          </label>
+                        </div>
                         <button
                           type="button"
                           onClick={() => setDraft((prev) => ({ ...prev, is_bot_default: !prev.is_bot_default }))}
@@ -1077,7 +1089,7 @@ export default function WalletSettingsPage() {
                             {draft.is_bot_default ? tr("Aktif", "Active") : tr("Tidak", "Off")}
                           </span>
                         </button>
-                        <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
+                        <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
                           <p className="mb-2 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                             {tr("Ringkasan Dompet", "Wallet Summary")}
                           </p>
@@ -1181,11 +1193,11 @@ export default function WalletSettingsPage() {
                     </button>
                   </div>
 
-                  <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
-                    <p className="mb-3 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                  <div className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+                    <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                       {tr("Penampilan", "Appearance")}
                     </p>
-                    <label className="mb-3 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)] text-xs font-bold text-[var(--muted)]">
+                    <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-[var(--border-strong)] bg-[var(--card)] text-xs font-semibold text-[var(--muted)]">
                       <Upload size={14} /> {uploadingWalletId === activeWallet.id ? tr("Sedang upload…", "Uploading…") : tr("Upload imej (maks 512 KB)", "Upload image (max 512 KB)")}
                       <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadWalletImage(file, activeWallet); e.target.value = "" }} />
                     </label>
@@ -1214,81 +1226,86 @@ export default function WalletSettingsPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
-                    <div>
-                      <label className="mb-2 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
-                        {tr("Jenis Dompet", "Wallet Type")}
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {WALLET_TYPE_OPTIONS.map((opt) => {
-                          const selected = activeWallet.type === opt.value
-                          const Icon = walletTypeIcon(opt.value)
-                          return (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              onClick={() => updateActiveWallet({ type: opt.value })}
-                              className={cn(
-                                "flex items-center justify-center gap-2 rounded-[var(--radius)] px-3 py-3 text-base font-bold transition active:scale-[0.98]",
-                                selected
-                                  ? "bg-[var(--text)] text-[var(--bg)]"
-                                  : "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)]",
-                              )}
-                            >
-                              <Icon size={18} />
-                              {isBm ? opt.bm : opt.en}
-                            </button>
-                          )
-                        })}
-                        {activeWallet.type === "shared" ? (
+                  {/* Jenis Dompet card */}
+                  <div className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+                    <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                      {tr("Jenis Dompet", "Wallet Type")}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {WALLET_TYPE_OPTIONS.map((opt) => {
+                        const selected = activeWallet.type === opt.value
+                        const Icon = walletTypeIcon(opt.value)
+                        return (
                           <button
+                            key={opt.value}
                             type="button"
-                            className="flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--text)] px-3 py-3 text-base font-bold text-[var(--bg)]"
+                            onClick={() => updateActiveWallet({ type: opt.value })}
+                            className={cn(
+                              "flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--card)] px-3 py-2.5 text-sm font-semibold transition active:scale-[0.98]",
+                              selected
+                                ? "bg-[var(--text)] text-[var(--bg)]"
+                                : "border border-[var(--border)] text-[var(--text)]",
+                            )}
                           >
-                            <Users size={18} />
-                            {tr("Bersama", "Shared")}
+                            <Icon size={16} />
+                            {isBm ? opt.bm : opt.en}
                           </button>
-                        ) : null}
-                      </div>
+                        )
+                      })}
+                      {activeWallet.type === "shared" ? (
+                        <button
+                          type="button"
+                          className="flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--text)] px-3 py-2.5 text-sm font-semibold text-[var(--bg)]"
+                        >
+                          <Users size={16} />
+                          {tr("Bersama", "Shared")}
+                        </button>
+                      ) : null}
                     </div>
-                    <div>
-                      <label className="mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
-                        {tr("Mata Wang", "Currency")}
-                      </label>
-                      <input
-                        value={activeWallet.currency}
-                        onChange={(e) =>
-                          updateActiveWallet({ currency: e.target.value.toUpperCase().slice(0, 5) })
-                        }
-                        className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
-                        placeholder="RM"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
-                        {tr("Nama pada Dompet", "Name on Wallet")}
-                      </label>
-                      <input
-                        value={activeWallet.label}
-                        onChange={(e) => updateActiveWallet({ label: e.target.value })}
-                        className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium outline-none focus:border-[var(--border-strong)]"
-                        placeholder={tr("Contoh: Maybank Utama", "Example: Main Maybank")}
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
-                        {tr("Prefix Bot", "Bot Prefix")}
-                      </label>
-                      <input
-                        value={activeWallet.name}
-                        onChange={(e) => updateActiveWallet({ name: e.target.value.toLowerCase() })}
-                        className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
-                        placeholder={tr("Contoh: cash", "Example: cash")}
-                      />
-                      <p className="mt-1.5 text-[0.6875rem] text-[var(--muted)]">
-                        {tr("Untuk arahan bot.", "For bot commands.")}
-                      </p>
-                    </div>
+                  </div>
+
+                  {/* Mata Wang card */}
+                  <div className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+                    <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                      {tr("Mata Wang", "Currency")}
+                    </p>
+                    <input
+                      value={activeWallet.currency}
+                      onChange={(e) =>
+                        updateActiveWallet({ currency: e.target.value.toUpperCase().slice(0, 5) })
+                      }
+                      className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
+                      placeholder="RM"
+                    />
+                  </div>
+
+                  {/* Nama pada Dompet card */}
+                  <div className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+                    <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                      {tr("Nama pada Dompet", "Name on Wallet")}
+                    </p>
+                    <input
+                      value={activeWallet.label}
+                      onChange={(e) => updateActiveWallet({ label: e.target.value })}
+                      className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm font-medium outline-none focus:border-[var(--border-strong)]"
+                      placeholder={tr("Contoh: Maybank Utama", "Example: Main Maybank")}
+                    />
+                  </div>
+
+                  {/* Prefix Bot card */}
+                  <div className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+                    <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                      {tr("Prefix Bot", "Bot Prefix")}
+                    </p>
+                    <input
+                      value={activeWallet.name}
+                      onChange={(e) => updateActiveWallet({ name: e.target.value.toLowerCase() })}
+                      className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
+                      placeholder={tr("Contoh: cash", "Example: cash")}
+                    />
+                    <p className="text-[0.6875rem] text-[var(--muted)]">
+                      {tr("Untuk arahan bot.", "For bot commands.")}
+                    </p>
                   </div>
                 </div>
 
