@@ -50,15 +50,21 @@ class ReceiptDraft:
 
 def _normalize_time(raw: str) -> str:
     """Normalize a time string to 24-hour HH:MM, supporting 12h AM/PM and 24h."""
-    value = (raw or "").strip().lower().replace(".", ":")
-    if not value:
+    value = (raw or "").strip().lower()
+    if not value or value in {"null", "none", "n/a", "na", "-", "--"}:
         return ""
-    m = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", value)
+    # Reject values that look like a full date/datetime (take only the clock part).
+    value = value.replace(".", ":")
+    # Pattern 1: HH:MM(:SS)? with optional AM/PM (the clearest form).
+    m = re.search(r"\b(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?\b", value)
+    if not m:
+        # Pattern 2: H AM/PM or H:MM AM/PM without colon separator (e.g. "2 pm", "8am").
+        m = re.search(r"\b(\d{1,2})\s*(am|pm)\b", value)
     if not m:
         return ""
     hour = int(m.group(1))
-    minute = int(m.group(2) or 0)
-    meridiem = m.group(3)
+    minute = int(m.group(2)) if m.lastindex and m.group(2) and len(m.group(2)) == 2 and m.group(2).isdigit() else 0
+    meridiem = m.group(3) if m.lastindex >= 3 else None
     if meridiem == "am":
         hour = 0 if hour == 12 else hour
     elif meridiem == "pm":
