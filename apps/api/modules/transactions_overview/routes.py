@@ -71,7 +71,7 @@ async def get_transactions_route(
             models.Wallet.label,
             models.Wallet.name,
         )
-        .order_by(models.Transaction.txn_date.desc(), models.Transaction.id.desc())
+        .order_by(models.Transaction.txn_date.desc(), models.Transaction.txn_time.desc().nulls_last(), models.Transaction.id.desc())
         .limit(limit)
     )
     result = await db.execute(stmt)
@@ -139,7 +139,7 @@ async def get_transaction_map_points_route(
         .outerjoin(models.Wallet, models.Transaction.wallet_id == models.Wallet.id)
         .where(models.Transaction.user_id == current_user.id)
         .where(models.Transaction.latitude.is_not(None), models.Transaction.longitude.is_not(None))
-        .order_by(models.Transaction.txn_date.desc(), models.Transaction.created_at.desc())
+        .order_by(models.Transaction.txn_date.desc(), models.Transaction.txn_time.desc().nulls_last(), models.Transaction.created_at.desc())
         .limit(limit)
     )
 
@@ -188,7 +188,7 @@ async def sync_transaction_location_names_route(
         .where(models.Transaction.user_id == current_user.id)
         .where(models.Transaction.latitude.is_not(None), models.Transaction.longitude.is_not(None))
         .where(or_(models.Transaction.location_name.is_(None), func.trim(models.Transaction.location_name) == ""))
-        .order_by(models.Transaction.txn_date.desc(), models.Transaction.created_at.desc())
+        .order_by(models.Transaction.txn_date.desc(), models.Transaction.txn_time.desc().nulls_last(), models.Transaction.created_at.desc())
         .limit(limit)
     )
     result = await db.execute(stmt)
