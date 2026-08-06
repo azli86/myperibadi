@@ -1808,7 +1808,6 @@ export function CatPlayground({
               >
                 <AppSheetHeader
                   title={`${state.name} ${moodEmoji}`}
-                  eyebrow={lang === "BM" ? "Playground Kucing" : "Cat Playground"}
                   onClose={requestSheetClose}
                 />
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 pb-[max(1rem,env(safe-area-inset-bottom))]">

@@ -488,7 +488,6 @@ export default function LagiPage() {
             >
               <AppSheetHeader
                 title={activeConfig.title}
-                eyebrow={t.preferences}
                 subtitle={activeConfig.subtitle}
                 onClose={requestMobileSheetClose}
               />

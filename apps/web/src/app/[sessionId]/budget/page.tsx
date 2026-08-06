@@ -1021,18 +1021,7 @@ export default function BudgetPage() {
                 >
                   <AppSheetHeader
                     title={activeModalItem.category_name}
-                    eyebrow={tr("Tetapan Bajet", "Budget Setting")}
                     onClose={requestBudgetModalClose}
-                    icon={
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]">
-                        <CategoryIconGlyph
-                          iconName={activeModalItem.category_icon_name}
-                          categoryName={activeModalItem.category_name}
-                          size={20}
-                          kind="expense"
-                        />
-                      </div>
-                    }
                   />
 
                   <div className="space-y-4 px-4 py-4 md:px-6 md:py-6">

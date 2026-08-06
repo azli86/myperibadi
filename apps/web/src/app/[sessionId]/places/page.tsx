@@ -839,7 +839,6 @@ export default function PlacesPage() {
         >
           <AppSheetHeader
             title={listTitle}
-            eyebrow={lang === "EN" ? "List" : "Senarai"}
             onClose={requestListClose}
             showCancel={false}
           />

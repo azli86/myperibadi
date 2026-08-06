@@ -909,7 +909,6 @@ export default function VehicleListPage() {
             >
               <AppSheetHeader
                 title={tr("Tambah kenderaan", "Add vehicle")}
-                eyebrow={tr("Kenderaan baru", "New vehicle")}
                 onClose={closeSheet}
               />
               <form onSubmit={handleSave} className="grid grid-cols-2 gap-3 p-4">

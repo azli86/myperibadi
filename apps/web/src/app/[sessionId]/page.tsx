@@ -2991,7 +2991,6 @@ export default function Dashboard() {
             >
               <AppSheetHeader
                 title={lang === "EN" ? "Expense Charts" : "Graf Perbelanjaan"}
-                eyebrow={lang === "EN" ? "Full View" : "Paparan Penuh"}
                 onClose={requestChartClose}
               />
 
@@ -3112,7 +3111,6 @@ export default function Dashboard() {
                   >
                     <AppSheetHeader
                       title={lang === "BM" ? "Semua baki" : "All balances"}
-                      eyebrow={lang === "BM" ? "Dompet" : "Wallets"}
                       subtitle={`${heroWallets.length} ${lang === "BM" ? "akaun" : "accounts"} · ${showHeroAmounts
                         ? `${formatCurrencyLabel("MYR")} ${formatHeroNumber(
                             heroWallets.reduce((s, w) => s + Number(w.balance || 0), 0),
