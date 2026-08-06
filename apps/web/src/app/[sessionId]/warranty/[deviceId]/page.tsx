@@ -1053,15 +1053,6 @@ export default function WarrantyDetailPage() {
           className="w-full text-sm text-[var(--muted)] file:mr-3 file:rounded-full file:border-0 file:bg-[var(--surface-tint)] file:px-3 file:py-1.5 file:text-xs file:font-bold"
         />
       </label>
-      <div className="flex gap-2 pb-2">
-        <button
-          type="button"
-          onClick={requestClaimClose}
-          className="flex-1 rounded-2xl border border-[var(--border)] px-4 py-3 text-sm font-bold"
-        >
-          {tr("Batal", "Cancel")}
-        </button>
-      </div>
     </form>
   )
 
