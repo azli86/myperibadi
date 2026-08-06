@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { X, Check, Loader2, ChevronDown, Plus, MinusCircle } from "lucide-react"
+import { X, Check, ChevronDown, Plus, MinusCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
@@ -162,22 +162,22 @@ export default function TxnEditSheet({
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl px-2 py-1.5 text-sm font-bold text-[var(--muted)] transition-colors hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+                className="shrink-0 px-1 py-1.5 text-base font-bold text-[var(--muted)] transition-colors hover:text-[var(--text)]"
               >
-                <X size={15} />
                 {isBm ? "Batal" : "Cancel"}
               </button>
-              <h3 className="min-w-0 flex-1 truncate text-center text-base font-black text-[var(--text)]">
+              <h3 className="min-w-0 flex-1 truncate text-center text-lg font-black text-[var(--text)]">
                 {isBm ? "Edit Transaksi" : "Edit Transaction"}
               </h3>
               <button
                 type="submit"
                 form="edit-txn-form"
                 disabled={saving}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[var(--text)] px-3 py-1.5 text-sm font-bold text-[var(--bg)] transition-all active:scale-95 disabled:opacity-60"
+                className="shrink-0 px-1 py-1.5 text-base font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
               >
-                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                {isBm ? "Kemas Kini" : "Update"}
+                {saving
+                  ? (isBm ? "Menyimpan…" : "Saving…")
+                  : (isBm ? "Kemas Kini" : "Update")}
               </button>
             </div>
           </div>
