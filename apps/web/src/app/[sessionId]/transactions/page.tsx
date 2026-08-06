@@ -1122,7 +1122,7 @@ const currentCycleKeyStr = useMemo(
  <button
  type="button"
  onClick={() => setFiltersExpanded((v) => !v)}
- className="mx-auto hidden w-full max-w-2xl items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[var(--muted)] transition-all hover:border-[var(--text)]/25 hover:text-[var(--text)] md:flex md:max-w-none"
+ className="mx-auto flex w-full max-w-2xl items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[var(--muted)] transition-all hover:border-[var(--text)]/25 hover:text-[var(--text)] md:max-w-none"
  >
  {filtersExpanded ? (
    <><ChevronUp size={15} /> {lang === "EN" ? "Hide Filters" : "Sembunyi Penapis"}</>
@@ -1218,7 +1218,7 @@ const currentCycleKeyStr = useMemo(
  </p>
  </div>
 
- <div id="transactions-filter-row" className="mx-auto hidden w-full max-w-2xl grid-cols-2 gap-2 sm:grid-cols-4 md:grid md:max-w-[1280px] md:grid-cols-4">
+ <div id="transactions-filter-row" className="mx-auto grid w-full max-w-2xl grid-cols-2 gap-2 sm:grid-cols-4 md:max-w-[1280px] md:grid-cols-4">
  <FilterSelect
  value={selectedMonth}
  onChange={setSelectedMonth}
@@ -1903,91 +1903,7 @@ const currentCycleKeyStr = useMemo(
  })}
  </div>
 
- <div className="md:hidden overflow-hidden rounded-2xl border" style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}>
-  <button
-  type="button"
-  onClick={() => setFiltersExpanded((v) => !v)}
-  className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
-  style={{ borderBottom: "1px solid var(--border)", backgroundColor: "var(--surface-tint)" }}
-  >
-  <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
-  <SlidersHorizontal size={15} />
-  {lang === "EN" ? "Filters" : "Penapis"}
-  </span>
-  <span className="flex items-center gap-1 text-xs font-bold text-[var(--muted)]">
-  {mobileDateRangeLabel}
-  {filtersExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-  </span>
-  </button>
-
-  {filtersExpanded && (
-  <div className="border-b border-[var(--border)] p-3" style={{ backgroundColor: "var(--card)" }}>
-  <div className="grid grid-cols-2 gap-2">
-  <FilterSelect
-  value={selectedMonth}
-  onChange={setSelectedMonth}
-  ariaLabel={lang === "EN" ? "Filter by month" : "Tapis ikut bulan"}
-  isMobile={isMobileViewport}
-  options={[
-  ...monthOptions.map((monthKey) => ({
-  value: monthKey,
-  label: new Date(
-  Number(monthKey.split("-")[0]),
-  Number(monthKey.split("-")[1]) - 1,
-  1,
-  ).toLocaleString(lang === "EN" ? "en-MY" : "ms-MY", {
-  month: "long",
-  year: "numeric",
-  }),
-  })),
-  ]}
-  />
-
-  <FilterSelect
-  value={selectedType}
-  onChange={(value) => setSelectedType(value as "all" | "expense" | "income" | "transfer")}
-  ariaLabel={lang === "EN" ? "Filter by type" : "Tapis ikut jenis"}
-  isMobile={isMobileViewport}
-  options={[
-  { value: "all", label: lang === "EN" ? "Type" : "Jenis" },
-  { value: "expense", label: langT.expense },
-  { value: "income", label: langT.income },
-  { value: "transfer", label: lang === "EN" ? "Transfer" : "Pindahan" },
-  ]}
-  />
-
-  <FilterSelect
-  value={selectedCategory}
-  onChange={setSelectedCategory}
-  ariaLabel={lang === "EN" ? "Filter by category" : "Tapis ikut kategori"}
-  isMobile={isMobileViewport}
-  alignMenu="right"
-  options={[
-  { value: "all", label: lang === "EN" ? "Category" : "Kategori" },
-  ...(categoryOptions.expense.length ? [{ value: "__group_expense", label: lang === "EN" ? "Expenses" : "Belanja", disabled: true }] : []),
-  ...categoryOptions.expense.map((category) => ({ value: category, label: category })),
-  ...(categoryOptions.income.length ? [{ value: "__group_income", label: lang === "EN" ? "Income" : "Pendapatan", disabled: true }] : []),
-  ...categoryOptions.income.map((category) => ({ value: category, label: category })),
-  ...(categoryOptions.unknown.length ? [{ value: "__group_other", label: lang === "EN" ? "Other" : "Lain-lain", disabled: true }] : []),
-  ...categoryOptions.unknown.map((category) => ({ value: category, label: category })),
-  ]}
-  />
-
-  <FilterSelect
-  value={selectedWallet}
-  onChange={setSelectedWallet}
-  ariaLabel={lang === "EN" ? "Filter by wallet" : "Tapis ikut dompet"}
-  isMobile={isMobileViewport}
-  alignMenu="right"
-  options={[
-  { value: "all", label: lang === "EN" ? "Wallet" : "Dompet" },
-  ...walletOptions,
-  ]}
-  />
-  </div>
-  </div>
-  )}
-
+ <div className="max-w-full overflow-x-hidden space-y-5 md:hidden">
  {groupedFilteredTxns.map(({ date, groupTxns, expenseTotal, incomeTotal, transferTotal }) => {
  const hasRealDate = date !== langT.noDate
  const showIncomeRow = incomeTotal > 0
@@ -2008,10 +1924,17 @@ const currentCycleKeyStr = useMemo(
  : ""
 
  return (
- <div key={date} className="border-b border-[var(--border)] last:border-b-0">
+ <div key={date} className="space-y-3">
+ <div
+   className="w-full max-w-full overflow-hidden rounded-2xl border md:rounded-[16px]"
+ style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
+ >
   <div
-  className="flex items-center justify-between gap-2 px-4 py-3"
-  style={{ backgroundColor: "var(--surface-tint)" }}
+  className="sticky top-0 z-10 flex items-center justify-between gap-2 px-4 py-3 backdrop-blur-md"
+  style={{
+  borderBottom: "1px solid var(--border)",
+  backgroundColor: "var(--surface-tint)"
+  }}
   >
   <div className="flex min-w-0 flex-1 items-center gap-3">
   <div className="text-[1.8rem] font-black leading-none text-[var(--text)] tabular-nums">
@@ -2140,6 +2063,7 @@ const currentCycleKeyStr = useMemo(
  </div>
  </button>
  ))}
+ </div>
  </div>
  </div>
  )
