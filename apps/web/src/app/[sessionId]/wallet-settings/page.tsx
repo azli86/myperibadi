@@ -1127,7 +1127,7 @@ export default function WalletSettingsPage() {
                       {tr("Batal", "Cancel")}
                     </button>
                     <h3 className="min-w-0 flex-1 truncate text-center text-2xl font-black text-[var(--text)]">
-                      {activeWallet.label || activeWallet.name}
+                      {tr("Edit Dompet", "Edit Wallet")}
                     </h3>
                     <button
                       type="button"
