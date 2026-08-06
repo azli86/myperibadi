@@ -133,7 +133,7 @@ export default function TxnEditSheet({
   }
 
   const pickerBtn =
-    "flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-left text-sm font-medium text-[var(--text)] transition-colors"
+    "flex w-full items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3.5 text-left text-sm font-medium text-[var(--text)] transition-colors"
   const selectedOption = "bg-[var(--text)] text-[var(--bg)]"
   const unselectedOption = "bg-[var(--surface-tint)] text-[var(--text)]"
 
@@ -268,28 +268,38 @@ export default function TxnEditSheet({
               />
             )}
 
-            <div className="relative">
-              <button type="button" aria-label={langT.category} onClick={toggleCategory} className={pickerBtn}>
-                <span className={cn("truncate", editForm.category_id ? "text-[var(--text)]" : "text-[var(--muted)]")}>
-                  {editForm.category_id
-                    ? categories.find((cat) => String(cat.id) === editForm.category_id)?.name || langT.category
-                    : langT.category}
-                </span>
-                <ChevronDown size={16} className={cn("shrink-0 text-[var(--muted)] transition-transform", showCategoryPicker && "rotate-180")} />
-              </button>
+            <div className="space-y-1.5">
+              <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                {langT.category}
+              </p>
+              <div className="relative">
+                <button type="button" aria-label={langT.category} onClick={toggleCategory} className={pickerBtn}>
+                  <span className={cn("truncate text-lg", editForm.category_id ? "text-[var(--text)]" : "text-[var(--muted)]")}>
+                    {editForm.category_id
+                      ? categories.find((cat) => String(cat.id) === editForm.category_id)?.name || langT.category
+                      : langT.category}
+                  </span>
+                  <ChevronDown size={20} className={cn("shrink-0 text-[var(--muted)] transition-transform", showCategoryPicker && "rotate-180")} />
+                </button>
+              </div>
             </div>
 
-            <div className="relative">
-              <button type="button" aria-label={langT.walletLabel} onClick={toggleWallet} className={pickerBtn}>
-                <span className={cn("truncate", editForm.wallet_id ? "text-[var(--text)]" : "text-[var(--muted)]")}>
-                  {editForm.wallet_id
-                    ? wallets.find((w) => String(w.id) === editForm.wallet_id)?.label ||
-                      wallets.find((w) => String(w.id) === editForm.wallet_id)?.name ||
-                      langT.walletLabel
-                    : langT.walletLabel}
-                </span>
-                <ChevronDown size={16} className={cn("shrink-0 text-[var(--muted)] transition-transform", showWalletPicker && "rotate-180")} />
-              </button>
+            <div className="space-y-1.5">
+              <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                {langT.walletLabel}
+              </p>
+              <div className="relative">
+                <button type="button" aria-label={langT.walletLabel} onClick={toggleWallet} className={pickerBtn}>
+                  <span className={cn("truncate text-lg", editForm.wallet_id ? "text-[var(--text)]" : "text-[var(--muted)]")}>
+                    {editForm.wallet_id
+                      ? wallets.find((w) => String(w.id) === editForm.wallet_id)?.label ||
+                        wallets.find((w) => String(w.id) === editForm.wallet_id)?.name ||
+                        langT.walletLabel
+                      : langT.walletLabel}
+                  </span>
+                  <ChevronDown size={20} className={cn("shrink-0 text-[var(--muted)] transition-transform", showWalletPicker && "rotate-180")} />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -298,12 +308,12 @@ export default function TxnEditSheet({
               </p>
               <div className="relative">
                 <button type="button" aria-label="Link Loan" onClick={toggleLoan} className={pickerBtn}>
-                  <span className={cn("truncate", linkedLoanId ? "text-[var(--text)]" : "text-[var(--muted)]")}>
+                  <span className={cn("truncate text-lg", linkedLoanId ? "text-[var(--text)]" : "text-[var(--muted)]")}>
                     {linkedLoanId
                       ? loans.find((loan) => String(loan.id) === linkedLoanId)?.name || (isBm ? "Link Loan" : "Link Loan")
                       : isBm ? "Tiada link loan" : "No loan link"}
                   </span>
-                  <ChevronDown size={16} className={cn("shrink-0 text-[var(--muted)] transition-transform", showLoanPicker && "rotate-180")} />
+                  <ChevronDown size={20} className={cn("shrink-0 text-[var(--muted)] transition-transform", showLoanPicker && "rotate-180")} />
                 </button>
               </div>
             </div>
@@ -314,12 +324,12 @@ export default function TxnEditSheet({
               </p>
               <div className="relative">
                 <button type="button" aria-label="Subscribe Link" onClick={toggleSubscription} className={pickerBtn}>
-                  <span className={cn("truncate", editForm.description.startsWith("SUBX ") ? "text-[var(--text)]" : "text-[var(--muted)]")}>
+                  <span className={cn("truncate text-lg", editForm.description.startsWith("SUBX ") ? "text-[var(--text)]" : "text-[var(--muted)]")}>
                     {editForm.description.startsWith("SUBX ")
                       ? editForm.description.replace("SUBX ", "")
                       : isBm ? "Tiada subscribe link" : "No subscribe link"}
                   </span>
-                  <ChevronDown size={16} className={cn("shrink-0 text-[var(--muted)] transition-transform", showSubscriptionPicker && "rotate-180")} />
+                  <ChevronDown size={20} className={cn("shrink-0 text-[var(--muted)] transition-transform", showSubscriptionPicker && "rotate-180")} />
                 </button>
               </div>
             </div>
