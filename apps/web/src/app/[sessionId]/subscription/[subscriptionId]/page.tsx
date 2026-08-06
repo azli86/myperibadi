@@ -920,8 +920,20 @@ export default function SubscriptionDetailPage() {
                 <AppSheetHeader
                   title={tr("Edit Subscription", "Edit Subscription")}
                   onClose={requestEditSheetClose}
+                  action={
+                    <button
+                      type="submit"
+                      form="subscription-edit-form"
+                      disabled={saving}
+                      className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                    >
+                      {saving
+                        ? (isBM ? "Menyimpan…" : "Saving…")
+                        : tr("Update", "Update")}
+                    </button>
+                  }
                 />
-                <form onSubmit={handleSaveSubscription} className="space-y-4 px-4 py-4 md:px-6 md:py-6">
+                <form id="subscription-edit-form" onSubmit={handleSaveSubscription} className="space-y-4 px-4 py-4 md:px-6 md:py-6">
                   <label className="block">
                     <span className={cn("mb-2 block text-[0.625rem] font-bold uppercase tracking-widest", mutedClass)}>
                       {tr("Nama Subscription", "Subscription Name")}
@@ -983,14 +995,6 @@ export default function SubscriptionDetailPage() {
                       className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none"
                     />
                   </label>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--text)] text-sm font-black text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-50"
-                  >
-                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil size={16} />}
-                    {tr("Update Subscription", "Update Subscription")}
-                  </button>
                 </form>
               </div>
             </div>,

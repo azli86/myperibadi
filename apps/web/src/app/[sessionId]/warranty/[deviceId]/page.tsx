@@ -952,7 +952,7 @@ export default function WarrantyDetailPage() {
     ) : null
 
   const claimFormEl = (
-    <form onSubmit={handleSaveClaim} className="space-y-4">
+    <form id="warranty-claim-form" onSubmit={handleSaveClaim} className="space-y-4">
       <label className="block space-y-1.5">
         <span className="text-xs font-semibold">{tr("Tarikh tuntutan", "Claim date")}</span>
         <input
@@ -1060,14 +1060,6 @@ export default function WarrantyDetailPage() {
           className="flex-1 rounded-2xl border border-[var(--border)] px-4 py-3 text-sm font-bold"
         >
           {tr("Batal", "Cancel")}
-        </button>
-        <button
-          type="submit"
-          disabled={saving}
-          className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--text)] px-4 py-3 text-sm font-bold text-[var(--bg)] disabled:opacity-60"
-        >
-          {saving ? <Loader2 size={16} className="animate-spin" /> : null}
-          {tr("Simpan", "Save")}
         </button>
       </div>
     </form>
@@ -1526,28 +1518,18 @@ export default function WarrantyDetailPage() {
                 <AppSheetHeader
                   title={tr("Edit Peranti", "Edit Device")}
                   onClose={requestEditClose}
-                />
-                <div data-swipe-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">{editFormEl}</div>
-                <div className="shrink-0 border-t border-[var(--border)] bg-[var(--sheet-bg)] px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6">
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={requestEditClose}
-                      className="flex-1 rounded-2xl border border-[var(--border)] px-4 py-3 text-sm font-bold"
-                    >
-                      {tr("Batal", "Cancel")}
-                    </button>
+                  action={
                     <button
                       type="submit"
                       form="warranty-edit-form"
                       disabled={saving}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--text)] px-4 py-3 text-sm font-bold text-[var(--bg)] disabled:opacity-60"
+                      className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
                     >
-                      {saving ? <Loader2 size={16} className="animate-spin" /> : null}
-                      {tr("Simpan", "Save")}
+                      {saving ? (isBm ? "Menyimpan…" : "Saving…") : tr("Simpan", "Save")}
                     </button>
-                  </div>
-                </div>
+                  }
+                />
+                <div data-swipe-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">{editFormEl}</div>
               </div>
             </div>,
             document.body,
@@ -1568,6 +1550,16 @@ export default function WarrantyDetailPage() {
                     ? tr("Edit Tuntutan", "Edit Claim")
                     : tr("Tambah Tuntutan", "Add Claim")}
                   onClose={requestClaimClose}
+                  action={
+                    <button
+                      type="submit"
+                      form="warranty-claim-form"
+                      disabled={saving}
+                      className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                    >
+                      {saving ? (isBm ? "Menyimpan…" : "Saving…") : tr("Simpan", "Save")}
+                    </button>
+                  }
                 />
                 <div data-swipe-scroll className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
                 {claimFormEl}

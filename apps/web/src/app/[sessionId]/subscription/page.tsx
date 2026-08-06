@@ -634,9 +634,21 @@ export default function SubscriptionPage() {
                 <AppSheetHeader
                   title={editingSubscription ? tr("Edit Subscription", "Edit Subscription") : tr("Tambah Subscription", "Add Subscription")}
                   onClose={requestCreateSheetClose}
+                  action={
+                    <button
+                      type="submit"
+                      form="subscription-sheet-form"
+                      disabled={saving}
+                      className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                    >
+                      {saving
+                        ? (isBm ? "Menyimpan…" : "Saving…")
+                        : editingSubscription ? tr("Update", "Update") : tr("Simpan", "Save")}
+                    </button>
+                  }
                 />
 
-                <form className="space-y-4 px-3 py-3 pb-4 text-[var(--text)] md:px-6 md:py-6" onSubmit={handleSaveSubscription}>
+                <form id="subscription-sheet-form" className="space-y-4 px-3 py-3 pb-4 text-[var(--text)] md:px-6 md:py-6" onSubmit={handleSaveSubscription}>
                   <div>
                     <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
                       {tr("Nama Subscription", "Subscription Name")}
@@ -707,20 +719,12 @@ export default function SubscriptionPage() {
                   </div>
 
                   <div className="mt-6 -mx-3 flex items-center gap-2 border-t border-[var(--border)] bg-[var(--sheet-bg)] px-3 pb-2 pt-5 md:-mx-6 md:px-6">
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--text)] text-sm font-black text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-50"
-                    >
-                      {saving ? <Loader2 size={20} className="animate-spin" /> : editingSubscription ? <Pencil size={16} /> : <Plus size={16} />}
-                      {editingSubscription ? tr("Update", "Update") : tr("Simpan", "Save")}
-                    </button>
                     {editingSubscription && (
                       <button
                         type="button"
                         disabled={saving}
                         onClick={() => handleDeleteSubscription(editingSubscription)}
-                        className="flex h-12 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 text-sm font-black text-[var(--text)] transition active:scale-[0.98] disabled:opacity-50"
+                        className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 text-sm font-black text-[var(--text)] transition active:scale-[0.98] disabled:opacity-50"
                       >
                         <Trash2 size={16} />
                       </button>

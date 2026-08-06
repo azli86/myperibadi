@@ -1049,9 +1049,25 @@ export default function DebtPage() {
                       : tr("Hutang Lagi", "Borrow More")
                     : tr("Tambah Rekod", "Add Record")}
                   onClose={() => setShowAddEntryForm(false)}
+                  action={
+                    <button
+                      type="submit"
+                      form="debt-add-form"
+                      disabled={saving || !form.counterparty_name || !form.amount}
+                      className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                    >
+                      {saving
+                        ? (isBm ? "Menyimpan…" : "Saving…")
+                        : activeName
+                          ? (activeSummary?.balance || 0) >= 0
+                            ? tr("Sahkan", "Confirm")
+                            : tr("Sahkan", "Confirm")
+                          : tr("Simpan", "Save")}
+                    </button>
+                  }
                 />
 
-                <form onSubmit={handleCreateEntry} className="space-y-4 px-4 py-4 md:px-6 md:py-6">
+                <form id="debt-add-form" onSubmit={handleCreateEntry} className="space-y-4 px-4 py-4 md:px-6 md:py-6">
                   <div>
                     <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
                       {tr("Nama", "Name")}
@@ -1173,24 +1189,6 @@ export default function DebtPage() {
                       className="h-12 w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 text-sm font-bold outline-none"
                     />
                   </div>
-
-                  <button
-                    type="submit"
-                    disabled={saving || !form.counterparty_name || !form.amount}
-                    className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--text)] text-sm font-black text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-50"
-                  >
-                    {saving ? (
-                      <Loader2 className="animate-spin" size={20} />
-                    ) : activeName ? (
-                      (activeSummary?.balance || 0) >= 0 ? (
-                        tr("Sahkan Pinjaman", "Confirm Lending")
-                      ) : (
-                        tr("Sahkan Hutang", "Confirm Borrowing")
-                      )
-                    ) : (
-                      tr("Sahkan & Simpan", "Confirm & Save")
-                    )}
-                  </button>
                 </form>
               </div>
             </div>,
@@ -1213,9 +1211,19 @@ export default function DebtPage() {
                 <AppSheetHeader
                   title={form.event_type === "payment_in" ? tr("Terima Bayaran", "Receive Payment") : tr("Bayar Balik", "Pay Back")}
                   onClose={() => setShowSettleEntryForm(false)}
+                  action={
+                    <button
+                      type="submit"
+                      form="debt-settle-form"
+                      disabled={saving || !form.amount}
+                      className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                    >
+                      {saving ? (isBm ? "Menyimpan…" : "Saving…") : tr("Sahkan", "Confirm")}
+                    </button>
+                  }
                 />
 
-                <form onSubmit={handleCreateEntry} className="space-y-4 px-4 py-4 md:px-6 md:py-6">
+                <form id="debt-settle-form" onSubmit={handleCreateEntry} className="space-y-4 px-4 py-4 md:px-6 md:py-6">
                   <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-[var(--btn-primary-bg)]/5 p-4">
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--btn-primary-bg)]/10 text-lg font-black text-emerald-500">
                       {(form.counterparty_name[0] || "?").toUpperCase()}
@@ -1273,20 +1281,6 @@ export default function DebtPage() {
                       ))}
                     </select>
                   </div>
-
-                  <button
-                    type="submit"
-                    disabled={saving || !form.amount}
-                    className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--btn-primary-bg)] text-sm font-black text-white transition active:scale-[0.98] disabled:opacity-50"
-                  >
-                    {saving ? (
-                      <Loader2 className="animate-spin" size={20} />
-                    ) : form.event_type === "payment_in" ? (
-                      tr("Sahkan Penerimaan", "Confirm Receipt")
-                    ) : (
-                      tr("Sahkan Pembayaran", "Confirm Payment")
-                    )}
-                  </button>
                 </form>
               </div>
             </div>,

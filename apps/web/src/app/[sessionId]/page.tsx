@@ -2842,6 +2842,18 @@ export default function Dashboard() {
                 title={t.addNewRecord}
                 onClose={requestDashboardAddClose}
                 className="sm:rounded-t-3xl"
+                action={
+                  <button
+                    type="submit"
+                    form="dashboard-add-form"
+                    disabled={saving}
+                    className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                  >
+                    {saving
+                      ? (lang === "BM" ? "Menyimpan…" : "Saving…")
+                      : (lang === "BM" ? "Simpan" : "Save")}
+                  </button>
+                }
               />
 
               {addSuccess && (
@@ -2850,7 +2862,7 @@ export default function Dashboard() {
                 </div>
               )}
 
-              <form onSubmit={handleAddRecord} className="space-y-4 px-5 pb-5 pt-1 sm:px-6 sm:pb-6">
+              <form id="dashboard-add-form" onSubmit={handleAddRecord} className="space-y-4 px-5 pb-5 pt-1 sm:px-6 sm:pb-6">
                 <div className="grid grid-cols-2 gap-2">
                   {(["expense", "income"] as const).map(type => (
                     <button
@@ -2965,14 +2977,6 @@ export default function Dashboard() {
                     </select>
                   </div>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--text)] py-3.5 text-sm font-bold text-[var(--bg)] shadow-lg transition-all active:scale-95 disabled:opacity-60 sm:text-base"
-                >
-                  {saving ? <Loader2 size={16} className="animate-spin" /> : <><Check size={16} /> {t.saveRecord}</>}
-                </button>
               </form>
             </div>
           </div>

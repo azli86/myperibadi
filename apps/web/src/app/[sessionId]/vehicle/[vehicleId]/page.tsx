@@ -1273,11 +1273,29 @@ export default function VehicleDetailPage() {
               <AppSheetHeader
                 title={sheetTitle}
                 onClose={closeSheet}
+                action={
+                  <button
+                    type="submit"
+                    form={sheet === "odometer"
+                      ? "vehicle-odo-form"
+                      : sheet === "settings"
+                        ? "vehicle-settings-form"
+                        : sheet === "document"
+                          ? "vehicle-doc-form"
+                          : sheet === "fuel"
+                            ? "vehicle-fuel-form"
+                            : "vehicle-service-form"}
+                    disabled={saving}
+                    className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                  >
+                    {saving ? (isBm ? "Menyimpan…" : "Saving…") : tr("Simpan", "Save")}
+                  </button>
+                }
               />
 
               <div data-swipe-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
                 {sheet === "odometer" && (
-                  <form onSubmit={handleOdometer} className="space-y-3">
+                  <form id="vehicle-odo-form" onSubmit={handleOdometer} className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                       <Field label={tr("Tarikh", "Date")}>
                         <input
@@ -1298,12 +1316,11 @@ export default function VehicleDetailPage() {
                         />
                       </Field>
                     </div>
-                    <SubmitBtn saving={saving} label={tr("Simpan", "Save")} />
                   </form>
                 )}
 
                 {(sheet === "service" || sheet === "item") && (
-                  <form onSubmit={handleService} className="space-y-3">
+                  <form id="vehicle-service-form" onSubmit={handleService} className="space-y-3">
                     {sheet === "item" && activeItem && (() => {
                       const history = recordsForItem(activeItem.item.key)
                       if (!history.length) return null
@@ -1490,14 +1507,6 @@ export default function VehicleDetailPage() {
                       />
                     </Field>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      <SubmitBtn
-                        saving={saving}
-                        label={
-                          sheet === "item" && activeItem?.recordId
-                            ? tr("Tambah rekod baru", "Add new record")
-                            : tr("Simpan", "Save")
-                        }
-                      />
                       {sheet === "item" && activeItem?.recordId ? (
                         <button
                           type="button"
@@ -1519,7 +1528,7 @@ export default function VehicleDetailPage() {
                 )}
 
                 {sheet === "document" && (
-                  <form onSubmit={handleCreateDocument} className="space-y-3">
+                  <form id="vehicle-doc-form" onSubmit={handleCreateDocument} className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                       <Field label={tr("Jenis", "Type")}>
                         <select
@@ -1596,15 +1605,11 @@ export default function VehicleDetailPage() {
                         ) : null}
                       </Field>
                     </div>
-                    <SubmitBtn
-                      saving={saving || Boolean(uploadingKey?.startsWith("documents-"))}
-                      label={tr("Simpan", "Save")}
-                    />
                   </form>
                 )}
 
                 {sheet === "fuel" && (
-                  <form onSubmit={handleCreateFuel} className="space-y-3">
+                  <form id="vehicle-fuel-form" onSubmit={handleCreateFuel} className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                       <Field label={tr("Tarikh", "Date")}>
                         <input
@@ -1698,10 +1703,6 @@ export default function VehicleDetailPage() {
                         />
                       </Field>
                     </div>
-                    <SubmitBtn
-                      saving={saving || Boolean(uploadingKey?.startsWith("fuel-"))}
-                      label={tr("Simpan", "Save")}
-                    />
                   </form>
                 )}
 
@@ -1818,19 +1819,6 @@ export default function VehicleDetailPage() {
                   </form>
                 )}
               </div>
-              {sheet === "settings" ? (
-                <div className="shrink-0 border-t border-[var(--border)] bg-[var(--sheet-bg)] px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6">
-                  <button
-                    type="submit"
-                    form="vehicle-settings-form"
-                    disabled={saving}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--text)] px-4 py-3 text-sm font-bold text-[var(--bg)] disabled:opacity-60"
-                  >
-                    {saving ? <Loader2 size={16} className="animate-spin" /> : null}
-                    {tr("Simpan", "Save")}
-                  </button>
-                </div>
-              ) : null}
             </div>
           </div>,
           document.body
@@ -1858,15 +1846,3 @@ function Field({
   )
 }
 
-function SubmitBtn({ saving, label }: { saving: boolean; label: string }) {
-  return (
-    <button
-      type="submit"
-      disabled={saving}
-      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--text)] py-3 text-sm font-bold text-[var(--bg)] disabled:opacity-60"
-    >
-      {saving && <Loader2 size={16} className="animate-spin" />}
-      {label}
-    </button>
-  )
-}

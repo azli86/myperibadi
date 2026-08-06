@@ -910,8 +910,18 @@ export default function VehicleListPage() {
               <AppSheetHeader
                 title={tr("Tambah kenderaan", "Add vehicle")}
                 onClose={closeSheet}
+                action={
+                  <button
+                    type="submit"
+                    form="vehicle-add-form"
+                    disabled={saving}
+                    className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                  >
+                    {saving ? (isBm ? "Menyimpan…" : "Saving…") : tr("Simpan", "Save")}
+                  </button>
+                }
               />
-              <form onSubmit={handleSave} className="grid grid-cols-2 gap-3 p-4">
+              <form id="vehicle-add-form" onSubmit={handleSave} className="grid grid-cols-2 gap-3 p-4">
                 <div className="col-span-2 block">
                   <span className="mb-1 block text-xs font-bold text-[var(--muted)]">
                     {tr("Jenis", "Type")}
@@ -1006,14 +1016,6 @@ export default function VehicleListPage() {
                     className="w-full rounded-2xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-2.5 text-sm font-semibold text-[var(--text)] outline-none focus:border-[var(--accent2)]"
                   />
                 </label>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="col-span-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--btn-primary-bg)] py-3 text-sm font-bold text-[var(--btn-primary-text)] disabled:opacity-60"
-                >
-                  {saving && <Loader2 size={16} className="animate-spin" />}
-                  {tr("Simpan", "Save")}
-                </button>
               </form>
             </div>
           </div>,

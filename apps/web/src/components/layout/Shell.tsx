@@ -3893,6 +3893,18 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <AppSheetHeader
                 title={t.addNewRecord}
                 onClose={requestAddModalClose}
+                action={
+                  <button
+                    type="submit"
+                    form="shell-add-form"
+                    disabled={saving}
+                    className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                  >
+                    {saving
+                      ? (lang === "BM" ? "Menyimpan…" : "Saving…")
+                      : (lang === "BM" ? "Simpan" : "Save")}
+                  </button>
+                }
               />
 
               {addSuccess && (
@@ -3945,6 +3957,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               )}
 
               <form
+                id="shell-add-form"
                 onSubmit={handleAddRecord}
                 className="space-y-3 px-4 pb-4 pt-1 sm:px-6 sm:pb-6 sm:pt-0"
               >
@@ -4255,20 +4268,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     )}
                   </div>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--text)] py-3 text-sm font-bold text-[var(--bg)] shadow-lg transition-all active:scale-95 disabled:opacity-60 sm:text-base"
-                >
-                  {saving ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <>
-                      <Check size={16} /> {t.saveRecord}
-                    </>
-                  )}
-                </button>
               </form>
             </div>
           </div>
