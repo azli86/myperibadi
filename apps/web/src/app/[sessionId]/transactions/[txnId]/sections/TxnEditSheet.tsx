@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { X, Check, ChevronDown, Plus, MinusCircle, Wallet, HandCoins, Repeat, Tag } from "lucide-react"
+import { useState, useRef } from "react"
+import { X, Check, ChevronDown, Plus, MinusCircle, Wallet, HandCoins, Repeat, Tag, Upload, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CategoryIconGlyph } from "@/lib/category-icons"
 import { useLang } from "@/lib/lang"
@@ -43,6 +43,7 @@ export type TxnEditSheetProps = {
   onLinkedLoanIdChange: (value: string) => void
   onLinkedSubscriptionIdChange: (value: string) => void
   onEditFileChange: (file: File | null) => void
+  editFile: File | null
   onSubmit: (e: React.FormEvent) => void
   onClose: () => void
 }
@@ -64,6 +65,7 @@ export default function TxnEditSheet({
   onLinkedLoanIdChange,
   onLinkedSubscriptionIdChange,
   onEditFileChange,
+  editFile,
   onSubmit,
   onClose,
 }: TxnEditSheetProps) {
@@ -76,6 +78,17 @@ export default function TxnEditSheet({
   const [showLoanPicker, setShowLoanPicker] = useState(false)
   const [showSubscriptionPicker, setShowSubscriptionPicker] = useState(false)
   const swipe = useSwipeDownToClose(onClose)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [editFilePreview, setEditFilePreview] = useState<string | null>(null)
+
+  const handleFilePick = (file: File | null) => {
+    if (editFilePreview) {
+      URL.revokeObjectURL(editFilePreview)
+      setEditFilePreview(null)
+    }
+    if (file) setEditFilePreview(URL.createObjectURL(file))
+    onEditFileChange(file)
+  }
 
   const itemManagerActive = editItems.length > 0
   const editItemsTotal = editItems.reduce((sum, item) => {
@@ -440,17 +453,49 @@ export default function TxnEditSheet({
               </div>
             )}
 
-            <div className="space-y-1.5">
-              <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
-                {langT.uploadReceiptOptional}
-              </p>
-              <input
-                type="file"
-                aria-label={langT.uploadReceiptOptional}
-                onChange={(e) => onEditFileChange(e.target.files?.[0] || null)}
-                className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition-all file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--text)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--bg)]"
-              />
-            </div>
+            {/* Upload receipt card — tap to upload */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={(e) => { handleFilePick(e.target.files?.[0] || null); e.target.value = "" }}
+            />
+            {editFilePreview ? (
+              <div className="relative overflow-hidden rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)]">
+                {editFilePreview.startsWith("blob:") && editFile?.type === "application/pdf" ? (
+                  <div className="flex items-center gap-3 p-4">
+                    <Upload size={20} className="text-[var(--muted)]" />
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--text)]">{editFile?.name}</span>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="block w-full"
+                  >
+                    <img src={editFilePreview} alt="" className="max-h-48 w-full object-contain bg-[var(--surface-tint)]" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleFilePick(null)}
+                  className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--card)] text-[var(--muted)] shadow active:scale-95"
+                  aria-label={isBm ? "Buang resit" : "Remove receipt"}
+                >
+                  <XCircle size={18} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex w-full flex-col items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-[var(--border)] bg-[var(--surface-tint)] px-4 py-6 text-center transition-colors active:scale-[0.99]"
+              >
+                <Upload size={24} className="text-[var(--muted)]" />
+                <span className="text-sm font-bold text-[var(--text)]">{langT.uploadReceiptOptional}</span>
+              </button>
+            )}
           </form>
         </div>
       </div>

@@ -1657,6 +1657,7 @@ export default function TransactionDetailPage() {
         onLinkedLoanIdChange={setLinkedLoanId}
         onLinkedSubscriptionIdChange={setLinkedSubscriptionId}
         onEditFileChange={setEditFile}
+        editFile={editFile}
         onSubmit={handleEdit}
         onClose={() => { setShowEditModal(false); setEditFile(null) }}
       />
