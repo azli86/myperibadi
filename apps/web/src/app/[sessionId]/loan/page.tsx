@@ -573,9 +573,21 @@ export default function LoanPage() {
                 <AppSheetHeader
                   title={editingLoan ? tr("Edit Loan", "Edit Loan") : tr("Tambah Loan", "Add Loan")}
                   onClose={requestCreateSheetClose}
+                  action={
+                    <button
+                      type="submit"
+                      form="loan-sheet-form"
+                      disabled={saving}
+                      className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                    >
+                      {saving
+                        ? (lang === "BM" ? "Menyimpan…" : "Saving…")
+                        : editingLoan ? tr("Update", "Update") : tr("Simpan", "Save")}
+                    </button>
+                  }
                 />
 
-                <form className="space-y-4 px-3 py-3 pb-4 text-[var(--text)] md:px-6 md:py-6" onSubmit={handleSaveLoan}>
+                <form id="loan-sheet-form" className="space-y-4 px-3 py-3 pb-4 text-[var(--text)] md:px-6 md:py-6" onSubmit={handleSaveLoan}>
                   <div>
                     <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
                       {tr("Nama Loan", "Loan Name")}
@@ -637,22 +649,15 @@ export default function LoanPage() {
                   </div>
 
                   <div className="mt-6 -mx-3 flex items-center gap-2 border-t border-[var(--border)] bg-[var(--sheet-bg)] px-3 pb-2 pt-5 md:-mx-6 md:px-6">
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--text)] text-sm font-black text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-50"
-                    >
-                      {saving ? <Loader2 size={20} className="animate-spin" /> : editingLoan ? <Pencil size={16} /> : <Plus size={16} />}
-                      {editingLoan ? tr("Update Loan", "Update Loan") : tr("Simpan Loan", "Save Loan")}
-                    </button>
                     {editingLoan && (
                       <button
                         type="button"
                         disabled={saving}
                         onClick={() => handleDeleteLoan(editingLoan)}
-                        className="flex h-12 items-center justify-center rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 text-sm font-black text-rose-500 transition active:scale-[0.98] disabled:opacity-50"
+                        className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 text-sm font-black text-rose-500 transition active:scale-[0.98] disabled:opacity-50"
                       >
                         <Trash2 size={16} />
+                        {tr("Padam", "Delete")}
                       </button>
                     )}
                   </div>

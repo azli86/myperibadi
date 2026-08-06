@@ -1086,8 +1086,20 @@ export default function LoanDetailPage() {
                 <AppSheetHeader
                   title={tr("Edit Loan", "Edit Loan")}
                   onClose={requestEditSheetClose}
+                  action={
+                    <button
+                      type="submit"
+                      form="loan-edit-form"
+                      disabled={savingLoan}
+                      className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                    >
+                      {savingLoan
+                        ? (lang === "BM" ? "Menyimpan…" : "Saving…")
+                        : tr("Update", "Update")}
+                    </button>
+                  }
                 />
-                <form onSubmit={handleSaveLoan} className="space-y-4 px-4 py-4 md:px-6 md:py-6">
+                <form id="loan-edit-form" onSubmit={handleSaveLoan} className="space-y-4 px-4 py-4 md:px-6 md:py-6">
                   <label className="block">
                     <span className={cn("mb-2 block text-[0.625rem] font-bold uppercase tracking-widest", mutedClass)}>
                       {tr("Nama Loan", "Loan Name")}
@@ -1149,14 +1161,6 @@ export default function LoanDetailPage() {
                       className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none"
                     />
                   </label>
-                  <button
-                    type="submit"
-                    disabled={savingLoan}
-                    className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--text)] text-sm font-black text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-50"
-                  >
-                    {savingLoan ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil size={16} />}
-                    {tr("Update Loan", "Update Loan")}
-                  </button>
                 </form>
               </div>
             </div>,
