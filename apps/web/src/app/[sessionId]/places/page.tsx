@@ -2,6 +2,7 @@
 
 import "leaflet/dist/leaflet.css"
 import React, { useEffect, useMemo, useRef, useState } from "react"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useParams } from "next/navigation"
 import {
   ExternalLink,
@@ -836,21 +837,12 @@ export default function PlacesPage() {
             listOpen ? "translate-x-0" : "translate-x-full",
           )}
         >
-          <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3.5 pt-[calc(env(safe-area-inset-top,0px)+0.85rem)]">
-            <div className="min-w-0">
-              <p className="text-[0.58rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                {lang === "EN" ? "List" : "Senarai"}
-              </p>
-              <h2 className="truncate text-sm font-black tracking-tight">{listTitle}</h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => requestListClose()}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]"
-            >
-              <X size={16} />
-            </button>
-          </div>
+          <AppSheetHeader
+            title={listTitle}
+            eyebrow={lang === "EN" ? "List" : "Senarai"}
+            onClose={requestListClose}
+            showCancel={false}
+          />
 
           <div className="shrink-0 overflow-x-auto border-b border-[var(--border)] px-3 py-2.5">
             <div className="flex w-max items-center gap-1.5">

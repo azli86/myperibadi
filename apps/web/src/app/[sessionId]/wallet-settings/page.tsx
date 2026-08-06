@@ -873,7 +873,7 @@ export default function WalletSettingsPage() {
                       type="submit"
                       form="wallet-create-form"
                       disabled={savingNew || !canContinueCreateWallet}
-                      className="px-1 py-1.5 text-lg font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                      className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
                     >
                       {savingNew
                         ? tr("Menyimpan…", "Saving…")
@@ -1125,7 +1125,7 @@ export default function WalletSettingsPage() {
                         if (didSave) setActiveWallet(null)
                       }}
                       disabled={busyWalletId === activeWallet.id || uploadingWalletId === activeWallet.id}
-                      className="px-1 py-1.5 text-lg font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                      className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
                     >
                       {busyWalletId === activeWallet.id
                         ? tr("Menyimpan…", "Saving…")

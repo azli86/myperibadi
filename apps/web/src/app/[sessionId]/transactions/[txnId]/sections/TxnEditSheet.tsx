@@ -184,7 +184,7 @@ export default function TxnEditSheet({
                 type="submit"
                 form="edit-txn-form"
                 disabled={saving}
-                className="px-1 py-1.5 text-lg font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
               >
                 {saving
                   ? (isBm ? "Menyimpan…" : "Saving…")
