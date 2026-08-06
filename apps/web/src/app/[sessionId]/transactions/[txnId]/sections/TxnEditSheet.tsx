@@ -133,7 +133,7 @@ export default function TxnEditSheet({
   }
 
   const pickerBtn =
-    "flex w-full items-end justify-between gap-2 rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-left transition-colors"
+    "flex w-full items-end justify-between gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-left transition-colors"
   const pickerLabel = "text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]"
   const pickerValue = (has: boolean) => cn("truncate text-base font-bold", has ? "text-[var(--text)]" : "text-[var(--muted)]")
   const selectedOption = "bg-[var(--text)] text-[var(--bg)]"
