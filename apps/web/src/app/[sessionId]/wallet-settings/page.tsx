@@ -19,6 +19,9 @@ import {
   Star,
   Search,
   Upload,
+  Landmark,
+  Smartphone,
+  CreditCard,
 } from "lucide-react"
 import { useLang } from "@/lib/lang"
 import { usePageAlert } from "@/hooks/usePageAlert"
@@ -96,6 +99,13 @@ function walletTypeLabel(type: WalletKind, isBm: boolean) {
   if (type === "shared") return isBm ? "Bersama" : "Shared"
   const opt = WALLET_TYPE_OPTIONS.find((o) => o.value === type)
   return opt ? (isBm ? opt.bm : opt.en) : type
+}
+
+function walletTypeIcon(type: string) {
+  if (type === "bank" || type === "bank_digital") return Landmark
+  if (type === "ewallet") return Smartphone
+  if (type === "credit_card") return CreditCard
+  return Wallet
 }
 
 const DEFAULT_DRAFT: DraftWallet = {
@@ -601,7 +611,7 @@ export default function WalletSettingsPage() {
       <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.04] blur-2xl" />
 
       <div className="relative flex min-h-24 flex-col items-center justify-center text-center md:min-h-28">
-        <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[#cbd5e1]">
+        <p className="text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-[#cbd5e1]">
           {tr("Jumlah Baki", "Total Balance")}
         </p>
         <div className="wallet-hero-amount mt-2 leading-none text-[#ffffff]">
@@ -698,7 +708,7 @@ export default function WalletSettingsPage() {
         <button
           type="button"
           onClick={openCreateWalletModal}
-          className="mt-4 rounded-full bg-[var(--text)] px-4 py-2 text-[0.625rem] font-black uppercase tracking-wider text-[var(--bg)] transition active:scale-95"
+          className="mt-4 rounded-full bg-[var(--text)] px-4 py-2 text-[0.6875rem] font-black uppercase tracking-wider text-[var(--bg)] transition active:scale-95"
         >
           <Plus size={14} className="mr-1 inline" />
           {tr("Tambah Dompet", "Add Wallet")}
@@ -940,7 +950,7 @@ export default function WalletSettingsPage() {
 
                     {createWalletStep === 1 && (
                       <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
-                        <p className="mb-3 text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        <p className="mb-3 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                           {tr("Warna kad", "Card color")}
                         </p>
                         <div className="flex flex-wrap items-center justify-center gap-3">
@@ -973,13 +983,14 @@ export default function WalletSettingsPage() {
                     {createWalletStep === 2 && (
                       <div className="space-y-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
                         <div>
-                          <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                          <label className="mb-2 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                             {tr("Jenis", "Type")}
                           </label>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="grid grid-cols-2 gap-2">
                             {WALLET_TYPE_OPTIONS.map((opt) => {
                               const selected =
                                 (draft.type === "shared" ? "cash" : draft.type) === opt.value
+                              const Icon = walletTypeIcon(opt.value)
                               return (
                                 <button
                                   key={opt.value}
@@ -988,12 +999,13 @@ export default function WalletSettingsPage() {
                                     setDraft((prev) => ({ ...prev, type: opt.value }))
                                   }
                                   className={cn(
-                                    "rounded-full px-3.5 py-2 text-[11px] font-bold transition active:scale-[0.98]",
+                                    "flex items-center justify-center gap-2 rounded-[var(--radius)] px-3 py-3 text-base font-bold transition active:scale-[0.98]",
                                     selected
                                       ? "bg-[var(--text)] text-[var(--bg)]"
-                                      : "border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--text)]",
+                                      : "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)]",
                                   )}
                                 >
+                                  <Icon size={18} />
                                   {isBm ? opt.bm : opt.en}
                                 </button>
                               )
@@ -1001,7 +1013,7 @@ export default function WalletSettingsPage() {
                           </div>
                         </div>
                         <div>
-                          <label className="mb-1.5 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                          <label className="mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                             {tr("Mata wang", "Currency")}
                           </label>
                           <input
@@ -1012,29 +1024,29 @@ export default function WalletSettingsPage() {
                                 currency: e.target.value.toUpperCase().slice(0, 5),
                               }))
                             }
-                            className="h-12 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-4 text-sm font-bold uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
+                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
                             placeholder="RM"
                           />
                         </div>
                         <div>
-                          <label className="mb-1.5 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                          <label className="mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                             {tr("Nama pada dompet", "Name on wallet")}
                           </label>
                           <input
                             value={draft.label}
                             onChange={(e) => setDraft((prev) => ({ ...prev, label: e.target.value }))}
-                            className="h-12 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-4 text-sm font-semibold outline-none focus:border-[var(--border-strong)]"
+                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium outline-none focus:border-[var(--border-strong)]"
                             placeholder={tr("Contoh: Maybank Utama", "Example: Main Maybank")}
                           />
                         </div>
                         <div>
-                          <label className="mb-1.5 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                          <label className="mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                             {tr("Prefix bot", "Bot prefix")}
                           </label>
                           <input
                             value={draft.name}
                             onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value.toLowerCase() }))}
-                            className="h-12 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-4 text-sm font-bold uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
+                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
                             placeholder={tr("Contoh: cash", "Example: cash")}
                           />
                         </div>
@@ -1066,7 +1078,7 @@ export default function WalletSettingsPage() {
                           </span>
                         </button>
                         <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
-                          <p className="mb-2 text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                          <p className="mb-2 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                             {tr("Ringkasan Dompet", "Wallet Summary")}
                           </p>
                           <ReviewRow label={tr("Penampilan", "Appearance")} value={selectedDraftAccent.label} />
@@ -1170,7 +1182,7 @@ export default function WalletSettingsPage() {
                   </div>
 
                   <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
-                    <p className="mb-3 text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                    <p className="mb-3 text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                       {tr("Penampilan", "Appearance")}
                     </p>
                     <label className="mb-3 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)] text-xs font-bold text-[var(--muted)]">
@@ -1204,24 +1216,26 @@ export default function WalletSettingsPage() {
 
                   <div className="space-y-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-4">
                     <div>
-                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                      <label className="mb-2 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                         {tr("Jenis Dompet", "Wallet Type")}
                       </label>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="grid grid-cols-2 gap-2">
                         {WALLET_TYPE_OPTIONS.map((opt) => {
                           const selected = activeWallet.type === opt.value
+                          const Icon = walletTypeIcon(opt.value)
                           return (
                             <button
                               key={opt.value}
                               type="button"
                               onClick={() => updateActiveWallet({ type: opt.value })}
                               className={cn(
-                                "rounded-full px-3.5 py-2 text-[11px] font-bold transition active:scale-[0.98]",
+                                "flex items-center justify-center gap-2 rounded-[var(--radius)] px-3 py-3 text-base font-bold transition active:scale-[0.98]",
                                 selected
                                   ? "bg-[var(--text)] text-[var(--bg)]"
-                                  : "border border-[var(--border)] bg-[var(--bg)] text-[var(--muted)] hover:text-[var(--text)]",
+                                  : "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)]",
                               )}
                             >
+                              <Icon size={18} />
                               {isBm ? opt.bm : opt.en}
                             </button>
                           )
@@ -1229,15 +1243,16 @@ export default function WalletSettingsPage() {
                         {activeWallet.type === "shared" ? (
                           <button
                             type="button"
-                            className="rounded-full bg-[var(--text)] px-3.5 py-2 text-[11px] font-bold text-[var(--bg)]"
+                            className="flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--text)] px-3 py-3 text-base font-bold text-[var(--bg)]"
                           >
+                            <Users size={18} />
                             {tr("Bersama", "Shared")}
                           </button>
                         ) : null}
                       </div>
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                      <label className="mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                         {tr("Mata Wang", "Currency")}
                       </label>
                       <input
@@ -1245,32 +1260,32 @@ export default function WalletSettingsPage() {
                         onChange={(e) =>
                           updateActiveWallet({ currency: e.target.value.toUpperCase().slice(0, 5) })
                         }
-                        className="h-12 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-4 text-sm font-bold uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
+                        className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
                         placeholder="RM"
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                      <label className="mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                         {tr("Nama pada Dompet", "Name on Wallet")}
                       </label>
                       <input
                         value={activeWallet.label}
                         onChange={(e) => updateActiveWallet({ label: e.target.value })}
-                        className="h-12 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-4 text-sm font-semibold outline-none focus:border-[var(--border-strong)]"
+                        className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium outline-none focus:border-[var(--border-strong)]"
                         placeholder={tr("Contoh: Maybank Utama", "Example: Main Maybank")}
                       />
                     </div>
                     <div>
-                      <label className="mb-1.5 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                      <label className="mb-1.5 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                         {tr("Prefix Bot", "Bot Prefix")}
                       </label>
                       <input
                         value={activeWallet.name}
                         onChange={(e) => updateActiveWallet({ name: e.target.value.toLowerCase() })}
-                        className="h-12 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-4 text-sm font-bold uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
+                        className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
                         placeholder={tr("Contoh: cash", "Example: cash")}
                       />
-                      <p className="mt-1.5 text-[11px] text-[var(--muted)]">
+                      <p className="mt-1.5 text-[0.6875rem] text-[var(--muted)]">
                         {tr("Untuk arahan bot.", "For bot commands.")}
                       </p>
                     </div>
