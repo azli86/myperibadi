@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { X, Check, ChevronDown, Plus, MinusCircle } from "lucide-react"
+import { X, Check, ChevronDown, Plus, MinusCircle, Wallet, HandCoins, Repeat, Tag } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
@@ -136,8 +136,12 @@ export default function TxnEditSheet({
     "flex w-full items-end justify-between gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-left transition-colors"
   const pickerLabel = "text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]"
   const pickerValue = (has: boolean) => cn("truncate text-base font-bold", has ? "text-[var(--text)]" : "text-[var(--muted)]")
+  // Picker list row: icon + large text
+  const rowBase = "flex w-full items-center gap-3 rounded-[var(--radius)] px-4 py-3 text-left transition-colors"
   const selectedOption = "bg-[var(--text)] text-[var(--bg)]"
   const unselectedOption = "bg-[var(--surface-tint)] text-[var(--text)]"
+  const rowText = "truncate text-base font-bold"
+  const rowIcon = "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)] overflow-hidden"
 
   const activePickers =
     showCategoryPicker || showWalletPicker || showLoanPicker || showSubscriptionPicker
@@ -493,9 +497,12 @@ export default function TxnEditSheet({
                   <button
                     type="button"
                     onClick={() => selectOption((v) => onEditFormChange({ category_id: v }), "", () => setShowCategoryPicker(false))}
-                    className={cn("flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium transition-colors", !editForm.category_id ? selectedOption : unselectedOption)}
+                    className={cn(rowBase, "justify-between", !editForm.category_id ? selectedOption : unselectedOption)}
                   >
-                    <span>{langT.category}</span>
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className={rowIcon}><Tag size={16} /></span>
+                      <span className={rowText}>{langT.category}</span>
+                    </span>
                   </button>
                   {categories
                     .filter((c) => c.kind === editForm.type)
@@ -506,9 +513,12 @@ export default function TxnEditSheet({
                           key={cat.id}
                           type="button"
                           onClick={() => selectOption((v) => onEditFormChange({ category_id: v }), String(cat.id), () => setShowCategoryPicker(false))}
-                          className={cn("flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium transition-colors", selected ? selectedOption : unselectedOption)}
+                          className={cn(rowBase, "justify-between", selected ? selectedOption : unselectedOption)}
                         >
-                          <span>{cat.name}</span>
+                          <span className="flex min-w-0 items-center gap-3">
+                            <span className={rowIcon}><Tag size={16} /></span>
+                            <span className={rowText}>{cat.name}</span>
+                          </span>
                         </button>
                       )
                     })}
@@ -520,9 +530,12 @@ export default function TxnEditSheet({
                   <button
                     type="button"
                     onClick={() => selectOption((v) => onEditFormChange({ wallet_id: v }), "", () => setShowWalletPicker(false))}
-                    className={cn("flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium transition-colors", !editForm.wallet_id ? selectedOption : unselectedOption)}
+                    className={cn(rowBase, "justify-between", !editForm.wallet_id ? selectedOption : unselectedOption)}
                   >
-                    <span>{langT.walletLabel}</span>
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className={rowIcon}><Wallet size={16} /></span>
+                      <span className={rowText}>{langT.walletLabel}</span>
+                    </span>
                   </button>
                   {wallets.map((wallet) => {
                     const selected = String(wallet.id) === editForm.wallet_id
@@ -531,9 +544,18 @@ export default function TxnEditSheet({
                         key={wallet.id}
                         type="button"
                         onClick={() => selectOption((v) => onEditFormChange({ wallet_id: v }), String(wallet.id), () => setShowWalletPicker(false))}
-                        className={cn("flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium transition-colors", selected ? selectedOption : unselectedOption)}
+                        className={cn(rowBase, "justify-between", selected ? selectedOption : unselectedOption)}
                       >
-                        <span>{wallet.label || wallet.name}</span>
+                        <span className="flex min-w-0 items-center gap-3">
+                          <span className={rowIcon}>
+                            {wallet.image_url ? (
+                              <img src={wallet.image_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <Wallet size={16} />
+                            )}
+                          </span>
+                          <span className={rowText}>{wallet.label || wallet.name}</span>
+                        </span>
                       </button>
                     )
                   })}
@@ -545,9 +567,12 @@ export default function TxnEditSheet({
                   <button
                     type="button"
                     onClick={() => selectOption(onLinkedLoanIdChange, "", () => setShowLoanPicker(false))}
-                    className={cn("flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium transition-colors", !linkedLoanId ? selectedOption : unselectedOption)}
+                    className={cn(rowBase, "justify-between", !linkedLoanId ? selectedOption : unselectedOption)}
                   >
-                    <span>{isBm ? "Tiada link loan" : "No loan link"}</span>
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className={rowIcon}><HandCoins size={16} /></span>
+                      <span className={rowText}>{isBm ? "Tiada link loan" : "No loan link"}</span>
+                    </span>
                   </button>
                   {loans.map((loan) => {
                     const selected = String(loan.id) === linkedLoanId
@@ -556,9 +581,12 @@ export default function TxnEditSheet({
                         key={loan.id}
                         type="button"
                         onClick={() => selectOption(onLinkedLoanIdChange, String(loan.id), () => setShowLoanPicker(false))}
-                        className={cn("flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium transition-colors", selected ? selectedOption : unselectedOption)}
+                        className={cn(rowBase, "justify-between", selected ? selectedOption : unselectedOption)}
                       >
-                        <span>{loan.name}</span>
+                        <span className="flex min-w-0 items-center gap-3">
+                          <span className={rowIcon}><HandCoins size={16} /></span>
+                          <span className={rowText}>{loan.name}</span>
+                        </span>
                       </button>
                     )
                   })}
@@ -570,9 +598,12 @@ export default function TxnEditSheet({
                   <button
                     type="button"
                     onClick={() => { onLinkedSubscriptionIdChange(""); selectOption((v) => onEditFormChange({ description: v }), "", () => setShowSubscriptionPicker(false)) }}
-                    className={cn("flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium transition-colors", !editForm.description.startsWith("SUBX ") ? selectedOption : unselectedOption)}
+                    className={cn(rowBase, "justify-between", !editForm.description.startsWith("SUBX ") ? selectedOption : unselectedOption)}
                   >
-                    <span>{isBm ? "Tiada subscribe link" : "No subscribe link"}</span>
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className={rowIcon}><Repeat size={16} /></span>
+                      <span className={rowText}>{isBm ? "Tiada subscribe link" : "No subscribe link"}</span>
+                    </span>
                   </button>
                   {subscriptions.map((sub) => {
                     const subPrefix = `SUBX ${sub.name}`
@@ -582,9 +613,12 @@ export default function TxnEditSheet({
                         key={sub.id}
                         type="button"
                         onClick={() => { onLinkedSubscriptionIdChange(String(sub.id)); selectOption((v) => onEditFormChange({ description: v }), subPrefix, () => setShowSubscriptionPicker(false)) }}
-                        className={cn("flex w-full items-center justify-between rounded-2xl px-4 py-3 text-left text-sm font-medium transition-colors", selected ? selectedOption : unselectedOption)}
+                        className={cn(rowBase, "justify-between", selected ? selectedOption : unselectedOption)}
                       >
-                        <span>{sub.name}</span>
+                        <span className="flex min-w-0 items-center gap-3">
+                          <span className={rowIcon}><Repeat size={16} /></span>
+                          <span className={rowText}>{sub.name}</span>
+                        </span>
                       </button>
                     )
                   })}
