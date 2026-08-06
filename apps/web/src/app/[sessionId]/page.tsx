@@ -2079,7 +2079,7 @@ export default function Dashboard() {
               <WeatherClockMini
                 lang={lang}
                 title={
-                  <h2 className="mt-0.5 min-w-0 truncate text-lg font-bold leading-tight text-[var(--text)]">
+                  <h2 className="mt-0.5 min-w-0 truncate text-2xl font-black leading-tight text-[var(--text)]">
                     {displayName}
                   </h2>
                 }

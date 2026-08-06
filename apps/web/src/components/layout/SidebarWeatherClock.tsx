@@ -122,31 +122,6 @@ export function WeatherClockMini({
   lang?: "EN" | "BM"
   title?: ReactNode
 }) {
-  const now = useNow()
-
-  if (!now) {
-    return (
-      <div className="flex min-w-0 items-center gap-3" aria-hidden="true">
-        <div className="h-9 w-9 shrink-0 rounded-full bg-[var(--surface-tint)]" />
-        <div className="min-w-0 space-y-1.5">
-          <div className="h-2 w-20 rounded bg-[var(--surface-tint)]" />
-          {title}
-        </div>
-      </div>
-    )
-  }
-
-  const { greeting, variant } = getTimeGreeting(now.getHours(), lang)
-
-  return (
-    <div className="flex min-w-0 items-center gap-3">
-      <WeatherGraphic variant={variant} />
-      <div className="min-w-0">
-        <p className="text-[0.7rem] font-medium tracking-wide text-[var(--muted)]">
-          {greeting}
-        </p>
-        {title}
-      </div>
-    </div>
-  )
+  void lang
+  return <div className="flex min-w-0 items-center gap-3">{title}</div>
 }
