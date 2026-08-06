@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef } from "react"
-import { X, Check, ChevronDown, Plus, MinusCircle, Wallet, HandCoins, Repeat, Tag, Upload, XCircle } from "lucide-react"
+import { X, Check, ChevronDown, Plus, MinusCircle, Wallet, HandCoins, Repeat, Tag, Upload, XCircle, TrendingDown, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CategoryIconGlyph } from "@/lib/category-icons"
 import { useLang } from "@/lib/lang"
@@ -214,28 +214,33 @@ export default function TxnEditSheet({
           )}
 
           <form id="edit-txn-form" onSubmit={onSubmit} className="space-y-3 px-4 pb-4 pt-1 sm:px-6 sm:pb-6 sm:pt-0">
-            <div className="grid grid-cols-2 gap-2">
-              {(["expense", "income"] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => onEditFormChange({ type })}
-                  className={cn(
-                    "rounded-2xl py-2.5 text-sm font-semibold transition-all",
-                    editForm.type === type
-                      ? type === "expense"
-                        ? isLight
-                          ? "border border-rose-500/20 bg-rose-500/10 text-rose-600"
-                          : "border border-rose-400/20 bg-rose-400/10 text-rose-400/80"
-                        : isLight
-                          ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
-                          : "border border-emerald-400/20 bg-emerald-400/10 text-emerald-400/80"
-                      : "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:border-[var(--border-strong)]"
-                  )}
-                >
-                  {type === "expense" ? langT.expense : langT.income}
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-2">
+              {(["expense", "income"] as const).map((type) => {
+                const active = editForm.type === type
+                const isExp = type === "expense"
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => onEditFormChange({ type })}
+                    className={cn(
+                      "flex items-center justify-center gap-2 rounded-[var(--radius)] py-3 text-base font-bold transition-all active:scale-[0.98]",
+                      active
+                        ? isExp
+                          ? isLight
+                            ? "bg-rose-500/10 text-rose-600"
+                            : "bg-rose-400/15 text-rose-400"
+                          : isLight
+                            ? "bg-emerald-500/10 text-emerald-600"
+                            : "bg-emerald-400/15 text-emerald-400"
+                        : "text-[var(--muted)]"
+                    )}
+                  >
+                    {isExp ? <TrendingDown size={20} /> : <TrendingUp size={20} />}
+                    {isExp ? langT.expense : langT.income}
+                  </button>
+                )
+              })}
             </div>
 
             {!itemManagerActive && (
