@@ -35,6 +35,7 @@ import {
 } from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount, formatCurrencyLabel } from "@/components/ui/MoneyAmount"
+import CurrencySelect from "@/components/ui/CurrencySelect"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
@@ -1019,16 +1020,9 @@ export default function WalletSettingsPage() {
                           <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                             {tr("Mata wang", "Currency")}
                           </p>
-                          <input
+                          <CurrencySelect
                             value={draft.currency}
-                            onChange={(e) =>
-                              setDraft((prev) => ({
-                                ...prev,
-                                currency: e.target.value.toUpperCase().slice(0, 5),
-                              }))
-                            }
-                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[0.8125rem] font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
-                            placeholder="RM"
+                            onChange={(v) => setDraft((prev) => ({ ...prev, currency: v }))}
                           />
                         </div>
 
@@ -1269,14 +1263,10 @@ export default function WalletSettingsPage() {
                     <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                       {tr("Mata Wang", "Currency")}
                     </p>
-                    <input
-                      value={activeWallet.currency}
-                      onChange={(e) =>
-                        updateActiveWallet({ currency: e.target.value.toUpperCase().slice(0, 5) })
-                      }
-                      className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[0.8125rem] font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
-                      placeholder="RM"
-                    />
+                      <CurrencySelect
+                        value={activeWallet.currency}
+                        onChange={(v) => updateActiveWallet({ currency: v })}
+                      />
                   </div>
 
                   {/* Nama pada Dompet card */}
