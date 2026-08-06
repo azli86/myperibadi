@@ -1086,6 +1086,16 @@ const currentCycleKeyStr = useMemo(
  title={lang === "EN" ? "Transactions" : "Transaksi"}
  fallbackHref={`/${sessionId}`}
  action={
+ <div className="flex items-center gap-2">
+ <MobileIconButton
+ onClick={() => setFiltersExpanded((v) => !v)}
+ label={lang === "EN" ? "Filter" : "Penapis"}
+ className={cn(
+ filtersExpanded && "bg-[var(--text)] text-[var(--bg)]"
+ )}
+ >
+ <SlidersHorizontal strokeWidth={2.5} />
+ </MobileIconButton>
  <MobileIconButton
  onClick={handleExport}
  disabled={filteredTxns.length === 0 || loading}
@@ -1093,9 +1103,137 @@ const currentCycleKeyStr = useMemo(
  >
  <Download strokeWidth={2.5} />
  </MobileIconButton>
+ </div>
  }
  />
  </div>
+
+ {/* Mobile filter popup */}
+ {filtersExpanded && (
+ <div
+ className="fixed inset-0 z-[500] md:hidden"
+ onClick={() => setFiltersExpanded(false)}
+ >
+ <button
+ type="button"
+ aria-label="Close filters"
+ className="absolute inset-0 bg-black/45"
+ />
+ <section
+ className="absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-3xl border border-[var(--border)] bg-[var(--card)] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl"
+ onClick={(e) => e.stopPropagation()}
+ >
+ <div className="mb-3 h-1 w-10 rounded-full bg-[var(--surface-tint-strong)]" />
+ <div className="mb-3 flex items-center justify-between">
+ <p className="text-lg font-black text-[var(--text)]">
+ {lang === "EN" ? "Filter Transactions" : "Tapis Transaksi"}
+ </p>
+ <button
+ type="button"
+ onClick={() => setFiltersExpanded(false)}
+ aria-label={lang === "EN" ? "Close" : "Tutup"}
+ className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] transition hover:text-[var(--text)]"
+ >
+ <X size={17} />
+ </button>
+ </div>
+
+ {/* Search */}
+ <div className="relative flex-1">
+ <Search className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)]" size={18} />
+ <input
+ type="text"
+ placeholder={langT.searchTransactions}
+ value={searchQuery}
+ onChange={(e) => setSearchQuery(e.target.value)}
+ className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-11 pr-4 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] focus:ring-1 focus:ring-[var(--text)]/20"
+ />
+ </div>
+
+ <div className="mt-3 grid grid-cols-2 gap-2">
+ <FilterSelect
+ value={selectedMonth}
+ onChange={setSelectedMonth}
+ ariaLabel={lang === "EN" ? "Filter by month" : "Tapis ikut bulan"}
+ isMobile
+ options={[
+ ...monthOptions.map((monthKey) => ({
+ value: monthKey,
+ label: new Date(
+ Number(monthKey.split("-")[0]),
+ Number(monthKey.split("-")[1]) - 1,
+ 1,
+ ).toLocaleString(lang === "EN" ? "en-MY" : "ms-MY", {
+ month: "long",
+ year: "numeric",
+ }),
+ })),
+ ]}
+ />
+ <FilterSelect
+ value={selectedType}
+ onChange={(value) => setSelectedType(value as "all" | "expense" | "income" | "transfer")}
+ ariaLabel={lang === "EN" ? "Filter by type" : "Tapis ikut jenis"}
+ isMobile
+ options={[
+ { value: "all", label: lang === "EN" ? "Type" : "Jenis" },
+ { value: "expense", label: langT.expense },
+ { value: "income", label: langT.income },
+ { value: "transfer", label: lang === "EN" ? "Transfer" : "Pindahan" },
+ ]}
+ />
+ <FilterSelect
+ value={selectedCategory}
+ onChange={setSelectedCategory}
+ ariaLabel={lang === "EN" ? "Filter by category" : "Tapis ikut kategori"}
+ isMobile
+ alignMenu="right"
+ options={[
+ { value: "all", label: lang === "EN" ? "Category" : "Kategori" },
+ ...(categoryOptions.expense.length ? [{ value: "__group_expense", label: lang === "EN" ? "Expenses" : "Belanja", disabled: true }] : []),
+ ...categoryOptions.expense.map((category) => ({ value: category, label: category })),
+ ...(categoryOptions.income.length ? [{ value: "__group_income", label: lang === "EN" ? "Income" : "Pendapatan", disabled: true }] : []),
+ ...categoryOptions.income.map((category) => ({ value: category, label: category })),
+ ...(categoryOptions.unknown.length ? [{ value: "__group_other", label: lang === "EN" ? "Other" : "Lain-lain", disabled: true }] : []),
+ ...categoryOptions.unknown.map((category) => ({ value: category, label: category })),
+ ]}
+ />
+ <FilterSelect
+ value={selectedWallet}
+ onChange={setSelectedWallet}
+ ariaLabel={lang === "EN" ? "Filter by wallet" : "Tapis ikut dompet"}
+ isMobile
+ alignMenu="right"
+ options={[
+ { value: "all", label: lang === "EN" ? "Wallet" : "Dompet" },
+ ...walletOptions,
+ ]}
+ />
+ </div>
+
+ <div className="mt-3 flex items-center justify-between gap-2">
+ <button
+ type="button"
+ aria-label={lang === "EN" ? "Date filters" : "Penapis tarikh"}
+ onClick={openDateFilterPopup}
+ className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] text-xs font-bold text-[var(--muted)] transition"
+ >
+ <SlidersHorizontal size={15} />
+ {lang === "EN" ? "Date Range" : "Julat Tarikh"}
+ </button>
+ <button
+ type="button"
+ onClick={() => {
+ setFiltersExpanded(false)
+ }}
+ className="h-10 flex-1 rounded-xl bg-[var(--text)] text-xs font-bold text-[var(--bg)]"
+ >
+ {lang === "EN" ? "Done" : "Siap"}
+ </button>
+ </div>
+ </section>
+ </div>
+ )}
 
  {/* Desktop top bar — must stay outside overflow containers to sticky against main */}
  <DesktopPageHeader
@@ -1116,8 +1254,8 @@ const currentCycleKeyStr = useMemo(
  />
 
  <DesktopPageBody className="flex flex-col gap-4 md:gap-6">
- {/* Search + filters (collapsible) */}
- <div className="flex flex-col gap-2 border-b border-[color:var(--border)] pb-5 md:border-b-0 md:pb-0">
+ {/* Search + filters (collapsible) — desktop only; mobile uses header popup */}
+ <div className="hidden flex-col gap-2 border-b border-[color:var(--border)] pb-5 md:flex md:border-b-0 md:pb-0">
  {/* Toggle button: show/hide all filters */}
  <button
  type="button"
