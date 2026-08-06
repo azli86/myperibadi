@@ -229,45 +229,19 @@ export default function TxnEditSheet({
                   value={editForm.description}
                   onChange={(e) => onEditFormChange({ description: e.target.value })}
                   required
-                  className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
+                  className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
                 />
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    aria-label={langT.amount}
-                    placeholder={langT.amount}
-                    value={editForm.amount}
-                    onChange={(e) => onEditFormChange({ amount: sanitizeDecimalInput(e.target.value) })}
-                    required
-                    className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
-                  />
-                  <input
-                    type="date"
-                    aria-label={langT.date}
-                    value={editForm.date}
-                    onChange={(e) => onEditFormChange({ date: e.target.value })}
-                    className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium text-[var(--text)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
-                  />
-                  <input
-                    type="time"
-                    aria-label={langT.time}
-                    value={editForm.time}
-                    onChange={(e) => onEditFormChange({ time: e.target.value })}
-                    className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium text-[var(--text)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
-                  />
-                </div>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  aria-label={langT.amount}
+                  placeholder={langT.amount}
+                  value={editForm.amount}
+                  onChange={(e) => onEditFormChange({ amount: sanitizeDecimalInput(e.target.value) })}
+                  required
+                  className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
+                />
               </>
-            )}
-
-            {itemManagerActive && (
-              <input
-                type="date"
-                aria-label={langT.date}
-                value={editForm.date}
-                onChange={(e) => onEditFormChange({ date: e.target.value })}
-                className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium text-[var(--text)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
-              />
             )}
 
             <div className="relative">
@@ -328,14 +302,46 @@ export default function TxnEditSheet({
               </button>
             </div>
 
-            <textarea
-              aria-label={langT.notesLabel}
-              value={editForm.notes}
-              onChange={(e) => onEditFormChange({ notes: e.target.value })}
-              placeholder={langT.notesLabel}
-              rows={2}
-              className="w-full resize-none rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
-            />
+            {/* Details card: notes, date & time together */}
+            <div className="space-y-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+              <div className="flex items-center gap-1.5">
+                <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                  {isBm ? "Butiran" : "Details"}
+                </p>
+              </div>
+              <textarea
+                aria-label={langT.notesLabel}
+                value={editForm.notes}
+                onChange={(e) => onEditFormChange({ notes: e.target.value })}
+                placeholder={langT.notesLabel}
+                rows={2}
+                className="w-full resize-none rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="mb-1 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                    {langT.date}
+                  </span>
+                  <input
+                    type="date"
+                    value={editForm.date}
+                    onChange={(e) => onEditFormChange({ date: e.target.value })}
+                    className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm font-medium text-[var(--text)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                    {langT.time}
+                  </span>
+                  <input
+                    type="time"
+                    value={editForm.time}
+                    onChange={(e) => onEditFormChange({ time: e.target.value })}
+                    className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm font-medium text-[var(--text)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
+                  />
+                </label>
+              </div>
+            </div>
 
             {editForm.type !== "income" && (
               <div className="space-y-3 border-t border-[var(--border)] pt-3">
