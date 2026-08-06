@@ -220,8 +220,8 @@ BOT_TRANSLATIONS = {
         "no_amount": "Maaf, saya tidak dapat menemui jumlah (amount) dalam mesej anda.",
         "invalid_date_token": "Format tarikh tidak sah. Guna `@DDMMYYYY` contoh: `grab 18.50 @05042026`.",
         "wallet_not_found": "Ralat: Wallet personal tidak dijumpai.",
-        "saved": "*{ref_id}*\n✅ *Done | Rekod Disimpan*\n• Nota: {text}\n• Wallet: *{wallet_name}*\n• Kategori: *{cat}*\n• Jumlah : *{amount}*\n• Tarikh: *{txn_date}*\n• Baki Semasa : *{balance}*{backdate_hint}",
-        "saved_hidden_balance": "*{ref_id}*\n✅ *Done | Rekod Disimpan*\n• Nota: {text}\n• Wallet: *{wallet_name}*\n• Kategori: *{cat}*\n• Jumlah : *{amount}*\n• Tarikh: *{txn_date}*\n• Baki Semasa : *{private_value}*{backdate_hint}",
+        "saved": "*{ref_id}*\n✅ *Done | Rekod Disimpan*\n• Nota: {text}\n• Wallet: *{wallet_name}*\n• Kategori: *{cat}*\n• Jumlah : *{amount}*\n• Tarikh: *{txn_date}*{time_note}\n• Baki Semasa : *{balance}*{backdate_hint}",
+        "saved_hidden_balance": "*{ref_id}*\n✅ *Done | Rekod Disimpan*\n• Nota: {text}\n• Wallet: *{wallet_name}*\n• Kategori: *{cat}*\n• Jumlah : *{amount}*\n• Tarikh: *{txn_date}*{time_note}\n• Baki Semasa : *{private_value}*{backdate_hint}",
         "error": "Maaf, ralat teknikal berlaku semasa menyimpan data anda.",
         "no_note": "Tiada nota",
         "lang_switched": "Bahasa telah ditukar ke Bahasa Melayu.",
@@ -287,8 +287,8 @@ BOT_TRANSLATIONS = {
         "no_amount": "Sorry, I couldn't find an amount in your message.",
         "invalid_date_token": "Invalid date format. Use `@DDMMYYYY`, e.g. `grab 18.50 @05042026`.",
         "wallet_not_found": "Error: Personal wallet not found.",
-        "saved": "*{ref_id}*\n✅ *Done | Record Saved*\n• Note: {text}\n• Wallet: *{wallet_name}*\n• Category: *{cat}*\n• Amount : *{amount}*\n• Date: *{txn_date}*\n• Current Balance : *{balance}*{backdate_hint}",
-        "saved_hidden_balance": "*{ref_id}*\n✅ *Done | Record Saved*\n• Note: {text}\n• Wallet: *{wallet_name}*\n• Category: *{cat}*\n• Amount : *{amount}*\n• Date: *{txn_date}*\n• Current Balance : *{private_value}*{backdate_hint}",
+        "saved": "*{ref_id}*\n✅ *Done | Record Saved*\n• Note: {text}\n• Wallet: *{wallet_name}*\n• Category: *{cat}*\n• Amount : *{amount}*\n• Date: *{txn_date}*{time_note}\n• Current Balance : *{balance}*{backdate_hint}",
+        "saved_hidden_balance": "*{ref_id}*\n✅ *Done | Record Saved*\n• Note: {text}\n• Wallet: *{wallet_name}*\n• Category: *{cat}*\n• Amount : *{amount}*\n• Date: *{txn_date}*{time_note}\n• Current Balance : *{private_value}*{backdate_hint}",
         "error": "Sorry, a technical error occurred while saving your data.",
         "no_note": "No note",
         "lang_switched": "Language switched to English.",
@@ -2837,6 +2837,177 @@ def extract_explicit_txn_date(text: str) -> Tuple[Optional[date], str, bool]:
     cleaned_text = re.sub(r"\s{2,}", " ", cleaned_text)
     return parsed_date, cleaned_text, False
 
+# Time tokens like 14:30, 2:30pm, pukul 2 petang, jam 8 pagi, 2 tengahari, 10 malam
+TIME_TOKEN_PATTERN = re.compile(
+    r"""(?i)(?:
+        # 24h HH:MM
+        # 24h HH:MM
+        \b(\d{1,2}):(\d{2})\b |
+        # 12h HH:MM am/pm
+        \b(\d{1,2}):(\d{2})\s*(am|pm)\b |
+        # pukul/jam + number + optional minutes + optional time-of-day
+        \b(?:pukul|jam)\s+(\d{1,2})(?:\.(\d{2}))?\s*(pagi|tengahari|tengah hari|petang|malam|am|pm)?\b |
+        # bare number + time-of-day (2 petang / 8 pagi / 10 malam / 3 tengahari)
+        \b(\d{1,2})\s*(pagi|tengahari|tengah hari|petang|malam)\b
+    )""",
+    re.VERBOSE,
+)
+
+# Group map:
+# g1,g2 = 24h hour,minute | g3,g4,g5 = 12h hour,minute,am|pm
+# g6,g7,g8 = pukul/jam hour,minute,tod | g9,g10 = bare hour,tod
+
+def extract_explicit_txn_time(text: str) -> Tuple[Optional[str], str]:
+    """Extract an explicit time token from text. Returns (HH:MM or None, cleaned_text)."""
+    raw = (text or "").strip()
+    if not raw:
+        return None, text
+
+    match = TIME_TOKEN_PATTERN.search(raw)
+    if not match:
+        return None, text
+
+    groups = match.groups()
+    hh_24, mm_24 = groups[0], groups[1]
+    hh_12, mm_12, ampm = groups[2], groups[3], groups[4]
+    pukul_hour, pukul_min, pukul_tod = groups[5], groups[6], groups[7]
+    bare_hour, bare_tod = groups[8], groups[9]
+
+    hour: Optional[int] = None
+    minute: int = 0
+
+    if hh_24:
+        hour = int(hh_24)
+        minute = int(mm_24)
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            return None, text
+        formatted = f"{hour:02d}:{minute:02d}"
+    elif hh_12:
+        hour = int(hh_12)
+        minute = int(mm_12)
+        if not (1 <= hour <= 12 and 0 <= minute <= 59):
+            return None, text
+        if (ampm or "").lower() == "pm" and hour != 12:
+            hour += 12
+        elif (ampm or "").lower() == "am" and hour == 12:
+            hour = 0
+        formatted = f"{hour:02d}:{minute:02d}"
+    elif pukul_hour:
+        hour = int(pukul_hour)
+        minute = int(pukul_min or 0)
+        if not (1 <= hour <= 12 and 0 <= minute <= 59):
+            return None, text
+        tod = (pukul_tod or "").lower()
+        if tod == "malam" and hour < 12:
+            hour += 12
+        elif tod in ("petang", "tengahari", "tengah hari") and hour < 12:
+            hour += 12
+        elif tod == "am" and hour == 12:
+            hour = 0
+        elif tod == "pm" and hour != 12:
+            hour += 12
+        formatted = f"{hour:02d}:{minute:02d}"
+    elif bare_hour:
+        hour = int(bare_hour)
+        minute = 0
+        if not (1 <= hour <= 12):
+            return None, text
+        tod = (bare_tod or "").lower()
+        if tod == "malam" and hour < 12:
+            hour += 12
+        elif tod in ("petang", "tengahari", "tengah hari") and hour < 12:
+            hour += 12
+        formatted = f"{hour:02d}:{minute:02d}"
+    else:
+        return None, text
+
+    cleaned_text = f"{raw[:match.start()]} {raw[match.end():]}".strip()
+    cleaned_text = re.sub(r"\s{2,}", " ", cleaned_text)
+    return formatted, cleaned_text
+
+# Time-of-day words -> hour offset (12h to 24h)
+_TIME_OF_DAY_OFFSET = {
+    "pagi": 0,        # 1 pagi = 01:00
+    "am": 0,
+    "tengahari": 12,  # 12 tengahari = 12:00, 1 tengahari = 13:00
+    "tengah hari": 12,
+    "petang": 12,     # 1 petang = 13:00
+    "pm": 12,
+    "malam": 12,      # 8 malam = 20:00
+}
+
+# Group map:
+# g1,g2 = 24h hour,minute | g3,g4,g5 = 12h hour,minute,am|pm
+# g6,g7,g8 = pukul/jam hour,minute,tod | g9,g10 = bare hour,tod
+
+def extract_explicit_txn_time(text: str) -> Tuple[Optional[str], str]:
+    """Extract an explicit time token from text. Returns (HH:MM or None, cleaned_text)."""
+    raw = (text or "").strip()
+    if not raw:
+        return None, text
+
+    match = TIME_TOKEN_PATTERN.search(raw)
+    if not match:
+        return None, text
+
+    groups = match.groups()
+    hh_24, mm_24 = groups[0], groups[1]
+    hh_12, mm_12, ampm = groups[2], groups[3], groups[4]
+    pukul_hour, pukul_min, pukul_tod = groups[5], groups[6], groups[7]
+    bare_hour, bare_tod = groups[8], groups[9]
+
+    hour: Optional[int] = None
+    minute: int = 0
+
+    if hh_24:
+        hour = int(hh_24)
+        minute = int(mm_24)
+        if not (0 <= hour <= 23 and 0 <= minute <= 59):
+            return None, text
+        formatted = f"{hour:02d}:{minute:02d}"
+    elif hh_12:
+        hour = int(hh_12)
+        minute = int(mm_12)
+        if not (1 <= hour <= 12 and 0 <= minute <= 59):
+            return None, text
+        if (ampm or "").lower() == "pm" and hour != 12:
+            hour += 12
+        elif (ampm or "").lower() == "am" and hour == 12:
+            hour = 0
+        formatted = f"{hour:02d}:{minute:02d}"
+    elif pukul_hour:
+        hour = int(pukul_hour)
+        minute = int(pukul_min or 0)
+        if not (1 <= hour <= 12 and 0 <= minute <= 59):
+            return None, text
+        tod = (pukul_tod or "").lower()
+        if tod == "malam" and hour < 12:
+            hour += 12
+        elif tod in ("petang", "tengahari", "tengah hari") and hour < 12:
+            hour += 12
+        elif tod == "am" and hour == 12:
+            hour = 0
+        elif tod == "pm" and hour != 12:
+            hour += 12
+        formatted = f"{hour:02d}:{minute:02d}"
+    elif bare_hour:
+        hour = int(bare_hour)
+        minute = 0
+        if not (1 <= hour <= 12):
+            return None, text
+        tod = (bare_tod or "").lower()
+        if tod == "malam" and hour < 12:
+            hour += 12
+        elif tod in ("petang", "tengahari", "tengah hari") and hour < 12:
+            hour += 12
+        formatted = f"{hour:02d}:{minute:02d}"
+    else:
+        return None, text
+
+    cleaned_text = f"{raw[:match.start()]} {raw[match.end():]}".strip()
+    cleaned_text = re.sub(r"\s{2,}", " ", cleaned_text)
+    return formatted, cleaned_text
+
 async def get_user_balance(db: AsyncSession, user_id: str) -> float:
     bal_res = await db.execute(
         select(func.sum(
@@ -3169,6 +3340,12 @@ async def _process_whatsapp_message_impl(
             return t["invalid_date_token"], None
 
         raw_text = text_without_date_token or raw_text
+        # Explicit time from command text (e.g. "pukul 2 petang", "14:30", "2:30pm").
+        explicit_txn_time, text_without_time_token = extract_explicit_txn_time(raw_text)
+        if explicit_txn_time and not txn_time:
+            txn_time = explicit_txn_time
+        if text_without_time_token:
+            raw_text = text_without_time_token
         has_here_marker = has_here_location_marker(raw_text)
         if has_here_marker:
             raw_text = strip_here_location_marker(raw_text)
@@ -4276,6 +4453,9 @@ async def _process_whatsapp_message_impl(
             txn_amount=None if hide_saved_amount else amount,
         )
         multi_item_note = ""
+        time_note = f"\n• Masa: *{txn_time}*" if parsed_txn_time else ""
+        if user_lang == "EN" and time_note:
+            time_note = f"\n• Time: *{txn_time}*"
         if multi_item_transaction:
             item_title = "Senarai Item" if user_lang == "BM" else "Items"
             item_lines = []
@@ -4313,6 +4493,7 @@ async def _process_whatsapp_message_impl(
             cat=cat_name,
             amount=private_value if hide_saved_amount else f"RM {amount:,.2f}",
             txn_date=txn_date.strftime("%d/%m/%Y"),
+            time_note=time_note,
             balance=private_value if hide_group_balance else f"RM {balance:,.2f}",
             backdate_hint=backdate_hint,
             private_value=private_value,
