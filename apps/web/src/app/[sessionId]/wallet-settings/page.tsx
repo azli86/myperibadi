@@ -1000,13 +1000,13 @@ export default function WalletSettingsPage() {
                                     setDraft((prev) => ({ ...prev, type: opt.value }))
                                   }
                                   className={cn(
-                                    "flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--card)] px-3 py-2.5 text-sm font-semibold transition active:scale-[0.98]",
+                                    "flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--card)] px-3 py-2 text-[0.8125rem] font-medium transition active:scale-[0.98]",
                                     selected
                                       ? "bg-[var(--text)] text-[var(--bg)]"
                                       : "border border-[var(--border)] text-[var(--text)]",
                                   )}
                                 >
-                                  <Icon size={16} />
+                                  <Icon size={14} />
                                   {isBm ? opt.bm : opt.en}
                                 </button>
                               )
@@ -1027,7 +1027,7 @@ export default function WalletSettingsPage() {
                                 currency: e.target.value.toUpperCase().slice(0, 5),
                               }))
                             }
-                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
+                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[0.8125rem] font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
                             placeholder="RM"
                           />
                         </div>
@@ -1040,7 +1040,7 @@ export default function WalletSettingsPage() {
                           <input
                             value={draft.label}
                             onChange={(e) => setDraft((prev) => ({ ...prev, label: e.target.value }))}
-                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm font-medium outline-none focus:border-[var(--border-strong)]"
+                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[0.8125rem] font-medium outline-none focus:border-[var(--border-strong)]"
                             placeholder={tr("Contoh: Maybank Utama", "Example: Main Maybank")}
                           />
                         </div>
@@ -1053,7 +1053,7 @@ export default function WalletSettingsPage() {
                           <input
                             value={draft.name}
                             onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value.toLowerCase() }))}
-                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
+                            className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[0.8125rem] font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
                             placeholder={tr("Contoh: cash", "Example: cash")}
                           />
                         </div>
@@ -1241,13 +1241,13 @@ export default function WalletSettingsPage() {
                             type="button"
                             onClick={() => updateActiveWallet({ type: opt.value })}
                             className={cn(
-                              "flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--card)] px-3 py-2.5 text-sm font-semibold transition active:scale-[0.98]",
+                              "flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--card)] px-3 py-2 text-[0.8125rem] font-medium transition active:scale-[0.98]",
                               selected
                                 ? "bg-[var(--text)] text-[var(--bg)]"
                                 : "border border-[var(--border)] text-[var(--text)]",
                             )}
                           >
-                            <Icon size={16} />
+                            <Icon size={14} />
                             {isBm ? opt.bm : opt.en}
                           </button>
                         )
@@ -1255,9 +1255,9 @@ export default function WalletSettingsPage() {
                       {activeWallet.type === "shared" ? (
                         <button
                           type="button"
-                          className="flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--text)] px-3 py-2.5 text-sm font-semibold text-[var(--bg)]"
+                          className="flex items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--text)] px-3 py-2 text-[0.8125rem] font-medium text-[var(--bg)]"
                         >
-                          <Users size={16} />
+                          <Users size={14} />
                           {tr("Bersama", "Shared")}
                         </button>
                       ) : null}
@@ -1274,7 +1274,7 @@ export default function WalletSettingsPage() {
                       onChange={(e) =>
                         updateActiveWallet({ currency: e.target.value.toUpperCase().slice(0, 5) })
                       }
-                      className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
+                      className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[0.8125rem] font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
                       placeholder="RM"
                     />
                   </div>
@@ -1287,7 +1287,7 @@ export default function WalletSettingsPage() {
                     <input
                       value={activeWallet.label}
                       onChange={(e) => updateActiveWallet({ label: e.target.value })}
-                      className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm font-medium outline-none focus:border-[var(--border-strong)]"
+                      className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[0.8125rem] font-medium outline-none focus:border-[var(--border-strong)]"
                       placeholder={tr("Contoh: Maybank Utama", "Example: Main Maybank")}
                     />
                   </div>
@@ -1300,7 +1300,7 @@ export default function WalletSettingsPage() {
                     <input
                       value={activeWallet.name}
                       onChange={(e) => updateActiveWallet({ name: e.target.value.toLowerCase() })}
-                      className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
+                      className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[0.8125rem] font-medium uppercase tracking-[0.12em] outline-none focus:border-[var(--border-strong)]"
                       placeholder={tr("Contoh: cash", "Example: cash")}
                     />
                     <p className="text-[0.6875rem] text-[var(--muted)]">
