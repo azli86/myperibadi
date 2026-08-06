@@ -298,6 +298,7 @@ function CategoryIconPicker({ value, kind, onChange, compact = false }: Category
 
 export default function CategoriesPage() {
   const { t, lang } = useLang()
+  const { resolvedTheme } = useTheme()
   const params = useParams()
   const sessionId = params.sessionId as string || ""
 
@@ -1173,22 +1174,29 @@ export default function CategoriesPage() {
                             placeholder={t.categoryName}
                           />
                         </div>
-                        <div className="flex items-center gap-2">
-                          {(["expense", "income"] as const).map(kind => (
-                            <button
-                              key={kind}
-                              type="button"
-                              onClick={() => setEditCatKind(kind)}
-                              className={cn(
-                                "rounded-full px-3.5 py-1.5 text-xs font-bold transition-all active:scale-95",
-                                editCatKind === kind
-                                  ? "bg-[var(--text)] text-[var(--bg)]"
-                                  : "bg-[var(--surface-tint)] text-[var(--muted)]"
-                              )}
-                            >
-                              {kind === "expense" ? t.expense : t.income}
-                            </button>
-                          ))}
+                        <div className="grid grid-cols-2 gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-2">
+                          {(["expense", "income"] as const).map(kind => {
+                            const active = editCatKind === kind
+                            const isExp = kind === "expense"
+                            return (
+                              <button
+                                key={kind}
+                                type="button"
+                                onClick={() => setEditCatKind(kind)}
+                                className={cn(
+                                  "flex items-center justify-center gap-2 rounded-[var(--radius)] py-2.5 text-sm font-bold transition-all active:scale-[0.98]",
+                                  active
+                                    ? isExp
+                                      ? (resolvedTheme === "light" ? "bg-rose-500/10 text-rose-600" : "bg-rose-400/15 text-rose-400")
+                                      : (resolvedTheme === "light" ? "bg-emerald-500/10 text-emerald-600" : "bg-emerald-400/15 text-emerald-400")
+                                    : "text-[var(--muted)]"
+                                )}
+                              >
+                                {isExp ? <TrendingDown size={18} /> : <TrendingUp size={18} />}
+                                {kind === "expense" ? t.expense : t.income}
+                              </button>
+                            )
+                          })}
                         </div>
                         <div>
                           <label className="mb-1.5 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)] opacity-70">
@@ -1294,22 +1302,29 @@ export default function CategoriesPage() {
                           className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium text-[var(--text)] focus:outline-none focus:bg-[var(--surface-tint-strong)]"
                         />
                       </div>
-                      <div className="flex items-center gap-2">
-                        {(["expense", "income"] as const).map(kind => (
-                          <button
-                            key={kind}
-                            type="button"
-                            onClick={() => setNewCatKind(kind)}
-                            className={cn(
-                              "rounded-full px-3.5 py-1.5 text-xs font-bold transition-all active:scale-95",
-                              newCatKind === kind
-                                ? "bg-[var(--text)] text-[var(--bg)]"
-                                : "bg-[var(--surface-tint)] text-[var(--muted)]"
-                            )}
-                          >
-                            {kind === "expense" ? t.expense : t.income}
-                          </button>
-                        ))}
+                      <div className="grid grid-cols-2 gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-2">
+                        {(["expense", "income"] as const).map(kind => {
+                          const active = newCatKind === kind
+                          const isExp = kind === "expense"
+                          return (
+                            <button
+                              key={kind}
+                              type="button"
+                              onClick={() => setNewCatKind(kind)}
+                              className={cn(
+                                "flex items-center justify-center gap-2 rounded-[var(--radius)] py-2.5 text-sm font-bold transition-all active:scale-[0.98]",
+                                active
+                                  ? isExp
+                                    ? (resolvedTheme === "light" ? "bg-rose-500/10 text-rose-600" : "bg-rose-400/15 text-rose-400")
+                                    : (resolvedTheme === "light" ? "bg-emerald-500/10 text-emerald-600" : "bg-emerald-400/15 text-emerald-400")
+                                  : "text-[var(--muted)]"
+                              )}
+                            >
+                              {isExp ? <TrendingDown size={18} /> : <TrendingUp size={18} />}
+                              {kind === "expense" ? t.expense : t.income}
+                            </button>
+                          )
+                        })}
                       </div>
                       <div>
                         <label className="mb-1.5 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)] opacity-70">
