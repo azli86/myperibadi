@@ -3791,11 +3791,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         <CalculatorIcon size={25} strokeWidth={1.85} />
                         <span className="text-sm font-bold">Calculator</span>
                       </button>
-                    </div>
-                  </section>
-
-                  <section className={cn("rounded-2xl p-4", "bg-[var(--card)]")}>
-                    <div className="grid grid-cols-2 gap-2">
                       {[
                         { name: lang === "BM" ? "Kenderaan Saya" : "My Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
                         { name: lang === "BM" ? "Waranti Saya" : "My Warranty", href: `/${sessionId}/warranty`, icon: Shield },
@@ -3804,9 +3799,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           key={item.href}
                           type="button"
                           onClick={() => requestMobileMenuCloseThen(() => router.push(item.href))}
-                          className="flex min-w-0 items-center gap-3 rounded-xl bg-[var(--surface-tint)] p-3 text-left text-[var(--text)] transition active:scale-[0.97]"
+                          className="flex items-center gap-3 rounded-xl bg-[var(--surface-tint)] p-3 text-left text-[var(--text)] transition active:scale-[0.97]"
                         >
-                          <item.icon size={25} strokeWidth={1.85} className="shrink-0" />
+                          <item.icon size={25} strokeWidth={1.85} />
                           <span className="text-sm font-bold">{item.name}</span>
                         </button>
                       ))}
