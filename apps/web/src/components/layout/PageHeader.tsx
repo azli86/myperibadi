@@ -22,7 +22,7 @@ export function MobilePageHeader({
   return (
     <div className={cn("px-1 pb-1 pt-0", className)}>
       <div className="flex items-center gap-3 pt-0.5">
-        <h1 className="min-w-0 flex-1 truncate text-left text-2xl font-extrabold tracking-tight text-[var(--text)] sm:text-3xl">
+        <h1 className="min-w-0 flex-1 truncate text-left text-3xl font-extrabold tracking-tight text-[var(--text)] sm:text-4xl">
           {title}
         </h1>
         <div className="flex shrink-0 items-center justify-end gap-1.5">
@@ -188,7 +188,7 @@ export function DesktopPageHeader({
                     <ChevronRight size={13} strokeWidth={2.25} className="shrink-0 text-[var(--muted)]" />
                   ) : null}
                   {isLast ? (
-                    <h1 className="min-w-0 truncate text-[var(--muted)]">{item.label}</h1>
+                    <h1 className="min-w-0 truncate text-lg font-bold text-[var(--text)] md:text-xl">{item.label}</h1>
                   ) : item.href ? (
                     <Link href={item.href} className="shrink-0 text-[var(--text)] transition hover:text-[var(--accent2)]">
                       {item.label}
