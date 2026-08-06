@@ -282,7 +282,7 @@ const createPdfBlob = (contentStream: string, attachmentImages: ReceiptPdfImage[
 export default function TransactionDetailPage() {
   const params = useParams()
   const router = useRouter()
-  const { lang, timezone, t: langT } = useLang()
+  const { lang, timezone, timeFormat, t: langT } = useLang()
   const sessionId = params.sessionId as string || ""
   const txnId = params.txnId as string || ""
 
@@ -1370,16 +1370,35 @@ export default function TransactionDetailPage() {
   const receiptItems = txn.items?.length
     ? txn.items
     : [{ id: 0, name: txnDisplay.title || txn.vendor_or_source, quantity: 1, unit_price: txn.amount, subtotal: txn.amount, sort_order: 0 }]
-  const transactionDateLabel = txn.txn_date ? (() => {
-    try {
-      const rawDate = txn.txn_date
-      const dateStr = rawDate.includes("Z") || rawDate.includes("+") ? rawDate : (rawDate.includes("T") || rawDate.includes(" ") ? `${rawDate.replace(" ", "T")}Z` : `${rawDate}T00:00:00Z`)
-      const dateLabel = new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric", timeZone: timezone }).format(new Date(dateStr))
-      return txn.txn_time ? `${dateLabel} · ${txn.txn_time}` : dateLabel
-    } catch {
-      return txn.txn_date + (txn.txn_time ? ` · ${txn.txn_time}` : "")
+  const transactionDateLabel = (() => {
+    // Prefer receipt date + receipt time (txn_time). Fall back to issued/created datetime when empty.
+    const formatTime = (hhmm: string) => {
+      const [h, m] = hhmm.split(":").map(Number)
+      if (isNaN(h) || isNaN(m)) return hhmm
+      const d = new Date(0)
+      d.setHours(h, m)
+      return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", hour12: timeFormat === "12h", timeZone: "UTC" }).format(d)
     }
-  })() : "-"
+    const formatDate = (raw: string) => {
+      const dateStr = raw.includes("Z") || raw.includes("+") ? raw : (raw.includes("T") || raw.includes(" ") ? `${raw.replace(" ", "T")}Z` : `${raw}T00:00:00Z`)
+      return new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric", timeZone: timezone }).format(new Date(dateStr))
+    }
+    try {
+      if (txn.txn_date && txn.txn_time) {
+        return `${formatDate(txn.txn_date)} · ${formatTime(txn.txn_time)}`
+      }
+      if (txn.txn_date) {
+        return formatDate(txn.txn_date)
+      }
+      if (txn.created_at) {
+        const dateStr = txn.created_at.includes("Z") || txn.created_at.includes("+") ? txn.created_at : (txn.created_at.includes("T") || txn.created_at.includes(" ") ? `${txn.created_at.replace(" ", "T")}Z` : `${txn.created_at}T00:00:00Z`)
+        return new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: timeFormat === "12h", timeZone: timezone }).format(new Date(dateStr))
+      }
+      return "-"
+    } catch {
+      return txn.txn_date || "-"
+    }
+  })()
   const issuedDateLabel = new Intl.DateTimeFormat(locale, {
     day: "2-digit",
     month: "short",

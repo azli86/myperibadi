@@ -52,6 +52,7 @@ import type { Chart, ChartEvent, ChartOptions } from "chart.js"
 type TransactionRecord = TransactionToneTarget & {
  id: number | string
  txn_date?: string | null
+ txn_time?: string | null
  created_at?: string | null
  category_name?: string | null
  category_icon_name?: string | null
@@ -1818,18 +1819,26 @@ const currentCycleKeyStr = useMemo(
  : isLight ? "bg-rose-100 text-rose-700" : "bg-rose-400/15 text-rose-200"
  const formattedDateTime = (() => {
  try {
- const rawDate = tx.created_at || tx.txn_date
- if (!rawDate) return ""
- const dateStr = rawDate.includes("Z") || rawDate.includes("+") ? rawDate : (rawDate.includes("T") || rawDate.includes(" ") ? `${rawDate.replace(" ", "T")}Z` : `${rawDate}T00:00:00Z`)
- const dateObj = new Date(dateStr)
- return dateObj.toLocaleString(lang === "EN" ? "en-MY" : "ms-MY", {
- day: "2-digit",
- month: "short",
- hour: "2-digit",
- minute: "2-digit",
- hour12: timeFormat === "12h",
- timeZone: timezone,
- })
+ // Date from txn_date; time from txn_time (receipt time) if present, else created_at.
+ const dateLabel = (() => {
+ if (!tx.txn_date) return ""
+ const dateObj = new Date(`${tx.txn_date}T00:00:00Z`)
+ return dateObj.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", { day: "2-digit", month: "short", timeZone: "UTC" })
+ })()
+ const timeLabel = (() => {
+ if (tx.txn_time) {
+ const [h, m] = tx.txn_time.split(":").map(Number)
+ if (!isNaN(h) && !isNaN(m)) {
+ const d = new Date(0)
+ d.setHours(h, m)
+ return d.toLocaleTimeString(lang === "EN" ? "en-MY" : "ms-MY", { hour: "2-digit", minute: "2-digit", hour12: timeFormat === "12h", timeZone: "UTC" })
+ }
+ }
+ if (!tx.created_at) return ""
+ const dateStr = tx.created_at.includes("Z") || tx.created_at.includes("+") ? tx.created_at : (tx.created_at.includes("T") || tx.created_at.includes(" ") ? `${tx.created_at.replace(" ", "T")}Z` : `${tx.created_at}T00:00:00Z`)
+ return new Date(dateStr).toLocaleTimeString(lang === "EN" ? "en-MY" : "ms-MY", { hour: "2-digit", minute: "2-digit", hour12: timeFormat === "12h", timeZone: timezone })
+ })()
+ return [dateLabel, timeLabel].filter(Boolean).join(", ")
  } catch {
  return ""
  }
@@ -2012,6 +2021,14 @@ const currentCycleKeyStr = useMemo(
  <span className={cn("text-[0.5625rem] font-medium", isLight ? "text-slate-500" : "text-[var(--muted)]/60")}>
  {(() => {
  try {
+ if (tx.txn_time) {
+ const [h, m] = tx.txn_time.split(':').map(Number)
+ if (!isNaN(h) && !isNaN(m)) {
+ const d = new Date(0)
+ d.setHours(h, m)
+ return d.toLocaleTimeString(lang === 'EN' ? 'en-MY' : 'ms-MY', { hour: '2-digit', minute: '2-digit', hour12: timeFormat === '12h', timeZone: 'UTC' })
+ }
+ }
  const rawDate = tx.created_at || tx.txn_date;
  if (!rawDate) return ""
  const dateStr = rawDate.includes('Z') || rawDate.includes('+') ? rawDate : (rawDate.includes('T') || rawDate.includes(' ') ? `${rawDate.replace(' ', 'T')}Z` : `${rawDate}T00:00:00Z`);
