@@ -32,6 +32,7 @@ import { useTheme } from "@/components/theme/ThemeProvider"
 import { getAccessToken, logoutAuthSession } from "@/lib/auth-session"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 
 
@@ -485,19 +486,12 @@ export default function LagiPage() {
               className="max-h-[82dvh] w-full overflow-y-auto rounded-t-[36px] border border-[var(--border)] bg-[var(--card)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] touch-pan-y shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="sticky top-0 z-10 mb-5 rounded-t-[36px] border-b border-[var(--border)] bg-[var(--card)] px-5 pt-3 pb-4 backdrop-blur-sm">
-                <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--border)]" />
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[0.625rem] font-black uppercase tracking-[0.24em] text-[var(--muted)]">{t.preferences}</p>
-                    <h2 className="mt-2 text-[1.6rem] font-black text-[var(--text)]">{activeConfig.title}</h2>
-                    <p className="mt-2 text-sm font-medium text-[var(--muted)]">{activeConfig.subtitle}</p>
-                  </div>
-                  <button type="button" onClick={requestMobileSheetClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] text-[var(--text)]">
-                    <X size={18} />
-                  </button>
-                </div>
-              </div>
+              <AppSheetHeader
+                title={activeConfig.title}
+                eyebrow={t.preferences}
+                subtitle={activeConfig.subtitle}
+                onClose={requestMobileSheetClose}
+              />
               <div className="px-5">
                 <div className="divide-y divide-[var(--border)]">
                   {activeMobileSheet === "language" && languageOptions.map((option) => {

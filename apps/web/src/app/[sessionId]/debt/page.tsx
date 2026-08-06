@@ -34,6 +34,7 @@ import {
 } from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount } from "@/components/ui/MoneyAmount"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 
@@ -1041,32 +1042,17 @@ export default function DebtPage() {
                 {...addEntrySheetSwipe}
                 className="app-sheet-panel app-sheet-panel--lg relative max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] will-change-transform md:max-h-[85vh] md:max-w-md"
               >
-                <div className="app-sheet-panel-header sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 md:px-6">
-                  <div className="mx-auto mb-3 h-1 w-8 rounded-full bg-[var(--surface-tint-strong)] md:hidden" />
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-xl font-black text-[var(--text)]">
-                        {activeName
-                          ? (activeSummary?.balance || 0) >= 0
-                            ? tr("Beri Lagi", "Lend More")
-                            : tr("Hutang Lagi", "Borrow More")
-                          : tr("Tambah Rekod", "Add Record")}
-                      </h2>
-                      <p className="mt-1 text-sm text-[var(--muted)]">
-                        {activeName
-                          ? tr(`Tambah rekod untuk ${activeName}`, `Adding record for ${activeName}`)
-                          : tr("Hutang atau kredit baru", "New debt or credit")}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddEntryForm(false)}
-                      className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2 text-[var(--muted)] transition hover:text-[var(--text)]"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
+                <AppSheetHeader
+                  title={activeName
+                    ? (activeSummary?.balance || 0) >= 0
+                      ? tr("Beri Lagi", "Lend More")
+                      : tr("Hutang Lagi", "Borrow More")
+                    : tr("Tambah Rekod", "Add Record")}
+                  subtitle={activeName
+                    ? tr(`Tambah rekod untuk ${activeName}`, `Adding record for ${activeName}`)
+                    : tr("Hutang atau kredit baru", "New debt or credit")}
+                  onClose={() => setShowAddEntryForm(false)}
+                />
 
                 <form onSubmit={handleCreateEntry} className="space-y-4 px-4 py-4 md:px-6 md:py-6">
                   <div>
@@ -1227,28 +1213,13 @@ export default function DebtPage() {
                 {...settleEntrySheetSwipe}
                 className="app-sheet-panel app-sheet-panel--lg relative max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] will-change-transform md:max-h-[85vh] md:max-w-md"
               >
-                <div className="app-sheet-panel-header sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 md:px-6">
-                  <div className="mx-auto mb-3 h-1 w-8 rounded-full bg-[var(--surface-tint-strong)] md:hidden" />
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-xl font-black text-[var(--text)]">
-                        {form.event_type === "payment_in" ? tr("Terima Bayaran", "Receive Payment") : tr("Bayar Balik", "Pay Back")}
-                      </h2>
-                      <p className="mt-1 text-sm font-semibold text-emerald-500">
-                        {form.event_type === "payment_in"
-                          ? tr("Terima daripada penghutang", "Collecting from debtor")
-                          : tr("Selesaikan hutang anda", "Settling your debt")}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowSettleEntryForm(false)}
-                      className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2 text-[var(--muted)] transition hover:text-[var(--text)]"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
+                <AppSheetHeader
+                  title={form.event_type === "payment_in" ? tr("Terima Bayaran", "Receive Payment") : tr("Bayar Balik", "Pay Back")}
+                  subtitle={form.event_type === "payment_in"
+                    ? tr("Terima daripada penghutang", "Collecting from debtor")
+                    : tr("Selesaikan hutang anda", "Settling your debt")}
+                  onClose={() => setShowSettleEntryForm(false)}
+                />
 
                 <form onSubmit={handleCreateEntry} className="space-y-4 px-4 py-4 md:px-6 md:py-6">
                   <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-[var(--btn-primary-bg)]/5 p-4">

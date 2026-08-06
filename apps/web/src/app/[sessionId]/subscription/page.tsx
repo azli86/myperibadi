@@ -29,6 +29,7 @@ import {
 } from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount } from "@/components/ui/MoneyAmount"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
@@ -630,28 +631,13 @@ export default function SubscriptionPage() {
                 className="app-sheet-panel app-sheet-panel--lg max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] will-change-transform md:max-h-[85vh] md:max-w-md"
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="app-sheet-panel-header sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 md:px-6">
-                  <div className="mx-auto mb-3 h-1 w-8 rounded-full bg-[var(--surface-tint-strong)] md:hidden" />
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-xl font-black text-[var(--text)]">
-                        {editingSubscription ? tr("Edit Subscription", "Edit Subscription") : tr("Tambah Subscription", "Add Subscription")}
-                      </h2>
-                      <p className="mt-1 text-sm text-[var(--muted)]">
-                        {editingSubscription
-                          ? tr("Kemaskini nama, jumlah, dan due day.", "Update name, amount, and due day.")
-                          : tr("Isi nama, jumlah bulanan, dan due day.", "Fill in name, monthly amount, and due day.")}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={requestCreateSheetClose}
-                      className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2 text-[var(--muted)] transition hover:text-[var(--text)]"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
+                <AppSheetHeader
+                  title={editingSubscription ? tr("Edit Subscription", "Edit Subscription") : tr("Tambah Subscription", "Add Subscription")}
+                  subtitle={editingSubscription
+                    ? tr("Kemaskini nama, jumlah, dan due day.", "Update name, amount, and due day.")
+                    : tr("Isi nama, jumlah bulanan, dan due day.", "Fill in name, monthly amount, and due day.")}
+                  onClose={requestCreateSheetClose}
+                />
 
                 <form className="space-y-4 px-3 py-3 pb-4 text-[var(--text)] md:px-6 md:py-6" onSubmit={handleSaveSubscription}>
                   <div>

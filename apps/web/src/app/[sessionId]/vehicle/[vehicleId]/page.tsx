@@ -30,6 +30,7 @@ import {
   matchCatalogKey,
 } from "./maintenanceCatalog"
 import { invalidateVehicleImageCache } from "@/lib/vehicle-image-cache"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 
 const R2_ACCEPT = "image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf"
 
@@ -1269,16 +1270,10 @@ export default function VehicleDetailPage() {
               className="app-sheet-panel flex max-h-[82dvh] w-full flex-col overflow-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl touch-pan-y md:max-h-[85vh] md:max-w-[30rem] md:rounded-[1.75rem]"
               {...sheetSwipe}
             >
-              <div className="flex shrink-0 items-center justify-between rounded-t-[36px] border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 sm:px-6">
-                <h2 className="text-base font-black text-[var(--text)]">{sheetTitle}</h2>
-                <button
-                  type="button"
-                  onClick={closeSheet}
-                  className="rounded-xl p-2 text-[var(--muted)]"
-                >
-                  <X size={18} />
-                </button>
-              </div>
+              <AppSheetHeader
+                title={sheetTitle}
+                onClose={closeSheet}
+              />
 
               <div data-swipe-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
                 {sheet === "odometer" && (

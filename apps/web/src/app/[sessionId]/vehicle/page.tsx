@@ -33,6 +33,7 @@ import {
 } from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount } from "@/components/ui/MoneyAmount"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { CachedVehicleImage } from "@/components/vehicle/CachedVehicleImage"
@@ -906,23 +907,11 @@ export default function VehicleListPage() {
               className="app-sheet-panel max-h-[82dvh] w-full overflow-y-auto overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] shadow-2xl touch-pan-y md:max-h-[85vh] md:max-w-[30rem] md:rounded-[1.75rem]"
               {...sheetSwipe}
             >
-              <div className="sticky top-0 z-30 mb-3 flex items-center justify-between rounded-t-[36px] border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 sm:px-6">
-                <div>
-                  <p className="text-[0.65rem] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
-                    {tr("Kenderaan baru", "New vehicle")}
-                  </p>
-                  <h2 className="text-base font-black text-[var(--text)]">
-                    {tr("Tambah kenderaan", "Add vehicle")}
-                  </h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeSheet}
-                  className="rounded-xl p-2 text-[var(--muted)] hover:bg-[var(--bg)]"
-                >
-                  <X size={18} />
-                </button>
-              </div>
+              <AppSheetHeader
+                title={tr("Tambah kenderaan", "Add vehicle")}
+                eyebrow={tr("Kenderaan baru", "New vehicle")}
+                onClose={closeSheet}
+              />
               <form onSubmit={handleSave} className="grid grid-cols-2 gap-3 p-4">
                 <div className="col-span-2 block">
                   <span className="mb-1 block text-xs font-bold text-[var(--muted)]">

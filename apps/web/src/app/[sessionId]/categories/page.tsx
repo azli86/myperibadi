@@ -31,6 +31,7 @@ import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount } from "@/components/ui/MoneyAmount"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import HistoryBackButton from "@/components/navigation/HistoryBackButton"
 import {
   DesktopPageAction,
@@ -1122,42 +1123,28 @@ export default function CategoriesPage() {
                   modal === "categoryDetail" ? "md:max-w-lg" : "md:max-w-md"
                 )}
               >
-                <div className="app-sheet-panel-header sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 md:px-6">
-                  <div className="mx-auto mb-3 h-1 w-8 rounded-full bg-[var(--surface-tint-strong)] md:hidden" />
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      {(modal === "categoryDetail" || modal === "addCategory") && (
-                        <div className={cn(
-                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)]",
-                          modal === "categoryDetail"
-                            ? categoryKindIconShellClass(editCatKind)
-                            : categoryKindIconShellClass(newCatKind)
-                        )}>
-                          <CategoryIconGlyph
-                            iconName={modal === "categoryDetail" ? editCatIconName : newCatIconName}
-                            categoryName={modal === "categoryDetail" ? editCatName : newCatName}
-                            kind={modal === "categoryDetail" ? editCatKind : newCatKind}
-                            size={20}
-                          />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-[0.68rem] font-bold uppercase tracking-[0.18em] text-[var(--muted)]">
-                          {sheetEyebrow}
-                        </p>
-                        <h3 className="mt-0.5 truncate text-xl font-black text-[var(--text)]">
-                          {sheetTitle}
-                        </h3>
+                <AppSheetHeader
+                  title={sheetTitle}
+                  eyebrow={sheetEyebrow}
+                  onClose={requestModalClose}
+                  icon={
+                    (modal === "categoryDetail" || modal === "addCategory") ? (
+                      <div className={cn(
+                        "flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)]",
+                        modal === "categoryDetail"
+                          ? categoryKindIconShellClass(editCatKind)
+                          : categoryKindIconShellClass(newCatKind)
+                      )}>
+                        <CategoryIconGlyph
+                          iconName={modal === "categoryDetail" ? editCatIconName : newCatIconName}
+                          categoryName={modal === "categoryDetail" ? editCatName : newCatName}
+                          kind={modal === "categoryDetail" ? editCatKind : newCatKind}
+                          size={20}
+                        />
                       </div>
-                    </div>
-                    <button
-                      onClick={requestModalClose}
-                      className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2 text-[var(--muted)] transition hover:text-[var(--text)]"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
+                    ) : undefined
+                  }
+                />
 
                 <div className="space-y-4 px-4 py-4 text-[var(--text)] md:px-6 md:py-5">
                   {modal === "categoryDetail" && selectedCategory && (

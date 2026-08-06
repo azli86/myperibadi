@@ -54,6 +54,7 @@ import { CatPlayground } from "@/components/dashboard/CatPlayground"
 import { WeatherClockMini } from "@/components/layout/SidebarWeatherClock"
 import Onboarding from "@/components/onboarding/Onboarding"
 import { ChartContainer } from "@/components/ui/chart"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 import { 
   Chart as ChartJS, 
@@ -2837,15 +2838,11 @@ export default function Dashboard() {
               {...dashboardAddSheetSwipe}
               className="app-sheet-panel app-sheet-panel--lg max-h-[92vh] w-full touch-pan-y flex-col overflow-y-auto overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl sm:max-w-[32rem]"
             >
-              <div className="sticky top-0 z-30 mb-3 flex items-center justify-between border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 shadow-sm sm:rounded-t-3xl sm:px-6">
-                <h3 className="text-base font-black text-[var(--text)]">{t.addNewRecord}</h3>
-                <button
-                  onClick={requestDashboardAddClose}
-                  className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] border border-[var(--border)]"
-                >
-                  <X size={16} />
-                </button>
-              </div>
+              <AppSheetHeader
+                title={t.addNewRecord}
+                onClose={requestDashboardAddClose}
+                className="sm:rounded-t-3xl"
+              />
 
               {addSuccess && (
                 <div className="mx-4 mb-4 flex items-center gap-2.5 rounded-2xl border border-emerald-500/20 bg-[var(--btn-primary-bg)]/10 p-3 text-sm font-medium text-emerald-400 sm:mx-6">
@@ -2992,15 +2989,11 @@ export default function Dashboard() {
               onClick={(event) => event.stopPropagation()}
               className="app-sheet-panel app-sheet-panel--xl flex h-[88vh] w-full flex-col overflow-hidden border border-[var(--border)] bg-[var(--card)] shadow-2xl md:h-auto md:max-h-[92vh] md:max-w-5xl"
             >
-              <div className="flex items-center justify-between border-b border-[color:var(--border)] px-5 py-4 md:px-6">
-                <div>
-                  <p className="text-[0.6875rem] font-bold uppercase tracking-[0.24em] text-[var(--muted)]">{lang === "EN" ? "Full View" : "Paparan Penuh"}</p>
-                  <h3 className="mt-1 text-base font-bold text-[var(--text)]">{lang === "EN" ? "Expense Charts" : "Graf Perbelanjaan"}</h3>
-                </div>
-                <button type="button" onClick={requestChartClose} className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--border)] text-[var(--muted)] transition hover:text-[var(--text)]" aria-label="Close chart">
-                  <X size={18} />
-                </button>
-              </div>
+              <AppSheetHeader
+                title={lang === "EN" ? "Expense Charts" : "Graf Perbelanjaan"}
+                eyebrow={lang === "EN" ? "Full View" : "Paparan Penuh"}
+                onClose={requestChartClose}
+              />
 
               <div className="overflow-y-auto overscroll-contain px-4 py-4 md:px-6 md:py-5"
               onWheel={(event) => event.stopPropagation()}
@@ -3117,37 +3110,17 @@ export default function Dashboard() {
                     {...walletSheetSwipe}
                     className="app-sheet-panel relative z-10 flex max-h-[82vh] w-full flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl sm:max-w-md sm:rounded-[1.75rem]"
                   >
-                    <div className="shrink-0 px-5 pt-3 pb-2">
-                      <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--border)] sm:hidden" />
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                            {lang === "BM" ? "Dompet" : "Wallets"}
-                          </p>
-                          <h3 className="mt-0.5 text-lg font-black tracking-tight text-[var(--text)]">
-                            {lang === "BM" ? "Semua baki" : "All balances"}
-                          </h3>
-                          <p className="mt-0.5 text-xs font-semibold text-[var(--muted)]">
-                            {heroWallets.length}{" "}
-                            {lang === "BM" ? "akaun" : "accounts"} ·{" "}
-                            {showHeroAmounts
-                              ? `${formatCurrencyLabel("MYR")} ${formatHeroNumber(
-                                  heroWallets.reduce((s, w) => s + Number(w.balance || 0), 0),
-                                  { minimumFractionDigits: 2 },
-                                )}`
-                              : "RM ••••••"}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={requestWalletDeckClose}
-                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:bg-[var(--surface-tint)] hover:text-[var(--text)]"
-                          aria-label={lang === "BM" ? "Tutup" : "Close"}
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    </div>
+                    <AppSheetHeader
+                      title={lang === "BM" ? "Semua baki" : "All balances"}
+                      eyebrow={lang === "BM" ? "Dompet" : "Wallets"}
+                      subtitle={`${heroWallets.length} ${lang === "BM" ? "akaun" : "accounts"} · ${showHeroAmounts
+                        ? `${formatCurrencyLabel("MYR")} ${formatHeroNumber(
+                            heroWallets.reduce((s, w) => s + Number(w.balance || 0), 0),
+                            { minimumFractionDigits: 2 },
+                          )}`
+                        : "RM ••••••"}`}
+                      onClose={requestWalletDeckClose}
+                    />
 
                     <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-1">
                       {heroWallets.map((wallet, index) => {

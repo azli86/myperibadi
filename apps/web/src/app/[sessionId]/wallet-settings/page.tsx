@@ -36,6 +36,7 @@ import {
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount, formatCurrencyLabel } from "@/components/ui/MoneyAmount"
 import CurrencySelect from "@/components/ui/CurrencySelect"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
@@ -860,29 +861,19 @@ export default function WalletSettingsPage() {
                 style={{ transform: "translateZ(0)" }}
                 className="app-sheet-panel relative flex max-h-[90dvh] w-full flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl will-change-transform md:max-h-[86vh] md:max-w-md md:rounded-[1.75rem]"
               >
-                <div className="shrink-0 bg-[var(--sheet-bg)] px-5 py-4 md:px-6">
-                  <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--surface-tint-strong)] md:hidden" />
-                  {/* Header: Cancel left, title center, Next/Add right */}
-                  <div className="flex items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={requestCreateWalletClose}
-                      className="shrink-0 px-1 py-1.5 text-xl font-bold text-[var(--muted)] transition-colors hover:text-[var(--text)]"
-                    >
-                      {tr("Batal", "Cancel")}
-                    </button>
-                    <h3 className="min-w-0 flex-1 truncate text-center text-2xl font-black text-[var(--text)]">
-                      {createWalletStep === 1
-                        ? tr("Pilih Warna", "Choose Color")
-                        : createWalletStep === 2
-                          ? tr("Isi Maklumat", "Fill Details")
-                          : tr("Semak Dompet", "Review Wallet")}
-                    </h3>
+                <AppSheetHeader
+                  title={createWalletStep === 1
+                    ? tr("Pilih Warna", "Choose Color")
+                    : createWalletStep === 2
+                      ? tr("Isi Maklumat", "Fill Details")
+                      : tr("Semak Dompet", "Review Wallet")}
+                  onClose={requestCreateWalletClose}
+                  action={
                     <button
                       type="submit"
                       form="wallet-create-form"
                       disabled={savingNew || !canContinueCreateWallet}
-                      className="shrink-0 px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                      className="px-1 py-1.5 text-lg font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
                     >
                       {savingNew
                         ? tr("Menyimpan…", "Saving…")
@@ -890,9 +881,11 @@ export default function WalletSettingsPage() {
                           ? tr("Tambah", "Add")
                           : tr("Seterusnya", "Next")}
                     </button>
-                  </div>
+                  }
+                />
 
-                  <div className="mt-4 space-y-2">
+                <div className="px-4 pb-3 md:px-6">
+                  <div className="space-y-2">
                     <div className="grid grid-cols-3 gap-1.5">
                       {createWalletSteps.map((step) => (
                         <div
@@ -1121,20 +1114,10 @@ export default function WalletSettingsPage() {
                 style={{ transform: "translateZ(0)" }}
                 className="app-sheet-panel relative flex max-h-[90dvh] w-full flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl will-change-transform md:max-h-[86vh] md:max-w-md md:rounded-[1.75rem]"
               >
-                <div className="shrink-0 bg-[var(--sheet-bg)] px-5 py-4 md:px-6">
-                  <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--surface-tint-strong)] md:hidden" />
-                  {/* Header: Cancel left, title center, Save right */}
-                  <div className="flex items-center justify-between gap-3">
-                    <button
-                      type="button"
-                      onClick={requestWalletDetailClose}
-                      className="shrink-0 px-1 py-1.5 text-xl font-bold text-[var(--muted)] transition-colors hover:text-[var(--text)]"
-                    >
-                      {tr("Batal", "Cancel")}
-                    </button>
-                    <h3 className="min-w-0 flex-1 truncate text-center text-2xl font-black text-[var(--text)]">
-                      {tr("Edit Dompet", "Edit Wallet")}
-                    </h3>
+                <AppSheetHeader
+                  title={tr("Edit Dompet", "Edit Wallet")}
+                  onClose={requestWalletDetailClose}
+                  action={
                     <button
                       type="button"
                       onClick={async () => {
@@ -1142,14 +1125,14 @@ export default function WalletSettingsPage() {
                         if (didSave) setActiveWallet(null)
                       }}
                       disabled={busyWalletId === activeWallet.id || uploadingWalletId === activeWallet.id}
-                      className="shrink-0 px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                      className="px-1 py-1.5 text-lg font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
                     >
                       {busyWalletId === activeWallet.id
                         ? tr("Menyimpan…", "Saving…")
                         : tr("Simpan", "Save")}
                     </button>
-                  </div>
-                </div>
+                  }
+                />
 
                 <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-4 md:px-6">
                   <div className="relative pb-5">

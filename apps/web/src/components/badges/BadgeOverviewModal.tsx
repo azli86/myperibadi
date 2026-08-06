@@ -6,6 +6,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import { ArrowUpRight, Lock, Trophy, X } from "lucide-react"
 import { buildLiveBadges, type AppBadge, type AppBadgeTone, type BadgeBudgetItemLike, type BadgeTransactionLike } from "@/lib/badges"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 
 type BadgeOverviewModalProps = {
   open: boolean
@@ -199,26 +200,13 @@ export default function BadgeOverviewModal({ open, onClose, sessionId, lang }: B
             onClick={(event) => event.stopPropagation()}
           >
             {/* Header */}
-            <div className="relative flex shrink-0 items-start justify-between gap-3 px-5 pb-2 pt-4 sm:pt-5">
-              <div className="min-w-0">
-                <h3 className="text-[1.55rem] font-black leading-none tracking-[-0.045em] text-[var(--text)]">
-                  {isEN ? "Badge Vault" : "Vault Badge"}
-                </h3>
-                <p className="mt-1.5 text-xs font-semibold text-[var(--muted)]">
-                  {isEN
-                    ? "Unlock gems as you manage money better."
-                    : "Buka gem bila anda lebih disiplin urus duit."}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] transition active:scale-95 hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
-                aria-label="Close"
-              >
-                <X size={18} />
-              </button>
-            </div>
+            <AppSheetHeader
+              title={isEN ? "Badge Vault" : "Vault Badge"}
+              subtitle={isEN
+                ? "Unlock gems as you manage money better."
+                : "Buka gem bila anda lebih disiplin urus duit."}
+              onClose={onClose}
+            />
 
             {/* Body */}
             <div

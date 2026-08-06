@@ -28,6 +28,7 @@ import {
 } from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount } from "@/components/ui/MoneyAmount"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
@@ -748,20 +749,10 @@ export default function WarrantyListPage() {
                 className="app-sheet-panel relative z-10 flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] touch-pan-y md:max-h-[86vh] md:max-w-md md:rounded-[1.75rem]"
                 {...searchSwipe}
               >
-                <div className="shrink-0 px-4 pt-4 md:px-5 md:pt-5">
-                  <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--border)] md:hidden" />
-                  <div className="mb-3 flex items-center justify-between">
-                    <p className="text-base font-black text-[var(--text)]">
-                      {tr("Semak Waranti", "Check Warranty")}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={requestSearchClose}
-                      className="rounded-full p-2 text-[var(--muted)] hover:bg-[var(--surface-tint)]"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
+                <AppSheetHeader
+                  title={tr("Semak Waranti", "Check Warranty")}
+                  onClose={requestSearchClose}
+                />
                   <div className="relative">
                     <Search
                       size={16}
@@ -787,7 +778,6 @@ export default function WarrantyListPage() {
                       </button>
                     ) : null}
                   </div>
-                </div>
                 <div data-swipe-scroll className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-5">
                   {!search.trim() ? (
                     <p className="py-8 text-center text-sm text-[var(--muted)]">

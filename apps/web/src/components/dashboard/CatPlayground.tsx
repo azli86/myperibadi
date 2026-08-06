@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { getAccessToken } from "@/lib/auth-session"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 
 type Lang = "EN" | "BM"
 type CatMood = "happy" | "ok" | "hungry" | "critical" | "dead"
@@ -1805,24 +1806,11 @@ export function CatPlayground({
                 onClick={(e) => e.stopPropagation()}
                 {...sheetSwipe}
               >
-                <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border)] px-4 pb-3 pt-3">
-                  <div className="min-w-0">
-                    <p className="text-[0.58rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                      {lang === "BM" ? "Playground Kucing" : "Cat Playground"}
-                    </p>
-                    <p className="mt-0.5 truncate text-sm font-black text-[var(--text)]">
-                      {state.name} {moodEmoji}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={requestSheetClose}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95"
-                    aria-label={lang === "BM" ? "Tutup" : "Close"}
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
+                <AppSheetHeader
+                  title={`${state.name} ${moodEmoji}`}
+                  eyebrow={lang === "BM" ? "Playground Kucing" : "Cat Playground"}
+                  onClose={requestSheetClose}
+                />
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
                   {playgroundCard}
                 </div>

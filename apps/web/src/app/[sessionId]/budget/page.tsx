@@ -34,6 +34,7 @@ import {
 import { fetchApiJson, readApiCache } from "@/lib/api-cache"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount } from "@/components/ui/MoneyAmount"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 
@@ -1018,36 +1019,21 @@ export default function BudgetPage() {
                   style={{ transform: "translateZ(0)" }}
                   className="app-sheet-panel app-sheet-panel--lg max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] will-change-transform md:max-h-[85vh] md:max-w-md"
                 >
-                  <div className="app-sheet-panel-header sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 md:px-6">
-                    <div className="mx-auto mb-3 h-1 w-8 rounded-full bg-[var(--surface-tint-strong)] md:hidden" />
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]">
-                          <CategoryIconGlyph
-                            iconName={activeModalItem.category_icon_name}
-                            categoryName={activeModalItem.category_name}
-                            size={20}
-                            kind="expense"
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                            {tr("Tetapan Bajet", "Budget Setting")}
-                          </p>
-                          <h3 className="mt-0.5 truncate text-xl font-black text-[var(--text)]">
-                            {activeModalItem.category_name}
-                          </h3>
-                        </div>
+                  <AppSheetHeader
+                    title={activeModalItem.category_name}
+                    eyebrow={tr("Tetapan Bajet", "Budget Setting")}
+                    onClose={requestBudgetModalClose}
+                    icon={
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]">
+                        <CategoryIconGlyph
+                          iconName={activeModalItem.category_icon_name}
+                          categoryName={activeModalItem.category_name}
+                          size={20}
+                          kind="expense"
+                        />
                       </div>
-                      <button
-                        type="button"
-                        onClick={requestBudgetModalClose}
-                        className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2 text-[var(--muted)] transition hover:text-[var(--text)]"
-                      >
-                        <X size={18} />
-                      </button>
-                    </div>
-                  </div>
+                    }
+                  />
 
                   <div className="space-y-4 px-4 py-4 md:px-6 md:py-6">
                     <div>

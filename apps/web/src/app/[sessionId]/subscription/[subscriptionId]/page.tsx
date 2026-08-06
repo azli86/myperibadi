@@ -33,6 +33,7 @@ import {
 } from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount } from "@/components/ui/MoneyAmount"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
@@ -916,24 +917,11 @@ export default function SubscriptionDetailPage() {
                 className="app-sheet-panel app-sheet-panel--lg max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] will-change-transform md:max-h-[85vh] md:max-w-md"
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="app-sheet-panel-header sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 md:px-6">
-                  <div className="mx-auto mb-3 h-1 w-8 rounded-full bg-[var(--surface-tint-strong)] md:hidden" />
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-xl font-black text-[var(--text)]">{tr("Edit Subscription", "Edit Subscription")}</h2>
-                      <p className={cn("mt-1 text-sm", mutedClass)}>
-                        {tr("Kemaskini nama, jumlah, due day dan nota.", "Update name, amount, due day and notes.")}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={requestEditSheetClose}
-                      className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2 text-[var(--muted)]"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
+                <AppSheetHeader
+                  title={tr("Edit Subscription", "Edit Subscription")}
+                  subtitle={tr("Kemaskini nama, jumlah, due day dan nota.", "Update name, amount, due day and notes.")}
+                  onClose={requestEditSheetClose}
+                />
                 <form onSubmit={handleSaveSubscription} className="space-y-4 px-4 py-4 md:px-6 md:py-6">
                   <label className="block">
                     <span className={cn("mb-2 block text-[0.625rem] font-bold uppercase tracking-widest", mutedClass)}>

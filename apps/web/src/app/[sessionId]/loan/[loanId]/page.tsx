@@ -27,6 +27,7 @@ import { usePageAlert } from "@/hooks/usePageAlert"
 import { DesktopPageAction, DesktopPageBody, DesktopPageHeader, MobileIconButton, MobilePageHeader } from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount } from "@/components/ui/MoneyAmount"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
@@ -976,27 +977,14 @@ export default function LoanDetailPage() {
                 className="app-sheet-panel app-sheet-panel--lg max-h-[86dvh] w-full overflow-y-auto border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:max-w-md"
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="app-sheet-panel-header sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 md:px-6">
-                  <div className="mx-auto mb-3 h-1 w-8 rounded-full bg-[var(--surface-tint-strong)] md:hidden" />
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-xl font-black text-[var(--text)]">{tr("Bayar Loan", "Pay Loan")}</h2>
-                      <p className={cn("mt-1 text-sm", mutedClass)}>
-                        {tr(
-                          "Bayaran ini akan cipta transaksi wallet dan history loan.",
-                          "This payment will create a wallet transaction and loan history.",
-                        )}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={requestPaymentSheetClose}
-                      className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2 text-[var(--muted)]"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
+                <AppSheetHeader
+                  title={tr("Bayar Loan", "Pay Loan")}
+                  subtitle={tr(
+                    "Bayaran ini akan cipta transaksi wallet dan history loan.",
+                    "This payment will create a wallet transaction and loan history.",
+                  )}
+                  onClose={requestPaymentSheetClose}
+                />
                 <form onSubmit={handleSavePayment} className="space-y-4 px-4 py-4 md:px-6 md:py-6">
                   <div className="rounded-2xl border border-emerald-500/20 bg-[var(--btn-primary-bg)]/5 p-3">
                     <p className="text-[0.55rem] font-bold uppercase tracking-widest text-emerald-600/80 dark:text-emerald-300/80">
@@ -1099,24 +1087,11 @@ export default function LoanDetailPage() {
                 className="app-sheet-panel app-sheet-panel--lg max-h-[86dvh] w-full overflow-y-auto border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] md:max-w-md"
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="app-sheet-panel-header sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 md:px-6">
-                  <div className="mx-auto mb-3 h-1 w-8 rounded-full bg-[var(--surface-tint-strong)] md:hidden" />
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-xl font-black text-[var(--text)]">{tr("Edit Loan", "Edit Loan")}</h2>
-                      <p className={cn("mt-1 text-sm", mutedClass)}>
-                        {tr("Kemaskini nama, jumlah, bulanan dan nota loan.", "Update loan name, total, monthly and notes.")}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={requestEditSheetClose}
-                      className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2 text-[var(--muted)]"
-                    >
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
+                <AppSheetHeader
+                  title={tr("Edit Loan", "Edit Loan")}
+                  subtitle={tr("Kemaskini nama, jumlah, bulanan dan nota loan.", "Update loan name, total, monthly and notes.")}
+                  onClose={requestEditSheetClose}
+                />
                 <form onSubmit={handleSaveLoan} className="space-y-4 px-4 py-4 md:px-6 md:py-6">
                   <label className="block">
                     <span className={cn("mb-2 block text-[0.625rem] font-bold uppercase tracking-widest", mutedClass)}>

@@ -28,6 +28,7 @@ import {
 } from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount } from "@/components/ui/MoneyAmount"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
@@ -1522,15 +1523,10 @@ export default function WarrantyDetailPage() {
                 className="app-sheet-panel relative z-10 flex max-h-[82dvh] w-full flex-col overflow-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl touch-pan-y md:max-h-[85vh] md:max-w-[30rem] md:rounded-[1.75rem]"
                 {...editSwipe}
               >
-                <div className="shrink-0 rounded-t-[36px] border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 sm:px-6">
-                  <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--surface-tint-strong)] sm:hidden" />
-                  <div className="flex items-center justify-between">
-                    <p className="text-base font-black">{tr("Edit Peranti", "Edit Device")}</p>
-                    <button type="button" onClick={requestEditClose} className="rounded-full p-2 text-[var(--muted)]">
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
+                <AppSheetHeader
+                  title={tr("Edit Peranti", "Edit Device")}
+                  onClose={requestEditClose}
+                />
                 <div data-swipe-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">{editFormEl}</div>
                 <div className="shrink-0 border-t border-[var(--border)] bg-[var(--sheet-bg)] px-5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-6">
                   <div className="flex gap-2">
@@ -1567,19 +1563,12 @@ export default function WarrantyDetailPage() {
                 className="app-sheet-panel relative z-10 flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] touch-pan-y md:max-h-[86vh] md:max-w-xl md:rounded-[1.75rem]"
                 {...claimSwipe}
               >
-                <div className="shrink-0 rounded-t-[36px] border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 sm:px-6">
-                  <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--surface-tint-strong)] sm:hidden" />
-                  <div className="flex items-center justify-between">
-                    <p className="text-base font-black">
-                      {editingClaim
-                        ? tr("Edit Tuntutan", "Edit Claim")
-                        : tr("Tambah Tuntutan", "Add Claim")}
-                    </p>
-                    <button type="button" onClick={requestClaimClose} className="rounded-full p-2 text-[var(--muted)]">
-                      <X size={18} />
-                    </button>
-                  </div>
-                </div>
+                <AppSheetHeader
+                  title={editingClaim
+                    ? tr("Edit Tuntutan", "Edit Claim")
+                    : tr("Tambah Tuntutan", "Add Claim")}
+                  onClose={requestClaimClose}
+                />
                 <div data-swipe-scroll className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
                 {claimFormEl}
                 </div>

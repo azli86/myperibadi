@@ -12,6 +12,7 @@ import {
 import dynamic from "next/dynamic";
 import { ChatNavIcon } from "@/components/navigation/ChatNavIcon";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import {
   NavCalcIcon,
   NavHomeIcon,
@@ -3889,17 +3890,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               {...shellAddSheetSwipe}
               className="app-sheet-panel app-sheet-panel--lg bg-[var(--sheet-bg)] border border-[var(--border)] w-full sm:max-w-[30rem] max-h-[92vh] overflow-y-auto overscroll-contain touch-pan-y shadow-2xl"
             >
-              <div className="app-sheet-panel-header sticky top-0 z-30 mb-3 flex items-center justify-between border-b border-[var(--border)] bg-[var(--sheet-bg)] px-4 py-4 sm:px-6">
-                <h3 className="text-base font-black text-[var(--text)]">
-                  {t.addNewRecord}
-                </h3>
-                <button
-                  onClick={requestAddModalClose}
-                  className="h-8 w-8 rounded-xl flex items-center justify-center text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)] transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              </div>
+              <AppSheetHeader
+                title={t.addNewRecord}
+                onClose={requestAddModalClose}
+              />
 
               {addSuccess && (
                 <div className="mx-4 mb-4 flex items-center gap-2.5 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm font-medium text-emerald-400 sm:mx-6">
