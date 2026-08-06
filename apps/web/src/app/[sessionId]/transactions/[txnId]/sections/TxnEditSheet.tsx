@@ -374,12 +374,10 @@ export default function TxnEditSheet({
 
                 {editItems.length > 0 ? (
                   <div className="space-y-2">
-                    <div className="grid grid-cols-[minmax(0,1fr)_3.2rem_4.6rem_4.8rem_2rem] gap-1.5 px-1 text-[0.62rem] font-black uppercase tracking-wider text-[var(--muted)]">
-                      <span>{isBm ? "Item" : "Item"}</span>
-                      <span className="text-center">Qty</span>
-                      <span className="text-center">RM</span>
-                      <span className="text-right">Total</span>
-                      <span />
+                    <div className="grid grid-cols-4 gap-1.5 px-1 text-[0.62rem] font-black uppercase tracking-wider text-[var(--muted)]">
+                      <span className="col-span-2">{isBm ? "Qty" : "Qty"}</span>
+                      <span className="text-center">{isBm ? "Harga" : "Price"}</span>
+                      <span className="text-right">{isBm ? "Total" : "Total"}</span>
                     </div>
                     {editItems.map((item, index) => {
                       const quantity = Number.parseFloat(item.quantity || "0") || 0
@@ -388,40 +386,44 @@ export default function TxnEditSheet({
                       return (
                         <div
                           key={index}
-                          className="grid grid-cols-[minmax(0,1fr)_3.2rem_4.6rem_4.8rem_2rem] items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-2"
+                          className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-2.5"
                         >
-                          <input
-                            type="text"
-                            value={item.name}
-                            onChange={(e) => updateEditItem(index, "name", e.target.value)}
-                            placeholder={isBm ? "Nama item" : "Item"}
-                            className="min-w-0 rounded-xl border border-transparent bg-[var(--surface-tint)] px-2.5 py-2 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:outline-none"
-                          />
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={item.quantity}
-                            onChange={(e) => updateEditItem(index, "quantity", sanitizeDecimalInput(e.target.value))}
-                            placeholder="1"
-                            className="w-full rounded-xl border border-transparent bg-[var(--surface-tint)] px-2 py-2 text-center text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:outline-none"
-                          />
-                          <input
-                            type="text"
-                            inputMode="decimal"
-                            value={item.unit_price}
-                            onChange={(e) => updateEditItem(index, "unit_price", sanitizeDecimalInput(e.target.value))}
-                            placeholder="0.00"
-                            className="w-full rounded-xl border border-transparent bg-[var(--surface-tint)] px-2 py-2 text-right text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:outline-none"
-                          />
-                          <div className="truncate text-right text-xs font-black text-[var(--text)]">{subtotal.toFixed(2)}</div>
-                          <button
-                            type="button"
-                            onClick={() => removeEditItem(index)}
-                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-rose-500 active:scale-95"
-                            aria-label={isBm ? "Buang item" : "Remove item"}
-                          >
-                            <MinusCircle size={16} />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={item.name}
+                              onChange={(e) => updateEditItem(index, "name", e.target.value)}
+                              placeholder={isBm ? "Nama item" : "Item"}
+                              className="min-w-0 flex-1 rounded-xl border border-transparent bg-[var(--surface-tint)] px-3 py-2.5 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:outline-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeEditItem(index)}
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-rose-500 active:scale-95"
+                              aria-label={isBm ? "Buang item" : "Remove item"}
+                            >
+                              <MinusCircle size={18} />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-4 items-center gap-1.5">
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={item.quantity}
+                              onChange={(e) => updateEditItem(index, "quantity", sanitizeDecimalInput(e.target.value))}
+                              placeholder="1"
+                              className="w-full rounded-xl border border-transparent bg-[var(--surface-tint)] px-2 py-2 text-center text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:outline-none"
+                            />
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={item.unit_price}
+                              onChange={(e) => updateEditItem(index, "unit_price", sanitizeDecimalInput(e.target.value))}
+                              placeholder="0.00"
+                              className="w-full rounded-xl border border-transparent bg-[var(--surface-tint)] px-2 py-2 text-right text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:outline-none"
+                            />
+                            <div className="col-span-2 truncate text-right text-sm font-black text-[var(--text)]">{subtotal.toFixed(2)}</div>
+                          </div>
                         </div>
                       )
                     })}
