@@ -133,7 +133,9 @@ export default function TxnEditSheet({
   }
 
   const pickerBtn =
-    "flex w-full items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3.5 text-left text-sm font-medium text-[var(--text)] transition-colors"
+    "flex w-full items-end justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-left transition-colors"
+  const pickerLabel = "text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]"
+  const pickerValue = (has: boolean) => cn("truncate text-base font-bold", has ? "text-[var(--text)]" : "text-[var(--muted)]")
   const selectedOption = "bg-[var(--text)] text-[var(--bg)]"
   const unselectedOption = "bg-[var(--surface-tint)] text-[var(--text)]"
 
@@ -268,70 +270,62 @@ export default function TxnEditSheet({
               />
             )}
 
-            <div className="space-y-1.5">
-              <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
-                {langT.category}
-              </p>
-              <div className="relative">
-                <button type="button" aria-label={langT.category} onClick={toggleCategory} className={pickerBtn}>
-                  <span className={cn("truncate text-lg", editForm.category_id ? "text-[var(--text)]" : "text-[var(--muted)]")}>
+            <div className="relative">
+              <button type="button" aria-label={langT.category} onClick={toggleCategory} className={pickerBtn}>
+                <span className="min-w-0 flex-1">
+                  <span className={cn("block", pickerLabel)}>{langT.category}</span>
+                  <span className={cn("block", pickerValue(Boolean(editForm.category_id)))}>
                     {editForm.category_id
                       ? categories.find((cat) => String(cat.id) === editForm.category_id)?.name || langT.category
                       : langT.category}
                   </span>
-                  <ChevronDown size={20} className={cn("shrink-0 text-[var(--muted)] transition-transform", showCategoryPicker && "rotate-180")} />
-                </button>
-              </div>
+                </span>
+                <ChevronDown size={20} className={cn("shrink-0 text-[var(--muted)] transition-transform", showCategoryPicker && "rotate-180")} />
+              </button>
             </div>
 
-            <div className="space-y-1.5">
-              <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
-                {langT.walletLabel}
-              </p>
-              <div className="relative">
-                <button type="button" aria-label={langT.walletLabel} onClick={toggleWallet} className={pickerBtn}>
-                  <span className={cn("truncate text-lg", editForm.wallet_id ? "text-[var(--text)]" : "text-[var(--muted)]")}>
+            <div className="relative">
+              <button type="button" aria-label={langT.walletLabel} onClick={toggleWallet} className={pickerBtn}>
+                <span className="min-w-0 flex-1">
+                  <span className={cn("block", pickerLabel)}>{langT.walletLabel}</span>
+                  <span className={cn("block", pickerValue(Boolean(editForm.wallet_id)))}>
                     {editForm.wallet_id
                       ? wallets.find((w) => String(w.id) === editForm.wallet_id)?.label ||
                         wallets.find((w) => String(w.id) === editForm.wallet_id)?.name ||
                         langT.walletLabel
                       : langT.walletLabel}
                   </span>
-                  <ChevronDown size={20} className={cn("shrink-0 text-[var(--muted)] transition-transform", showWalletPicker && "rotate-180")} />
-                </button>
-              </div>
+                </span>
+                <ChevronDown size={20} className={cn("shrink-0 text-[var(--muted)] transition-transform", showWalletPicker && "rotate-180")} />
+              </button>
             </div>
 
-            <div className="space-y-1.5">
-              <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
-                {isBm ? "Link Loan" : "Link Loan"}
-              </p>
-              <div className="relative">
-                <button type="button" aria-label="Link Loan" onClick={toggleLoan} className={pickerBtn}>
-                  <span className={cn("truncate text-lg", linkedLoanId ? "text-[var(--text)]" : "text-[var(--muted)]")}>
+            <div className="relative">
+              <button type="button" aria-label="Link Loan" onClick={toggleLoan} className={pickerBtn}>
+                <span className="min-w-0 flex-1">
+                  <span className={cn("block", pickerLabel)}>{isBm ? "Link Loan" : "Link Loan"}</span>
+                  <span className={cn("block", pickerValue(Boolean(linkedLoanId)))}>
                     {linkedLoanId
                       ? loans.find((loan) => String(loan.id) === linkedLoanId)?.name || (isBm ? "Link Loan" : "Link Loan")
                       : isBm ? "Tiada link loan" : "No loan link"}
                   </span>
-                  <ChevronDown size={20} className={cn("shrink-0 text-[var(--muted)] transition-transform", showLoanPicker && "rotate-180")} />
-                </button>
-              </div>
+                </span>
+                <ChevronDown size={20} className={cn("shrink-0 text-[var(--muted)] transition-transform", showLoanPicker && "rotate-180")} />
+              </button>
             </div>
 
-            <div className="space-y-1.5">
-              <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
-                {isBm ? "Subscribe Link" : "Subscribe Link"}
-              </p>
-              <div className="relative">
-                <button type="button" aria-label="Subscribe Link" onClick={toggleSubscription} className={pickerBtn}>
-                  <span className={cn("truncate text-lg", editForm.description.startsWith("SUBX ") ? "text-[var(--text)]" : "text-[var(--muted)]")}>
+            <div className="relative">
+              <button type="button" aria-label="Subscribe Link" onClick={toggleSubscription} className={pickerBtn}>
+                <span className="min-w-0 flex-1">
+                  <span className={cn("block", pickerLabel)}>{isBm ? "Subscribe Link" : "Subscribe Link"}</span>
+                  <span className={cn("block", pickerValue(editForm.description.startsWith("SUBX ")))}>
                     {editForm.description.startsWith("SUBX ")
                       ? editForm.description.replace("SUBX ", "")
                       : isBm ? "Tiada subscribe link" : "No subscribe link"}
                   </span>
-                  <ChevronDown size={20} className={cn("shrink-0 text-[var(--muted)] transition-transform", showSubscriptionPicker && "rotate-180")} />
-                </button>
-              </div>
+                </span>
+                <ChevronDown size={20} className={cn("shrink-0 text-[var(--muted)] transition-transform", showSubscriptionPicker && "rotate-180")} />
+              </button>
             </div>
 
             <textarea
