@@ -132,6 +132,7 @@ async def get_transaction_detail_route(
             models.Category.is_internal.label("category_is_internal"),
             models.Category.system_code.label("category_system_code"),
             func.coalesce(models.Wallet.label, models.Wallet.name).label("wallet_name"),
+            models.Wallet.currency.label("wallet_currency"),
         )
         .outerjoin(models.Category, models.Transaction.category_id == models.Category.id)
         .outerjoin(models.Wallet, models.Transaction.wallet_id == models.Wallet.id)
@@ -205,6 +206,7 @@ async def get_transaction_detail_route(
         "user_id": txn.user_id,
         "wallet_id": txn.wallet_id,
         "wallet_name": row[5] if row[5] else "Cash",
+        "wallet_currency": row[6] if row[6] else "RM",
         "type": txn.type,
         "txn_date": txn.txn_date.strftime("%Y-%m-%d") if txn.txn_date else None,
         "txn_time": txn.txn_time.strftime("%H:%M") if txn.txn_time else None,

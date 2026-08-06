@@ -42,6 +42,48 @@ export function formatCurrencyLabel(currency?: string | null) {
   return code || "RM"
 }
 
+/** Flag emoji for a currency code (falls back to a neutral coin). */
+export function currencyFlag(currency?: string | null) {
+  const code = (currency || "RM").trim().toUpperCase()
+  const flags: Record<string, string> = {
+    RM: "🇲🇾", MYR: "🇲🇾",
+    USD: "🇺🇸", US: "🇺🇸",
+    SGD: "🇸🇬",
+    BND: "🇧🇳",
+    IDR: "🇮🇩",
+    THB: "🇹🇭",
+    PHP: "🇵🇭",
+    VND: "🇻🇳",
+    KRW: "🇰🇷",
+    JPY: "🇯🇵",
+    CNY: "🇨🇳",
+    HKD: "🇭🇰",
+    TWD: "🇹🇼",
+    INR: "🇮🇳",
+    AUD: "🇦🇺",
+    NZD: "🇳🇿",
+    GBP: "🇬🇧",
+    EUR: "🇪🇺",
+    CHF: "🇨🇭",
+    CAD: "🇨🇦",
+    AED: "🇦🇪",
+    SAR: "🇸🇦",
+    QAR: "🇶🇦",
+    KWD: "🇰🇼",
+    BHD: "🇧🇭",
+    OMR: "🇴🇲",
+    TRY: "🇹🇷",
+    SEK: "🇸🇪",
+    NOK: "🇳🇴",
+    DKK: "🇩🇰",
+    BRL: "🇧🇷",
+    MXN: "🇲🇽",
+    ZAR: "🇿🇦",
+    RUB: "🇷🇺",
+  }
+  return flags[code] || "💱"
+}
+
 /**
  * Wallet-list amount style: currency (opacity-55) + number (semibold tabular).
  * Default size = text-3xl like desktop wallet cards.
@@ -62,7 +104,7 @@ export function MoneyAmount({
       {prefix}
       {showCurrency ? (
         <span className={cn("mr-1 opacity-55", size === "lg" || size === "hero" || size === "heroLg" ? "text-base" : "text-[0.65em]", currencyClassName)}>
-          {currencyLabel}
+          {currencyFlag(currency)} {currencyLabel}
         </span>
       ) : null}
       {formatMoneyValue(value, digits)}
