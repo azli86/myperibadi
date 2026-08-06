@@ -47,6 +47,7 @@ export interface CategoryOption {
   id: number
   name: string
   kind: string
+  icon_name?: string | null
 }
 
 export interface WalletOption {

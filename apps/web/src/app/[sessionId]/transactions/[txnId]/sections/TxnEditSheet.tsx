@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { X, Check, ChevronDown, Plus, MinusCircle, Wallet, HandCoins, Repeat, Tag } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { CategoryIconGlyph } from "@/lib/category-icons"
 import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
@@ -516,7 +517,7 @@ export default function TxnEditSheet({
                           className={cn(rowBase, "justify-between", selected ? selectedOption : unselectedOption)}
                         >
                           <span className="flex min-w-0 items-center gap-3">
-                            <span className={rowIcon}><Tag size={16} /></span>
+                            <span className={rowIcon}><CategoryIconGlyph iconName={cat.icon_name} categoryName={cat.name} kind={cat.kind} size={16} /></span>
                             <span className={rowText}>{cat.name}</span>
                           </span>
                         </button>
