@@ -29,7 +29,6 @@ import {
   DesktopPageAction,
   DesktopPageBody,
   DesktopPageHeader,
-  MobileIconButton,
   MobilePageHeader,
 } from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
@@ -717,9 +716,15 @@ export default function WalletSettingsPage() {
           title={tr("Dompet", "Wallets")}
           fallbackHref={`/${sessionId}/settings`}
           action={
-            <MobileIconButton onClick={openCreateWalletModal} label={tr("Tambah Dompet", "Add Wallet")}>
-              <Plus strokeWidth={2.5} />
-            </MobileIconButton>
+            <button
+              type="button"
+              onClick={openCreateWalletModal}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-3 py-2 text-xs font-bold uppercase tracking-wide text-[var(--bg)] transition active:scale-[0.98]"
+              aria-label={tr("Tambah Dompet", "Add Wallet")}
+            >
+              <Plus size={15} strokeWidth={2.5} />
+              {tr("Tambah", "Add")}
+            </button>
           }
         />
 
