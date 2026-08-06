@@ -1479,51 +1479,15 @@ export default function TransactionDetailPage() {
     </>
   )
 
-  const mobileMenuItems = (
-    <>
-      <button
-        type="button"
-        onClick={() => { downloadStandardReceipt() }}
-        disabled={receiptDownloading}
-        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--text)] transition active:scale-[0.98] disabled:opacity-40"
-      >
-        {receiptDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} className="text-[var(--accent2)]" />}
-        {lang === "BM" ? "Muat turun resit" : "Download receipt"}
-      </button>
-      <button
-        type="button"
-        onClick={() => setShowEditModal(true)}
-        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--text)] transition active:scale-[0.98]"
-      >
-        <Edit3 size={16} className="text-amber-500" />
-        {langT.edit}
-      </button>
-      {refundButtonState !== "hidden" ? (
-        <button
-          type="button"
-          onClick={handleRefundClick}
-          disabled={refundButtonState === "loading"}
-          className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-emerald-500 transition active:scale-[0.98] disabled:opacity-40"
-        >
-          {refundButtonState === "loading" ? <Loader2 size={16} className="animate-spin" /> : <Undo2 size={16} />}
-          Refund
-        </button>
-      ) : null}
-      <button
-        type="button"
-        onClick={() => setShowDeleteModal(true)}
-        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-rose-500 transition active:scale-[0.98]"
-      >
-        <Trash2 size={16} />
-        {langT.delete}
-      </button>
-    </>
-  )
-
   return (
     <>
       <div className="relative min-h-[calc(100vh-4rem)] max-w-full text-[var(--text)]">
-        <TxnHeader txn={txn} sessionId={sessionId} actions={mobileMenuItems} />
+        <TxnHeader
+          txn={txn}
+          sessionId={sessionId}
+          onDownloadReceipt={() => downloadStandardReceipt()}
+          downloading={receiptDownloading}
+        />
         <DesktopPageHeader
           title={transactionDetailTitle}
           breadcrumbs={[{ label: langT.transactions, href: `/${sessionId}/transactions` }]}

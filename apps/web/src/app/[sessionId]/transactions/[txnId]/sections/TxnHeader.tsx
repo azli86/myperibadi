@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from "react"
-import { MoreVertical } from "lucide-react"
+import React from "react"
+import { Download, Loader2 } from "lucide-react"
 import { useLang } from "@/lib/lang"
 import { MobileIconButton, MobilePageHeader } from "@/components/layout/PageHeader"
 import type { TransactionDetail } from "../types"
@@ -9,31 +9,19 @@ import type { TransactionDetail } from "../types"
 export type TxnHeaderProps = {
   txn: TransactionDetail
   sessionId: string
-  actions?: React.ReactNode
+  onDownloadReceipt: () => void
+  downloading: boolean
 }
 
 export default function TxnHeader({
   txn,
   sessionId,
-  actions,
+  onDownloadReceipt,
+  downloading,
 }: TxnHeaderProps) {
   const { lang } = useLang()
   const isBm = lang === "BM"
   const title = isBm ? "Butiran Transaksi" : "Transaction Details"
-
-  const [menuOpen, setMenuOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!menuOpen) return
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false)
-      }
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [menuOpen])
 
   return (
     <>
@@ -43,21 +31,16 @@ export default function TxnHeader({
           fallbackHref={`/${sessionId}/transactions`}
           backPreferHistory
           action={
-            actions ? (
-              <div ref={menuRef} className="relative">
-                <MobileIconButton
-                  onClick={() => setMenuOpen((v) => !v)}
-                  label={isBm ? "Menu" : "Menu"}
-                >
-                  <MoreVertical size={16} />
-                </MobileIconButton>
-                {menuOpen ? (
-                  <div className="absolute right-0 top-11 z-50 w-44 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] py-1 shadow-lg shadow-black/10">
-                    {actions}
-                  </div>
-                ) : null}
-              </div>
-            ) : undefined
+            <button
+              type="button"
+              onClick={onDownloadReceipt}
+              disabled={downloading}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-3 py-2 text-xs font-bold uppercase tracking-wide text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-40"
+              aria-label={isBm ? "Muat turun resit" : "Download receipt"}
+            >
+              {downloading ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+              {isBm ? "Resit" : "Receipt"}
+            </button>
           }
         />
       </div>
