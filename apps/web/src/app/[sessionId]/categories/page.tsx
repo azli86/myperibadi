@@ -1125,25 +1125,7 @@ export default function CategoriesPage() {
               >
                 <AppSheetHeader
                   title={sheetTitle}
-                  eyebrow={sheetEyebrow}
                   onClose={requestModalClose}
-                  icon={
-                    (modal === "categoryDetail" || modal === "addCategory") ? (
-                      <div className={cn(
-                        "flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)]",
-                        modal === "categoryDetail"
-                          ? categoryKindIconShellClass(editCatKind)
-                          : categoryKindIconShellClass(newCatKind)
-                      )}>
-                        <CategoryIconGlyph
-                          iconName={modal === "categoryDetail" ? editCatIconName : newCatIconName}
-                          categoryName={modal === "categoryDetail" ? editCatName : newCatName}
-                          kind={modal === "categoryDetail" ? editCatKind : newCatKind}
-                          size={20}
-                        />
-                      </div>
-                    ) : undefined
-                  }
                 />
 
                 <div className="space-y-4 px-4 py-4 text-[var(--text)] md:px-6 md:py-5">
