@@ -349,7 +349,7 @@ export default function TxnEditSheet({
             </div>
 
             {editForm.type !== "income" && (
-              <div className="space-y-3 border-t border-[var(--border)] pt-3">
+              <div className="space-y-3 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
@@ -388,7 +388,7 @@ export default function TxnEditSheet({
                       return (
                         <div
                           key={index}
-                          className="grid grid-cols-[minmax(0,1fr)_3.2rem_4.6rem_4.8rem_2rem] items-center gap-1.5 border-b border-[var(--border)] pb-1.5"
+                          className="grid grid-cols-[minmax(0,1fr)_3.2rem_4.6rem_4.8rem_2rem] items-center gap-1.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-2"
                         >
                           <input
                             type="text"
