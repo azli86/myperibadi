@@ -157,13 +157,27 @@ export default function TxnEditSheet({
         >
           <div className="sticky top-0 z-30 mb-3 rounded-t-[36px] border-b border-[var(--border)] bg-[var(--sheet-bg)] px-5 py-4 shadow-sm sm:px-6">
             <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--surface-tint-strong)] sm:hidden" />
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-black text-[var(--text)]">{isBm ? "Edit item" : "Edit items"}</h3>
+            {/* Header: Cancel left, title center, Update right */}
+            <div className="flex items-center justify-between gap-3">
               <button
+                type="button"
                 onClick={onClose}
-                className="flex h-8 w-8 items-center justify-center rounded-xl text-[var(--muted)] transition-colors hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl px-2 py-1.5 text-sm font-bold text-[var(--muted)] transition-colors hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
               >
-                <X size={18} />
+                <X size={15} />
+                {isBm ? "Batal" : "Cancel"}
+              </button>
+              <h3 className="min-w-0 flex-1 truncate text-center text-base font-black text-[var(--text)]">
+                {isBm ? "Edit Transaksi" : "Edit Transaction"}
+              </h3>
+              <button
+                type="submit"
+                form="edit-txn-form"
+                disabled={saving}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-[var(--text)] px-3 py-1.5 text-sm font-bold text-[var(--bg)] transition-all active:scale-95 disabled:opacity-60"
+              >
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                {isBm ? "Kemas Kini" : "Update"}
               </button>
             </div>
           </div>
@@ -179,7 +193,7 @@ export default function TxnEditSheet({
             </div>
           )}
 
-          <form onSubmit={onSubmit} className="space-y-3 px-4 pb-4 pt-1 sm:px-6 sm:pb-6 sm:pt-0">
+          <form id="edit-txn-form" onSubmit={onSubmit} className="space-y-3 px-4 pb-4 pt-1 sm:px-6 sm:pb-6 sm:pt-0">
             <div className="grid grid-cols-2 gap-2">
               {(["expense", "income"] as const).map((type) => (
                 <button
@@ -420,14 +434,6 @@ export default function TxnEditSheet({
                 className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2.5 text-sm font-medium text-[var(--muted)] transition-all file:mr-3 file:rounded-lg file:border-0 file:bg-[var(--text)] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[var(--bg)]"
               />
             </div>
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-full bg-[var(--text)] px-4 py-3 text-[0.78rem] font-bold uppercase tracking-wider text-[var(--bg)] transition-all active:scale-[0.98] disabled:opacity-60"
-            >
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <><Check size={15} /> {langT.updateRecord}</>}
-            </button>
           </form>
         </div>
       </div>
