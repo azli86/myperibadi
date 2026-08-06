@@ -488,7 +488,6 @@ export default function LagiPage() {
             >
               <AppSheetHeader
                 title={activeConfig.title}
-                subtitle={activeConfig.subtitle}
                 onClose={requestMobileSheetClose}
               />
               <div className="px-5">

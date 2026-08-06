@@ -919,7 +919,6 @@ export default function SubscriptionDetailPage() {
               >
                 <AppSheetHeader
                   title={tr("Edit Subscription", "Edit Subscription")}
-                  subtitle={tr("Kemaskini nama, jumlah, due day dan nota.", "Update name, amount, due day and notes.")}
                   onClose={requestEditSheetClose}
                 />
                 <form onSubmit={handleSaveSubscription} className="space-y-4 px-4 py-4 md:px-6 md:py-6">

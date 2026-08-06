@@ -979,10 +979,6 @@ export default function LoanDetailPage() {
               >
                 <AppSheetHeader
                   title={tr("Bayar Loan", "Pay Loan")}
-                  subtitle={tr(
-                    "Bayaran ini akan cipta transaksi wallet dan history loan.",
-                    "This payment will create a wallet transaction and loan history.",
-                  )}
                   onClose={requestPaymentSheetClose}
                 />
                 <form onSubmit={handleSavePayment} className="space-y-4 px-4 py-4 md:px-6 md:py-6">
@@ -1089,7 +1085,6 @@ export default function LoanDetailPage() {
               >
                 <AppSheetHeader
                   title={tr("Edit Loan", "Edit Loan")}
-                  subtitle={tr("Kemaskini nama, jumlah, bulanan dan nota loan.", "Update loan name, total, monthly and notes.")}
                   onClose={requestEditSheetClose}
                 />
                 <form onSubmit={handleSaveLoan} className="space-y-4 px-4 py-4 md:px-6 md:py-6">

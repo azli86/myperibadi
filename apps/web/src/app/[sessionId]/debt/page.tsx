@@ -1048,9 +1048,6 @@ export default function DebtPage() {
                       ? tr("Beri Lagi", "Lend More")
                       : tr("Hutang Lagi", "Borrow More")
                     : tr("Tambah Rekod", "Add Record")}
-                  subtitle={activeName
-                    ? tr(`Tambah rekod untuk ${activeName}`, `Adding record for ${activeName}`)
-                    : tr("Hutang atau kredit baru", "New debt or credit")}
                   onClose={() => setShowAddEntryForm(false)}
                 />
 
@@ -1215,9 +1212,6 @@ export default function DebtPage() {
               >
                 <AppSheetHeader
                   title={form.event_type === "payment_in" ? tr("Terima Bayaran", "Receive Payment") : tr("Bayar Balik", "Pay Back")}
-                  subtitle={form.event_type === "payment_in"
-                    ? tr("Terima daripada penghutang", "Collecting from debtor")
-                    : tr("Selesaikan hutang anda", "Settling your debt")}
                   onClose={() => setShowSettleEntryForm(false)}
                 />
 

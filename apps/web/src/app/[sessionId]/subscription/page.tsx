@@ -633,9 +633,6 @@ export default function SubscriptionPage() {
               >
                 <AppSheetHeader
                   title={editingSubscription ? tr("Edit Subscription", "Edit Subscription") : tr("Tambah Subscription", "Add Subscription")}
-                  subtitle={editingSubscription
-                    ? tr("Kemaskini nama, jumlah, dan due day.", "Update name, amount, and due day.")
-                    : tr("Isi nama, jumlah bulanan, dan due day.", "Fill in name, monthly amount, and due day.")}
                   onClose={requestCreateSheetClose}
                 />
 

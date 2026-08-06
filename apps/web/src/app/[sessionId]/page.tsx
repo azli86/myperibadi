@@ -3111,12 +3111,6 @@ export default function Dashboard() {
                   >
                     <AppSheetHeader
                       title={lang === "BM" ? "Semua baki" : "All balances"}
-                      subtitle={`${heroWallets.length} ${lang === "BM" ? "akaun" : "accounts"} · ${showHeroAmounts
-                        ? `${formatCurrencyLabel("MYR")} ${formatHeroNumber(
-                            heroWallets.reduce((s, w) => s + Number(w.balance || 0), 0),
-                            { minimumFractionDigits: 2 },
-                          )}`
-                        : "RM ••••••"}`}
                       onClose={requestWalletDeckClose}
                     />
 

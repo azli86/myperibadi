@@ -572,9 +572,6 @@ export default function LoanPage() {
               >
                 <AppSheetHeader
                   title={editingLoan ? tr("Edit Loan", "Edit Loan") : tr("Tambah Loan", "Add Loan")}
-                  subtitle={editingLoan
-                    ? tr("Kemaskini jumlah, bulanan dan nota loan.", "Update total, monthly amount and loan notes.")
-                    : tr("Masuk jumlah dan bulanan untuk kiraan baki bulan.", "Enter total and monthly payment for month calculation.")}
                   onClose={requestCreateSheetClose}
                 />
 

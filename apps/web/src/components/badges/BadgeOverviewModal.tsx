@@ -202,9 +202,6 @@ export default function BadgeOverviewModal({ open, onClose, sessionId, lang }: B
             {/* Header */}
             <AppSheetHeader
               title={isEN ? "Badge Vault" : "Vault Badge"}
-              subtitle={isEN
-                ? "Unlock gems as you manage money better."
-                : "Buka gem bila anda lebih disiplin urus duit."}
               onClose={onClose}
             />
 
