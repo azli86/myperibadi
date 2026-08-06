@@ -43,7 +43,7 @@ import { fetchApiJson, readApiCache } from "@/lib/api-cache"
 import { categoryCycleMonthBounds, cycleMonthBounds } from "@/lib/cycle"
 import BadgeOverviewModal from "@/components/badges/BadgeOverviewModal"
 import { APP_BADGES, deriveEarnedBadgeKeys, type BadgeBudgetItemLike, type BadgeTransactionLike } from "@/lib/badges"
-import { formatCurrencyLabel, currencyFlag } from "@/components/ui/MoneyAmount"
+import { formatCurrencyLabel } from "@/components/ui/MoneyAmount"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
@@ -1608,8 +1608,8 @@ export default function Dashboard() {
                         {showDataSkeleton
                           ? dashboardAmountSkeleton("h-6 w-24")
                           : showHeroAmounts
-                            ? <>{currencyFlag(wallet.currency)} {formatCurrencyLabel(wallet.currency)} {wallet.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
-                            : `${currencyFlag(wallet.currency)} ${formatCurrencyLabel(wallet.currency)} ••••••`}
+                            ? <>{formatCurrencyLabel(wallet.currency)} {wallet.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
+                            : `${formatCurrencyLabel(wallet.currency)} ••••••`}
                       </p>
                     </div>
                     <div className="relative mt-auto border-t border-[var(--border)] pt-3">
@@ -2275,7 +2275,7 @@ export default function Dashboard() {
                     <p className="max-w-[10rem] truncate text-right text-sm font-semibold tabular-nums tracking-tight text-[var(--text)]">
                       {showHeroAmounts ? (
                         <>
-                          {currencyFlag(primary.currency)} {formatCurrencyLabel(primary.currency)}{" "}
+                          {formatCurrencyLabel(primary.currency)}{" "}
                           {formatHeroNumber(primary.balance, { minimumFractionDigits: 2 })}
                         </>
                       ) : (
@@ -3131,7 +3131,7 @@ export default function Dashboard() {
                             {heroWallets.length}{" "}
                             {lang === "BM" ? "akaun" : "accounts"} ·{" "}
                             {showHeroAmounts
-                              ? `${currencyFlag("MYR")} ${formatCurrencyLabel("MYR")} ${formatHeroNumber(
+                              ? `${formatCurrencyLabel("MYR")} ${formatHeroNumber(
                                   heroWallets.reduce((s, w) => s + Number(w.balance || 0), 0),
                                   { minimumFractionDigits: 2 },
                                 )}`
@@ -3189,7 +3189,7 @@ export default function Dashboard() {
                                 <p className="mt-0.5 text-base font-semibold tabular-nums tracking-tight text-[var(--text)]">
                                   {showHeroAmounts ? (
                                     <>
-                                      {currencyFlag(wallet.currency)} {formatCurrencyLabel(wallet.currency)}{" "}
+                                      {formatCurrencyLabel(wallet.currency)}{" "}
                                       {formatHeroNumber(wallet.balance, {
                                         minimumFractionDigits: 2,
                                       })}

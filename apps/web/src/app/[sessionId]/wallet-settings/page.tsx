@@ -34,7 +34,7 @@ import {
   MobilePageHeader,
 } from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
-import { MoneyAmount, formatCurrencyLabel, currencyFlag } from "@/components/ui/MoneyAmount"
+import { MoneyAmount, formatCurrencyLabel } from "@/components/ui/MoneyAmount"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
@@ -241,7 +241,7 @@ function GlossyWalletPreview({
           ) : (
             <span className="text-lg font-semibold tabular-nums tracking-tight text-[var(--text)]">
               <span className="mr-0.5 text-xs font-bold text-[var(--muted)]">
-                {currencyFlag(currency)} {formatCurrencyLabel(currency)}
+                {formatCurrencyLabel(currency)}
               </span>
               {balance}
             </span>

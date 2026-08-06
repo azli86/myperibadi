@@ -3,7 +3,6 @@
 import type React from "react"
 import { Banknote } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { currencyFlag, formatCurrencyLabel } from "@/components/ui/MoneyAmount"
 import { useLang } from "@/lib/lang"
 import { CategoryIconGlyph } from "@/lib/category-icons"
 import type { TransactionDetail } from "../types"
@@ -31,8 +30,6 @@ export default function TxnSummaryCard({
   const sign = isIncome ? "+" : "-"
   const receiptNumber = txn.reference_id || `TXN-${txn.id}`
   const categoryName = txn.category_name || (isBm ? "Tiada Kategori" : "No Category")
-  const currencyCode = formatCurrencyLabel(txn.wallet_currency)
-  const currencyFlagEmoji = currencyFlag(txn.wallet_currency)
 
   return (
     <div className="relative overflow-hidden rounded-[1.5rem] bg-[#1a1a1a] p-6 text-[#f5f5f5] md:p-8">
@@ -57,7 +54,7 @@ export default function TxnSummaryCard({
 
         {/* Amount — big */}
         <p className={cn("mt-3 leading-none tabular-nums tracking-tight", amountClass, "text-5xl font-black md:text-6xl")}>
-          {sign}{currencyFlagEmoji} {currencyCode} {formattedAmount}
+          {sign}RM {formattedAmount}
         </p>
 
         {/* Transaction ID — small */}

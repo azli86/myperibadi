@@ -4,7 +4,6 @@ export interface TransactionDetail {
   user_id: string
   wallet_id: number
   wallet_name: string
-  wallet_currency?: string | null
   type: string
   txn_date: string
   txn_time?: string | null
