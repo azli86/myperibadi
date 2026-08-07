@@ -717,73 +717,89 @@ export default function AccountPage() {
       </DesktopPageBody>
 
       {confirmOpen && stats && dangerAction && (
-        <div
-          className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50 p-4 pb-6 sm:items-center"
-          onClick={() => !dangerBusy && setConfirmOpen(false)}
-        >
-          <div
-            className="w-full max-w-md overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)]/85 shadow-2xl backdrop-blur-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 pt-6 pb-2">
-              <div className="flex items-center gap-3">
-                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${dangerAction === "delete" ? "bg-red-500/15 text-red-500" : "bg-[var(--text)]/10 text-[var(--text)]"}`}>
-                  {dangerAction === "delete" ? <Trash2 size={22} /> : <RefreshCw size={22} />}
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-[var(--text)]">
-                    {dangerAction === "delete"
-                      ? tr("Sahkan Padam Akaun", "Confirm Account Deletion")
-                      : tr("Sahkan Reset Akaun", "Confirm Account Reset")}
-                  </h3>
-                  <p className="text-xs font-medium text-[var(--muted)]">
-                    {dangerAction === "delete"
-                      ? tr("Tindakan ini kekal dan tidak boleh dibatalkan.", "This action is permanent and cannot be undone.")
-                      : tr("Semua data akan dikosongkan. Akaun anda kekal.", "All data will be cleared. Your account remains.")}
-                  </p>
-                </div>
-              </div>
-            </div>
+        <div className="fixed inset-0 z-[120] flex flex-col bg-[var(--surface)]">
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-3">
+            <button
+              type="button"
+              disabled={dangerBusy}
+              onClick={() => setConfirmOpen(false)}
+              className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-[var(--muted)] transition hover:bg-[var(--surface-tint)]"
+            >
+              ✕
+            </button>
+            <h2 className="text-base font-bold text-[var(--text)]">
+              {dangerAction === "delete"
+                ? tr("Padam Akaun", "Delete Account")
+                : tr("Reset Akaun", "Reset Account")}
+            </h2>
+            <div className="w-10" />
+          </div>
 
-            <div className="px-6 py-4">
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-4">
-                <div className="flex items-center justify-between py-1">
+          <div className="flex-1 overflow-y-auto px-5 pb-6">
+            <div className="mx-auto w-full max-w-md">
+              {/* Icon + warning */}
+              <div className="flex flex-col items-center pt-6 pb-6 text-center">
+                <div className={`flex h-16 w-16 items-center justify-center rounded-3xl ${dangerAction === "delete" ? "bg-red-500/15 text-red-500" : "bg-[var(--text)]/10 text-[var(--text)]"}`}>
+                  {dangerAction === "delete" ? <Trash2 size={30} /> : <RefreshCw size={30} />}
+                </div>
+                <h3 className="mt-4 text-xl font-extrabold text-[var(--text)]">
+                  {dangerAction === "delete"
+                    ? tr("Sahkan Padam Akaun", "Confirm Account Deletion")
+                    : tr("Sahkan Reset Akaun", "Confirm Account Reset")}
+                </h3>
+                <p className="mt-2 text-sm font-medium leading-relaxed text-[var(--muted)]">
+                  {dangerAction === "delete"
+                    ? tr("Tindakan ini kekal dan tidak boleh dibatalkan. Akaun anda dan semua data akan dipadam selama-lamanya.", "This action is permanent and cannot be undone. Your account and all data will be deleted forever.")
+                    : tr("Semua data akan dikosongkan. Akaun dan e-mel anda kekal.", "All data will be cleared. Your account and email remain.")}
+                </p>
+              </div>
+
+              {/* Account summary card */}
+              <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-5">
+                <div className="flex items-center justify-between py-1.5">
                   <span className="text-xs font-semibold text-[var(--muted)]">{tr("Nama", "Name")}</span>
                   <span className="text-sm font-bold text-[var(--text)]">{profile?.name || "-"}</span>
                 </div>
-                <div className="flex items-center justify-between py-1">
+                <div className="flex items-center justify-between py-1.5">
                   <span className="text-xs font-semibold text-[var(--muted)]">{tr("E-mel", "Email")}</span>
                   <span className="text-sm font-bold text-[var(--text)]">{profile?.email || "-"}</span>
                 </div>
-                <div className="my-2 border-t border-dashed border-[var(--border)]" />
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div className="rounded-xl bg-[var(--surface-tint)]/60 px-3 py-2.5">
+                <div className="my-3 border-t border-dashed border-[var(--border)]" />
+                <p className="pb-2 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                  {tr("Data yang akan dibuang", "Data to be removed")}
+                </p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="rounded-2xl bg-[var(--surface-tint)]/60 px-4 py-3">
                     <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Transaksi", "Transactions")}</p>
-                    <p className="text-lg font-extrabold text-[var(--text)]">{stats.transaction_count.toLocaleString()}</p>
+                    <p className="text-xl font-extrabold text-[var(--text)]">{stats.transaction_count.toLocaleString()}</p>
                   </div>
-                  <div className="rounded-xl bg-[var(--surface-tint)]/60 px-3 py-2.5">
+                  <div className="rounded-2xl bg-[var(--surface-tint)]/60 px-4 py-3">
                     <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Wallet", "Wallets")}</p>
-                    <p className="text-lg font-extrabold text-[var(--text)]">{stats.wallet_count.toLocaleString()}</p>
+                    <p className="text-xl font-extrabold text-[var(--text)]">{stats.wallet_count.toLocaleString()}</p>
                   </div>
-                  <div className="rounded-xl bg-[var(--surface-tint)]/60 px-3 py-2.5">
+                  <div className="rounded-2xl bg-[var(--surface-tint)]/60 px-4 py-3">
                     <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Hutang", "Debts")}</p>
-                    <p className="text-lg font-extrabold text-[var(--text)]">{stats.debt_count.toLocaleString()}</p>
+                    <p className="text-xl font-extrabold text-[var(--text)]">{stats.debt_count.toLocaleString()}</p>
                   </div>
-                  <div className="rounded-xl bg-[var(--surface-tint)]/60 px-3 py-2.5">
+                  <div className="rounded-2xl bg-[var(--surface-tint)]/60 px-4 py-3">
                     <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Loan", "Loans")}</p>
-                    <p className="text-lg font-extrabold text-[var(--text)]">{stats.loan_count.toLocaleString()}</p>
+                    <p className="text-xl font-extrabold text-[var(--text)]">{stats.loan_count.toLocaleString()}</p>
                   </div>
                   {stats.subscription_count > 0 && (
-                    <div className="rounded-xl bg-[var(--surface-tint)]/60 px-3 py-2.5">
+                    <div className="rounded-2xl bg-[var(--surface-tint)]/60 px-4 py-3">
                       <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Subskripsi", "Subscriptions")}</p>
-                      <p className="text-lg font-extrabold text-[var(--text)]">{stats.subscription_count.toLocaleString()}</p>
+                      <p className="text-xl font-extrabold text-[var(--text)]">{stats.subscription_count.toLocaleString()}</p>
                     </div>
                   )}
                 </div>
               </div>
             </div>
+          </div>
 
-            <div className="flex gap-2 px-6 pb-6">
+          {/* Bottom actions */}
+          <div className="border-t border-[var(--border)] bg-[var(--surface)] px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <div className="mx-auto flex w-full max-w-md gap-2.5">
               <button
                 type="button"
                 disabled={dangerBusy}
