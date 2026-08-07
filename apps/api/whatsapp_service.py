@@ -2296,6 +2296,63 @@ def get_contextual_domain_fallback(text: str, language: str) -> str:
         ]
     return _select_deterministic_template(templates, normalized or text)
 
+
+def _is_out_of_scope_question(text: str) -> bool:
+    """Detect questions that are clearly OUTSIDE the MyPeribadi budgeting domain.
+    When True, the bot should stay silent (no reply at all) instead of answering
+    like a generic AI assistant or trying to steer back."""
+    if not text:
+        return False
+    normalized = normalize_message_text(text or "").strip().lower()
+    if not normalized:
+        return False
+
+    # Known MyPeribadi commands / in-domain objects. If the user asks "how to use <this>",
+    # only these count as in-scope; anything else is out of scope.
+    domain_terms = {
+        "summary", "list", "checkwallet", "semak", "wallet", "dompet", "budget", "bajet",
+        "lend", "borrow", "pay", "balance", "debt", "hutang", "loanx", "loan", "subx",
+        "subskripsi", "subscription", "transfer", "pindah", "lang", "help", "bantuan",
+        "makan", "belanja", "expense", "income", "pendapatan", "rekod", "record",
+        "transaksi", "transaction", "receipt", "resit", "kategori", "category", "tag",
+        "saving", "simpanan", "gaji", "salary", "duit", "wang", "money", "cash",
+        "maybank", "tng", "tabung", "location", "lokasi", "peta", "map", "media",
+        "gambar", "photo", "photo", "ocr", "scan", "whatsapp", "telegram", "bot",
+    }
+
+    # Phrases that introduce a "how to use X" question.
+    how_to_patterns = [
+        r"(?:macam\s*(?:mana|mne|mane)\s*nak\s*(?:guna|pakai)|cara\s*(?:nak\s*)?(?:guna|pakai)|how\s+(?:to|do\s+i)\s*(?:use|do)|guna\s*macam\s*mana|pakai\s*macam\s*mana)\s*([a-z0-9 ]+)",
+    ]
+    for pattern in how_to_patterns:
+        m = re.search(pattern, normalized)
+        if m:
+            obj = m.group(1).strip()
+            if not obj:
+                return False  # vague "macam mana nak guna" -> handled by command-list short-circuit
+            obj_first = obj.split()[0] if obj else ""
+            # If the object starts with a domain term, keep it in scope (LLM answers).
+            if obj_first in domain_terms or obj in domain_terms:
+                return False
+            # Single generic filler words after "how to use" — not a real object.
+            if obj_first in {"a", "an", "the", "ni", "tu", "ini", "itu", "saya", "anda", "aku", "awak", "ia", "nya"}:
+                return False
+            return True  # "how to use git/python/..." -> out of scope, stay silent
+
+    # Clear out-of-scope topic keywords (programming, cooking, politics, games, etc.)
+    out_of_scope_keywords = [
+        "git", "python", "docker", "postman", "node", "react", "javascript", "typescript",
+        "vscode", "visual studio", "terminal", "command prompt", "linux", "ubuntu", "windows",
+        "macos", "github", "api", "library", "framework", "install", "coding", "program",
+        "programming", "masak", "resepi", "recipe", "memasak", "politik", "politics", "sukan",
+        "sport", "game", "permainan", "bola", "sepak", "movie", "filem", "drama", "lagu",
+        "musik", "musik", "fesyen", "fashion", "cantik", "kecantikan", "kereta", "motor",
+    ]
+    if any(kw in normalized for kw in out_of_scope_keywords):
+        return True
+
+    return False
+
 def _contains_keyword_score(source_text: str, keyword: str) -> Optional[int]:
     index = source_text.find(keyword)
     if index < 0:
@@ -4109,6 +4166,11 @@ async def _process_whatsapp_message_impl(
             if is_model_identity_query(text):
                 print(f"[BOT] Using model-identity reply before LLM for user={user_id} channel={source_channel}")
                 return get_model_identity_reply(user_lang), None
+
+            # Out-of-scope questions (how to use git/python/etc.) -> stay silent.
+            if _is_out_of_scope_question(text):
+                print(f"[BOT] Out-of-scope question, staying silent for user={user_id} channel={source_channel} text={text[:80]!r}")
+                return None, None
 
             if any(pattern in normalized_help_text for pattern in ["location", "lokasi", "map", "peta", "@here", "here", "mark location", "tanda lokasi", "lampir lokasi", "attach location", "reply location", "reply @here", "slide reply"]):
                 location_reply = get_basic_assistant_reply(text, user_lang)
