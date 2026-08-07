@@ -2371,14 +2371,15 @@ def _contains_keyword_score(source_text: str, keyword: str) -> Optional[int]:
     if not boundary_before and not boundary_after:
         return None
 
-    # Prefer more specific keywords first (longer keyword = higher confidence).
-    score = len(keyword) * 100
-
-    # Bonus for natural token boundaries.
+    # An explicit standalone token (the keyword is a whole word in the text) is
+    # the strongest signal: "AI" and "TNG" called out by name should win over
+    # any longer keyword that only shares a prefix (e.g. "best"). Give it a
+    # dominant score so short brand keywords are not out-ranked by word length.
     if boundary_before and boundary_after:
-        score += 240
-    elif boundary_before or boundary_after:
-        score += 80
+        return 10000 + len(keyword) * 100
+
+    # Otherwise the keyword is a prefix/suffix of a longer word (one side open).
+    score = len(keyword) * 100 + 80
 
     # Small tie-breakers: starts/ends with keyword.
     if index == 0:
@@ -2496,36 +2497,49 @@ async def get_category_by_keywords(db: AsyncSession, text: str, household_id: Op
     normalized_text = (text or "").strip().lower()
     preferred_kind_norm = (preferred_kind or "").strip().lower()
 
-    best: Optional[tuple[int, int, int, int, models.Category]] = None
-    for kw, category in rows:
-        kw_text = (kw.keyword or "").strip().lower()
-        if not kw_text:
-            continue
-
-        if kw.match_type == "exact":
-            if kw_text != normalized_text:
+    def _match_category(candidate_rows, search_text: str) -> Optional[models.Category]:
+        best: Optional[tuple[int, int, int, int, models.Category]] = None
+        for kw, category in candidate_rows:
+            kw_text = (kw.keyword or "").strip().lower()
+            if not kw_text:
                 continue
-            base_score = 200000 + len(kw_text) * 100
-        else:  # contains
-            contains_score = _contains_keyword_score(normalized_text, kw_text)
-            if contains_score is None:
-                continue
-            base_score = contains_score
 
-        preferred_bonus = 75 if preferred_kind_norm and category.kind == preferred_kind_norm else 0
-        exact_bonus = 1 if kw.match_type == "exact" else 0
-        candidate = (
-            base_score + preferred_bonus,
-            exact_bonus,
-            len(kw_text),
-            -int(kw.id or 0),  # deterministic tie-breaker
-            category,
-        )
+            if kw.match_type == "exact":
+                if kw_text != search_text:
+                    continue
+                base_score = 200000 + len(kw_text) * 100
+            else:  # contains
+                contains_score = _contains_keyword_score(search_text, kw_text)
+                if contains_score is None:
+                    continue
+                base_score = contains_score
 
-        if best is None or candidate[:-1] > best[:-1]:
-            best = candidate
+            preferred_bonus = 75 if preferred_kind_norm and category.kind == preferred_kind_norm else 0
+            exact_bonus = 1 if kw.match_type == "exact" else 0
+            candidate = (
+                base_score + preferred_bonus,
+                exact_bonus,
+                len(kw_text),
+                -int(kw.id or 0),  # deterministic tie-breaker
+                category,
+            )
 
-    return best[-1] if best else None
+            if best is None or candidate[:-1] > best[:-1]:
+                best = candidate
+
+        return best[-1] if best else None
+
+    # Leading-word rule: the user types the category keyword first, then the rest
+    # of the message becomes the note (e.g. "makan nasi ayam tng" -> category Makan,
+    # note "nasi ayam tng"). Match the very first word as the category keyword and
+    # return it immediately if found; only fall back to scanning the whole text.
+    first_word_match = re.match(r"[a-z0-9]+", normalized_text)
+    if first_word_match:
+        leading = _match_category(rows, first_word_match.group(0))
+        if leading is not None:
+            return leading
+
+    return _match_category(rows, normalized_text)
 
 async def ensure_standard_categories(db: AsyncSession, user_id: str):
     # Legacy compatibility bootstrap:
@@ -4359,6 +4373,13 @@ async def _process_whatsapp_message_impl(
                 vendor_name = text.replace(amount_match.group(0), " ").strip()
             if used_explicit_wallet_prefix and wallet:
                 vendor_name = strip_wallet_reference(vendor_name, wallet.name)
+            # The leading word is the category keyword the user typed first
+            # (e.g. "makan nasi ayam tng" -> Makan, note "nasi ayam tng").
+            # Remove it from the note so only the descriptive rest remains.
+            if cat and not multi_item_transaction:
+                stripped = vendor_name.split(None, 1)
+                if stripped:
+                    vendor_name = stripped[1] if len(stripped) > 1 else ""
         vendor_name = re.sub(r"\s{2,}", " ", vendor_name).strip()
         if not vendor_name:
             vendor_name = t["no_note"]
