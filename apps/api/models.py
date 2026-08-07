@@ -65,6 +65,10 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    @property
+    def has_password(self) -> bool:
+        return self.password_hash is not None
+
     # Relationships
     transactions: Mapped[List["Transaction"]] = relationship(back_populates="user")
     memberships: Mapped[List["HouseholdMember"]] = relationship(back_populates="user")

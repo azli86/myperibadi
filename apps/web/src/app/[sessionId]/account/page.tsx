@@ -33,6 +33,7 @@ type Profile = {
   name: string
   email: string
   bot_personality: string
+  has_password?: boolean
 }
 
 type TokenResponse = {
@@ -262,7 +263,8 @@ export default function AccountPage() {
 
   async function handleDangerAction(e: React.FormEvent) {
     e.preventDefault()
-    if (!dangerAction || !dangerPassword) return
+    if (!dangerAction) return
+    if (profile?.has_password && !dangerPassword) return
     setDangerBusy(true)
     setDangerError("")
     try {
@@ -610,6 +612,9 @@ export default function AccountPage() {
                   autoComplete="current-password"
                   className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)]"
                 />
+                <p className="mt-1.5 text-xs text-[var(--muted)]">
+                  {tr("Akaun Google tidak perlu kata laluan.", "Google sign-in accounts don't need a password.")}
+                </p>
               </div>
 
               <div>
@@ -643,7 +648,7 @@ export default function AccountPage() {
                   type="submit"
                   disabled={
                     dangerBusy ||
-                    !dangerPassword ||
+                    (profile?.has_password && !dangerPassword) ||
                     confirmText.trim().toUpperCase() !== activeConfirmWord
                   }
                   className={cn(
