@@ -106,10 +106,10 @@ const CATEGORY_QUICK_ICONS: Record<"expense" | "income", QuickCategoryIcon[]> = 
 /** Soft red/green only on the emoji/icon box (not card stripes). */
 function categoryKindIconShellClass(kind?: Category["kind"]) {
   return kind === "expense"
-    ? "border-rose-500/20 bg-rose-500/12 text-rose-500"
+    ? "border-rose-500/20 text-rose-500"
     : kind === "income"
-      ? "border-emerald-500/20 bg-emerald-500/12 text-emerald-500"
-      : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)]"
+      ? "border-emerald-500/20 text-emerald-500"
+      : "border-[var(--border)] text-[var(--text)]"
 }
 
 function formatCurrencyCompact(value: number) {
@@ -1006,8 +1006,8 @@ export default function CategoriesPage() {
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-black leading-tight text-[var(--text)]">{c.name}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.625rem] font-semibold text-[var(--muted)]">
+          <p className="truncate text-sm font-medium leading-tight text-[var(--text)]">{c.name}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.625rem] font-medium text-[var(--muted)]">
             <span className="inline-flex items-center gap-1">
               <Hash size={10} />
               {c.keywordCount}

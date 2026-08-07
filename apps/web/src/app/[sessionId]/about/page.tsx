@@ -132,11 +132,11 @@ export default function AboutPage() {
             href={`/${sessionId}/whatsnew`}
             className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 active:scale-[0.98] transition-all"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]">
-              <Info size={18} />
+            <div className="shrink-0 text-[var(--text)]">
+              <Info size={20} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-[var(--text)]">{t.changelog}</p>
+              <p className="text-sm font-medium text-[var(--text)]">{t.changelog}</p>
               <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">{tr("Lihat rekod update dan perubahan terbaru.", "View recent updates and release changes.")}</p>
             </div>
             <ChevronRight size={16} className="text-[var(--muted)]" />
@@ -272,12 +272,12 @@ export default function AboutPage() {
 function StatusRow({ icon, label, value, dot, borderTop }: { icon: React.ReactNode; label: string; value: string; dot?: HealthState; borderTop?: boolean }) {
   return (
     <div className={`flex items-center gap-3 px-4 py-3.5${borderTop ? " border-t border-[var(--border)]" : ""}`}>
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]">{icon}</div>
+      <div className="shrink-0 text-[var(--text)]">{icon}</div>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold text-[var(--text)]">{label}</p>
+        <p className="text-sm font-medium text-[var(--text)]">{label}</p>
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-xs font-semibold text-[var(--muted)]">{value}</span>
+        <span className="text-xs font-medium text-[var(--muted)]">{value}</span>
         {dot && <span className={`inline-block h-2 w-2 rounded-full ${dot === "ok" ? "bg-[var(--text)]" : dot === "loading" ? "bg-[var(--muted)] animate-pulse" : "bg-[var(--muted)]"}`} />}
       </div>
     </div>
@@ -296,8 +296,8 @@ function InfoRow({ label, value, borderTop }: { label: string; value: string; bo
 function PreferenceRow({ label, value, borderTop }: { label: string; value: string; borderTop?: boolean }) {
   return (
     <div className={`flex items-center justify-between gap-3 px-4 py-3.5${borderTop ? " border-t border-[var(--border)]" : ""}`}>
-      <span className="text-sm font-bold text-[var(--text)]">{label}</span>
-      <span className="min-w-0 truncate text-right text-xs font-semibold text-[var(--muted)]">{value}</span>
+      <span className="text-sm font-medium text-[var(--text)]">{label}</span>
+      <span className="min-w-0 truncate text-right text-xs font-medium text-[var(--muted)]">{value}</span>
     </div>
   )
 }

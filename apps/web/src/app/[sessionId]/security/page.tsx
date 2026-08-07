@@ -375,9 +375,9 @@ export default function SecurityPage() {
               onClick={() => setActiveMobileSheet("password")}
               className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all active:scale-[0.99]"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]"><Lock size={18} /></div>
+              <Lock size={20} className="shrink-0 text-[var(--text)]" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-[var(--text)]">{tr("Tukar Kata Laluan", "Change Password")}</p>
+                <p className="text-sm font-medium text-[var(--text)]">{tr("Tukar Kata Laluan", "Change Password")}</p>
                 <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">{tr("Minimum 8 aksara", "Minimum 8 characters")}</p>
               </div>
               <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
@@ -387,9 +387,9 @@ export default function SecurityPage() {
               onClick={() => setActiveMobileSheet("pin")}
               className="flex w-full items-center gap-3 border-t border-[var(--border)] px-4 py-3.5 text-left transition-all active:scale-[0.99]"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]"><Fingerprint size={18} /></div>
+              <Fingerprint size={20} className="shrink-0 text-[var(--text)]" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-[var(--text)]">6-Digit PIN</p>
+                <p className="text-sm font-medium text-[var(--text)]">6-Digit PIN</p>
                 <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">
                   {pinStatus?.enabled ? tr("Aktif", "On") : tr("Tidak Aktif", "Off")}
                 </p>
