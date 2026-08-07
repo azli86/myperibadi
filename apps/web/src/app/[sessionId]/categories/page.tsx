@@ -104,14 +104,6 @@ const CATEGORY_QUICK_ICONS: Record<"expense" | "income", QuickCategoryIcon[]> = 
 }
 
 /** Soft red/green only on the emoji/icon box (not card stripes). */
-function categoryKindIconShellClass(kind?: Category["kind"]) {
-  return kind === "expense"
-    ? "border-rose-500/20 text-rose-500"
-    : kind === "income"
-      ? "border-emerald-500/20 text-emerald-500"
-      : "border-[var(--border)] text-[var(--text)]"
-}
-
 function formatCurrencyCompact(value: number) {
   if (!Number.isFinite(value)) return "RM0"
   const abs = Math.abs(value)
@@ -996,14 +988,18 @@ export default function CategoriesPage() {
         onClick={() => openCategoryDetail(c.id)}
         className="group flex w-full items-center gap-3 rounded-[var(--card-radius-lg)] border border-[var(--border)] bg-[var(--card)] p-3 text-left transition active:scale-[0.985] hover:border-[var(--border-strong)] md:p-3.5"
       >
-        <div
+      <div className="flex shrink-0 items-center gap-1.5">
+        <span
+          aria-hidden
           className={cn(
-            "grid h-10 w-10 shrink-0 place-items-center rounded-xl border md:h-11 md:w-11 md:rounded-2xl",
-            categoryKindIconShellClass(c.kind),
+            "h-2 w-2 shrink-0 rounded-full",
+            c.kind === "expense" ? "bg-rose-500" : c.kind === "income" ? "bg-emerald-500" : "bg-[var(--muted)]"
           )}
-        >
+        />
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--border)] text-[var(--text)] md:h-11 md:w-11 md:rounded-2xl">
           <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind={c.kind} size={19} />
         </div>
+      </div>
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium leading-tight text-[var(--text)]">{c.name}</p>
