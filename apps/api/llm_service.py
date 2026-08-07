@@ -368,15 +368,35 @@ def _guard_generic_reply(reply_text: str, language: str = "BM") -> str:
             return text
     if (language or "BM").upper() == "EN":
         return (
-            "Want me to help you manage your money? I can: record an expense (e.g. `makan 10`), "
-            "view summary (`summary`), set a budget (`budget set makanan 600`), "
-            "track debts (`borrow Ali 50`), loans (`loanx list`), or subscriptions (`subx list`). "
+            "Here are the commands you can use with me:\n"
+            "• `[Note] [Amount]` — record expense (e.g. `Makan 10`)\n"
+            "• `summary` — current month summary\n"
+            "• `list` — latest 5 transactions\n"
+            "• `checkwallet` / `semak wallet` — wallet balances\n"
+            "• `budget set <category> <amount>` — set budget (e.g. `budget set food 600`)\n"
+            "• `budget summary` — monthly budget summary\n"
+            "• `borrow <name> <amount>` / `lend <name> <amount>` — debt tracker\n"
+            "• `debt list` — all active debts\n"
+            "• `loanx list` / `loanx add <name> <total> <monthly>` — loans\n"
+            "• `subx <name> <amount> <day>HB` — subscription (e.g. `subx astro 89.90 15HB`)\n"
+            "• `transfer <amount> <walletA> <walletB>` — move between wallets\n"
+            "• `lang bm` / `lang en` — switch language\n"
             "Tell me what you'd like to do — for example: `I want to record lunch` ✅"
         )
     return (
-        "Nak saya bantu urus duit? Saya boleh: rekod belanja (cth `makan 10`), "
-        "lihat ringkasan (`summary`), tetapkan bajet (`budget set makanan 600`), "
-        "jejak hutang (`borrow Ali 50`), loan (`loanx list`), atau subskripsi (`subx list`). "
+        "Ini command yang awak boleh guna dengan saya:\n"
+        "• `[Nota] [Amaun]` — rekod belanja (cth `Makan 10`)\n"
+        "• `summary` — ringkasan bulan semasa\n"
+        "• `list` — 5 transaksi terbaru\n"
+        "• `checkwallet` / `semak wallet` — baki wallet\n"
+        "• `budget set <kategori> <amaun>` — set bajet (cth `budget set makanan 600`)\n"
+        "• `budget summary` / `budget ringkasan` — ringkasan bajet\n"
+        "• `borrow <nama> <amaun>` / `lend <nama> <amaun>` — tracker hutang\n"
+        "• `debt list` — semua hutang aktif\n"
+        "• `loanx list` / `loanx add <nama> <jumlah> <bulanan>` — loan\n"
+        "• `subx <nama> <amaun> <hari>HB` — subskripsi (cth `subx astro 89.90 15HB`)\n"
+        "• `transfer <amaun> <walletA> <walletB>` — pindah antara wallet\n"
+        "• `lang bm` / `lang en` — tukar bahasa\n"
         "Beritahu apa yang awak nak buat — contoh: `nak rekod duit makan` ✅"
     )
 
