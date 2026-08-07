@@ -9854,7 +9854,6 @@ async def reset_my_account(
         db=db,
         current_user=current_user,
         account_cleanup=_account_cleanup,
-        clear_user_refresh_token=_clear_user_refresh_token,
     )
 
 

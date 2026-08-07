@@ -287,14 +287,12 @@ async def reset_my_account_route(
     db: AsyncSession,
     current_user: models.User,
     account_cleanup: Callable[..., Awaitable[None]],
-    clear_user_refresh_token: Callable[..., Awaitable[None]],
 ) -> dict[str, str]:
     if not current_user.password_hash:
         raise HTTPException(status_code=400, detail="Account password required to reset account")
     if not auth_utils.verify_password(payload.current_password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
 
-    await clear_user_refresh_token(current_user, db=db)
     await account_cleanup(db, user_id=current_user.id, reset_only=True)
     await db.commit()
     return {"message": "Account reset successfully"}

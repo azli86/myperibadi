@@ -296,6 +296,7 @@ export default function AccountPage() {
           tr("Semua data akaun telah dikosongkan. Anda akan mula semula dari onboarding.", "All account data has been cleared. You will start fresh from onboarding."),
           "success"
         )
+        router.refresh()
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : ""
