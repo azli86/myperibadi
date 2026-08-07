@@ -20,10 +20,13 @@ import {
   EyeOff,
   Trash2,
   RefreshCw,
+  ChevronRight,
 } from "lucide-react"
 import { useLang } from "@/lib/lang"
 import { getAccessToken, setAuthTokens, logoutAuthSession } from "@/lib/auth-session"
 import { MobilePageHeader, DesktopPageBody, DesktopPageHeader } from "@/components/layout/PageHeader"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
+import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 import { usePageAlert } from "@/hooks/usePageAlert"
 import { cn } from "@/lib/utils"
 import BadgeOverviewModal from "@/components/badges/BadgeOverviewModal"
@@ -82,6 +85,7 @@ export default function AccountPage() {
     loan_count: number
     subscription_count: number
   } | null>(null)
+  const [activeMobileSheet, setActiveMobileSheet] = useState<"profile" | "email" | "danger" | null>(null)
 
   const isBm = lang === "BM"
   const tr = (bm: string, en: string) => isBm ? bm : en
@@ -332,6 +336,7 @@ export default function AccountPage() {
         setDangerAction(null)
         setDangerPassword("")
         setConfirmText("")
+        setActiveMobileSheet(null)
         showAlert(
           tr("Akaun Direset", "Account Reset"),
           tr("Semua data akaun telah dikosongkan. Anda akan mula semula dari onboarding.", "All account data has been cleared. You will start fresh from onboarding."),
@@ -352,6 +357,19 @@ export default function AccountPage() {
   const resetConfirmWord = tr("RESET", "RESET")
   const deleteConfirmWord = tr("PADAM", "DELETE")
   const activeConfirmWord = dangerAction === "delete" ? deleteConfirmWord : resetConfirmWord
+
+  const { requestClose: requestMobileSheetClose, requestCloseThen: requestMobileSheetCloseThen } = useOverlayBackClose({
+    id: "account-mobile-sheet",
+    isOpen: Boolean(activeMobileSheet),
+    onClose: () => setActiveMobileSheet(null),
+  })
+
+  const mobileSheetMeta = activeMobileSheet ? {
+    profile: { title: tr("Edit Profil", "Edit Profile"), subtitle: tr("Nama & personaliti bot", "Name & bot personality") },
+    email: { title: tr("Tukar E-mel", "Change Email"), subtitle: profile?.email || "-" },
+    danger: { title: tr("Zon Bahaya", "Danger Zone"), subtitle: tr("Reset atau padam akaun", "Reset or delete account") },
+  }[activeMobileSheet] : null
+
   return (
     <div className="flex flex-col gap-5 pb-20 md:gap-0 md:pb-0">
       {/* ─── Mobile Header ─── */}
@@ -363,6 +381,71 @@ export default function AccountPage() {
         />
       </div>
 
+      {/* ─── Mobile View (row list, settings-page style) ─── */}
+      <div className="space-y-5 md:hidden">
+        {/* Profile summary card */}
+        <section className="px-1">
+          <div className="overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)]">
+            <button
+              type="button"
+              onClick={() => setActiveMobileSheet("profile")}
+              className="flex w-full items-center gap-3 px-4 py-4 text-left transition-all active:scale-[0.99]"
+            >
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--text)] ring-1 ring-[var(--accent)]/15">
+                <UserCircle2 size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-base font-black text-[var(--text)]">{profile?.name || tr("Muat...", "Loading...")}</p>
+                <p className="truncate text-sm font-semibold text-[var(--muted)]">{profile?.email || "-"}</p>
+              </div>
+              <ChevronRight size={18} className="shrink-0 text-[var(--muted)]" />
+            </button>
+          </div>
+        </section>
+
+        {/* Account settings rows */}
+        <section className="px-1">
+          <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{tr("Akaun", "Account")}</p>
+          <div className="mt-2 overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)]">
+            {[
+              { key: "profile" as const, icon: PencilLine, label: tr("Edit Profil", "Edit Profile"), value: tr("Nama & personaliti bot", "Name & bot personality") },
+              { key: "email" as const, icon: MailCheck, label: tr("Tukar E-mel", "Change Email"), value: profile?.email || "-" },
+            ].map((item, i) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setActiveMobileSheet(item.key)}
+                className={cn("flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all", i !== 0 && "border-t border-[var(--border)]")}
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]"><item.icon size={18} /></div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-[var(--text)]">{item.label}</p>
+                  <p className="mt-0.5 truncate text-xs font-medium text-[var(--muted)]">{item.value}</p>
+                </div>
+                <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* Danger zone row */}
+        <section className="px-1">
+          <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{tr("Bahaya", "Danger")}</p>
+          <button
+            type="button"
+            onClick={() => setActiveMobileSheet("danger")}
+            className="mt-2 flex w-full items-center gap-3 rounded-[1.25rem] border border-red-500/30 bg-[var(--card)] px-4 py-3.5 text-left transition-all active:scale-[0.99]"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500"><AlertTriangle size={18} /></div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-red-600 dark:text-red-400">{tr("Zon Bahaya", "Danger Zone")}</p>
+              <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">{tr("Reset atau padam akaun", "Reset or delete account")}</p>
+            </div>
+            <ChevronRight size={16} className="shrink-0 text-red-500/60" />
+          </button>
+        </section>
+      </div>
+
       <DesktopPageHeader
         title={tr("Akaun Saya", "My Account")}
         breadcrumbs={[{ label: tr("Tetapan", "Settings"), href: `/${sessionId}/settings` }]}
@@ -371,7 +454,7 @@ export default function AccountPage() {
         className="hidden md:block"
       />
 
-      <DesktopPageBody className="flex flex-col gap-5 md:gap-7">
+      <DesktopPageBody className="hidden flex-col gap-5 md:flex md:gap-7">
       {/* ─── Edit Profile Form ─── */}
       <section className="overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <div className="border-b border-[var(--border)] bg-[var(--surface-tint)]/30 px-6 py-5">
@@ -715,6 +798,308 @@ export default function AccountPage() {
         </div>
       </section>
       </DesktopPageBody>
+
+      {/* ─── Mobile Bottom Sheets (settings-page style) ─── */}
+      {activeMobileSheet && mobileSheetMeta && (
+        <div
+          className="fixed inset-0 z-[80] flex items-end bg-transparent md:hidden"
+          onClick={requestMobileSheetClose}
+        >
+          <div
+            className="max-h-[88dvh] w-full overflow-y-auto rounded-t-[36px] border border-[var(--border)] bg-[var(--card)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] touch-pan-y shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <AppSheetHeader title={mobileSheetMeta.title} onClose={requestMobileSheetClose} />
+            <div className="px-5">
+              <p className="mb-4 text-xs font-medium text-[var(--muted)]">{mobileSheetMeta.subtitle}</p>
+
+              {/* ── Profile sheet ── */}
+              {activeMobileSheet === "profile" && (
+                <form onSubmit={handleSave} className="space-y-5 pb-2">
+                  <TextField
+                    label={t.fullName}
+                    value={name}
+                    onChange={setName}
+                    placeholder={tr("Nama anda", "Your name")}
+                  />
+                  <div className="space-y-2.5">
+                    <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                      {tr("Bot Personality", "Bot Personality")}
+                    </span>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setPersonalityOpen((open) => !open)}
+                        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-left text-sm font-bold text-[var(--text)] outline-none transition-all active:scale-[0.99]"
+                        aria-expanded={personalityOpen}
+                      >
+                        <span className="truncate">
+                          {personalityPresets.includes(normalizePersonalityInput(botPersonality))
+                            ? normalizePersonalityInput(botPersonality)
+                            : tr("Pilih personaliti bot", "Choose bot personality")}
+                        </span>
+                        <ChevronDown
+                          size={17}
+                          className={cn("shrink-0 text-[var(--muted)] transition-transform", personalityOpen && "rotate-180")}
+                        />
+                      </button>
+                      {personalityOpen ? (
+                        <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
+                          {personalityPresets.map((preset) => {
+                            const active = normalizePersonalityInput(botPersonality) === preset
+                            return (
+                              <button
+                                key={preset}
+                                type="button"
+                                onClick={() => {
+                                  setBotPersonality(preset)
+                                  setPersonalityOpen(false)
+                                }}
+                                className={cn(
+                                  "flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-bold transition active:scale-[0.99]",
+                                  active
+                                    ? "bg-[var(--text)] text-[var(--bg)]"
+                                    : "bg-[var(--card)] text-[var(--text)] hover:bg-[var(--surface-tint)]"
+                                )}
+                              >
+                                <span>{preset}</span>
+                                {active ? <CheckCircle2 size={16} className="shrink-0" /> : null}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                    <p className="text-[0.7rem] font-medium leading-relaxed text-[var(--muted)]">
+                      {tr(
+                        "Pilih nada komunikasi bot. Logic, command, dan flow sistem bajet kekal sama.",
+                        "Choose the bot communication tone. Budget logic, commands, and system flow stay the same."
+                      )}
+                    </p>
+                  </div>
+                  {message && <SuccessBox>{message}</SuccessBox>}
+                  {error && <ErrorBox>{error}</ErrorBox>}
+                  <button
+                    type="submit"
+                    disabled={saving || !hasChanges}
+                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[var(--text)] text-[var(--bg)] font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                    {tr("Simpan Perubahan", "Save Changes")}
+                  </button>
+                </form>
+              )}
+
+              {/* ── Email sheet ── */}
+              {activeMobileSheet === "email" && (
+                <div className="pb-2">
+                  <div className="mb-5 flex gap-3 rounded-2xl bg-[var(--surface-tint)]/30 p-3.5">
+                    <ShieldCheck size={16} className="mt-0.5 shrink-0 text-[var(--accent)]" />
+                    <p className="text-[0.7rem] font-medium leading-relaxed text-[var(--muted)]">
+                      {tr(
+                        "Anda perlu sahkan e-mel baru melalui kod verifikasi. Proses ini memerlukan kata laluan semasa.",
+                        "You must verify your new email via a verification code. This process requires your current password."
+                      )}
+                    </p>
+                  </div>
+                  <form onSubmit={handleRequestEmailCode} className="space-y-4">
+                    <TextField
+                      label={tr("E-mel Baru", "New Email")}
+                      value={newEmail}
+                      onChange={setNewEmail}
+                      placeholder="name@email.com"
+                      type="email"
+                    />
+                    <div>
+                      <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                        {tr("Kata Laluan Semasa", "Current Password")}
+                      </span>
+                      <div className="relative mt-1.5">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder={tr("Masukkan kata laluan", "Enter current password")}
+                          className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 pr-12 text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(v => !v)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--text)] transition-colors"
+                        >
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={requestingEmailCode || !newEmail.trim() || !currentPassword}
+                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-[var(--border)] font-bold text-sm transition-all hover:border-[var(--text)]/30 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {requestingEmailCode ? <Loader2 size={16} className="animate-spin" /> : <MailCheck size={16} />}
+                      {tr("Hantar Kod Verifikasi", "Send Verification Code")}
+                    </button>
+                  </form>
+                  {emailStep === "code_sent" && (
+                    <form
+                      onSubmit={handleConfirmEmailCode}
+                      className="mt-4 space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/20 p-4"
+                    >
+                      <div>
+                        <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                          {tr("Kod Verifikasi (6 digit)", "Verification Code (6 digits)")}
+                        </span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={verificationCode}
+                          onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                          placeholder="123456"
+                          className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-lg font-black text-[var(--text)] placeholder:text-[var(--muted)]/30 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)] tracking-[0.2em] text-center"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={confirmingEmail || verificationCode.trim().length !== 6}
+                        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[var(--text)] text-[var(--bg)] font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40"
+                      >
+                        {confirmingEmail ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                        {tr("Sahkan E-mel Baru", "Verify New Email")}
+                      </button>
+                    </form>
+                  )}
+                  {emailMessage && <div className="mt-4"><SuccessBox>{emailMessage}</SuccessBox></div>}
+                  {emailError && <div className="mt-4"><ErrorBox>{emailError}</ErrorBox></div>}
+                </div>
+              )}
+
+              {/* ── Danger sheet ── */}
+              {activeMobileSheet === "danger" && (
+                <div className="pb-2">
+                  <div className="flex flex-col gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDangerError("")
+                        setDangerPassword("")
+                        setConfirmText("")
+                        setDangerAction("reset")
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[var(--border)] px-4 py-3.5 text-sm font-bold text-[var(--text)] transition-all hover:border-[var(--text)]/30 active:scale-[0.98]"
+                    >
+                      <RefreshCw size={16} />
+                      {tr("Reset Akaun", "Reset Account")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDangerError("")
+                        setDangerPassword("")
+                        setConfirmText("")
+                        setDangerAction("delete")
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-red-500/40 bg-red-500/10 px-4 py-3.5 text-sm font-bold text-red-600 dark:text-red-400 transition-all hover:bg-red-500/20 active:scale-[0.98]"
+                    >
+                      <Trash2 size={16} />
+                      {tr("Padam Akaun", "Delete Account")}
+                    </button>
+                  </div>
+
+                  {dangerAction && (
+                    <form
+                      onSubmit={handleDangerAction}
+                      className="mt-4 space-y-4 rounded-2xl border border-red-500/30 bg-red-500/5 p-4"
+                    >
+                      <div className="flex gap-3">
+                        <AlertTriangle size={16} className="mt-0.5 shrink-0 text-red-500" />
+                        <p className="text-[0.7rem] font-medium leading-relaxed text-[var(--muted)]">
+                          {dangerAction === "delete"
+                            ? tr(
+                                "Tindakan ini MEMADAM AKAUN dan SEMUA data secara kekal. Anda tidak akan dapat log masuk semula. Taip PADAM untuk sahkan.",
+                                "This will PERMANENTLY DELETE your account and ALL data. You will not be able to log in again. Type DELETE to confirm."
+                              )
+                            : tr(
+                                "Tindakan ini mengosongkan SEMUA data (transaksi, wallet, bajet, hutang, loan, subskripsi, kenderaan, waranti, tempat). Akaun dan e-mel anda kekal. Taip RESET untuk sahkan.",
+                                "This clears ALL data (transactions, wallets, budgets, debts, loans, subscriptions, vehicles, warranties, places). Your account and email remain. Type RESET to confirm."
+                              )}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                          {tr("Kata Laluan Semasa", "Current Password")}
+                        </span>
+                        <input
+                          type="password"
+                          value={dangerPassword}
+                          onChange={(e) => setDangerPassword(e.target.value)}
+                          placeholder={tr("Masukkan kata laluan", "Enter current password")}
+                          autoComplete="current-password"
+                          className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)]"
+                        />
+                        <p className="mt-1.5 text-xs text-[var(--muted)]">
+                          {tr("Akaun Google tidak perlu kata laluan.", "Google sign-in accounts don't need a password.")}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                          {tr("Taip untuk sahkan", "Type to confirm")}
+                        </span>
+                        <input
+                          type="text"
+                          value={confirmText}
+                          onChange={(e) => setConfirmText(e.target.value)}
+                          placeholder={activeConfirmWord}
+                          className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)]"
+                        />
+                      </div>
+                      {dangerError && <ErrorBox>{dangerError}</ErrorBox>}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDangerAction(null)
+                            setDangerPassword("")
+                            setConfirmText("")
+                          }}
+                          className="flex-1 rounded-2xl border border-[var(--border)] py-3.5 text-sm font-bold text-[var(--muted)] transition hover:border-[var(--text)]/25"
+                        >
+                          {tr("Batal", "Cancel")}
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={
+                            dangerBusy ||
+                            (profile?.has_password && !dangerPassword) ||
+                            confirmText.trim().toUpperCase() !== activeConfirmWord
+                          }
+                          className={cn(
+                            "flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40",
+                            dangerAction === "delete"
+                              ? "bg-red-600 hover:bg-red-500"
+                              : "bg-[var(--text)] text-[var(--bg)] hover:opacity-90"
+                          )}
+                        >
+                          {dangerBusy ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : dangerAction === "delete" ? (
+                            <Trash2 size={16} />
+                          ) : (
+                            <RefreshCw size={16} />
+                          )}
+                          {dangerAction === "delete"
+                            ? tr("Padam Akaun Kekal", "Delete Account Permanently")
+                            : tr("Reset Semua Data", "Reset All Data")}
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmOpen && stats && dangerAction && (
         <div className="fixed inset-0 z-[120] flex flex-col bg-[var(--bg)]">
