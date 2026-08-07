@@ -520,9 +520,10 @@ async def handle_telegram_webhook_payload_route(
     if pending_media and reply_txn_ref:
         processing_response = await _send_telegram_message(
             chat_id,
-            "⚠️ *_Lampiran diterima dan diproses sebentar lagi._*" if is_bm else "⚠️ *_Uploading your attachment and processing the transaction shortly._*",
+            r"⚠️ *_Lampiran diterima dan diproses sebentar lagi\._*" if is_bm else r"⚠️ *_Uploading your attachment and processing the transaction shortly\._*",
             linked=True,
             reply_markup={"remove_keyboard": True},
+            parse_mode="MarkdownV2",
         )
         processing_message_id = int((((processing_response or {}).get("result") or {}).get("message_id") or 0) or 0) or None
         try:

@@ -11656,6 +11656,7 @@ async def _send_telegram_message(
     *,
     linked: bool = False,
     reply_markup: dict[str, Any] | None = None,
+    parse_mode: str = "Markdown",
 ) -> dict[str, Any] | None:
     return await _module_send_telegram_message_route(
         chat_id=chat_id,
@@ -11664,6 +11665,7 @@ async def _send_telegram_message(
         reply_markup=reply_markup,
         build_telegram_keyboard=_build_telegram_keyboard,
         telegram_api_request=_telegram_api_request,
+        parse_mode=parse_mode,
     )
 
 

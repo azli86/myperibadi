@@ -189,11 +189,12 @@ async def send_telegram_message_route(
     reply_markup: dict[str, Any] | None,
     build_telegram_keyboard: Callable[[bool], dict[str, Any] | None],
     telegram_api_request: Callable[[str, dict[str, Any]], Awaitable[dict[str, Any] | None]],
+    parse_mode: str = "Markdown",
 ) -> dict[str, Any] | None:
     payload: dict[str, Any] = {
         "chat_id": chat_id,
         "text": text,
-        "parse_mode": "Markdown",
+        "parse_mode": parse_mode,
     }
     keyboard = reply_markup or build_telegram_keyboard(linked)
     if keyboard:

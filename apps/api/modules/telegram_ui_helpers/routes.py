@@ -149,9 +149,9 @@ def build_telegram_processing_text_route(payload: Any) -> str:
     is_bm = language_code.startswith("ms") or language_code.startswith("id") or language_code.startswith("bm")
 
     if is_bm:
-        return "⚠️ *_Lampiran diterima dan diproses sebentar lagi._*"
+        return r"⚠️ *_Lampiran diterima dan diproses sebentar lagi\._*"
 
-    return "⚠️ *_Uploading your attachment and processing the transaction shortly._*"
+    return r"⚠️ *_Uploading your attachment and processing the transaction shortly\._*"
 
 
 def build_telegram_add_preview_text_route(

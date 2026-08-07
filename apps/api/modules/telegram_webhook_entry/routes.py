@@ -36,6 +36,7 @@ async def process_telegram_webhook_payload_background_route(
                 build_telegram_processing_text(payload),
                 linked=True,
                 reply_markup={"remove_keyboard": True},
+                parse_mode="MarkdownV2",
             )
             processing_message_id = int((((processing_response or {}).get("result") or {}).get("message_id") or 0) or 0) or None
         async with session_factory() as db:
