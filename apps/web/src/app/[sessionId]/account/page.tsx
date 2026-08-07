@@ -367,7 +367,7 @@ export default function AccountPage() {
   const mobileSheetMeta = activeMobileSheet ? {
     profile: { title: tr("Edit Profil", "Edit Profile"), subtitle: tr("Nama & personaliti bot", "Name & bot personality") },
     email: { title: tr("Tukar E-mel", "Change Email"), subtitle: profile?.email || "-" },
-    danger: { title: tr("Zon Bahaya", "Danger Zone"), subtitle: tr("Reset atau padam akaun", "Reset or delete account") },
+    danger: { title: tr("Zon Bahaya", "Danger Zone"), subtitle: "" },
   }[activeMobileSheet] : null
 
   return (
@@ -439,7 +439,6 @@ export default function AccountPage() {
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500"><AlertTriangle size={18} /></div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-red-600 dark:text-red-400">{tr("Zon Bahaya", "Danger Zone")}</p>
-              <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">{tr("Reset atau padam akaun", "Reset or delete account")}</p>
             </div>
             <ChevronRight size={16} className="shrink-0 text-red-500/60" />
           </button>
@@ -811,7 +810,9 @@ export default function AccountPage() {
           >
             <AppSheetHeader title={mobileSheetMeta.title} onClose={requestMobileSheetClose} />
             <div className="px-5">
-              <p className="mb-4 text-xs font-medium text-[var(--muted)]">{mobileSheetMeta.subtitle}</p>
+              {mobileSheetMeta.subtitle ? (
+                <p className="mb-4 text-xs font-medium text-[var(--muted)]">{mobileSheetMeta.subtitle}</p>
+              ) : null}
 
               {/* ── Profile sheet ── */}
               {activeMobileSheet === "profile" && (
