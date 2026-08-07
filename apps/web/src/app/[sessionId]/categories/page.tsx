@@ -1010,8 +1010,6 @@ export default function CategoriesPage() {
   )
 
   const renderCategoryCard = (c: Category) => {
-    const monthAmt = Number(c.amountMonth || 0)
-    const txnCount = Number(c.transactionCountMonth || 0)
     return (
       <button
         key={c.id}
@@ -1034,29 +1032,6 @@ export default function CategoriesPage() {
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium leading-tight text-[var(--text)]">{c.name}</p>
-          <div className="mt-1 hidden flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.625rem] font-medium text-[var(--muted)] md:flex">
-            <span className="inline-flex items-center gap-1">
-              <Hash size={10} />
-              {c.keywordCount}
-            </span>
-            {txnCount > 0 && (
-              <span>
-                {txnCount} {lang === "EN" ? "txns" : "rekod"}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="hidden shrink-0 items-center gap-2 md:flex">
-          {monthAmt > 0 && (
-            <MoneyAmount
-              value={monthAmt}
-              digits={0}
-              size="xs"
-              className={c.kind === "expense" ? "text-rose-500" : "text-emerald-500"}
-              currencyClassName="opacity-55"
-            />
-          )}
         </div>
         <ChevronRight size={15} className="shrink-0 text-[var(--muted)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
       </button>
