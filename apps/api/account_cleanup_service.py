@@ -206,8 +206,31 @@ async def reset_account_data(db: AsyncSession, user: models.User) -> None:
     """
     await _delete_owned_household_vehicles(db, user.id)
     await _delete_user_rows(db, user.id, include_user_settings=False)
+    # Reset categories so onboarding re-seeds in the language the user picks.
+    household_rows = (await db.execute(
+        text("SELECT id FROM households WHERE owner_user_id = :uid"),
+        {"uid": user.id},
+    )).all()
+    for row in household_rows:
+        hid = row[0]
+        # category_budgets + category_keywords reference categories — clear first.
+        await db.execute(text("DELETE FROM category_budgets WHERE household_id = :hid"), {"hid": hid})
+        await db.execute(
+            text(
+                "DELETE FROM category_keywords WHERE category_id IN "
+                "(SELECT id FROM categories WHERE household_id = :hid)"
+            ),
+            {"hid": hid},
+        )
+        # Delete user-facing categories only; keep internal plumbing
+        # (Transfer Wallet / Debt Out / Debt In / Monthly Salary).
+        await db.execute(
+            text('DELETE FROM categories WHERE household_id = :hid AND is_internal = FALSE AND system_code IS NULL'),
+            {"hid": hid},
+        )
     # Reset user to a fresh state so onboarding + default categories re-seed.
     user.onboarding_done = False
+    user.category_language = None
     user.cycle_start_day = 1
     user.cycle_mode = "day"
     user.pin_hash = None

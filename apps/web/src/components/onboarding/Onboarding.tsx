@@ -324,14 +324,14 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
                 >
                   <motion.div variants={CARD_VARIANTS} custom={0}>{optionCard(
                     <UtensilsCrossed size={20} />,
-                    tr("Auto — Bahasa Melayu", "Auto — Bahasa Melayu"),
+                    "Auto — Bahasa Melayu",
                     tr("Makanan, Pengangkutan, Bil & banyak lagi.", "Food, Transport, Bills & more."),
                     categoryMode === "bm",
                     () => { setCategoryMode("bm"); setError("") },
                   )}</motion.div>
                   <motion.div variants={CARD_VARIANTS} custom={1}>{optionCard(
                     <CarFront size={20} />,
-                    tr("Auto — English", "Auto — English"),
+                    "Auto — English",
                     tr("Food & Drinks, Transport, Bills & more.", "Food & Drinks, Transport, Bills & more."),
                     categoryMode === "en",
                     () => { setCategoryMode("en"); setError("") },
