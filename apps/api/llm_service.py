@@ -362,7 +362,7 @@ def _guard_generic_reply(reply_text: str, language: str = "BM") -> str:
         # Broader pattern: reply steers toward "how to use ME / I am an AI assistant"
         # instead of MyPeribadi budgeting — still an out-of-scope generic template.
         if not re.search(
-            r"(cara menggunakan saya|macam mana nak guna saya|guna saya\s*\(?ai|i['’]?m an? ai assistant|\bai assistant\b|ini panduan|berikut adalah panduan|cara menggunakan saya\(?ai)",
+            r"(cara menggunakan saya|macam mana nak guna saya|guna saya\s*\(?ai|i['’]?m an? ai assistant|\bai assistant\b|ini panduan|berikut adalah panduan|cara menggunakan saya\(?ai|macam mana nak guna \*\*apa\*\*|boleh terangkan sikit|saya perlu (?:informasi|maklumat) tambahan|aplikasi / software|aplikasi\s*/\s*software|contohnya:.*(?:aplikasi|software|peranti)|bisa!|data penjualan|misalnya:|macam mana nak guna apa)",
             lowered,
         ):
             return text
@@ -508,8 +508,14 @@ def _looks_like_vague_how_to(user_message: str) -> bool:
         "macam mana nak guna",
         "macam mne nak guna",
         "macam mane nak guna",
+        "macma mana nak guna",
+        "macma mne nak guna",
+        "macma mane nak guna",
+        "mcm mana nak guna",
+        "macam mna nak guna",
         "macam mana nak pakai",
         "macam mana guna",
+        "macam mana pakai",
         "cara nak guna",
         "cara guna",
         "cara nak pakai",
@@ -525,16 +531,27 @@ def _looks_like_vague_how_to(user_message: str) -> bool:
         "pakai macam mana",
         "boleh ajar guna",
         "tunjuk cara guna",
+        "macam mana nak guna ni",
+        "cara guna ni",
+        "cara nak guna ni",
+        "cara guna ini",
+        "cara nak guna ini",
     ]
     for phrase in vague_phrases:
         if norm == phrase or norm.startswith(phrase + " "):
             # If there's a non-trivial object after the phrase, let the LLM handle it.
             rest = norm[len(phrase):].strip()
             # Stopwords that don't count as a real object
-            if not rest or rest in {"a", "an", "the", "ni", "tu", "ini", "itu", "lah", "je", "saja", "ya", "ye", "kah", "ke"}:
+            if not rest or rest in {"a", "an", "the", "ni", "tu", "ini", "itu", "lah", "je", "saja", "ya", "ye", "kah", "ke", "nak", "mau", "untuk"}:
                 return True
     # Also: very short messages that are essentially just "help" / "?" / "macam mana"
-    if norm in {"help", "bantuan", "tolong", "macam mana", "macam mne", "cara", "cara2", "apa ni", "macam mana ni", "tak faham", "tak paham"}:
+    if norm in {"help", "bantuan", "tolong", "macam mana", "macam mne", "macam mane", "macma", "cara", "cara2", "apa ni", "macam mana ni", "tak faham", "tak paham"}:
+        return True
+    # Vague "I want to enter/add data" without specifics — steer to command list.
+    if re.search(r"(nak|mau|ingin|saya nak|saya mau|macam mana|cara)\s*(masuk|tambah|rekod|catat|simpan|input|masukkan|add|record)\s*(data|duit|belanja|wang|transaksi|perbelanjaan|hutang|income|expense)?\s*$", norm):
+        return True
+    # "nak masuk data" / "nak tambah" / "nak rekod" etc. (short, no command)
+    if re.search(r"^nak\s*(masuk|tambah|rekod|catat|simpan|input|masukkan|add|record|buat)\s*(data|duit|belanja|wang|transaksi|perbelanjaan|hutang|income|expense)?\s*$", norm):
         return True
     return False
 
