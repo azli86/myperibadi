@@ -717,7 +717,7 @@ export default function AccountPage() {
       </DesktopPageBody>
 
       {confirmOpen && stats && dangerAction && (
-        <div className="fixed inset-0 z-[120] flex flex-col bg-[var(--surface)]">
+        <div className="fixed inset-0 z-[120] flex flex-col bg-[var(--bg)]">
           {/* Header */}
           <div className="flex items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-3">
             <button
@@ -756,7 +756,7 @@ export default function AccountPage() {
               </div>
 
               {/* Account summary card */}
-              <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-5">
+              <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5">
                 <div className="flex items-center justify-between py-1.5">
                   <span className="text-xs font-semibold text-[var(--muted)]">{tr("Nama", "Name")}</span>
                   <span className="text-sm font-bold text-[var(--text)]">{profile?.name || "-"}</span>
@@ -770,24 +770,24 @@ export default function AccountPage() {
                   {tr("Data yang akan dibuang", "Data to be removed")}
                 </p>
                 <div className="grid grid-cols-2 gap-2.5">
-                  <div className="rounded-2xl bg-[var(--surface-tint)]/60 px-4 py-3">
+                  <div className="rounded-2xl bg-[var(--bg2)] px-4 py-3">
                     <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Transaksi", "Transactions")}</p>
                     <p className="text-xl font-extrabold text-[var(--text)]">{stats.transaction_count.toLocaleString()}</p>
                   </div>
-                  <div className="rounded-2xl bg-[var(--surface-tint)]/60 px-4 py-3">
+                  <div className="rounded-2xl bg-[var(--bg2)] px-4 py-3">
                     <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Wallet", "Wallets")}</p>
                     <p className="text-xl font-extrabold text-[var(--text)]">{stats.wallet_count.toLocaleString()}</p>
                   </div>
-                  <div className="rounded-2xl bg-[var(--surface-tint)]/60 px-4 py-3">
+                  <div className="rounded-2xl bg-[var(--bg2)] px-4 py-3">
                     <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Hutang", "Debts")}</p>
                     <p className="text-xl font-extrabold text-[var(--text)]">{stats.debt_count.toLocaleString()}</p>
                   </div>
-                  <div className="rounded-2xl bg-[var(--surface-tint)]/60 px-4 py-3">
+                  <div className="rounded-2xl bg-[var(--bg2)] px-4 py-3">
                     <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Loan", "Loans")}</p>
                     <p className="text-xl font-extrabold text-[var(--text)]">{stats.loan_count.toLocaleString()}</p>
                   </div>
                   {stats.subscription_count > 0 && (
-                    <div className="rounded-2xl bg-[var(--surface-tint)]/60 px-4 py-3">
+                    <div className="rounded-2xl bg-[var(--bg2)] px-4 py-3">
                       <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Subskripsi", "Subscriptions")}</p>
                       <p className="text-xl font-extrabold text-[var(--text)]">{stats.subscription_count.toLocaleString()}</p>
                     </div>
@@ -798,7 +798,7 @@ export default function AccountPage() {
           </div>
 
           {/* Bottom actions */}
-          <div className="border-t border-[var(--border)] bg-[var(--surface)] px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+          <div className="border-t border-[var(--border)] bg-[var(--bg)] px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
             <div className="mx-auto flex w-full max-w-md gap-2.5">
               <button
                 type="button"
