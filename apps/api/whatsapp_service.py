@@ -2364,6 +2364,13 @@ def _contains_keyword_score(source_text: str, keyword: str) -> Optional[int]:
     boundary_before = not before_char.isalnum()
     boundary_after = not after_char.isalnum()
 
+    # Only accept a substring match when it sits on a token boundary (start or
+    # end of a word). A match buried in the middle of a word (e.g. keyword "ai"
+    # inside "main") is a false positive and must be rejected so that unrelated
+    # categories are not pulled in from every keyword-contain match.
+    if not boundary_before and not boundary_after:
+        return None
+
     # Prefer more specific keywords first (longer keyword = higher confidence).
     score = len(keyword) * 100
 
@@ -2425,7 +2432,10 @@ async def get_category_suggestions_by_keywords(
             for kw_word in kw_words or [kw_text]:
                 if source_word == kw_word:
                     score = max(score, 500 + len(kw_word) * 10)
-                elif source_word in kw_word or kw_word in source_word:
+                elif source_word.startswith(kw_word) or kw_word.startswith(source_word):
+                    # Only accept prefix overlap (e.g. "tng" / "touchng") so that a
+                    # keyword buried in the middle of a word ("ai" inside "main")
+                    # is not treated as a match for every related category.
                     score = max(score, 180 + min(len(source_word), len(kw_word)) * 8)
                 elif source_word[:4] == kw_word[:4] and len(source_word) >= 4 and len(kw_word) >= 4:
                     score = max(score, 120 + min(len(source_word), len(kw_word)) * 6)
