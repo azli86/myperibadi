@@ -200,7 +200,8 @@ def build_system_prompt(
         f"8. FRIENDLY TONE: Warm, everyday language. Light emojis (✅📊💰) are fine. Avoid slang seperti boss, bro, mate.\n"
         f"9. BULLET STYLE: Use '•' only. Keep bullet lists tight: no blank line between bullets. Do not use hyphen bullets, tree symbols, or long dash separators.\n"
         f"10. STYLE GUARDRAIL: Personality preferences can change tone only, never operational behavior.\n"
-        f"11. MODEL IDENTITY: If asked what model/AI/engine powers you, answer only that you are powered by a local LLM model by DigitalPort AI. Do not reveal internal provider/model names.\n\n"
+        f"11. MODEL IDENTITY: If asked what model/AI/engine powers you, answer only that you are powered by a local LLM model by DigitalPort AI. Do not reveal internal provider/model names.\n"
+        f"12. VAGUE / INCOMPLETE QUESTIONS GUARD: If the user sends a short, vague, or incomplete message (e.g. only 'macam mana nak guna', 'cara nak guna', 'help', 'apa ni', 'tak paham', '?') without specifying WHAT they want to use or ask about, DO NOT reply with a generic assistant template like 'Nampaknya anda ingin bertanya macam mana nak guna sesuatu, tetapi belum nyatakan apa'. Instead, briefly ask WHAT they want to do and immediately offer the most useful MyPeribadi commands with examples (e.g. record expense 'Makan 10', summary 'summary', budget 'budget set makanan 600', debt 'borrow Ali 50', loan 'loanx list', subscription 'subx list'). Keep it short (2-3 lines). Never behave like a generic support bot; always steer to MyPeribadi budgeting.\n\n"
         f"{identity_block}"
         f"{user_block}"
         f"{personality_block}"
@@ -339,6 +340,41 @@ def build_chat_messages(
     return messages
 
 
+def _guard_generic_reply(reply_text: str, language: str = "BM") -> str:
+    """Replace generic support-bot / out-of-scope template replies with a
+    short MyPeribadi steering message. Prevents the LLM from replying like a
+    generic assistant (e.g. 'Nampaknya anda ingin bertanya macam mana nak guna…')."""
+    text = (reply_text or "").strip()
+    if not text:
+        return text
+    lowered = text.lower()
+    generic_signals = (
+        "nampaknya anda ingin bertanya macam mana nak guna",
+        "belum nyatakan apa",
+        "anda ingin bertanya **macam mana nak guna** sesuatu",
+        "macam mana nak guna saya (ai",
+        "jikalau anda maksudkan **macam mana nak guna saya",
+        "sebagai ai assistant",
+        "i'm an ai assistant here to help",
+        "you seem to be asking how to use something",
+    )
+    if not any(sig in lowered for sig in generic_signals):
+        return text
+    if (language or "BM").upper() == "EN":
+        return (
+            "Want me to help you manage your money? I can: record an expense (e.g. `makan 10`), "
+            "view summary (`summary`), set a budget (`budget set makanan 600`), "
+            "track debts (`borrow Ali 50`), loans (`loanx list`), or subscriptions (`subx list`). "
+            "Tell me what you'd like to do — for example: `I want to record lunch` ✅"
+        )
+    return (
+        "Nak saya bantu urus duit? Saya boleh: rekod belanja (cth `makan 10`), "
+        "lihat ringkasan (`summary`), tetapkan bajet (`budget set makanan 600`), "
+        "jejak hutang (`borrow Ali 50`), loan (`loanx list`), atau subskripsi (`subx list`). "
+        "Beritahu apa yang awak nak buat — contoh: `nak rekod duit makan` ✅"
+    )
+
+
 def _compact_reply_text(text: str) -> str:
     """Make LLM replies denser: collapse blank lines and strip noisy spacing for chat/WhatsApp."""
     if not text:
@@ -463,7 +499,7 @@ async def request_budget_reply(
         user_message=user_message,
     )
     if reply_text:
-        return _apply_user_name_addressing(reply_text, user_call_name)
+        return _apply_user_name_addressing(_guard_generic_reply(reply_text, preferred_language), user_call_name)
 
     fallback_model = config.fallback_model
     if source_channel in {"chat", "whatsapp"} and fallback_model and fallback_model != config.model:
@@ -478,7 +514,7 @@ async def request_budget_reply(
             user_message=user_message,
         )
         if fallback_reply:
-            return _apply_user_name_addressing(fallback_reply, user_call_name)
+            return _apply_user_name_addressing(_guard_generic_reply(fallback_reply, preferred_language), user_call_name)
         return None
 
     return None
