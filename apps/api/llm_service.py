@@ -359,7 +359,13 @@ def _guard_generic_reply(reply_text: str, language: str = "BM") -> str:
         "you seem to be asking how to use something",
     )
     if not any(sig in lowered for sig in generic_signals):
-        return text
+        # Broader pattern: reply steers toward "how to use ME / I am an AI assistant"
+        # instead of MyPeribadi budgeting — still an out-of-scope generic template.
+        if not re.search(
+            r"(cara menggunakan saya|macam mana nak guna saya|guna saya\s*\(?ai|i['’]?m an? ai assistant|\bai assistant\b|ini panduan|berikut adalah panduan|cara menggunakan saya\(?ai)",
+            lowered,
+        ):
+            return text
     if (language or "BM").upper() == "EN":
         return (
             "Want me to help you manage your money? I can: record an expense (e.g. `makan 10`), "
