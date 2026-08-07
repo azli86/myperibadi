@@ -49,20 +49,20 @@ export function AppSheetHeader({
       )}
     >
       <div className="mx-auto mb-3 h-1 w-8 rounded-full bg-[var(--surface-tint-strong)] md:hidden" />
-      <div className="flex items-center justify-between gap-3">
-        {showCancel && action && !hideClose ? (
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 px-1 py-1.5 text-xl font-bold text-[var(--muted)] transition-colors hover:text-[var(--text)]"
-          >
-            {isBm ? "Batal" : "Cancel"}
-          </button>
-        ) : (
-          <span className="shrink-0 w-16" aria-hidden />
-        )}
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <div className="flex items-center">
+          {showCancel && action && !hideClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="shrink-0 px-1 py-1.5 text-xl font-bold text-[var(--muted)] transition-colors hover:text-[var(--text)]"
+            >
+              {isBm ? "Batal" : "Cancel"}
+            </button>
+          ) : null}
+        </div>
 
-        <div className="min-w-0 flex-1 text-center">
+        <div className="min-w-0 text-center">
           {icon && (
             <div className="mb-1 flex justify-center">{icon}</div>
           )}
@@ -77,21 +77,22 @@ export function AppSheetHeader({
           )}
         </div>
 
-        {!hideClose && (
-          action ? (
-            <div className="shrink-0">{action}</div>
-          ) : (
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className="shrink-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2 text-[var(--muted)] transition hover:text-[var(--text)]"
-            >
-              <X size={18} />
-            </button>
-          )
-        )}
-        {hideClose && <span className="shrink-0 w-16" aria-hidden />}
+        <div className="flex items-center justify-end">
+          {!hideClose && (
+            action ? (
+              <div className="shrink-0">{action}</div>
+            ) : (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className="shrink-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2 text-[var(--muted)] transition hover:text-[var(--text)]"
+              >
+                <X size={18} />
+              </button>
+            )
+          )}
+        </div>
       </div>
     </div>
   )
