@@ -4,7 +4,6 @@ import { getAccessToken } from "@/lib/auth-session"
 import React, { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import {
-  ArrowLeft,
   Hash,
   KeyRound,
   Loader2,
@@ -21,11 +20,13 @@ import {
   Fingerprint,
   Smartphone,
   Wifi,
+  ChevronRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLang } from "@/lib/lang"
-import HistoryBackButton from "@/components/navigation/HistoryBackButton"
-import { DesktopPageBody, DesktopPageChip, DesktopPageHeader } from "@/components/layout/PageHeader"
+import { MobilePageHeader, DesktopPageBody, DesktopPageChip, DesktopPageHeader } from "@/components/layout/PageHeader"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
+import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 import { usePageAlert } from "@/hooks/usePageAlert"
 
 type PinStatus = {
@@ -57,6 +58,13 @@ export default function SecurityPage() {
   const [showOldPw, setShowOldPw] = useState(false)
   const [showNewPw, setShowNewPw] = useState(false)
   const [showConfirmPw, setShowConfirmPw] = useState(false)
+  const [activeMobileSheet, setActiveMobileSheet] = useState<"password" | "pin" | null>(null)
+
+  const { requestClose: requestMobileSheetClose } = useOverlayBackClose({
+    id: "security-mobile-sheet",
+    isOpen: Boolean(activeMobileSheet),
+    onClose: () => setActiveMobileSheet(null),
+  })
 
   const isBm = lang === "BM"
   const tr = (bm: string, en: string) => isBm ? bm : en
@@ -276,20 +284,16 @@ export default function SecurityPage() {
       {/* ─── Mobile View ─── */}
       <div className="space-y-5 md:hidden">
         {/* Header */}
-        <div className="px-1 pt-1">
-          <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 pt-4">
-            <HistoryBackButton fallbackHref={`/${sessionId}/settings`} className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-tint)] text-[var(--text)]">
-              <ArrowLeft size={18} />
-            </HistoryBackButton>
-            <h1 className="text-center text-[1.2rem] font-extrabold tracking-tight text-[var(--text)]">
-              {tr("Keselamatan", "Security")}
-            </h1>
-            <div className="h-10 w-10" aria-hidden="true" />
-          </div>
+        <MobilePageHeader
+          title={tr("Keselamatan", "Security")}
+          fallbackHref={`/${sessionId}/settings`}
+          backPreferHistory
+        />
 
-          {/* Security Score Banner */}
+        {/* Security Score Banner */}
+        <section className="px-1">
           <div className={cn(
-            "mt-4 rounded-2xl border p-4",
+            "rounded-2xl border p-4",
             securityScore >= 3
               ? "border-emerald-500/30 bg-emerald-500/5 dark:bg-[var(--surface-tint)]"
               : securityScore >= 2
@@ -338,7 +342,7 @@ export default function SecurityPage() {
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
         {/* Status Cards */}
         <section className="px-1">
@@ -362,153 +366,36 @@ export default function SecurityPage() {
           </div>
         </section>
 
-        {/* Password Form */}
+        {/* Security rows (settings-page style) */}
         <section className="px-1">
-          <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{tr("Tukar Kata Laluan", "Change Password")}</p>
-          <div className="mt-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
-            <form onSubmit={handleChangePassword} className="space-y-4">
-              <div className="flex items-center gap-2.5 mb-1">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]">
-                  <Lock size={15} />
-                </div>
-                <p className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">{tr("Minimum 8 aksara", "Minimum 8 characters")}</p>
+          <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{tr("Urus Keselamatan", "Manage Security")}</p>
+          <div className="mt-2 overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)]">
+            <button
+              type="button"
+              onClick={() => setActiveMobileSheet("password")}
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all active:scale-[0.99]"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]"><Lock size={18} /></div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-[var(--text)]">{tr("Tukar Kata Laluan", "Change Password")}</p>
+                <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">{tr("Minimum 8 aksara", "Minimum 8 characters")}</p>
               </div>
-              <PasswordField
-                label={tr("Kata Laluan Semasa", "Current Password")}
-                value={oldPassword}
-                onChange={setOldPassword}
-                show={showOldPw}
-                onToggle={() => setShowOldPw(v => !v)}
-              />
-              <PasswordField
-                label={tr("Kata Laluan Baru", "New Password")}
-                value={newPassword}
-                onChange={setNewPassword}
-                show={showNewPw}
-                onToggle={() => setShowNewPw(v => !v)}
-                hint={newPassword.length > 0 && newPassword.length < 8 ? tr("Terlalu pendek", "Too short") : newPassword.length >= 8 ? tr("Panjang mencukupi", "Good length") : ""}
-                hintOk={newPassword.length >= 8}
-              />
-              <PasswordField
-                label={tr("Sahkan Kata Laluan Baru", "Confirm New Password")}
-                value={confirmPassword}
-                onChange={setConfirmPassword}
-                show={showConfirmPw}
-                onToggle={() => setShowConfirmPw(v => !v)}
-                hint={confirmPassword.length > 0 ? (newPassword === confirmPassword ? tr("Sepadan", "Match") : tr("Tidak sepadan", "Mismatch")) : ""}
-                hintOk={confirmPassword.length > 0 && newPassword === confirmPassword}
-              />
-              {error && <ErrorBox>{error}</ErrorBox>}
-              {success && <SuccessBox>{success}</SuccessBox>}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[var(--text)] text-[var(--bg)] font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50"
-              >
-                {loading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                {tr("Kemaskini Kata Laluan", "Update Password")}
-              </button>
-            </form>
-          </div>
-        </section>
-
-        {/* PIN Form */}
-        <section className="px-1">
-          <div className="flex items-center justify-between px-1">
-            <p className="text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">6-Digit PIN</p>
-            {!pinStatusLoading && (
-              <span className={cn(
-                "rounded-full px-2.5 py-0.5 text-[0.575rem] font-black uppercase tracking-wider",
-                pinStatus?.enabled
-                  ? "bg-emerald-500/15 text-[var(--text)]"
-                  : "bg-[var(--surface-tint)] text-[var(--muted)]"
-              )}>
-                {pinStatus?.enabled ? tr("Aktif", "On") : tr("Tidak Aktif", "Off")}
-              </span>
-            )}
-          </div>
-          <div className="mt-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
-            {pinStatus?.locked_until && (
-              <div className="mb-4 flex gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
-                <Unlock size={15} className="mt-0.5 shrink-0 text-red-500" />
-                <p className="text-[0.65rem] font-bold text-red-600 dark:text-red-400">
-                  {tr(
-                    `PIN dikunci sehingga ${new Date(pinStatus.locked_until).toLocaleString()}.`,
-                    `PIN locked until ${new Date(pinStatus.locked_until).toLocaleString()}.`
-                  )}
+              <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveMobileSheet("pin")}
+              className="flex w-full items-center gap-3 border-t border-[var(--border)] px-4 py-3.5 text-left transition-all active:scale-[0.99]"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]"><Fingerprint size={18} /></div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-[var(--text)]">6-Digit PIN</p>
+                <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">
+                  {pinStatus?.enabled ? tr("Aktif", "On") : tr("Tidak Aktif", "Off")}
                 </p>
               </div>
-            )}
-            <div className="mb-4 flex gap-3 rounded-xl bg-[var(--surface-tint)]/30 p-3">
-              <Clock size={15} className="mt-0.5 shrink-0 text-[var(--muted)]" />
-              <p className="text-[0.65rem] font-medium leading-relaxed text-[var(--muted)]">
-                {tr(
-                  "PIN digunakan untuk akses pantas di mobile. Anda masih perlukan kata laluan utama untuk tetapan ini.",
-                  "PIN is for quick mobile access. Your main password is still required to modify these settings."
-                )}
-              </p>
-            </div>
-            <form onSubmit={handleSavePin} className="space-y-4">
-              <PasswordField
-                label={tr("Kata Laluan Semasa", "Current Password")}
-                value={currentPasswordForPin}
-                onChange={setCurrentPasswordForPin}
-                show={false}
-                onToggle={() => {}}
-                noToggle
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                    {tr("PIN Baru", "New PIN")}
-                  </span>
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={pin}
-                    onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    placeholder="••••••"
-                    className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-sm font-bold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none focus:border-[var(--text)]/25 tracking-[0.3em]"
-                  />
-                </div>
-                <div>
-                  <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                    {tr("Sahkan PIN", "Confirm PIN")}
-                  </span>
-                  <input
-                    type="password"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={confirmPin}
-                    onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    placeholder="••••••"
-                    className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-sm font-bold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none focus:border-[var(--text)]/25 tracking-[0.3em]"
-                  />
-                </div>
-              </div>
-              {pinError && <ErrorBox>{pinError}</ErrorBox>}
-              {pinSuccess && <SuccessBox>{pinSuccess}</SuccessBox>}
-              <div className="flex flex-col gap-2.5 sm:flex-row">
-                <button
-                  type="submit"
-                  disabled={pinLoading}
-                  className="flex flex-1 items-center justify-center gap-2 py-3.5 rounded-2xl bg-[var(--text)] text-[var(--bg)] font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50"
-                >
-                  {pinLoading ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
-                  {tr("Simpan PIN", "Save PIN")}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRemovePin}
-                  disabled={pinLoading || !pinStatus?.enabled}
-                  className="flex flex-1 items-center justify-center gap-2 py-3.5 rounded-2xl border border-[var(--border)] text-[var(--text)] font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-40"
-                >
-                  {pinLoading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                  {tr("Padam PIN", "Delete PIN")}
-                </button>
-              </div>
-            </form>
+              <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
+            </button>
           </div>
         </section>
 
@@ -788,6 +675,159 @@ export default function SecurityPage() {
         </div>
         </DesktopPageBody>
       </div>
+
+      {/* ─── Mobile Bottom Sheets (settings-page style) ─── */}
+      {activeMobileSheet && (
+        <div
+          className="fixed inset-0 z-[80] flex items-end bg-transparent md:hidden"
+          onClick={requestMobileSheetClose}
+        >
+          <div
+            className="max-h-[88dvh] w-full overflow-y-auto rounded-t-[36px] border border-[var(--border)] bg-[var(--card)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] touch-pan-y shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <AppSheetHeader
+              title={activeMobileSheet === "password" ? tr("Tukar Kata Laluan", "Change Password") : "6-Digit PIN"}
+              onClose={requestMobileSheetClose}
+            />
+            <div className="px-5">
+              {activeMobileSheet === "password" && (
+                <div className="pb-2">
+                  <div className="mb-4 flex items-center gap-2.5 rounded-2xl bg-[var(--surface-tint)]/30 p-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]">
+                      <Lock size={15} />
+                    </div>
+                    <p className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">{tr("Minimum 8 aksara", "Minimum 8 characters")}</p>
+                  </div>
+                  <form onSubmit={handleChangePassword} className="space-y-4">
+                    <PasswordField
+                      label={tr("Kata Laluan Semasa", "Current Password")}
+                      value={oldPassword}
+                      onChange={setOldPassword}
+                      show={showOldPw}
+                      onToggle={() => setShowOldPw(v => !v)}
+                    />
+                    <PasswordField
+                      label={tr("Kata Laluan Baru", "New Password")}
+                      value={newPassword}
+                      onChange={setNewPassword}
+                      show={showNewPw}
+                      onToggle={() => setShowNewPw(v => !v)}
+                      hint={newPassword.length > 0 && newPassword.length < 8 ? tr("Terlalu pendek", "Too short") : newPassword.length >= 8 ? tr("Panjang mencukupi", "Good length") : ""}
+                      hintOk={newPassword.length >= 8}
+                    />
+                    <PasswordField
+                      label={tr("Sahkan Kata Laluan Baru", "Confirm New Password")}
+                      value={confirmPassword}
+                      onChange={setConfirmPassword}
+                      show={showConfirmPw}
+                      onToggle={() => setShowConfirmPw(v => !v)}
+                      hint={confirmPassword.length > 0 ? (newPassword === confirmPassword ? tr("Sepadan", "Match") : tr("Tidak sepadan", "Mismatch")) : ""}
+                      hintOk={confirmPassword.length > 0 && newPassword === confirmPassword}
+                    />
+                    {error && <ErrorBox>{error}</ErrorBox>}
+                    {success && <SuccessBox>{success}</SuccessBox>}
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[var(--text)] text-[var(--bg)] font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50"
+                    >
+                      {loading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                      {tr("Kemaskini Kata Laluan", "Update Password")}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {activeMobileSheet === "pin" && (
+                <div className="pb-2">
+                  {pinStatus?.locked_until && (
+                    <div className="mb-4 flex gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3">
+                      <Unlock size={15} className="mt-0.5 shrink-0 text-red-500" />
+                      <p className="text-[0.65rem] font-bold text-red-600 dark:text-red-400">
+                        {tr(
+                          `PIN dikunci sehingga ${new Date(pinStatus.locked_until).toLocaleString()}.`,
+                          `PIN locked until ${new Date(pinStatus.locked_until).toLocaleString()}.`
+                        )}
+                      </p>
+                    </div>
+                  )}
+                  <div className="mb-4 flex gap-3 rounded-xl bg-[var(--surface-tint)]/30 p-3">
+                    <Clock size={15} className="mt-0.5 shrink-0 text-[var(--muted)]" />
+                    <p className="text-[0.65rem] font-medium leading-relaxed text-[var(--muted)]">
+                      {tr(
+                        "PIN digunakan untuk akses pantas di mobile. Anda masih perlukan kata laluan utama untuk tetapan ini.",
+                        "PIN is for quick mobile access. Your main password is still required to modify these settings."
+                      )}
+                    </p>
+                  </div>
+                  <form onSubmit={handleSavePin} className="space-y-4">
+                    <PasswordField
+                      label={tr("Kata Laluan Semasa", "Current Password")}
+                      value={currentPasswordForPin}
+                      onChange={setCurrentPasswordForPin}
+                      show={false}
+                      onToggle={() => {}}
+                      noToggle
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                          {tr("PIN Baru", "New PIN")}
+                        </span>
+                        <input
+                          type="password"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={pin}
+                          onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                          placeholder="••••••"
+                          className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-sm font-bold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none focus:border-[var(--text)]/25 tracking-[0.3em]"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                          {tr("Sahkan PIN", "Confirm PIN")}
+                        </span>
+                        <input
+                          type="password"
+                          inputMode="numeric"
+                          maxLength={6}
+                          value={confirmPin}
+                          onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                          placeholder="••••••"
+                          className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-sm font-bold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none focus:border-[var(--text)]/25 tracking-[0.3em]"
+                        />
+                      </div>
+                    </div>
+                    {pinError && <ErrorBox>{pinError}</ErrorBox>}
+                    {pinSuccess && <SuccessBox>{pinSuccess}</SuccessBox>}
+                    <div className="flex flex-col gap-2.5 sm:flex-row">
+                      <button
+                        type="submit"
+                        disabled={pinLoading}
+                        className="flex flex-1 items-center justify-center gap-2 py-3.5 rounded-2xl bg-[var(--text)] text-[var(--bg)] font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50"
+                      >
+                        {pinLoading ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
+                        {tr("Simpan PIN", "Save PIN")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemovePin}
+                        disabled={pinLoading || !pinStatus?.enabled}
+                        className="flex flex-1 items-center justify-center gap-2 py-3.5 rounded-2xl border border-[var(--border)] text-[var(--text)] font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-40"
+                      >
+                        {pinLoading ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                        {tr("Padam PIN", "Delete PIN")}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {alertModal}
     </div>
