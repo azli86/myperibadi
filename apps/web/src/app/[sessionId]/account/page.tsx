@@ -391,12 +391,10 @@ export default function AccountPage() {
               onClick={() => setActiveMobileSheet("profile")}
               className="flex w-full items-center gap-3 px-4 py-4 text-left transition-all active:scale-[0.99]"
             >
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--text)] ring-1 ring-[var(--accent)]/15">
-                <UserCircle2 size={22} />
-              </div>
+              <UserCircle2 size={28} className="shrink-0 text-[var(--accent)]" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-base font-black text-[var(--text)]">{profile?.name || tr("Muat...", "Loading...")}</p>
-                <p className="truncate text-sm font-semibold text-[var(--muted)]">{profile?.email || "-"}</p>
+                <p className="truncate text-base font-semibold text-[var(--text)]">{profile?.name || tr("Muat...", "Loading...")}</p>
+                <p className="truncate text-sm font-medium text-[var(--muted)]">{profile?.email || "-"}</p>
               </div>
               <ChevronRight size={18} className="shrink-0 text-[var(--muted)]" />
             </button>
@@ -417,9 +415,9 @@ export default function AccountPage() {
                 onClick={() => setActiveMobileSheet(item.key)}
                 className={cn("flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all", i !== 0 && "border-t border-[var(--border)]")}
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]"><item.icon size={18} /></div>
+                <item.icon size={20} className="shrink-0 text-[var(--text)]" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-[var(--text)]">{item.label}</p>
+                  <p className="text-sm font-medium text-[var(--text)]">{item.label}</p>
                   <p className="mt-0.5 truncate text-xs font-medium text-[var(--muted)]">{item.value}</p>
                 </div>
                 <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
@@ -436,9 +434,9 @@ export default function AccountPage() {
             onClick={() => setActiveMobileSheet("danger")}
             className="mt-2 flex w-full items-center gap-3 rounded-[1.25rem] border border-red-500/30 bg-[var(--card)] px-4 py-3.5 text-left transition-all active:scale-[0.99]"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500"><AlertTriangle size={18} /></div>
+            <AlertTriangle size={20} className="shrink-0 text-red-500" />
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-red-600 dark:text-red-400">{tr("Zon Bahaya", "Danger Zone")}</p>
+              <p className="text-sm font-medium text-red-600 dark:text-red-400">{tr("Zon Bahaya", "Danger Zone")}</p>
             </div>
             <ChevronRight size={16} className="shrink-0 text-red-500/60" />
           </button>
