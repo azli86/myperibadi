@@ -366,39 +366,7 @@ def _guard_generic_reply(reply_text: str, language: str = "BM") -> str:
             lowered,
         ):
             return text
-    if (language or "BM").upper() == "EN":
-        return (
-            "Here are the commands you can use with me:\n"
-            "• `[Note] [Amount]` — record expense (e.g. `Makan 10`)\n"
-            "• `summary` — current month summary\n"
-            "• `list` — latest 5 transactions\n"
-            "• `checkwallet` / `semak wallet` — wallet balances\n"
-            "• `budget set <category> <amount>` — set budget (e.g. `budget set food 600`)\n"
-            "• `budget summary` — monthly budget summary\n"
-            "• `borrow <name> <amount>` / `lend <name> <amount>` — debt tracker\n"
-            "• `debt list` — all active debts\n"
-            "• `loanx list` / `loanx add <name> <total> <monthly>` — loans\n"
-            "• `subx <name> <amount> <day>HB` — subscription (e.g. `subx astro 89.90 15HB`)\n"
-            "• `transfer <amount> <walletA> <walletB>` — move between wallets\n"
-            "• `lang bm` / `lang en` — switch language\n"
-            "Tell me what you'd like to do — for example: `I want to record lunch` ✅"
-        )
-    return (
-        "Ini command yang awak boleh guna dengan saya:\n"
-        "• `[Nota] [Amaun]` — rekod belanja (cth `Makan 10`)\n"
-        "• `summary` — ringkasan bulan semasa\n"
-        "• `list` — 5 transaksi terbaru\n"
-        "• `checkwallet` / `semak wallet` — baki wallet\n"
-        "• `budget set <kategori> <amaun>` — set bajet (cth `budget set makanan 600`)\n"
-        "• `budget summary` / `budget ringkasan` — ringkasan bajet\n"
-        "• `borrow <nama> <amaun>` / `lend <nama> <amaun>` — tracker hutang\n"
-        "• `debt list` — semua hutang aktif\n"
-        "• `loanx list` / `loanx add <nama> <jumlah> <bulanan>` — loan\n"
-        "• `subx <nama> <amaun> <hari>HB` — subskripsi (cth `subx astro 89.90 15HB`)\n"
-        "• `transfer <amaun> <walletA> <walletB>` — pindah antara wallet\n"
-        "• `lang bm` / `lang en` — tukar bahasa\n"
-        "Beritahu apa yang awak nak buat — contoh: `nak rekod duit makan` ✅"
-    )
+    return _build_command_help_reply(language)
 
 
 def _compact_reply_text(text: str) -> str:
@@ -488,6 +456,90 @@ def _preview_text(text: str, limit: int = 120) -> str:
     return cleaned[: limit - 3] + "..."
 
 
+def _build_command_help_reply(language: str) -> str:
+    """Full MyPeribadi command list (mirrors the portal Help page)."""
+    if (language or "BM").upper() == "EN":
+        return (
+            "Here are the commands you can use with me:\n"
+            "• `[Note] [Amount]` — record expense (e.g. `Makan 10`)\n"
+            "• `summary` — current month summary\n"
+            "• `list` — latest 5 transactions\n"
+            "• `checkwallet` / `semak wallet` — wallet balances\n"
+            "• `budget set <category> <amount>` — set budget (e.g. `budget set food 600`)\n"
+            "• `budget summary` — monthly budget summary\n"
+            "• `borrow <name> <amount>` / `lend <name> <amount>` — debt tracker\n"
+            "• `debt list` — all active debts\n"
+            "• `loanx list` / `loanx add <name> <total> <monthly>` — loans\n"
+            "• `subx <name> <amount> <day>HB` — subscription (e.g. `subx astro 89.90 15HB`)\n"
+            "• `transfer <amount> <walletA> <walletB>` — move between wallets\n"
+            "• `lang bm` / `lang en` — switch language\n"
+            "Tell me what you'd like to do — for example: `I want to record lunch` ✅"
+        )
+    return (
+        "Ini command yang awak boleh guna dengan saya:\n"
+        "• `[Nota] [Amaun]` — rekod belanja (cth `Makan 10`)\n"
+        "• `summary` — ringkasan bulan semasa\n"
+        "• `list` — 5 transaksi terbaru\n"
+        "• `checkwallet` / `semak wallet` — baki wallet\n"
+        "• `budget set <kategori> <amaun>` — set bajet (cth `budget set makanan 600`)\n"
+        "• `budget summary` / `budget ringkasan` — ringkasan bajet\n"
+        "• `borrow <nama> <amaun>` / `lend <nama> <amaun>` — tracker hutang\n"
+        "• `debt list` — semua hutang aktif\n"
+        "• `loanx list` / `loanx add <nama> <jumlah> <bulanan>` — loan\n"
+        "• `subx <nama> <amaun> <hari>HB` — subskripsi (cth `subx astro 89.90 15HB`)\n"
+        "• `transfer <amaun> <walletA> <walletB>` — pindah antara wallet\n"
+        "• `lang bm` / `lang en` — tukar bahasa\n"
+        "Beritahu apa yang awak nak buat — contoh: `nak rekod duit makan` ✅"
+    )
+
+
+def _looks_like_vague_how_to(user_message: str) -> bool:
+    """Detect short, vague 'how to use' questions with no object — these must
+    never reach the LLM because it tends to reply like a generic AI assistant
+    (out of scope). We short-circuit with the command list instead."""
+    msg = (user_message or "").strip().lower()
+    if not msg:
+        return False
+    # Normalize: strip punctuation, collapse whitespace
+    norm = re.sub(r"[^a-z0-9\s]", "", msg)
+    norm = re.sub(r"\s+", " ", norm).strip()
+    # The exact vague phrases (no object after)
+    vague_phrases = [
+        "macam mana nak guna",
+        "macam mne nak guna",
+        "macam mane nak guna",
+        "macam mana nak pakai",
+        "macam mana guna",
+        "cara nak guna",
+        "cara guna",
+        "cara nak pakai",
+        "cara pakai",
+        "cara2 guna",
+        "cara cara guna",
+        "how to use",
+        "how do i use",
+        "how to",
+        "nak guna",
+        "nak tahu cara guna",
+        "guna macam mana",
+        "pakai macam mana",
+        "boleh ajar guna",
+        "tunjuk cara guna",
+    ]
+    for phrase in vague_phrases:
+        if norm == phrase or norm.startswith(phrase + " "):
+            # If there's a non-trivial object after the phrase, let the LLM handle it.
+            rest = norm[len(phrase):].strip()
+            # Stopwords that don't count as a real object
+            if not rest or rest in {"a", "an", "the", "ni", "tu", "ini", "itu", "lah", "je", "saja", "ya", "ye", "kah", "ke"}:
+                return True
+    # Also: very short messages that are essentially just "help" / "?" / "macam mana"
+    if norm in {"help", "bantuan", "tolong", "macam mana", "macam mne", "cara", "cara2", "apa ni", "macam mana ni", "tak faham", "tak paham"}:
+        return True
+    return False
+
+
+
 async def request_budget_reply(
     db: AsyncSession,
     *,
@@ -502,6 +554,12 @@ async def request_budget_reply(
     config = get_llm_config()
     if not (config.enabled and config.api_key and source_channel in config.allowed_channels):
         return None
+
+    # Short-circuit vague / incomplete questions before touching the LLM,
+    # so the bot can never reply like a generic AI assistant (out of scope).
+    if _looks_like_vague_how_to(user_message):
+        print(f"[ILMU] vague how-to short-circuit for user_message={_preview_text(user_message)!r}")
+        return _build_command_help_reply(preferred_language)
 
     personality_hint, user_call_name = await _fetch_user_profile_context(db, user_id)
 
