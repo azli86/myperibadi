@@ -33,6 +33,9 @@ class EmailChangeRequest(BaseModel):
     new_email: EmailStr
     current_password: str
 
+class AccountActionRequest(BaseModel):
+    current_password: str
+
 
 class EmailChangeConfirmRequest(BaseModel):
     code: str

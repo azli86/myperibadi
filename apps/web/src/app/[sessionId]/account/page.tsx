@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import {
   AtSign,
   CheckCircle2,
@@ -18,9 +18,11 @@ import {
   AlertTriangle,
   Eye,
   EyeOff,
+  Trash2,
+  RefreshCw,
 } from "lucide-react"
 import { useLang } from "@/lib/lang"
-import { getAccessToken, setAuthTokens } from "@/lib/auth-session"
+import { getAccessToken, setAuthTokens, logoutAuthSession } from "@/lib/auth-session"
 import { MobilePageHeader, DesktopPageBody, DesktopPageHeader } from "@/components/layout/PageHeader"
 import { usePageAlert } from "@/hooks/usePageAlert"
 import { cn } from "@/lib/utils"
@@ -64,6 +66,13 @@ export default function AccountPage() {
   const [emailError, setEmailError] = useState("")
   const [showBadgeModal, setShowBadgeModal] = useState(false)
   const { showAlert, alertModal } = usePageAlert(lang)
+  const router = useRouter()
+
+  const [dangerAction, setDangerAction] = useState<"reset" | "delete" | null>(null)
+  const [dangerPassword, setDangerPassword] = useState("")
+  const [confirmText, setConfirmText] = useState("")
+  const [dangerBusy, setDangerBusy] = useState(false)
+  const [dangerError, setDangerError] = useState("")
 
   const isBm = lang === "BM"
   const tr = (bm: string, en: string) => isBm ? bm : en
@@ -251,6 +260,56 @@ export default function AccountPage() {
     }
   }
 
+  async function handleDangerAction(e: React.FormEvent) {
+    e.preventDefault()
+    if (!dangerAction || !dangerPassword) return
+    setDangerBusy(true)
+    setDangerError("")
+    try {
+      const token = getAccessToken()
+      const url =
+        dangerAction === "delete"
+          ? "/api/users/me"
+          : "/api/users/me/reset"
+      const res = await fetch(url, {
+        method: dangerAction === "delete" ? "DELETE" : "POST",
+        credentials: "include",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ current_password: dangerPassword }),
+      })
+      if (!res.ok) {
+        const apiErr = await res.json().catch(() => ({}))
+        throw new Error(apiErr?.detail || "Request failed")
+      }
+      if (dangerAction === "delete") {
+        await logoutAuthSession()
+        router.push("/login")
+      } else {
+        setDangerAction(null)
+        setDangerPassword("")
+        setConfirmText("")
+        showAlert(
+          tr("Akaun Direset", "Account Reset"),
+          tr("Semua data akaun telah dikosongkan. Anda akan mula semula dari onboarding.", "All account data has been cleared. You will start fresh from onboarding."),
+          "success"
+        )
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ""
+      const finalMessage = msg || tr("Tindakan gagal. Sila cuba lagi.", "Action failed. Please try again.")
+      setDangerError(finalMessage)
+      showAlert(tr("Tindakan Gagal", "Action Failed"), finalMessage, "error")
+    } finally {
+      setDangerBusy(false)
+    }
+  }
+
+  const resetConfirmWord = tr("RESET", "RESET")
+  const deleteConfirmWord = tr("PADAM", "DELETE")
+  const activeConfirmWord = dangerAction === "delete" ? deleteConfirmWord : resetConfirmWord
   return (
     <div className="flex flex-col gap-5 pb-20 md:gap-0 md:pb-0">
       {/* ─── Mobile Header ─── */}
@@ -468,6 +527,145 @@ export default function AccountPage() {
 
           {emailMessage && <div className="mt-4"><SuccessBox>{emailMessage}</SuccessBox></div>}
           {emailError && <div className="mt-4"><ErrorBox>{emailError}</ErrorBox></div>}
+        </div>
+      </section>
+
+      {/* ─── Danger Zone: Reset / Delete Account ─── */}
+      <section className="overflow-hidden rounded-[1.5rem] border border-red-500/30 bg-[var(--card)] shadow-sm">
+        <div className="border-b border-red-500/20 bg-red-500/10 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-500 text-white">
+              <AlertTriangle size={22} />
+            </div>
+            <div>
+              <h3 className="text-base font-black tracking-tight text-[var(--text)]">
+                {tr("Zon Bahaya", "Danger Zone")}
+              </h3>
+              <p className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                {tr("Reset atau padam akaun", "Reset or delete account")}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="space-y-3 p-6">
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => {
+                setDangerError("")
+                setDangerPassword("")
+                setConfirmText("")
+                setDangerAction("reset")
+              }}
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-[var(--border)] px-4 py-3.5 text-sm font-bold text-[var(--text)] transition-all hover:border-[var(--text)]/30 active:scale-[0.98]"
+            >
+              <RefreshCw size={16} />
+              {tr("Reset Akaun", "Reset Account")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDangerError("")
+                setDangerPassword("")
+                setConfirmText("")
+                setDangerAction("delete")
+              }}
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-red-500/40 bg-red-500/10 px-4 py-3.5 text-sm font-bold text-red-600 dark:text-red-400 transition-all hover:bg-red-500/20 active:scale-[0.98]"
+            >
+              <Trash2 size={16} />
+              {tr("Padam Akaun", "Delete Account")}
+            </button>
+          </div>
+
+          {dangerAction && (
+            <form
+              onSubmit={handleDangerAction}
+              className="space-y-4 rounded-2xl border border-red-500/30 bg-red-500/5 p-4"
+            >
+              <div className="flex gap-3">
+                <AlertTriangle size={16} className="mt-0.5 shrink-0 text-red-500" />
+                <p className="text-[0.7rem] font-medium leading-relaxed text-[var(--muted)]">
+                  {dangerAction === "delete"
+                    ? tr(
+                        "Tindakan ini MEMADAM AKAUN dan SEMUA data secara kekal. Anda tidak akan dapat log masuk semula. Taip PADAM untuk sahkan.",
+                        "This will PERMANENTLY DELETE your account and ALL data. You will not be able to log in again. Type DELETE to confirm."
+                      )
+                    : tr(
+                        "Tindakan ini mengosongkan SEMUA data (transaksi, wallet, bajet, hutang, loan, subskripsi, kenderaan, waranti, tempat). Akaun dan e-mel anda kekal. Taip RESET untuk sahkan.",
+                        "This clears ALL data (transactions, wallets, budgets, debts, loans, subscriptions, vehicles, warranties, places). Your account and email remain. Type RESET to confirm."
+                      )}
+                </p>
+              </div>
+
+              <div>
+                <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                  {tr("Kata Laluan Semasa", "Current Password")}
+                </span>
+                <input
+                  type="password"
+                  value={dangerPassword}
+                  onChange={(e) => setDangerPassword(e.target.value)}
+                  placeholder={tr("Masukkan kata laluan", "Enter current password")}
+                  autoComplete="current-password"
+                  className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)]"
+                />
+              </div>
+
+              <div>
+                <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                  {tr("Taip untuk sahkan", "Type to confirm")}
+                </span>
+                <input
+                  type="text"
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder={activeConfirmWord}
+                  className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)]"
+                />
+              </div>
+
+              {dangerError && <ErrorBox>{dangerError}</ErrorBox>}
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDangerAction(null)
+                    setDangerPassword("")
+                    setConfirmText("")
+                  }}
+                  className="flex-1 rounded-2xl border border-[var(--border)] py-3.5 text-sm font-bold text-[var(--muted)] transition hover:border-[var(--text)]/25"
+                >
+                  {tr("Batal", "Cancel")}
+                </button>
+                <button
+                  type="submit"
+                  disabled={
+                    dangerBusy ||
+                    !dangerPassword ||
+                    confirmText.trim().toUpperCase() !== activeConfirmWord
+                  }
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40",
+                    dangerAction === "delete"
+                      ? "bg-red-600 hover:bg-red-500"
+                      : "bg-[var(--text)] text-[var(--bg)] hover:opacity-90"
+                  )}
+                >
+                  {dangerBusy ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : dangerAction === "delete" ? (
+                    <Trash2 size={16} />
+                  ) : (
+                    <RefreshCw size={16} />
+                  )}
+                  {dangerAction === "delete"
+                    ? tr("Padam Akaun Kekal", "Delete Account Permanently")
+                    : tr("Reset Semua Data", "Reset All Data")}
+                </button>
+              </div>
+            </form>
+          )}
         </div>
       </section>
       </DesktopPageBody>

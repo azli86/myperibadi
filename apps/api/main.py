@@ -67,6 +67,8 @@ from modules.user_profile import (
     set_my_pin_route as _module_set_my_pin_route,
     delete_my_pin_route as _module_delete_my_pin_route,
     change_my_password_route as _module_change_my_password_route,
+    delete_my_account_route as _module_delete_my_account_route,
+    reset_my_account_route as _module_reset_my_account_route,
 )
 from modules.wallets import (
     get_wallets_route as _module_get_wallets_route,
@@ -281,6 +283,7 @@ import storage_service
 import location_service
 import whatsapp_service
 import budget_service
+import account_cleanup_service
 import scam_service
 import urllib.request
 import urllib.error
@@ -9813,6 +9816,47 @@ async def update_my_profile(user_in: schemas.UserUpdate, db: AsyncSession = Depe
         normalize_theme_mode=_normalize_theme_mode,
         normalize_bot_personality=_normalize_bot_personality,
     )
+
+
+async def _account_cleanup(db: AsyncSession, *, user_id: str, reset_only: bool):
+    user = (await db.execute(select(models.User).where(models.User.id == user_id))).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if reset_only:
+        await account_cleanup_service.reset_account_data(db, user)
+    else:
+        await account_cleanup_service.hard_delete_account(db, user)
+
+
+@app.delete("/users/me", response_model=schemas.MessageResponse)
+async def delete_my_account(
+    payload: schemas.AccountActionRequest,
+    db: AsyncSession = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return await _module_delete_my_account_route(
+        payload=payload,
+        db=db,
+        current_user=current_user,
+        account_cleanup=_account_cleanup,
+        clear_user_refresh_token=_clear_user_refresh_token,
+    )
+
+
+@app.post("/users/me/reset", response_model=schemas.MessageResponse)
+async def reset_my_account(
+    payload: schemas.AccountActionRequest,
+    db: AsyncSession = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return await _module_reset_my_account_route(
+        payload=payload,
+        db=db,
+        current_user=current_user,
+        account_cleanup=_account_cleanup,
+        clear_user_refresh_token=_clear_user_refresh_token,
+    )
+
 
 @app.post("/users/me/onboarding", response_model=schemas.UserResponse)
 async def complete_my_onboarding(payload: schemas.OnboardingRequest, db: AsyncSession = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
