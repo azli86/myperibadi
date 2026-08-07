@@ -718,11 +718,11 @@ export default function AccountPage() {
 
       {confirmOpen && stats && dangerAction && (
         <div
-          className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 p-4 pb-6 backdrop-blur-sm sm:items-center"
+          className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50 p-4 pb-6 sm:items-center"
           onClick={() => !dangerBusy && setConfirmOpen(false)}
         >
           <div
-            className="w-full max-w-md overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl"
+            className="w-full max-w-md overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)]/85 shadow-2xl backdrop-blur-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-6 pt-6 pb-2">
