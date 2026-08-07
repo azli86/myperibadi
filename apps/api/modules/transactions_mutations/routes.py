@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, time, datetime
+from datetime import date, time, datetime, timezone
 from typing import Awaitable, Callable
 
 from fastapi import HTTPException
@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import models
 import schemas
 import location_service
+from time_utils import current_business_date
 
 
 async def update_transaction_route(
@@ -93,6 +94,9 @@ async def update_transaction_route(
         if not subscription:
             raise HTTPException(status_code=404, detail="Subscription not found.")
 
+    parsed_txn_time = _parse_txn_time(txn_in.txn_time)
+    if parsed_txn_time is None and txn_date == current_business_date():
+        parsed_txn_time = datetime.now(timezone.utc).astimezone().time()
     await db.execute(
         update(models.Transaction).where(models.Transaction.id == existing.id).values(
             wallet_id=resolved_wallet_id,
@@ -102,7 +106,7 @@ async def update_transaction_route(
             category_id=resolved_category_id,
             subscription_id=subscription_id,
             txn_date=txn_date,
-            txn_time=_parse_txn_time(txn_in.txn_time),
+            txn_time=parsed_txn_time,
             notes=txn_in.notes,
             latitude=latitude,
             longitude=longitude,
@@ -448,6 +452,13 @@ async def create_transaction_route(
 
     txn_date = coerce_transaction_date(txn_in.txn_date, current_business_date_fn())
 
+    # Manual web entries often omit a time. Default to the current time when the
+    # transaction is dated today so it is sorted by time in the transaction list
+    # instead of being pushed to the end (NULL txn_time sorts last).
+    parsed_txn_time = _parse_txn_time(txn_in.txn_time)
+    if parsed_txn_time is None and txn_date == current_business_date_fn():
+        parsed_txn_time = datetime.now(timezone.utc).astimezone().time()
+
     db_txn = models.Transaction(
         user_id=current_user.id,
         reference_id=models.generate_txn_reference(txn_date),
@@ -457,7 +468,7 @@ async def create_transaction_route(
         vendor_or_source=txn_in.vendor_or_source,
         category_id=resolved_category_id,
         txn_date=txn_date,
-        txn_time=_parse_txn_time(txn_in.txn_time),
+        txn_time=parsed_txn_time,
         notes=txn_in.notes,
         latitude=latitude,
         longitude=longitude,
