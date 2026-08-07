@@ -824,11 +824,41 @@ export default function CategoriesPage() {
   })()
 
   const kindTabs = (
-    <div
-      role="tablist"
-      aria-label={lang === "EN" ? "Category type" : "Jenis kategori"}
-      className="flex w-full gap-2"
-    >
+    <>
+      {/* Mobile: minimal toggle */}
+      <div className="flex w-full gap-1 rounded-[var(--card-radius-lg)] border border-[var(--border)] bg-[var(--card)] p-1 md:hidden">
+        {(["expense", "income"] as const).map((kind) => {
+          const active = activeKindTab === kind
+          const count = kind === "expense" ? stats.expenseCount : stats.incomeCount
+          return (
+            <button
+              key={kind}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setActiveKindTab(kind)}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition active:scale-[0.98]",
+                active
+                  ? kind === "expense"
+                    ? "bg-rose-500/15 text-rose-500"
+                    : "bg-emerald-500/15 text-emerald-500"
+                  : "text-[var(--muted)]"
+              )}
+            >
+              {kind === "expense" ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
+              {kind === "expense" ? t.expense : t.income}
+              <span className="text-[0.625rem] font-medium opacity-60">{count}</span>
+            </button>
+          )
+        })}
+      </div>
+      {/* Desktop: summary cards */}
+      <div
+        role="tablist"
+        aria-label={lang === "EN" ? "Category type" : "Jenis kategori"}
+        className="hidden w-full gap-2 md:flex"
+      >
       {(["expense", "income"] as const).map((kind) => {
         const active = activeKindTab === kind
         const count = kind === "expense" ? stats.expenseCount : stats.incomeCount
@@ -886,7 +916,8 @@ export default function CategoriesPage() {
           </button>
         )
       })}
-    </div>
+      </div>
+    </>
   )
 
   const searchField = (
@@ -1003,7 +1034,7 @@ export default function CategoriesPage() {
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium leading-tight text-[var(--text)]">{c.name}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.625rem] font-medium text-[var(--muted)]">
+          <div className="mt-1 hidden flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.625rem] font-medium text-[var(--muted)] md:flex">
             <span className="inline-flex items-center gap-1">
               <Hash size={10} />
               {c.keywordCount}
@@ -1016,7 +1047,7 @@ export default function CategoriesPage() {
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="hidden shrink-0 items-center gap-2 md:flex">
           {monthAmt > 0 && (
             <MoneyAmount
               value={monthAmt}
@@ -1026,8 +1057,8 @@ export default function CategoriesPage() {
               currencyClassName="opacity-55"
             />
           )}
-          <ChevronRight size={15} className="text-[var(--muted)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
         </div>
+        <ChevronRight size={15} className="shrink-0 text-[var(--muted)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
       </button>
     )
   }
