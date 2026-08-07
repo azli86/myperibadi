@@ -520,7 +520,7 @@ async def handle_telegram_webhook_payload_route(
     if pending_media and reply_txn_ref:
         processing_response = await _send_telegram_message(
             chat_id,
-            "📎 *Lampiran diterima*\n📤 Sedang upload...\n⚙️ Selepas itu saya proses transaksi." if is_bm else "📎 *Attachment received*\n📤 Uploading...\n⚙️ Then I will process the transaction.",
+            "⚠️ *_Lampiran diterima dan diproses sebentar lagi._*" if is_bm else "⚠️ *_Uploading your attachment and processing the transaction shortly._*",
             linked=True,
             reply_markup={"remove_keyboard": True},
         )

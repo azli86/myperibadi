@@ -147,17 +147,11 @@ def build_telegram_processing_text_route(payload: Any) -> str:
     sender = message.get("from") or {}
     language_code = str(sender.get("language_code") or "").lower()
     is_bm = language_code.startswith("ms") or language_code.startswith("id") or language_code.startswith("bm")
-    document = message.get("document") or (message.get("reply_to_message") or {}).get("document") or {}
-    mime_type = str((document or {}).get("mime_type") or "").lower()
-    has_photo = bool(message.get("photo") or (message.get("reply_to_message") or {}).get("photo"))
-    is_pdf = "pdf" in mime_type
 
     if is_bm:
-        media_label = "dokumen" if is_pdf else "imej" if has_photo else "media"
-        return f"📎 *{media_label.capitalize()} diterima*\n📤 Sedang upload...\n⚙️ Selepas itu saya proses transaksi."
+        return "⚠️ *_Lampiran diterima dan diproses sebentar lagi._*"
 
-    media_label = "document" if is_pdf else "image" if has_photo else "media"
-    return f"📎 *{media_label.capitalize()} received*\n📤 Uploading...\n⚙️ Then I will process the transaction."
+    return "⚠️ *_Uploading your attachment and processing the transaction shortly._*"
 
 
 def build_telegram_add_preview_text_route(
