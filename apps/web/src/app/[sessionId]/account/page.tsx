@@ -74,6 +74,14 @@ export default function AccountPage() {
   const [confirmText, setConfirmText] = useState("")
   const [dangerBusy, setDangerBusy] = useState(false)
   const [dangerError, setDangerError] = useState("")
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [stats, setStats] = useState<{
+    transaction_count: number
+    wallet_count: number
+    debt_count: number
+    loan_count: number
+    subscription_count: number
+  } | null>(null)
 
   const isBm = lang === "BM"
   const tr = (bm: string, en: string) => isBm ? bm : en
@@ -269,6 +277,36 @@ export default function AccountPage() {
     setDangerError("")
     try {
       const token = getAccessToken()
+      const res = await fetch("/api/users/me/stats", {
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
+      if (!res.ok) throw new Error("Failed to load account stats")
+      const data = await res.json()
+      setStats({
+        transaction_count: data.transaction_count ?? 0,
+        wallet_count: data.wallet_count ?? 0,
+        debt_count: data.debt_count ?? 0,
+        loan_count: data.loan_count ?? 0,
+        subscription_count: data.subscription_count ?? 0,
+      })
+      setConfirmOpen(true)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : ""
+      const finalMessage = msg || tr("Tindakan gagal. Sila cuba lagi.", "Action failed. Please try again.")
+      setDangerError(finalMessage)
+      showAlert(tr("Tindakan Gagal", "Action Failed"), finalMessage, "error")
+    } finally {
+      setDangerBusy(false)
+    }
+  }
+
+  async function confirmDangerAction() {
+    if (!dangerAction) return
+    setDangerBusy(true)
+    setDangerError("")
+    try {
+      const token = getAccessToken()
       const url =
         dangerAction === "delete"
           ? "/api/users/me"
@@ -286,6 +324,7 @@ export default function AccountPage() {
         const apiErr = await res.json().catch(() => ({}))
         throw new Error(apiErr?.detail || "Request failed")
       }
+      setConfirmOpen(false)
       if (dangerAction === "delete") {
         await logoutAuthSession()
         router.push("/login")
@@ -639,6 +678,7 @@ export default function AccountPage() {
                     setDangerAction(null)
                     setDangerPassword("")
                     setConfirmText("")
+                    setConfirmOpen(false)
                   }}
                   className="flex-1 rounded-2xl border border-[var(--border)] py-3.5 text-sm font-bold text-[var(--muted)] transition hover:border-[var(--text)]/25"
                 >
@@ -675,6 +715,107 @@ export default function AccountPage() {
         </div>
       </section>
       </DesktopPageBody>
+
+      {confirmOpen && stats && dangerAction && (
+        <div
+          className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 p-4 pb-6 backdrop-blur-sm sm:items-center"
+          onClick={() => !dangerBusy && setConfirmOpen(false)}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 pt-6 pb-2">
+              <div className="flex items-center gap-3">
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${dangerAction === "delete" ? "bg-red-500/15 text-red-500" : "bg-[var(--text)]/10 text-[var(--text)]"}`}>
+                  {dangerAction === "delete" ? <Trash2 size={22} /> : <RefreshCw size={22} />}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--text)]">
+                    {dangerAction === "delete"
+                      ? tr("Sahkan Padam Akaun", "Confirm Account Deletion")
+                      : tr("Sahkan Reset Akaun", "Confirm Account Reset")}
+                  </h3>
+                  <p className="text-xs font-medium text-[var(--muted)]">
+                    {dangerAction === "delete"
+                      ? tr("Tindakan ini kekal dan tidak boleh dibatalkan.", "This action is permanent and cannot be undone.")
+                      : tr("Semua data akan dikosongkan. Akaun anda kekal.", "All data will be cleared. Your account remains.")}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4">
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-4">
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-xs font-semibold text-[var(--muted)]">{tr("Nama", "Name")}</span>
+                  <span className="text-sm font-bold text-[var(--text)]">{profile?.name || "-"}</span>
+                </div>
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-xs font-semibold text-[var(--muted)]">{tr("E-mel", "Email")}</span>
+                  <span className="text-sm font-bold text-[var(--text)]">{profile?.email || "-"}</span>
+                </div>
+                <div className="my-2 border-t border-dashed border-[var(--border)]" />
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div className="rounded-xl bg-[var(--surface-tint)]/60 px-3 py-2.5">
+                    <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Transaksi", "Transactions")}</p>
+                    <p className="text-lg font-extrabold text-[var(--text)]">{stats.transaction_count.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-xl bg-[var(--surface-tint)]/60 px-3 py-2.5">
+                    <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Wallet", "Wallets")}</p>
+                    <p className="text-lg font-extrabold text-[var(--text)]">{stats.wallet_count.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-xl bg-[var(--surface-tint)]/60 px-3 py-2.5">
+                    <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Hutang", "Debts")}</p>
+                    <p className="text-lg font-extrabold text-[var(--text)]">{stats.debt_count.toLocaleString()}</p>
+                  </div>
+                  <div className="rounded-xl bg-[var(--surface-tint)]/60 px-3 py-2.5">
+                    <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Loan", "Loans")}</p>
+                    <p className="text-lg font-extrabold text-[var(--text)]">{stats.loan_count.toLocaleString()}</p>
+                  </div>
+                  {stats.subscription_count > 0 && (
+                    <div className="rounded-xl bg-[var(--surface-tint)]/60 px-3 py-2.5">
+                      <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Subskripsi", "Subscriptions")}</p>
+                      <p className="text-lg font-extrabold text-[var(--text)]">{stats.subscription_count.toLocaleString()}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 px-6 pb-6">
+              <button
+                type="button"
+                disabled={dangerBusy}
+                onClick={() => setConfirmOpen(false)}
+                className="flex-1 rounded-2xl border border-[var(--border)] py-3.5 text-sm font-bold text-[var(--muted)] transition hover:border-[var(--text)]/25 disabled:opacity-40"
+              >
+                {tr("Batal", "Cancel")}
+              </button>
+              <button
+                type="button"
+                disabled={dangerBusy}
+                onClick={confirmDangerAction}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40",
+                  dangerAction === "delete" ? "bg-red-600 hover:bg-red-500" : "bg-[var(--text)] text-[var(--bg)] hover:opacity-90"
+                )}
+              >
+                {dangerBusy ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : dangerAction === "delete" ? (
+                  <Trash2 size={16} />
+                ) : (
+                  <RefreshCw size={16} />
+                )}
+                {dangerAction === "delete"
+                  ? tr("Setuju Padam", "Agree & Delete")
+                  : tr("Setuju Reset", "Agree & Reset")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {alertModal}
 

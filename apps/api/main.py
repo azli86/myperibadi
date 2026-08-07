@@ -9782,6 +9782,30 @@ async def get_my_profile(current_user: models.User = Depends(get_current_user)):
         current_user=current_user,
     )
 
+
+@app.get("/users/me/stats", response_model=schemas.MyStatsResponse)
+async def get_my_stats(
+    db: AsyncSession = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    def count(table, column):
+        return (
+            db.scalar(select(func.count()).select_from(table).where(column == current_user.id)) or 0
+        )
+
+    transaction_count = await count(models.Transaction, models.Transaction.user_id)
+    wallet_count = await count(models.Wallet, models.Wallet.owner_user_id)
+    debt_count = await count(models.Debt, models.Debt.user_id)
+    loan_count = await count(models.Loan, models.Loan.user_id)
+    subscription_count = await count(models.Subscription, models.Subscription.user_id)
+    return schemas.MyStatsResponse(
+        transaction_count=transaction_count,
+        wallet_count=wallet_count,
+        debt_count=debt_count,
+        loan_count=loan_count,
+        subscription_count=subscription_count,
+    )
+
 @app.get("/cycles/me")
 async def get_my_cycle(
     db: AsyncSession = Depends(database.get_db),

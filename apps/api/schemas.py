@@ -69,6 +69,14 @@ class MessageResponse(BaseModel):
     message: str
 
 
+class MyStatsResponse(BaseModel):
+    transaction_count: int
+    wallet_count: int
+    debt_count: int
+    loan_count: int
+    subscription_count: int
+
+
 class AdminPortalUserResponse(BaseModel):
     id: str
     name: str
