@@ -4373,13 +4373,6 @@ async def _process_whatsapp_message_impl(
                 vendor_name = text.replace(amount_match.group(0), " ").strip()
             if used_explicit_wallet_prefix and wallet:
                 vendor_name = strip_wallet_reference(vendor_name, wallet.name)
-            # The leading word is the category keyword the user typed first
-            # (e.g. "makan nasi ayam tng" -> Makan, note "nasi ayam tng").
-            # Remove it from the note so only the descriptive rest remains.
-            if cat and not multi_item_transaction:
-                stripped = vendor_name.split(None, 1)
-                if stripped:
-                    vendor_name = stripped[1] if len(stripped) > 1 else ""
         vendor_name = re.sub(r"\s{2,}", " ", vendor_name).strip()
         if not vendor_name:
             vendor_name = t["no_note"]
