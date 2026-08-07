@@ -209,12 +209,12 @@ export default function LagiPage() {
                 onClick={() => setActiveMobileSheet(item.key)}
                 className={cn("flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all", i !== 0 && "border-t border-[var(--border)]")}
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]"><item.icon size={18} /></div>
+                <item.icon size={20} className="shrink-0 text-[var(--text)]" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-[var(--text)]">{item.label}</p>
+                  <p className="text-sm font-medium text-[var(--text)]">{item.label}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-[var(--muted)] truncate max-w-[140px]">{item.value}</span>
+                  <span className="text-xs font-medium text-[var(--muted)] truncate max-w-[140px]">{item.value}</span>
                   <ChevronRight size={16} className="text-[var(--muted)]" />
                 </div>
               </button>
@@ -231,8 +231,8 @@ export default function LagiPage() {
                 href={item.href}
                 className={cn("flex items-center gap-3 px-4 py-3.5 transition-all", i !== 0 && "border-t border-[var(--border)]")}
               >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]"><item.icon size={18} /></div>
-                <div className="min-w-0 flex-1"><p className="text-sm font-bold text-[var(--text)]">{item.label}</p></div>
+                <item.icon size={20} className="shrink-0 text-[var(--text)]" />
+                <div className="min-w-0 flex-1"><p className="text-sm font-medium text-[var(--text)]">{item.label}</p></div>
                 <ChevronRight size={16} className="text-[var(--muted)]" />
               </Link>
             ))}
@@ -242,8 +242,8 @@ export default function LagiPage() {
         {/* Logout */}
         <div className="px-1">
           <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)] px-4 py-3.5 text-left transition-all active:scale-[0.99]">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500"><LogOut size={18} /></div>
-            <span className="text-sm font-bold text-red-500">{t.logout}</span>
+            <LogOut size={20} className="shrink-0 text-red-500" />
+            <span className="text-sm font-medium text-red-500">{t.logout}</span>
           </button>
         </div>
 
@@ -446,8 +446,8 @@ export default function LagiPage() {
                   <Link key={item.label} href={item.href} className="block">
                     <div className="group flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/20 px-4 py-4 transition-all hover:bg-[var(--surface-tint)]">
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]"><item.icon size={18} /></div>
-                        <p className="truncate text-sm font-bold text-[var(--text)]">{item.label}</p>
+                        <item.icon size={20} className="shrink-0 text-[var(--text)]" />
+                        <p className="truncate text-sm font-medium text-[var(--text)]">{item.label}</p>
                       </div>
                       <ChevronRight size={16} className="text-[var(--muted)] transition-transform group-hover:translate-x-1" />
                     </div>
