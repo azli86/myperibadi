@@ -4458,7 +4458,7 @@ async def _process_whatsapp_message_impl(
             vendor_or_source=vendor_name[:50],
             amount=amount,
             category_id=cat.id if cat else None,
-            notes=vendor_name[:255],
+            notes=None,
             latitude=resolved_latitude,
             longitude=resolved_longitude,
             location_name=resolved_location_name,
