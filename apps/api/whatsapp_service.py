@@ -3396,6 +3396,7 @@ async def _process_whatsapp_message_impl(
     forced_kind: Optional[str] = None,
     skip_category_prompt: bool = False,
     force_category_prompt: bool = False,
+    receipt_user_note: str | None = None,
     txn_time: Optional[str] = None,
 ) -> Tuple[str, Optional[models.Transaction]]:
     try:
@@ -3533,6 +3534,7 @@ async def _process_whatsapp_message_impl(
                     skip_category_prompt=True,
                     txn_time=pending_selection.get("txn_time"),
                     force_category_prompt=bool(pending_selection.get("force_category_prompt")),
+                    receipt_user_note=pending_selection.get("receipt_user_note"),
                 )
             # User typed a category name or keyword not in the shortlist: match against all user categories.
             if selected_index is None:
@@ -3580,6 +3582,7 @@ async def _process_whatsapp_message_impl(
                         skip_category_prompt=True,
                         txn_time=pending_selection.get("txn_time"),
                         force_category_prompt=bool(pending_selection.get("force_category_prompt")),
+                        receipt_user_note=pending_selection.get("receipt_user_note"),
                     )
             # subx/loanx link: reply like `subx astro tng` / `loanx akpk tng` links the
             # OCR amount (taken from the pending transaction) to a subscription/loan payment.
@@ -4307,6 +4310,7 @@ async def _process_whatsapp_message_impl(
                         "options": prompt_options,
                         "txn_time": txn_time,
                         "force_category_prompt": bool(force_category_prompt),
+                        "receipt_user_note": receipt_user_note,
                     },
                 )
                 lines = [
@@ -4480,13 +4484,12 @@ async def _process_whatsapp_message_impl(
             vendor_or_source=vendor_name[:50],
             amount=amount,
             category_id=cat.id if cat else None,
-            notes=txn_notes,
+            notes=receipt_user_note if receipt_user_note is not None else txn_notes,
             latitude=resolved_latitude,
             longitude=resolved_longitude,
             location_name=resolved_location_name,
             source_channel=source_channel
         )
-        print(f"[note-debug] text={text!r} force_ocr={force_category_prompt} cat={cat.id if cat else None} multi={bool(multi_item_transaction)} txn_notes={txn_notes!r}")
         db.add(txn)
         await db.flush()
         transaction_items = multi_item_transaction["items"] if multi_item_transaction else []

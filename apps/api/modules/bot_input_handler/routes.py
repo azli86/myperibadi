@@ -201,6 +201,9 @@ async def process_bot_input_route(
                 if not safe_description:
                     # Keep a generic label so the transaction can still be saved.
                     txn_text = f"Resit {draft.amount} @{draft.txn_date.strftime('%d%m%Y')}"
+                # Keep whatever the user typed alongside the receipt as the note
+                # (category + note + wallet), so it survives the OCR text override.
+                receipt_user_note = (text or "").strip() or None
                 text = txn_text
                 has_amount = True
                 # Tell the user what the bot scanned before asking them to type a keyword.
@@ -271,6 +274,7 @@ async def process_bot_input_route(
             forced_kind=ocr_forced_kind,
             force_category_prompt=bool(ocr_summary),
             txn_time=draft.txn_time if ocr_summary else None,
+            receipt_user_note=receipt_user_note,
         )
         # Keep the transaction confirmation together with the later receipt-upload reply.
         if txt_reply:
