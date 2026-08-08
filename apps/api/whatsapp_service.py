@@ -4410,10 +4410,6 @@ async def _process_whatsapp_message_impl(
                 # "makan nasi ayam kelebang tng") while the leading word still
                 # decides the category.
                 txn_notes = re.sub(r"\s{2,}", " ", txn_notes).strip() or None
-        # If the note merely duplicates the merchant (receipt OCR puts the merchant
-        # name as the description), drop it so the note is not a copy of the merchant.
-        if txn_notes and (txn_notes or "").lower() == (vendor_name or "").lower():
-            txn_notes = None
 
         wallet_switch_note = ""
         push_wallet_insufficient = False
