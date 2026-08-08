@@ -2538,6 +2538,18 @@ async def get_category_by_keywords(db: AsyncSession, text: str, household_id: Op
         leading = _match_category(rows, first_word_match.group(0))
         if leading is not None:
             return leading
+        # Fall back to matching the leading word against the category name itself
+        # (e.g. a category literally named "Makan") even when no keyword is set.
+        name_match = await db.execute(
+            select(models.Category).where(
+                models.Category.is_internal == False,
+                models.Category.household_id == household_id,
+                func.lower(models.Category.name) == first_word_match.group(0),
+            )
+        )
+        leading_by_name = name_match.scalars().first()
+        if leading_by_name is not None:
+            return leading_by_name
 
     return _match_category(rows, normalized_text)
 
