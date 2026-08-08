@@ -587,7 +587,7 @@ export default function TransactionDetailPage() {
           wallet_id: data.wallet_id ? String(data.wallet_id) : "",
           type: data.type,
           date: data.txn_date || "",
-          time: data.txn_time || "",
+          time: data.txn_time ? String(data.txn_time).slice(0, 5) : "",
           notes: data.notes || ""
         })
         const existingItems = (data.items || []).map((item: NonNullable<TransactionDetail["items"]>[number]) => ({
@@ -830,8 +830,7 @@ export default function TransactionDetailPage() {
     setSaving(true)
     try {
       const token = getAccessToken()
-      const res = await fetch(`/api/transactions/${txnId}`, {
-        credentials: "include",
+      const res = await fetch(`/api/transactions/${txnId}`, {        credentials: "include",
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
