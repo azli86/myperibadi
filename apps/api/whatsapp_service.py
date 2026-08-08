@@ -3513,6 +3513,12 @@ async def _process_whatsapp_message_impl(
                         selected_index = idx_option
                         break
             options = pending_selection.get("options") or []
+            # The note is what the user typed to confirm the category (e.g.
+            # "makan nasi ayam PBE"), falling back to any text sent with the media.
+            # A bare numeric index is not a note.
+            typed_note = (text or "").strip()
+            if typed_note.isdigit():
+                typed_note = ""
             if selected_index is not None and 0 <= selected_index < len(options):
                 _clear_pending_category_selection(user_id, source_channel)
                 selected_option = options[selected_index]
@@ -3534,7 +3540,7 @@ async def _process_whatsapp_message_impl(
                     skip_category_prompt=True,
                     txn_time=pending_selection.get("txn_time"),
                     force_category_prompt=bool(pending_selection.get("force_category_prompt")),
-                    receipt_user_note=pending_selection.get("receipt_user_note"),
+                    receipt_user_note=typed_note or pending_selection.get("receipt_user_note"),
                 )
             # User typed a category name or keyword not in the shortlist: match against all user categories.
             if selected_index is None:
@@ -3582,7 +3588,7 @@ async def _process_whatsapp_message_impl(
                         skip_category_prompt=True,
                         txn_time=pending_selection.get("txn_time"),
                         force_category_prompt=bool(pending_selection.get("force_category_prompt")),
-                        receipt_user_note=pending_selection.get("receipt_user_note"),
+                        receipt_user_note=typed_note or pending_selection.get("receipt_user_note"),
                     )
             # subx/loanx link: reply like `subx astro tng` / `loanx akpk tng` links the
             # OCR amount (taken from the pending transaction) to a subscription/loan payment.
