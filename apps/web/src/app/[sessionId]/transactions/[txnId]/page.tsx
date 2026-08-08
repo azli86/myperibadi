@@ -1573,6 +1573,7 @@ export default function TransactionDetailPage() {
                 categoryLabel={getTransactionCategoryLabel(txn, langT.other)}
                 walletLabel={txn.wallet_name || langT.walletCash}
                 displayNotes={displayNotes}
+                merchantLabel={txnDisplay.title || txn.vendor_or_source}
               />
               <TxnItemsTable
                 txn={txn}

@@ -13,6 +13,7 @@ export type TxnDetailsListProps = {
   categoryLabel: string
   walletLabel: string
   displayNotes: string
+  merchantLabel?: string
 }
 
 function Row({ label, value, children }: { label: string; value?: string; children?: React.ReactNode }) {
@@ -37,6 +38,7 @@ export default function TxnDetailsList({
   categoryLabel,
   walletLabel,
   displayNotes,
+  merchantLabel,
 }: TxnDetailsListProps) {
   const { lang } = useLang()
   const isBm = lang === "BM"
@@ -48,6 +50,9 @@ export default function TxnDetailsList({
         {isBm ? "Maklumat Transaksi" : "Transaction Info"}
       </h3>
       <div className="divide-y divide-[var(--border)]">
+        {merchantLabel && (
+          <Row label={isBm ? "Peniaga / Penerangan" : "Merchant / Description"} value={merchantLabel} />
+        )}
         <Row label={isBm ? "Kategori" : "Category"} value={categoryLabel} />
         <Row label={isBm ? "Tarikh" : "Date"} value={transactionDateLabel} />
         <Row label={isBm ? "Dijana" : "Issued"} value={issuedDateLabel} />
