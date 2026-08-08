@@ -17,7 +17,7 @@ import storage_service
 import budget_service
 import llm_service
 import location_service
-from time_utils import current_business_date
+from time_utils import current_business_date, _get_business_timezone
 from bot_responses import CHAT_AUTO_REPLIES, INSTRUCTIONAL_FALLBACKS, normalize_message_text
 
 
@@ -4479,6 +4479,10 @@ async def _process_whatsapp_message_impl(
                 parsed_txn_time = datetime.strptime(txn_time, "%H:%M").time()
             except ValueError:
                 parsed_txn_time = None
+        # Typed plain messages without an explicit time: stamp the current time so
+        # the transaction is sorted by time instead of having a NULL txn_time.
+        if parsed_txn_time is None and txn_date == current_business_date():
+            parsed_txn_time = datetime.now(_get_business_timezone()).time().replace(microsecond=0)
 
         txn = models.Transaction(
             wallet_id=wallet.id,
