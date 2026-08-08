@@ -158,6 +158,7 @@ async def process_bot_input_route(
             print(f"[vehicle-bot] command handling failed: {vehicle_exc}")
 
     ocr_forced_kind = None
+    receipt_user_note = None
     if has_media:
         user_res = await db.execute(select(models.User).where(models.User.id == user_id))
         user = user_res.scalar_one_or_none()
