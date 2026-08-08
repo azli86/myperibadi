@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Any
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 class UserBase(BaseModel):
     name: str
@@ -337,7 +337,7 @@ class TransactionResponse(TransactionBase):
     is_wallet_transfer: bool = False
     is_debt_movement: bool = False
     source_channel: Optional[str] = None
-    txn_time: Optional[str] = None
+    txn_time: Optional[time] = None
     created_at: datetime
 
     class Config:
