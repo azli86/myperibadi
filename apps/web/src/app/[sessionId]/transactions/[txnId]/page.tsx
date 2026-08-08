@@ -1058,27 +1058,25 @@ export default function TransactionDetailPage() {
 
     setReceiptDownloading(true)
     try {
-      const issuedAt = new Date()
       const receiptNo = txn.reference_id || `TXN-${txn.id}`
       const transactionTitle = txnDisplay.title || txn.vendor_or_source || "Transaction"
       const accountName = userProfile?.name || userProfile?.email || (lang === "BM" ? "Pemilik Akaun" : "Account Holder")
+      const txnTimeStr = txn.txn_time ? String(txn.txn_time).slice(0, 5) : ""
       const transactionDate = txn.txn_date ? (() => {
         try {
           const rawDate = txn.txn_date
           const dateStr = rawDate.includes("Z") || rawDate.includes("+") ? rawDate : (rawDate.includes("T") || rawDate.includes(" ") ? `${rawDate.replace(" ", "T")}Z` : `${rawDate}T00:00:00Z`)
-          return new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric", timeZone: timezone }).format(new Date(dateStr))
+          const fmt = new Intl.DateTimeFormat(locale, { day: "2-digit", month: "short", year: "numeric", timeZone: timezone }).format(new Date(dateStr))
+          if (txnTimeStr) {
+            const [h, m] = txnTimeStr.split(":").map(Number)
+            const tm = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit", hour12: timeFormat === "12h", timeZone: "UTC" }).format(new Date(Date.UTC(1970, 0, 1, h, m)))
+            return `${fmt} · ${tm}`
+          }
+          return fmt
         } catch {
           return txn.txn_date
         }
       })() : "-"
-      const issuedDateText = new Intl.DateTimeFormat(locale, {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: timezone,
-      }).format(issuedAt)
       const formatPdfMoney = (value: number) => `RM ${Number(value || 0).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       const formatPdfQty = (value: number) => {
         const qty = Number(value || 1)
@@ -1139,8 +1137,6 @@ export default function TransactionDetailPage() {
       rowText(lang === "BM" ? "KATEGORI" : "CATEGORY", getTransactionCategoryLabel(txn, langT.other), receiptY, 9.5, "F2")
       receiptY -= 14
       rowText(lang === "BM" ? "TARIKH" : "DATE", transactionDate, receiptY)
-      receiptY -= 14
-      rowText(lang === "BM" ? "JANA" : "ISSUED", issuedDateText, receiptY)
       receiptY -= 14
       rowText("STATUS", txn.type === "income" ? "INCOME" : "EXPENSE", receiptY, 9.5, "F2")
       receiptY -= 14
@@ -1398,14 +1394,6 @@ export default function TransactionDetailPage() {
       return txn.txn_date || "-"
     }
   })()
-  const issuedDateLabel = new Intl.DateTimeFormat(locale, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: timezone,
-  }).format(new Date())
   const receiptStatusLabel = isIncome ? langT.incomingFunds : langT.outgoingFlow
 
   const refundButtonState = txn.is_refund || txn.has_been_refunded || isWalletTransfer || txn.is_debt_movement
@@ -1566,7 +1554,6 @@ export default function TransactionDetailPage() {
               <TxnDetailsList
                 txn={txn}
                 transactionDateLabel={transactionDateLabel}
-                issuedDateLabel={issuedDateLabel}
                 statusLabel={receiptStatusLabel}
                 sourceChannelLabel={getSourceChannelLabel(txn.source_channel)}
                 categoryLabel={getTransactionCategoryLabel(txn, langT.other)}

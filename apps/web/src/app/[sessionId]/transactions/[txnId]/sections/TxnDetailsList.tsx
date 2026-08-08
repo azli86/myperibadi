@@ -7,7 +7,6 @@ import type { TransactionDetail } from "../types"
 export type TxnDetailsListProps = {
   txn: TransactionDetail
   transactionDateLabel: string
-  issuedDateLabel: string
   statusLabel: string
   sourceChannelLabel: string
   categoryLabel: string
@@ -32,7 +31,6 @@ function Row({ label, value, children }: { label: string; value?: string; childr
 export default function TxnDetailsList({
   txn,
   transactionDateLabel,
-  issuedDateLabel,
   statusLabel,
   sourceChannelLabel,
   categoryLabel,
@@ -55,7 +53,6 @@ export default function TxnDetailsList({
         )}
         <Row label={isBm ? "Kategori" : "Category"} value={categoryLabel} />
         <Row label={isBm ? "Tarikh" : "Date"} value={transactionDateLabel} />
-        <Row label={isBm ? "Dijana" : "Issued"} value={issuedDateLabel} />
         <Row label={isBm ? "Status" : "Status"} value={statusLabel} />
         <Row label={isBm ? "Cara Simpan" : "Saved Via"} value={sourceChannelLabel} />
         <Row label={isBm ? "Wallet" : "Wallet"} value={walletLabel} />
