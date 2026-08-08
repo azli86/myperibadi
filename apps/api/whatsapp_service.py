@@ -4391,7 +4391,6 @@ async def _process_whatsapp_message_impl(
         vendor_name = re.sub(r"\s{2,}", " ", vendor_name).strip()
         if not vendor_name:
             vendor_name = t["no_note"]
-        reply_note = vendor_name
         if used_explicit_wallet_prefix and wallet:
             vendor_name = append_wallet_label_to_note(vendor_name, wallet_display_name(wallet))
 
@@ -4410,6 +4409,10 @@ async def _process_whatsapp_message_impl(
                 # "makan nasi ayam kelebang tng") while the leading word still
                 # decides the category.
                 txn_notes = re.sub(r"\s{2,}", " ", txn_notes).strip() or None
+
+        # The confirmation's Note line must show the real note. For receipt OCR
+        # there is no user note (the merchant is shown separately), so leave it empty.
+        reply_note = txn_notes or ""
 
         wallet_switch_note = ""
         push_wallet_insufficient = False
