@@ -3532,6 +3532,7 @@ async def _process_whatsapp_message_impl(
                     forced_wallet_id=forced_wallet_id,
                     skip_category_prompt=True,
                     txn_time=pending_selection.get("txn_time"),
+                    force_category_prompt=bool(pending_selection.get("force_category_prompt")),
                 )
             # User typed a category name or keyword not in the shortlist: match against all user categories.
             if selected_index is None:
@@ -3578,6 +3579,7 @@ async def _process_whatsapp_message_impl(
                         forced_wallet_id=forced_wallet_id,
                         skip_category_prompt=True,
                         txn_time=pending_selection.get("txn_time"),
+                        force_category_prompt=bool(pending_selection.get("force_category_prompt")),
                     )
             # subx/loanx link: reply like `subx astro tng` / `loanx akpk tng` links the
             # OCR amount (taken from the pending transaction) to a subscription/loan payment.
@@ -4304,6 +4306,7 @@ async def _process_whatsapp_message_impl(
                         "location_name": resolved_location_name,
                         "options": prompt_options,
                         "txn_time": txn_time,
+                        "force_category_prompt": bool(force_category_prompt),
                     },
                 )
                 lines = [
@@ -4398,11 +4401,9 @@ async def _process_whatsapp_message_impl(
         # category so free-text messages keep their full wording.
         txn_notes = text
         if cat and not multi_item_transaction:
-            # A receipt-scan text carries a date token (e.g. "merchant 5 @2801") and
-            # its description is the merchant name, so it should have no separate note.
-            if txn_time is not None or re.search(r"\s@\d{4,8}(?=\s|$)", txn_notes):
-                # Receipt OCR always carries a txn_time, and its text is just the
-                # merchant name — never a user-typed note. Leave notes empty.
+            # Receipt OCR sets force_category_prompt and its text is just the
+            # merchant name — never a user-typed note. Leave notes empty.
+            if force_category_prompt or re.search(r"\s@\d{4,8}(?=\s|$)", txn_notes):
                 txn_notes = None
             else:
                 # Keep the note as everything the user typed, verbatim (e.g.
