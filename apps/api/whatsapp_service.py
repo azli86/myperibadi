@@ -4403,16 +4403,10 @@ async def _process_whatsapp_message_impl(
             if re.search(r"\s@\d{4,8}(?=\s|$)", txn_notes):
                 txn_notes = None
             else:
-                amount_match = AMOUNT_PATTERN.search(txn_notes)
-                if amount_match:
-                    txn_notes = txn_notes.replace(amount_match.group(0), " ").strip()
-                if used_explicit_wallet_prefix and wallet:
-                    txn_notes = strip_wallet_reference(txn_notes, wallet.name)
-                parts = txn_notes.split(None, 1)
-                if parts:
-                    txn_notes = parts[1] if len(parts) > 1 else ""
-        txn_notes = re.sub(r"\s{2,}", " ", txn_notes).strip()
-        txn_notes = txn_notes or None
+                # Keep the note as everything the user typed, verbatim (e.g.
+                # "makan nasi ayam kelebang tng") while the leading word still
+                # decides the category.
+                txn_notes = re.sub(r"\s{2,}", " ", txn_notes).strip() or None
 
         wallet_switch_note = ""
         push_wallet_insufficient = False
