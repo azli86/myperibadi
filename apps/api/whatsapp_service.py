@@ -4486,6 +4486,7 @@ async def _process_whatsapp_message_impl(
             location_name=resolved_location_name,
             source_channel=source_channel
         )
+        print(f"[note-debug] text={text!r} force_ocr={force_category_prompt} cat={cat.id if cat else None} multi={bool(multi_item_transaction)} txn_notes={txn_notes!r}")
         db.add(txn)
         await db.flush()
         transaction_items = multi_item_transaction["items"] if multi_item_transaction else []
