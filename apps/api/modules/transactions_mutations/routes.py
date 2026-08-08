@@ -96,7 +96,7 @@ async def update_transaction_route(
 
     parsed_txn_time = _parse_txn_time(txn_in.txn_time)
     if parsed_txn_time is None and txn_date == current_business_date():
-        parsed_txn_time = datetime.now(timezone.utc).astimezone().time()
+        parsed_txn_time = datetime.now(timezone.utc).astimezone().time().replace(microsecond=0)
     await db.execute(
         update(models.Transaction).where(models.Transaction.id == existing.id).values(
             wallet_id=resolved_wallet_id,
@@ -457,7 +457,7 @@ async def create_transaction_route(
     # instead of being pushed to the end (NULL txn_time sorts last).
     parsed_txn_time = _parse_txn_time(txn_in.txn_time)
     if parsed_txn_time is None and txn_date == current_business_date_fn():
-        parsed_txn_time = datetime.now(timezone.utc).astimezone().time()
+        parsed_txn_time = datetime.now(timezone.utc).astimezone().time().replace(microsecond=0)
 
     db_txn = models.Transaction(
         user_id=current_user.id,
