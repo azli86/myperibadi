@@ -97,7 +97,7 @@ async def update_transaction_route(
 
     parsed_txn_time = _parse_txn_time(txn_in.txn_time)
     if parsed_txn_time is None and txn_date == current_business_date():
-        parsed_txn_time = datetime.now(ZoneInfo("Asia/Kuala_Lumpur")).time().replace(microsecond=0)
+        parsed_txn_time = datetime.now(await _resolve_user_tz(db, current_user.id)).time().replace(microsecond=0)
     await db.execute(
         update(models.Transaction).where(models.Transaction.id == existing.id).values(
             wallet_id=resolved_wallet_id,
@@ -458,7 +458,7 @@ async def create_transaction_route(
     # instead of being pushed to the end (NULL txn_time sorts last).
     parsed_txn_time = _parse_txn_time(txn_in.txn_time)
     if parsed_txn_time is None and txn_date == current_business_date_fn():
-        parsed_txn_time = datetime.now(ZoneInfo("Asia/Kuala_Lumpur")).time().replace(microsecond=0)
+        parsed_txn_time = datetime.now(await _resolve_user_tz(db, current_user.id)).time().replace(microsecond=0)
 
     db_txn = models.Transaction(
         user_id=current_user.id,
@@ -492,3 +492,20 @@ def _parse_txn_time(raw: str | None) -> time | None:
         return datetime.strptime(str(raw).strip(), "%H:%M").time()
     except ValueError:
         return None
+
+
+async def _resolve_user_tz(db: AsyncSession, user_id: str) -> ZoneInfo:
+    try:
+        row = (await db.execute(
+            select(models.UserSetting).where(
+                models.UserSetting.user_id == user_id,
+                models.UserSetting.key == "timezone",
+            )
+        )).scalar_one_or_none()
+        tz = (row.value if row and row.value else "Asia/Kuala_Lumpur").strip()
+    except Exception:
+        tz = "Asia/Kuala_Lumpur"
+    try:
+        return ZoneInfo(tz)
+    except Exception:
+        return ZoneInfo("Asia/Kuala_Lumpur")
