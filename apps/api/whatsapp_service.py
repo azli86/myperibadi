@@ -4392,6 +4392,28 @@ async def _process_whatsapp_message_impl(
         if used_explicit_wallet_prefix and wallet:
             vendor_name = append_wallet_label_to_note(vendor_name, wallet_display_name(wallet))
 
+        # Note comes from what the user typed, minus the leading category keyword,
+        # the amount, and the wallet token (e.g. "makan nasi ayam 5 tng" -> note
+        # "nasi ayam"). Only strip the leading keyword when it actually matched a
+        # category so free-text messages keep their full wording.
+        txn_notes = text
+        if cat and not multi_item_transaction:
+            # A receipt-scan text carries a date token (e.g. "merchant 5 @2801") and
+            # its description is the merchant name, so it should have no separate note.
+            if re.search(r"\s@\d{4,8}(?=\s|$)", txn_notes):
+                txn_notes = None
+            else:
+                amount_match = AMOUNT_PATTERN.search(txn_notes)
+                if amount_match:
+                    txn_notes = txn_notes.replace(amount_match.group(0), " ").strip()
+                if used_explicit_wallet_prefix and wallet:
+                    txn_notes = strip_wallet_reference(txn_notes, wallet.name)
+                parts = txn_notes.split(None, 1)
+                if parts:
+                    txn_notes = parts[1] if len(parts) > 1 else ""
+        txn_notes = re.sub(r"\s{2,}", " ", txn_notes).strip()
+        txn_notes = txn_notes or None
+
         wallet_switch_note = ""
         push_wallet_insufficient = False
         push_wallet_balance = 0.0
@@ -4458,7 +4480,7 @@ async def _process_whatsapp_message_impl(
             vendor_or_source=vendor_name[:50],
             amount=amount,
             category_id=cat.id if cat else None,
-            notes=None,
+            notes=txn_notes,
             latitude=resolved_latitude,
             longitude=resolved_longitude,
             location_name=resolved_location_name,
