@@ -4420,9 +4420,9 @@ async def _process_whatsapp_message_impl(
                 # decides the category.
                 txn_notes = re.sub(r"\s{2,}", " ", txn_notes).strip() or None
 
-        # The confirmation's Note line must show the real note. For receipt OCR
-        # there is no user note (the merchant is shown separately), so leave it empty.
-        reply_note = txn_notes or ""
+        # The confirmation's Note line must show the real note (the typed keyword
+        # for receipt OCR, otherwise the parsed note).
+        reply_note = receipt_user_note or txn_notes or ""
 
         wallet_switch_note = ""
         push_wallet_insufficient = False
