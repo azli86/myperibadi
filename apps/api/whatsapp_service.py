@@ -4400,7 +4400,9 @@ async def _process_whatsapp_message_impl(
         if cat and not multi_item_transaction:
             # A receipt-scan text carries a date token (e.g. "merchant 5 @2801") and
             # its description is the merchant name, so it should have no separate note.
-            if re.search(r"\s@\d{4,8}(?=\s|$)", txn_notes):
+            if txn_time is not None or re.search(r"\s@\d{4,8}(?=\s|$)", txn_notes):
+                # Receipt OCR always carries a txn_time, and its text is just the
+                # merchant name — never a user-typed note. Leave notes empty.
                 txn_notes = None
             else:
                 # Keep the note as everything the user typed, verbatim (e.g.
