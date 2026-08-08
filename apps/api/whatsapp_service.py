@@ -3127,8 +3127,18 @@ async def _money_lifespan_days_left(db: AsyncSession, user_id: str, today: Optio
     user = await db.get(models.User, user_id)
     if user:
         cycle = await budget_service.resolve_user_cycle(db, user=user, ref=current_day)
+        start = cycle.get("start")
         end = cycle.get("end")
         if end:
+            # Salary-anchored cycle with no next salary collapses end to today.
+            # Fall back to the day before the cycle date in the following month
+            # (matches the web Daily Budget card).
+            if end <= current_day and cycle.get("mode") == "category" and start:
+                try:
+                    next_month = date(start.year + (start.month == 12), (start.month % 12) + 1, 1)
+                    end = (next_month + timedelta(days=start.day - 1)) - timedelta(days=1)
+                except Exception:
+                    end = end
             return max((end - current_day).days, 1)
     _, month_end_exclusive = budget_service.month_bounds(current_day.strftime("%Y-%m"))
     return max((month_end_exclusive - current_day).days, 1)
@@ -3170,7 +3180,9 @@ async def _format_money_lifespan_message(
 ) -> str:
     balance_value = float(balance or 0)
     days_left = await _money_lifespan_days_left(db, user_id, today)
-    daily_amount = balance_value / days_left if balance_value > 0 else 0.0
+    # Set aside 20% of the balance as savings (matches the web Daily Budget card).
+    spendable = max(balance_value - (balance_value * 0.2), 0.0)
+    daily_amount = spendable / days_left if spendable > 0 else 0.0
     daily_text = _format_lifespan_money(daily_amount, rounded=True)
     balance_text = _format_lifespan_money(balance_value, rounded=True)
     status_text = _money_lifespan_status(daily_amount, language)
