@@ -20,15 +20,15 @@ export default function GlobalError({
       <body>
         <StatusScreen
           code="500"
-          title="Aplikasi Bermasalah"
-          description="Aplikasi tidak dapat memaparkan halaman ini buat masa sekarang."
-          hint="Ini meliputi ralat server seperti 500 atau ralat kritikal lain pada root app. Cuba refresh semula atau kembali ke halaman utama."
+          title="App Unavailable"
+          description="The app could not display this page right now."
+          hint="This covers server errors like 500 or other critical errors at the root app. Try refreshing or go back to the home page."
           primaryHref="/"
-          primaryLabel="Pergi Ke Utama"
+          primaryLabel="Back to Home"
           secondaryHref="/login"
-          secondaryLabel="Ke Log Masuk"
+          secondaryLabel="Go to Login"
           onRetry={reset}
-          retryLabel="Cuba Lagi"
+          retryLabel="Try Again"
           tone="danger"
         />
       </body>

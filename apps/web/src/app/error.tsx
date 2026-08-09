@@ -17,15 +17,15 @@ export default function Error({
   return (
     <StatusScreen
       code="500"
-      title="Ralat Server"
-      description="Sesuatu telah berlaku pada halaman ini. Ia boleh jadi ralat sementara di aplikasi atau sambungan ke server."
-      hint="Jika anda nampak ralat 500, 502, 503, atau 505, cuba refresh semula. Jika masih berulang, log masuk semula atau hubungi admin."
+      title="Server Error"
+      description="Something went wrong on this page. It may be a temporary issue with the app or the server connection."
+      hint="If you see error 500, 502, 503, or 505, try refreshing. If it keeps happening, sign out and back in, or contact your admin."
       primaryHref="/"
-      primaryLabel="Pergi Ke Utama"
+      primaryLabel="Back to Home"
       secondaryHref="/login"
-      secondaryLabel="Ke Log Masuk"
+      secondaryLabel="Go to Login"
       onRetry={reset}
-      retryLabel="Cuba Lagi"
+      retryLabel="Try Again"
       tone="danger"
     />
   )

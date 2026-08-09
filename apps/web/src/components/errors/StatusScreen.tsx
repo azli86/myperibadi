@@ -35,7 +35,7 @@ export default function StatusScreen({
   const isDanger = tone === "danger"
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-[var(--page-bg)] relative overflow-hidden">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-auto p-6 bg-[var(--page-bg)] relative">
       {/* Glow blobs — subtle, theme-aware */}
       <div className={cn(
         "absolute top-[-20%] left-[-10%] w-[48%] h-[48%] blur-[120px] rounded-full pointer-events-none",
