@@ -17,12 +17,15 @@ import {
   AlertTriangle,
   History,
   RotateCcw,
+  CreditCard,
+  Plus,
 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { getAccessToken } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
 import { cn } from "@/lib/utils"
+import { CategoryIconGlyph } from "@/lib/category-icons"
 import { usePageAlert } from "@/hooks/usePageAlert"
 import {
   DesktopPageAction,
@@ -46,6 +49,7 @@ type SubscriptionItem = {
   due_day_of_month: number
   notes?: string | null
   status: string
+  category_id?: number | null
   start_date: string
   last_payment_date?: string | null
   created_at: string
@@ -70,6 +74,7 @@ type SubscriptionFormState = {
   name: string
   amount: string
   due_day: string
+  category_id: string
   notes: string
 }
 
@@ -156,7 +161,9 @@ export default function SubscriptionDetailPage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [copiedCmd, setCopiedCmd] = useState(false)
-  const [form, setForm] = useState<SubscriptionFormState>({ name: "", amount: "", due_day: "1", notes: "" })
+  const [form, setForm] = useState<SubscriptionFormState>({ name: "", amount: "", due_day: "1", category_id: "", notes: "" })
+  const [categories, setCategories] = useState<{ id: number; name: string; icon_name?: string | null; kind: string }[]>([])
+  const [catOpen, setCatOpen] = useState(false)
 
   useEffect(() => {
     showAlertRef.current = showAlert
@@ -204,6 +211,7 @@ export default function SubscriptionDetailPage() {
           name: subData?.name || "",
           amount: String(Number(subData?.amount || 0) || ""),
           due_day: String(subData?.due_day_of_month || 1),
+          category_id: subData?.category_id ? String(subData.category_id) : "",
           notes: subData?.notes || "",
         })
         setHasLoadedData(true)
@@ -223,6 +231,22 @@ export default function SubscriptionDetailPage() {
   useEffect(() => {
     loadData({ forceSkeleton: !hasLoadedData })
   }, [loadData])
+
+  useEffect(() => {
+    const token = getAccessToken()
+    void fetch("/api/categories", {
+      credentials: "include",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      cache: "no-store",
+    })
+      .then((r) => r.json())
+      .then((list) => {
+        if (Array.isArray(list)) setCategories(list.filter((c) => c.kind === "expense"))
+      })
+      .catch(() => {
+        /* ignore */
+      })
+  }, [])
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("portal:mobile-bottom-nav-visibility", { detail: { hidden: showEditSheet } }))
@@ -348,6 +372,7 @@ export default function SubscriptionDetailPage() {
             name: form.name.trim(),
             amount,
             due_day_of_month: dueDay,
+            category_id: form.category_id ? Number(form.category_id) : null,
             notes: form.notes.trim() || null,
           }),
         })
@@ -369,7 +394,7 @@ export default function SubscriptionDetailPage() {
         setSaving(false)
       }
     },
-    [form.amount, form.due_day, form.name, form.notes, loadData, showAlert, subscription, tr],
+    [form.amount, form.category_id, form.due_day, form.name, form.notes, loadData, showAlert, subscription, tr],
   )
 
   const handleResetDue = useCallback(() => {
@@ -984,6 +1009,87 @@ export default function SubscriptionDetailPage() {
                       </div>
                     </label>
                   </div>
+                  <label className="block">
+                    <span className={cn("mb-2 block text-[0.625rem] font-bold uppercase tracking-widest", mutedClass)}>
+                      {tr("Kategori", "Category")}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <div className="relative min-w-0 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => setCatOpen((o) => !o)}
+                          className="flex w-full items-center gap-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2.5 text-left"
+                        >
+                          {form.category_id ? (
+                            <CategoryIconGlyph
+                              iconName={categories.find((c) => String(c.id) === form.category_id)?.icon_name}
+                              categoryName={(() => {
+                                const c = categories.find((x) => String(x.id) === form.category_id)
+                                return c ? c.name : tr("Kategori lain", "Other")
+                              })()}
+                              kind="expense"
+                              size={16}
+                            />
+                          ) : (
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--muted)]">
+                              <CreditCard size={13} />
+                            </span>
+                          )}
+                          <span className={cn("truncate text-sm", form.category_id ? "font-bold text-[var(--text)]" : "text-[var(--muted)]")}>
+                            {(() => {
+                              const c = categories.find((x) => String(x.id) === form.category_id)
+                              return form.category_id ? (c ? c.name : tr("Kategori lain", "Other")) : tr("Pilih kategori", "Select category")
+                            })()}
+                          </span>
+                          <ChevronDown size={16} className="ml-auto shrink-0 text-[var(--muted)]" />
+                        </button>
+                        {catOpen && (
+                          <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-60 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-xl shadow-black/20">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setForm((prev) => ({ ...prev, category_id: "" }))
+                                setCatOpen(false)
+                              }}
+                              className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm font-semibold text-[var(--muted)] hover:bg-[var(--surface-tint)]"
+                            >
+                              {tr("Tiada kategori", "No category")}
+                            </button>
+                            {categories.map((c) => {
+                              const selected = form.category_id === String(c.id)
+                              return (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setForm((prev) => ({ ...prev, category_id: String(c.id) }))
+                                    setCatOpen(false)
+                                  }}
+                                  className={cn(
+                                    "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
+                                    selected ? "bg-[var(--surface-tint)]" : "hover:bg-[var(--surface-tint)]",
+                                  )}
+                                >
+                                  <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
+                                    <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind="expense" size={16} />
+                                  </span>
+                                  <span className="truncate text-sm font-semibold text-[var(--text)]">{c.name}</span>
+                                  {selected ? <span className="ml-auto text-[var(--accent2)]">✓</span> : null}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      <a
+                        href={`/${sessionId}/categories`}
+                        className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--accent2)] transition hover:bg-[var(--surface-tint-strong)]"
+                        aria-label={tr("Tambah kategori", "Add category")}
+                      >
+                        <Plus size={18} />
+                      </a>
+                    </div>
+                  </label>
                   <label className="block">
                     <span className={cn("mb-2 block text-[0.625rem] font-bold uppercase tracking-widest", mutedClass)}>
                       {tr("Nota", "Notes")}

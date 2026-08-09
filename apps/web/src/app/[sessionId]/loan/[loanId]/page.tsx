@@ -23,6 +23,7 @@ import { getAccessToken } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
 import { cn } from "@/lib/utils"
+import { CategoryIconGlyph } from "@/lib/category-icons"
 import { usePageAlert } from "@/hooks/usePageAlert"
 import { DesktopPageAction, DesktopPageBody, DesktopPageHeader, MobileIconButton, MobilePageHeader } from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
@@ -44,6 +45,7 @@ type LoanItem = {
   start_date: string
   notes?: string | null
   status: string
+  category_id?: number | null
   payment_count: number
   last_payment_at?: string | null
 }
@@ -123,8 +125,11 @@ export default function LoanDetailPage() {
     payment_date: new Date().toISOString().slice(0, 10),
     notes: "",
   }))
-  const [editLoanForm, setEditLoanForm] = useState({ name: "", opening_amount: "", monthly_payment: "", notes: "" })
+  const [editLoanForm, setEditLoanForm] = useState({ name: "", opening_amount: "", monthly_payment: "", category_id: "", notes: "" })
   const [mounted, setMounted] = useState(false)
+
+  const [categories, setCategories] = useState<{ id: number; name: string; icon_name?: string | null; kind: string }[]>([])
+  const [catOpen, setCatOpen] = useState(false)
 
   useEffect(() => {
     showAlertRef.current = showAlert
@@ -209,6 +214,22 @@ export default function LoanDetailPage() {
   }, [hasLoadedData, loadData])
 
   useEffect(() => {
+    const token = getAccessToken()
+    void fetch("/api/categories", {
+      credentials: "include",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      cache: "no-store",
+    })
+      .then((r) => r.json())
+      .then((list) => {
+        if (Array.isArray(list)) setCategories(list.filter((c) => c.kind === "expense"))
+      })
+      .catch(() => {
+        /* ignore */
+      })
+  }, [])
+
+  useEffect(() => {
     const hidden = showPaymentForm || showEditLoanSheet
     window.dispatchEvent(new CustomEvent("portal:mobile-bottom-nav-visibility", { detail: { hidden } }))
     return () => {
@@ -222,6 +243,7 @@ export default function LoanDetailPage() {
       name: loan.name || "",
       opening_amount: String(Number(loan.opening_amount || 0)),
       monthly_payment: loan.monthly_payment ? String(Number(loan.monthly_payment || 0)) : "",
+      category_id: loan.category_id ? String(loan.category_id) : "",
       notes: loan.notes || "",
     })
     setShowEditLoanSheet(true)
@@ -406,6 +428,7 @@ export default function LoanDetailPage() {
             name: editLoanForm.name.trim(),
             opening_amount: openingAmount,
             monthly_payment: monthlyPayment > 0 ? monthlyPayment : null,
+            category_id: editLoanForm.category_id ? Number(editLoanForm.category_id) : null,
             notes: editLoanForm.notes.trim() || null,
           }),
         })
@@ -1042,6 +1065,87 @@ export default function LoanDetailPage() {
                       onChange={(event) => setPaymentForm((current) => ({ ...current, payment_date: event.target.value }))}
                       className="h-12 w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 text-sm font-semibold text-[var(--text)] outline-none"
                     />
+                  </label>
+                  <label className="block">
+                    <span className={cn("mb-2 block text-[0.625rem] font-bold uppercase tracking-widest", mutedClass)}>
+                      {tr("Kategori", "Category")}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <div className="relative min-w-0 flex-1">
+                        <button
+                          type="button"
+                          onClick={() => setCatOpen((o) => !o)}
+                          className="flex w-full items-center gap-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2.5 text-left"
+                        >
+                          {editLoanForm.category_id ? (
+                            <CategoryIconGlyph
+                              iconName={categories.find((c) => String(c.id) === editLoanForm.category_id)?.icon_name}
+                              categoryName={(() => {
+                                const c = categories.find((x) => String(x.id) === editLoanForm.category_id)
+                                return c ? c.name : tr("Kategori lain", "Other")
+                              })()}
+                              kind="expense"
+                              size={16}
+                            />
+                          ) : (
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--muted)]">
+                              <CreditCard size={13} />
+                            </span>
+                          )}
+                          <span className={cn("truncate text-sm", editLoanForm.category_id ? "font-bold text-[var(--text)]" : "text-[var(--muted)]")}>
+                            {(() => {
+                              const c = categories.find((x) => String(x.id) === editLoanForm.category_id)
+                              return editLoanForm.category_id ? (c ? c.name : tr("Kategori lain", "Other")) : tr("Pilih kategori", "Select category")
+                            })()}
+                          </span>
+                          <ChevronDown size={16} className="ml-auto shrink-0 text-[var(--muted)]" />
+                        </button>
+                        {catOpen && (
+                          <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-60 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-xl shadow-black/20">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditLoanForm((prev) => ({ ...prev, category_id: "" }))
+                                setCatOpen(false)
+                              }}
+                              className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm font-semibold text-[var(--muted)] hover:bg-[var(--surface-tint)]"
+                            >
+                              {tr("Tiada kategori", "No category")}
+                            </button>
+                            {categories.map((c) => {
+                              const selected = editLoanForm.category_id === String(c.id)
+                              return (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setEditLoanForm((prev) => ({ ...prev, category_id: String(c.id) }))
+                                    setCatOpen(false)
+                                  }}
+                                  className={cn(
+                                    "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
+                                    selected ? "bg-[var(--surface-tint)]" : "hover:bg-[var(--surface-tint)]",
+                                  )}
+                                >
+                                  <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
+                                    <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind="expense" size={16} />
+                                  </span>
+                                  <span className="truncate text-sm font-semibold text-[var(--text)]">{c.name}</span>
+                                  {selected ? <span className="ml-auto text-[var(--accent2)]">✓</span> : null}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                      <a
+                        href={`/${sessionId}/categories`}
+                        className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--accent2)] transition hover:bg-[var(--surface-tint-strong)]"
+                        aria-label={tr("Tambah kategori", "Add category")}
+                      >
+                        <Plus size={18} />
+                      </a>
+                    </div>
                   </label>
                   <label className="block">
                     <span className={cn("mb-2 block text-[0.625rem] font-bold uppercase tracking-widest", mutedClass)}>
