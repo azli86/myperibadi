@@ -50,6 +50,22 @@ type ChatAttachment = {
   proxy_url: string
 }
 
+const normalizeAttachmentProxyUrl = (rawUrl: string): string => {
+  if (!rawUrl) return rawUrl
+  try {
+    const parsed = new URL(rawUrl, window.location.origin)
+    if (parsed.pathname.startsWith("/attachments/")) {
+      return `/api${parsed.pathname}${parsed.search}`
+    }
+    if (parsed.pathname.startsWith("/api/attachments/")) {
+      return `${parsed.pathname}${parsed.search}`
+    }
+    return rawUrl.startsWith("http") ? rawUrl : `${parsed.pathname}${parsed.search}`
+  } catch {
+    return rawUrl
+  }
+}
+
 type ChatApiMessage = {
   id: number
   role: ChatRole
@@ -467,7 +483,7 @@ export default function ChatPage() {
       createdAt: parseApiTimestamp(message.created_at),
       fileName: message.attachment?.file_name || message.file_name || undefined,
       fileType: attachmentMime,
-      previewUrl: attachmentUrl && attachmentMime?.startsWith("image/") ? attachmentUrl : undefined,
+      previewUrl: attachmentUrl && attachmentMime?.startsWith("image/") ? normalizeAttachmentProxyUrl(attachmentUrl) : undefined,
     }
   }
 
