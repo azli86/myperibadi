@@ -17,6 +17,7 @@ import {
   TrendingDown,
   TrendingUp,
   ChevronRight,
+  GripVertical,
   Upload,
 } from "lucide-react"
 import { useParams } from "next/navigation"
@@ -317,6 +318,12 @@ export default function CategoriesPage() {
   const [editCatIconName, setEditCatIconName] = useState<string>("🏷️")
   const [activeKindTab, setActiveKindTab] = useState<"expense" | "income">("expense")
 
+  // UI-only drag reorder + sub-category grouping (ephemeral; resets on reload)
+  const [parentMap, setParentMap] = useState<Record<number, number>>({})
+  const [order, setOrder] = useState<number[] | null>(null)
+  const [dragId, setDragId] = useState<number | null>(null)
+  const [dropTargetId, setDropTargetId] = useState<number | null>(null)
+
   const [kwPhrase, setKwPhrase] = useState("")
   const [kwMatchType, setKwMatchType] = useState("contains")
   const [kwPhraseError, setKwPhraseError] = useState("")
@@ -332,6 +339,65 @@ export default function CategoriesPage() {
     return a.name.localeCompare(b.name, lang === "EN" ? "en" : "ms", { sensitivity: "base" })
   })
   const tabCategories = sortedFilteredCategories.filter(c => c.kind === activeKindTab)
+
+  // Build ordered flat list honoring UI-only drag reorder + parent nesting.
+  const activeTabIds = useMemo(
+    () => new Set(tabCategories.map((c) => c.id)),
+    [tabCategories],
+  )
+  const renderIds = useMemo(() => {
+    if (order) {
+      const kept = order.filter((id) => activeTabIds.has(id))
+      const rest = tabCategories.map((c) => c.id).filter((id) => !kept.includes(id))
+      return [...kept, ...rest]
+    }
+    return tabCategories.map((c) => c.id)
+  }, [order, tabCategories, activeTabIds])
+
+  const catById = useMemo(() => {
+    const m = new Map<number, Category>()
+    for (const c of categories) m.set(c.id, c)
+    return m
+  }, [categories])
+
+  // top-level ids (no parent), ordered
+  const topLevelIds = renderIds.filter((id) => !parentMap[id])
+  // children keyed by parent
+  const childrenById = useMemo(() => {
+    const m = new Map<number, number[]>()
+    for (const [childId, parentId] of Object.entries(parentMap)) {
+      if (!activeTabIds.has(Number(childId))) continue
+      const arr = m.get(parentId) || []
+      arr.push(Number(childId))
+      m.set(parentId, arr)
+    }
+    for (const arr of m.values()) {
+      arr.sort((a, b) => {
+        const ia = renderIds.indexOf(a)
+        const ib = renderIds.indexOf(b)
+        return ia - ib
+      })
+    }
+    return m
+  }, [parentMap, activeTabIds, renderIds])
+
+  // Flat ordered render list: top-level followed by their children (indented).
+  const orderedRender: { id: number; depth: number; c: Category }[] = []
+  for (const id of topLevelIds) {
+    const c = catById.get(id)
+    if (!c) continue
+    orderedRender.push({ id, depth: 0, c })
+    for (const childId of childrenById.get(id) || []) {
+      const cc = catById.get(childId)
+      if (cc) orderedRender.push({ id: childId, depth: 1, c: cc })
+    }
+  }
+  // any children whose parent isn't in this tab -> promote to top level in place
+  for (const id of renderIds) {
+    if (orderedRender.some((x) => x.id === id)) continue
+    const c = catById.get(id)
+    if (c) orderedRender.push({ id, depth: 0, c })
+  }
 
   const stats = useMemo(() => {
     const active = categories.filter(c => c.status !== "archived")
@@ -1009,32 +1075,101 @@ export default function CategoriesPage() {
     </button>
   )
 
-  const renderCategoryCard = (c: Category) => {
+  const renderDragCard = (entry: { id: number; depth: number; c: Category }) => {
+    const { id, depth, c } = entry
+    const isDragging = dragId === id
+    const isDropTarget = dropTargetId === id && !isDragging
+    const hasChildren = (childrenById.get(id) || []).length > 0
     return (
-      <button
-        key={c.id}
-        type="button"
-        onClick={() => openCategoryDetail(c.id)}
-        className="group flex w-full items-center gap-3 rounded-[var(--card-radius-lg)] border border-[var(--border)] bg-[var(--card)] p-3 text-left transition active:scale-[0.985] hover:border-[var(--border-strong)] md:p-3.5"
+      <div
+        key={id}
+        draggable
+        onDragStart={(e) => {
+          setDragId(id)
+          e.dataTransfer.effectAllowed = "move"
+          try {
+            e.dataTransfer.setData("text/plain", String(id))
+          } catch {
+            /* ignore */
+          }
+        }}
+        onDragEnd={() => {
+          setDragId(null)
+          setDropTargetId(null)
+        }}
+        onDragOver={(e) => {
+          if (dragId === null || dragId === id) return
+          e.preventDefault()
+          e.dataTransfer.dropEffect = "move"
+          setDropTargetId(id)
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTargetId(null)
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          if (dragId === null || dragId === id) {
+            setDragId(null)
+            setDropTargetId(null)
+            return
+          }
+          // Drop onto a category -> become its sub-category (no self-parenting / cycles).
+          const fromId = dragId
+          if (fromId !== id && !parentMap[id] && id !== parentMap[fromId]) {
+            setParentMap((prev) => ({ ...prev, [fromId]: id }))
+          }
+          setDragId(null)
+          setDropTargetId(null)
+        }}
+        style={{ paddingLeft: depth * 1.25 + "rem", marginTop: depth === 1 ? 2 : 0 }}
+        className={cn(
+          "flex items-stretch gap-2 rounded-[var(--card-radius-lg)] border transition",
+          depth === 1 ? "border-[var(--border)]/60 bg-[var(--surface-tint)]/40" : "border-[var(--border)] bg-[var(--card)]",
+          isDragging && "opacity-40",
+          isDropTarget && "border-[var(--accent2)] ring-2 ring-[var(--accent2)]/30",
+        )}
       >
-      <div className="flex shrink-0 items-center gap-1.5">
+        {/* drag handle */}
         <span
           aria-hidden
-          className={cn(
-            "h-2 w-2 shrink-0 rounded-full",
-            c.kind === "expense" ? "bg-rose-500" : c.kind === "income" ? "bg-emerald-500" : "bg-[var(--muted)]"
-          )}
-        />
-        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--border)] text-[var(--text)] md:h-11 md:w-11 md:rounded-2xl">
-          <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind={c.kind} size={19} />
-        </div>
-      </div>
+          className="flex w-7 shrink-0 cursor-grab touch-none select-none items-center justify-center rounded-l-[var(--card-radius-lg)] text-[var(--muted)]/60 active:cursor-grabbing"
+        >
+          <GripVertical size={16} />
+        </span>
 
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium leading-tight text-[var(--text)]">{c.name}</p>
-        </div>
-        <ChevronRight size={15} className="shrink-0 text-[var(--muted)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
-      </button>
+        <button
+          type="button"
+          onClick={() => openCategoryDetail(id)}
+          className="flex min-w-0 flex-1 items-center gap-3 py-3 pr-3 text-left active:scale-[0.99]"
+        >
+          <span
+            aria-hidden
+            className={cn(
+              "h-2 w-2 shrink-0 rounded-full",
+              c.kind === "expense" ? "bg-rose-500" : c.kind === "income" ? "bg-emerald-500" : "bg-[var(--muted)]",
+            )}
+          />
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[var(--border)] text-[var(--text)]">
+            <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind={c.kind} size={17} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium leading-tight text-[var(--text)]">{c.name}</p>
+            {hasChildren && (
+              <p className="truncate text-[0.6rem] font-semibold text-[var(--muted)]">
+                {lang === "EN"
+                  ? `${childrenById.get(id)!.length} sub-categor${childrenById.get(id)!.length > 1 ? "ies" : "y"}`
+                  : `${childrenById.get(id)!.length} sub-kategori`}
+              </p>
+            )}
+          </div>
+          {depth === 1 ? (
+            <span className="flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+              {lang === "EN" ? "Sub" : "Sub"}
+            </span>
+          ) : null}
+          <ChevronRight size={15} className="shrink-0 text-[var(--muted)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
+        </button>
+      </div>
     )
   }
 
@@ -1047,9 +1182,73 @@ export default function CategoriesPage() {
   ) : tabCategories.length === 0 ? (
     emptyState
   ) : (
-    <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-      {tabCategories.map(renderCategoryCard)}
-      {addCategoryTile}
+    <div>
+      {/* hint */}
+      <p className="mb-2 flex items-center gap-1.5 text-[0.6rem] font-semibold text-[var(--muted)]">
+        <GripVertical size={12} />
+        {lang === "EN"
+          ? "Drag the handle to reorder. Drop a category onto another to make it a sub-category."
+          : "Seret handle untuk susun. Letak kategori atas kategori lain untuk jadikan sub-kategori."}
+      </p>
+      <div className="space-y-2">
+        {orderedRender.map((entry, idx) => {
+          const strip = dragId !== null && dragId !== entry.id ? (
+            <div
+              key={`strip-${entry.id}`}
+              onDragOver={(e) => {
+                if (dragId === null) return
+                e.preventDefault()
+                e.dataTransfer.dropEffect = "move"
+              }}
+              onDrop={(e) => {
+                e.preventDefault()
+                if (dragId === null) return
+                const from = dragId
+                // reorder (move from's position to idx) without nesting
+                setOrder((prev) => {
+                  const base = prev || renderIds
+                  const arr = [...base]
+                  const fromIdx = arr.indexOf(from)
+                  if (fromIdx >= 0) arr.splice(fromIdx, 1)
+                  arr.splice(idx, 0, from)
+                  return arr
+                })
+                setDragId(null)
+                setDropTargetId(null)
+              }}
+              className="h-1.5 -my-0.5 rounded-full bg-transparent transition data-[over]:bg-[var(--accent2)]"
+            />
+          ) : null
+          return (
+            <div key={`wrap-${entry.id}`}>
+              {strip}
+              {renderDragCard(entry)}
+            </div>
+          )
+        })}
+        {addCategoryTile}
+        <div
+          onDragOver={(e) => {
+            if (dragId === null) return
+            e.preventDefault()
+            e.dataTransfer.dropEffect = "move"
+          }}
+          onDrop={(e) => {
+            e.preventDefault()
+            if (dragId === null) return
+            setParentMap((prev) => {
+              const next = { ...prev }
+              delete next[dragId]
+              return next
+            })
+            setDragId(null)
+            setDropTargetId(null)
+          }}
+          className="rounded-[var(--card-radius-lg)] border border-dashed border-[var(--border)] px-4 py-3 text-center text-[0.62rem] font-semibold text-[var(--muted)]"
+        >
+          {lang === "EN" ? "Drop here to move out of a sub-category" : "Letak di sini untuk keluar dari sub-kategori"}
+        </div>
+      </div>
     </div>
   )
 
