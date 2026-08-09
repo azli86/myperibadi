@@ -266,8 +266,8 @@ export default function TxnEditSheet({
                     (() => {
                       const cat = categories.find((c) => String(c.id) === editForm.category_id)
                       return (
-                        <span className={rowIcon}>
-                          <CategoryIconGlyph iconName={cat?.icon_name} categoryName={cat?.name || ""} kind="expense" size={16} />
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden">
+                          <CategoryIconGlyph iconName={cat?.icon_name} categoryName={cat?.name || ""} kind="expense" size={20} />
                         </span>
                       )
                     })()}
