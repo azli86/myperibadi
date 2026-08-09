@@ -1,13 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { WifiOff, RefreshCw, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
 export default function OfflinePage() {
   const [isOnline, setIsOnline] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     setIsOnline(navigator.onLine)
     const goOnline = () => setIsOnline(true)
     const goOffline = () => setIsOnline(false)
@@ -19,8 +22,8 @@ export default function OfflinePage() {
     }
   }, [])
 
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-auto p-6 bg-[var(--page-bg)] relative">
+  const content = (
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center overflow-auto p-6 bg-[var(--page-bg)] relative">
       {/* Glow blobs — subtle, theme-aware */}
       <div className="absolute top-[-20%] left-[-10%] w-[48%] h-[48%] blur-[120px] rounded-full pointer-events-none bg-amber-500/10" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[48%] h-[48%] blur-[120px] rounded-full pointer-events-none bg-orange-500/10" />
@@ -74,4 +77,6 @@ export default function OfflinePage() {
       </div>
     </div>
   )
+
+  return mounted ? createPortal(content, document.body) : null
 }

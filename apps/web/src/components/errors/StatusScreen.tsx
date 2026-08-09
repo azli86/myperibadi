@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useState } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
 import { AlertTriangle, ArrowLeft, Home, RefreshCw, SearchX } from "lucide-react"
 import HistoryBackButton from "@/components/navigation/HistoryBackButton"
@@ -33,9 +35,12 @@ export default function StatusScreen({
   tone = "neutral",
 }: StatusScreenProps) {
   const isDanger = tone === "danger"
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  if (!mounted) return null
 
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-auto p-6 bg-[var(--page-bg)] relative">
+  const screen = (
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center overflow-auto p-6 bg-[var(--page-bg)] relative">
       {/* Glow blobs — subtle, theme-aware */}
       <div className={cn(
         "absolute top-[-20%] left-[-10%] w-[48%] h-[48%] blur-[120px] rounded-full pointer-events-none",
@@ -120,4 +125,6 @@ export default function StatusScreen({
       </div>
     </div>
   )
+
+  return createPortal(screen, document.body)
 }
