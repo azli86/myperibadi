@@ -558,7 +558,7 @@ export default function EventPage() {
                     <label className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
                       {tr("Bajet Acara", "Event Budget")}
                     </label>
-                    <div className="flex w-full max-w-[17rem] items-baseline justify-center gap-1.5">
+                    <div className="flex w-full max-w-[17rem] items-baseline justify-center gap-1">
                       <span className="shrink-0 text-[1.6rem] font-black leading-tight text-[var(--muted)]">{form.currency || "RM"}</span>
                       <input
                         inputMode="decimal"
@@ -566,7 +566,7 @@ export default function EventPage() {
                         onChange={(e) => setForm((prev) => ({ ...prev, budget: e.target.value }))}
                         placeholder="0.00"
                         style={{ fontSize: "2.5rem", fontWeight: 900 }}
-                        className="min-w-0 flex-1 bg-transparent text-center leading-tight text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
+                        className="w-auto min-w-[3ch] flex-none bg-transparent text-center leading-tight text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
                       />
                     </div>
                     <button
