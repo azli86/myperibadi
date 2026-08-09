@@ -565,7 +565,8 @@ export default function EventPage() {
                         value={form.budget}
                         onChange={(e) => setForm((prev) => ({ ...prev, budget: e.target.value }))}
                         placeholder="0.00"
-                        className="min-w-0 flex-1 bg-transparent text-center text-[2.5rem!important] font-black leading-tight text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
+                        style={{ fontSize: "2.5rem", fontWeight: 900 }}
+                        className="min-w-0 flex-1 bg-transparent text-center leading-tight text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
                       />
                     </div>
                     <button
