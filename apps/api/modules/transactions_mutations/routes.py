@@ -502,6 +502,60 @@ async def create_transaction_route(
         except Exception:
             await db.rollback()
 
+    # Loan auto-payment: expense recorded in a loan's linked category.
+    if txn_type == "expense" and db_txn.bnpl_id is None and resolved_category_id:
+        loan = await db.scalar(
+            select(models.Loan).where(
+                models.Loan.user_id == current_user.id,
+                models.Loan.category_id == int(resolved_category_id),
+                models.Loan.status == "active",
+            ).limit(1)
+        )
+        if loan:
+            try:
+                remaining = float(loan.outstanding_amount or 0)
+                applied = min(float(resolved_amount or 0), remaining)
+                if applied > 0:
+                    loan.outstanding_amount = round(remaining - applied, 2)
+                    loan.updated_at = datetime.utcnow()
+                    if float(loan.outstanding_amount or 0) <= 0:
+                        loan.status = "settled"
+                        loan.outstanding_amount = 0.0
+                    db.add(
+                        models.LoanPayment(
+                            user_id=current_user.id,
+                            household_id=loan.household_id,
+                            loan_id=loan.id,
+                            wallet_id=db_txn.wallet_id,
+                            transaction_id=db_txn.id,
+                            amount=applied,
+                            payment_date=txn_date,
+                            source_channel="web",
+                        )
+                    )
+                await db.commit()
+            except Exception:
+                await db.rollback()
+
+    # Subscription auto-link: expense recorded in a subscription's linked category.
+    if txn_type == "expense" and resolved_category_id and db_txn.subscription_id is None:
+        sub = await db.scalar(
+            select(models.Subscription).where(
+                models.Subscription.user_id == current_user.id,
+                models.Subscription.category_id == int(resolved_category_id),
+                models.Subscription.status == "active",
+            ).limit(1)
+        )
+        if sub:
+            try:
+                db_txn.subscription_id = sub.id
+                sub.last_payment_date = txn_date
+                sub.updated_at = datetime.utcnow()
+                await db.commit()
+                await db.refresh(db_txn)
+            except Exception:
+                await db.rollback()
+
     return db_txn
 
 
