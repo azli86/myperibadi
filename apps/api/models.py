@@ -224,6 +224,13 @@ class CategoryKeyword(Base):
 
     category: Mapped["Category"] = relationship(back_populates="keywords")
 
+class CategoryLayout(Base):
+    """UI-only category arrangement (order + parent nesting) stored as JSON per household."""
+    __tablename__ = "category_layout"
+    household_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    data: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 class Transaction(Base):
     __tablename__ = "transactions"
     __table_args__ = (

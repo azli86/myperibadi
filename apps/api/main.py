@@ -85,6 +85,8 @@ from modules.categories import (
     delete_keyword_route as _module_delete_keyword_route,
     update_category_route as _module_update_category_route,
     update_keyword_route as _module_update_keyword_route,
+    get_category_layout_route as _module_get_category_layout_route,
+    put_category_layout_route as _module_put_category_layout_route,
 )
 from modules.budgets import (
     get_budgets_route as _module_get_budgets_route,
@@ -10207,6 +10209,23 @@ async def get_categories(db: AsyncSession = Depends(database.get_db), current_us
         ensure_current_user_household=_ensure_current_user_household,
         is_primary_reporting_excluded_signature=_is_primary_reporting_excluded_signature,
         current_business_date_fn=current_business_date,
+    )
+
+@app.get("/categories/layout", response_model=schemas.CategoryLayoutIn)
+async def get_category_layout(db: AsyncSession = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
+    return await _module_get_category_layout_route(
+        db=db,
+        current_user=current_user,
+        ensure_current_user_household=_ensure_current_user_household,
+    )
+
+@app.put("/categories/layout", response_model=dict)
+async def put_category_layout(cat_layout: schemas.CategoryLayoutIn, db: AsyncSession = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
+    return await _module_put_category_layout_route(
+        db=db,
+        current_user=current_user,
+        ensure_current_user_household=_ensure_current_user_household,
+        payload=cat_layout,
     )
 
 @app.get("/categories/{cat_id}/keywords", response_model=List[schemas.KeywordResponse])

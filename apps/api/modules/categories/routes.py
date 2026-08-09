@@ -315,3 +315,49 @@ async def update_keyword_route(
     )
     await db.commit()
     return {"message": "Updated"}
+
+async def get_category_layout_route(
+    *,
+    db: AsyncSession,
+    current_user: models.User,
+    ensure_current_user_household: Callable[..., Awaitable[int]],
+    **_: object,
+) -> dict[str, object]:
+    household_id = await ensure_current_user_household(db, current_user)
+    row = (
+        await db.execute(
+            select(models.CategoryLayout.data).where(
+                models.CategoryLayout.household_id == household_id
+            )
+        )
+    ).scalar_one_or_none()
+    return {"data": row or "{}"}
+
+
+async def put_category_layout_route(
+    *,
+    db: AsyncSession,
+    current_user: models.User,
+    ensure_current_user_household: Callable[..., Awaitable[int]],
+    payload: schemas.CategoryLayoutIn,
+    **_: object,
+) -> dict[str, str]:
+    household_id = await ensure_current_user_household(db, current_user)
+    existing = (
+        await db.execute(
+            select(models.CategoryLayout.household_id).where(
+                models.CategoryLayout.household_id == household_id
+            )
+        )
+    ).scalar_one_or_none()
+    data = payload.data if payload.data else "{}"
+    if existing is None:
+        db.add(models.CategoryLayout(household_id=household_id, data=data))
+    else:
+        await db.execute(
+            update(models.CategoryLayout)
+            .where(models.CategoryLayout.household_id == household_id)
+            .values(data=data)
+        )
+    await db.commit()
+    return {"message": "Saved"}

@@ -496,6 +496,58 @@ export default function CategoriesPage() {
     setMounted(true)
   }, [])
 
+  // Load UI-only arrangement (order + parent nesting) from backend.
+  useEffect(() => {
+    if (!sessionId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const token = getAccessToken()
+        const headers: HeadersInit =
+          token && token !== "cookie" ? { Authorization: `Bearer ${token}` } : {}
+        const res = await fetch("/api/categories/layout", {
+          credentials: "include",
+          headers,
+          cache: "no-store",
+        })
+        if (res.ok) {
+          const json = await res.json()
+          const data = (json && typeof json.data === "string" && JSON.parse(json.data)) || {}
+          if (!cancelled) {
+            if (Array.isArray(data.order) && data.order.length) setOrder(data.order)
+            if (data.parentMap) setParentMap(data.parentMap)
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId])
+
+  // Persist arrangement to backend (debounced).
+  useEffect(() => {
+    if (!sessionId || (order === null && Object.keys(parentMap).length === 0)) return
+    const t = setTimeout(() => {
+      const token = getAccessToken()
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+        ...(token && token !== "cookie" ? { Authorization: `Bearer ${token}` } : {}),
+      }
+      void fetch("/api/categories/layout", {
+        method: "PUT",
+        credentials: "include",
+        headers,
+        body: JSON.stringify({ data: JSON.stringify({ order, parentMap }) }),
+      })
+    }, 600)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order, parentMap, sessionId])
+
   useEffect(() => {
     fetchCategories()
   }, [])

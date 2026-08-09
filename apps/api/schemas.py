@@ -442,6 +442,10 @@ class CategoryResponse(CategoryBase):
     status: str = "active"
     is_internal: bool = False
     system_code: Optional[str] = None
+
+
+class CategoryLayoutIn(BaseModel):
+    data: Optional[str] = None
     
     class Config:
         from_attributes = True
