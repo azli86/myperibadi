@@ -8,6 +8,7 @@ import {
   Search,
   Edit2,
   Trash2,
+  Pencil,
   X,
   Check,
   FolderTree,
@@ -320,6 +321,11 @@ export default function CategoriesPage() {
   const [editCatIconName, setEditCatIconName] = useState<string>("🏷️")
   const [activeKindTab, setActiveKindTab] = useState<"expense" | "income">("expense")
 
+  // Group-name modal
+  const [groupModalOpen, setGroupModalOpen] = useState(false)
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
+  const [groupName, setGroupName] = useState("")
+
   // UI-only drag reorder + custom-named groups (persisted to backend)
   type Group = { id: string; name: string; members: number[] }
   const [groups, setGroups] = useState<Group[]>([])
@@ -567,6 +573,11 @@ export default function CategoriesPage() {
     id: "categories-sheet",
     isOpen: Boolean(modal),
     onClose: closeModal,
+  })
+  const { requestClose: requestGroupClose } = useOverlayBackClose({
+    id: "group-name-sheet",
+    isOpen: groupModalOpen,
+    onClose: () => setGroupModalOpen(false),
   })
   const sheetSwipe = useSwipeDownToClose(requestModalClose)
 
@@ -1173,13 +1184,27 @@ export default function CategoriesPage() {
     })
   }
 
-  const createGroup = () => {
-    const name = window.prompt(lang === "EN" ? "Group name:" : "Nama kumpulan:")
-    if (!name || !name.trim()) return
-    setGroups((prev) => [
-      ...prev,
-      { id: `g${Date.now()}`, name: name.trim(), members: [] },
-    ])
+  const openCreateGroup = () => {
+    setEditingGroupId(null)
+    setGroupName("")
+    setGroupModalOpen(true)
+  }
+
+  const openRenameGroup = (g: Group) => {
+    setEditingGroupId(g.id)
+    setGroupName(g.name)
+    setGroupModalOpen(true)
+  }
+
+  const saveGroup = () => {
+    const name = groupName.trim()
+    if (!name) return
+    if (editingGroupId) {
+      setGroups((prev) => prev.map((g) => (g.id === editingGroupId ? { ...g, name } : g)))
+    } else {
+      setGroups((prev) => [...prev, { id: `g${Date.now()}`, name, members: [] }])
+    }
+    setGroupModalOpen(false)
   }
 
   const renderStandaloneCard = (id: number, c: Category) => {
@@ -1349,6 +1374,14 @@ export default function CategoriesPage() {
           <span className="flex shrink-0 items-center gap-0.5">
             <button
               type="button"
+              onClick={() => openRenameGroup(g)}
+              aria-label={lang === "EN" ? "Rename group" : "Tukar nama kumpulan"}
+              className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+            >
+              <Pencil size={13} />
+            </button>
+            <button
+              type="button"
               onClick={() => moveGroup(g.id, -1)}
               aria-label={lang === "EN" ? "Move group up" : "Naik"}
               className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
@@ -1408,7 +1441,7 @@ export default function CategoriesPage() {
       </p>
       <button
         type="button"
-        onClick={createGroup}
+        onClick={openCreateGroup}
         className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-4 py-2.5 text-[0.625rem] font-black uppercase tracking-[0.14em] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--text)]"
       >
         <Plus size={14} />
@@ -1842,6 +1875,67 @@ export default function CategoriesPage() {
                       </div>
                     </>
                   )}
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+
+      {mounted && groupModalOpen
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-50 flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-transparent p-0 md:items-center"
+              onClick={() => setGroupModalOpen(false)}
+              onTouchMove={(e) => e.preventDefault()}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{ transform: "translateZ(0)" }}
+                data-prevent-pull-refresh="true"
+                className="app-sheet-panel app-sheet-panel--lg max-h-[90dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] will-change-transform md:max-w-md md:max-h-[85vh]"
+              >
+                <AppSheetHeader
+                  title={
+                    editingGroupId
+                      ? lang === "EN"
+                        ? "Rename Group"
+                        : "Tukar Nama Kumpulan"
+                      : lang === "EN"
+                        ? "Create Group"
+                        : "Buat Kumpulan"
+                  }
+                  onClose={requestGroupClose}
+                />
+                <div className="px-3 py-3 pb-4 md:px-6 md:py-6">
+                  <label className="mb-1.5 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)] opacity-70">
+                    {lang === "EN" ? "Group Name" : "Nama Kumpulan"}
+                  </label>
+                  <input
+                    value={groupName}
+                    onChange={(e) => setGroupName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") saveGroup()
+                    }}
+                    autoFocus
+                    placeholder={lang === "EN" ? "e.g. Bills & Utilities" : "cth. Bil & Utiliti"}
+                    className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-base font-semibold text-[var(--text)] focus:outline-none focus:bg-[var(--surface-tint-strong)]"
+                  />
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setGroupModalOpen(false)}
+                      className="h-12 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-sm font-bold text-[var(--text)] transition active:scale-[0.98]"
+                    >
+                      {lang === "EN" ? "Cancel" : "Batal"}
+                    </button>
+                    <button
+                      onClick={saveGroup}
+                      disabled={!groupName.trim()}
+                      className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--text)] text-sm font-black text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-50"
+                    >
+                      {lang === "EN" ? (editingGroupId ? "Save" : "Create") : editingGroupId ? "Simpan" : "Cipta"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>,
