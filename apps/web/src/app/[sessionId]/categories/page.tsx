@@ -1147,6 +1147,64 @@ export default function CategoriesPage() {
     const isDragging = dragId === id
     const isDropTarget = dropTargetId === id && !isDragging
     const hasChildren = (childrenById.get(id) || []).length > 0
+
+    // Parent with children -> render as a group header (title row).
+    if (depth === 0 && hasChildren) {
+      const childCount = childrenById.get(id)!.length
+      return (
+        <div
+          key={id}
+          style={{ marginTop: 2 }}
+          className={cn(
+            "flex items-center gap-2 rounded-xl border border-[var(--border)]/70 bg-[var(--surface-tint)] px-3 py-2",
+            isDragging && "opacity-40",
+          )}
+        >
+          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[var(--border)] text-[var(--text)]">
+            <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind={c.kind} size={15} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[0.72rem] font-black uppercase tracking-[0.08em] text-[var(--text)]">{c.name}</p>
+            <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+              {lang === "EN" ? `${childCount} sub-categor${childCount > 1 ? "ies" : "y"}` : `${childCount} sub-kategori`}
+            </p>
+          </div>
+          <span className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                moveItem(id, -1)
+              }}
+              aria-label={lang === "EN" ? "Move group up" : "Naik"}
+              className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+            >
+              <MoveUp size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                moveItem(id, 1)
+              }}
+              aria-label={lang === "EN" ? "Move group down" : "Turun"}
+              className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+            >
+              <MoveDown size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={() => openCategoryDetail(id)}
+              aria-label={lang === "EN" ? "Open category" : "Buka"}
+              className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+            >
+              <ChevronRight size={15} />
+            </button>
+          </span>
+        </div>
+      )
+    }
+
     return (
       <div
         key={id}
