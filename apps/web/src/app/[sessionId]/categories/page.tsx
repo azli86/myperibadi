@@ -18,6 +18,8 @@ import {
   TrendingUp,
   ChevronRight,
   GripVertical,
+  MoveUp,
+  MoveDown,
   Upload,
 } from "lucide-react"
 import { useParams } from "next/navigation"
@@ -1075,6 +1077,19 @@ export default function CategoriesPage() {
     </button>
   )
 
+  const moveItem = (id: number, dir: -1 | 1) => {
+    setOrder((prev) => {
+      const base = prev || renderIds
+      const arr = [...base]
+      const idx = arr.indexOf(id)
+      if (idx < 0) return arr
+      const target = idx + dir
+      if (target < 0 || target >= arr.length) return arr
+      ;[arr[idx], arr[target]] = [arr[target], arr[idx]]
+      return arr
+    })
+  }
+
   const renderDragCard = (entry: { id: number; depth: number; c: Category }) => {
     const { id, depth, c } = entry
     const isDragging = dragId === id
@@ -1169,6 +1184,30 @@ export default function CategoriesPage() {
           ) : null}
           <ChevronRight size={15} className="shrink-0 text-[var(--muted)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
         </button>
+        <span className="flex shrink-0 flex-col justify-center gap-0.5 pr-1.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              moveItem(id, -1)
+            }}
+            aria-label={lang === "EN" ? "Move up" : "Naik"}
+            className="flex h-5 w-5 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+          >
+            <MoveUp size={13} />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              moveItem(id, 1)
+            }}
+            aria-label={lang === "EN" ? "Move down" : "Turun"}
+            className="flex h-5 w-5 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+          >
+            <MoveDown size={13} />
+          </button>
+        </span>
       </div>
     )
   }
@@ -1187,8 +1226,8 @@ export default function CategoriesPage() {
       <p className="mb-2 flex items-center gap-1.5 text-[0.6rem] font-semibold text-[var(--muted)]">
         <GripVertical size={12} />
         {lang === "EN"
-          ? "Drag the handle to reorder. Drop a category onto another to make it a sub-category."
-          : "Seret handle untuk susun. Letak kategori atas kategori lain untuk jadikan sub-kategori."}
+          ? "Drag the handle to reorder. Drop a category onto another to make it a sub-category. Use the arrows to move up/down."
+          : "Seret handle untuk susun. Letak kategori atas kategori lain untuk jadikan sub-kategori. Guna anak panah untuk naik/turun."}
       </p>
       <div className="space-y-2">
         {orderedRender.map((entry, idx) => {
