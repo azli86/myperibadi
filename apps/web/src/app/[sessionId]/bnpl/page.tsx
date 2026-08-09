@@ -571,7 +571,7 @@ export default function BnplPage() {
       {mounted && showSheet &&
         createPortal(
           <div
-            className="fixed inset-0 z-50 flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-transparent p-0 md:items-center"
+            className="fixed inset-0 z-50 flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-transparent p-0 md:items-stretch md:justify-end"
             onClick={requestSheetClose}
             onTouchMove={(event) => event.preventDefault()}
           >
@@ -581,7 +581,7 @@ export default function BnplPage() {
               data-prevent-pull-refresh="true"
               style={{ transform: "translateZ(0)" }}
               onClick={(event) => event.stopPropagation()}
-              className="app-sheet-panel app-sheet-panel--lg max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] will-change-transform md:max-h-[85vh] md:max-w-md"
+              className="app-sheet-panel app-sheet-panel--lg max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] will-change-transform md:h-[100dvh] md:max-h-none md:max-w-[420px] md:rounded-none md:border-y-0 md:border-l md:border-r-0"
             >
               <AppSheetHeader
                 title={editing ? tr("Edit BNPL", "Edit BNPL") : tr("Tambah BNPL", "Add BNPL")}
