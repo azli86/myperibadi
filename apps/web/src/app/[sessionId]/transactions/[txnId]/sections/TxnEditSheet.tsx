@@ -275,14 +275,30 @@ export default function TxnEditSheet({
 
             <div className="relative">
               <button type="button" aria-label={langT.walletLabel} onClick={toggleWallet} className={pickerBtn}>
-                <span className="min-w-0 flex-1">
-                  <span className={cn("block", pickerLabel)}>{langT.walletLabel}</span>
-                  <span className={cn("block", pickerValue(Boolean(editForm.wallet_id)))}>
-                    {editForm.wallet_id
-                      ? wallets.find((w) => String(w.id) === editForm.wallet_id)?.label ||
-                        wallets.find((w) => String(w.id) === editForm.wallet_id)?.name ||
-                        langT.walletLabel
-                      : langT.walletLabel}
+                <span className="flex min-w-0 flex-1 items-center gap-3">
+                  {editForm.wallet_id &&
+                    (() => {
+                      const w = wallets.find((x) => String(x.id) === editForm.wallet_id)
+                      return (
+                        <span className={rowIcon}>
+                          {w?.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={w.image_url} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <Wallet size={16} />
+                          )}
+                        </span>
+                      )
+                    })()}
+                  <span className="min-w-0">
+                    <span className={cn("block", pickerLabel)}>{langT.walletLabel}</span>
+                    <span className={cn("block", pickerValue(Boolean(editForm.wallet_id)))}>
+                      {editForm.wallet_id
+                        ? wallets.find((w) => String(w.id) === editForm.wallet_id)?.label ||
+                          wallets.find((w) => String(w.id) === editForm.wallet_id)?.name ||
+                          langT.walletLabel
+                        : langT.walletLabel}
+                    </span>
                   </span>
                 </span>
                 <ChevronDown size={20} className={cn("shrink-0 text-[var(--muted)] transition-transform", showWalletPicker && "rotate-180")} />
