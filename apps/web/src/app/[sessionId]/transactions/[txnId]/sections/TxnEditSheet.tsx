@@ -2,6 +2,7 @@
 
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useState, useRef } from "react"
+import { createPortal } from "react-dom"
 import { X, Check, ChevronDown, Plus, MinusCircle, Wallet, HandCoins, Repeat, Tag, Upload, XCircle, TrendingDown, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CategoryIconGlyph } from "@/lib/category-icons"
@@ -163,7 +164,7 @@ export default function TxnEditSheet({
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <>
       <div
         className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center"
@@ -174,7 +175,7 @@ export default function TxnEditSheet({
           onClick={(e) => e.stopPropagation()}
           data-swipe-sheet
           {...swipe}
-          className="w-full max-h-[82dvh] overflow-y-auto overscroll-contain touch-pan-y rounded-t-[36px] border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] shadow-2xl sm:max-h-[85vh] sm:max-w-[30rem] sm:rounded-[16px]"
+          className="app-sheet-panel app-sheet-panel--lg w-full max-h-[82dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[30rem]"
         >
           <AppSheetHeader
             title={isBm ? "Edit Transaksi" : "Edit Transaction"}
@@ -191,7 +192,6 @@ export default function TxnEditSheet({
                   : (isBm ? "Kemas Kini" : "Update")}
               </button>
             }
-            className="mb-3"
           />
 
           {saveSuccess && (
@@ -673,6 +673,7 @@ export default function TxnEditSheet({
           </div>
         </div>
       )}
-    </>
+    </>,
+    document.body,
   )
 }

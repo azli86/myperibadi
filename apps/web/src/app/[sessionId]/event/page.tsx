@@ -5,10 +5,11 @@ import {
   ArrowLeft,
   Calendar,
   CalendarClock,
+  ChevronDown,
+  ChevronRight,
   Loader2,
   Plus,
   X,
-  Pencil,
   Trash2,
   Upload,
   Wallet as WalletIcon,
@@ -58,6 +59,7 @@ type WalletItem = {
   id: number
   name: string
   label?: string | null
+  image_url?: string | null
   currency: string
 }
 
@@ -117,6 +119,7 @@ export default function EventPage() {
   const [showCreateSheet, setShowCreateSheet] = useState(false)
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null)
   const [form, setForm] = useState<EventFormState>(defaultForm)
+  const [walletOpen, setWalletOpen] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const showDataSkeleton = useDelayedSkeleton(loading && !hasLoaded)
@@ -362,9 +365,18 @@ export default function EventPage() {
     return (
       <div
         key={ev.id}
+        onClick={() => openEditSheet(ev)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            openEditSheet(ev)
+          }
+        }}
         className={cn(
-          "group w-full overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] px-3.5 py-3 transition",
-          compact ? "hover:border-[color-mix(in_srgb,var(--accent2)_30%,var(--border))] md:px-4 md:py-3.5" : "active:scale-[0.985]",
+          "group w-full overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] px-3.5 py-3 text-left transition",
+          compact ? "hover:border-[color-mix(in_srgb,var(--accent2)_30%,var(--border))] active:scale-[0.99] md:px-4 md:py-3.5" : "active:scale-[0.985]",
         )}
       >
         <div className="flex items-center gap-2.5 md:gap-4">
@@ -402,12 +414,18 @@ export default function EventPage() {
           </div>
 
           <div className="flex shrink-0 items-center gap-1">
-            <button type="button" onClick={() => openEditSheet(ev)} className="rounded-lg p-2 text-[var(--muted)] transition hover:bg-[var(--surface-tint)] hover:text-[var(--text)]" aria-label={tr("Edit", "Edit")}>
-              <Pencil size={15} />
-            </button>
-            <button type="button" onClick={() => handleDeleteEvent(ev)} className="rounded-lg p-2 text-[var(--muted)] transition hover:bg-[var(--surface-tint)] hover:text-red-500" aria-label={tr("Padam", "Delete")}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleDeleteEvent(ev)
+              }}
+              className="rounded-lg p-2 text-[var(--muted)] transition hover:bg-[var(--surface-tint)] hover:text-red-500"
+              aria-label={tr("Padam", "Delete")}
+            >
               <Trash2 size={15} />
             </button>
+            <ChevronRight size={16} className="text-[var(--muted)]/50" />
           </div>
         </div>
       </div>
@@ -650,18 +668,84 @@ export default function EventPage() {
                       <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
                         {tr("Wallet", "Wallet")}
                       </label>
-                      <select
-                        value={form.wallet_id}
-                        onChange={(e) => setForm((prev) => ({ ...prev, wallet_id: e.target.value }))}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none"
-                      >
-                        <option value="">{tr("Tiada wallet", "No wallet")}</option>
-                        {wallets.map((w) => (
-                          <option key={w.id} value={String(w.id)}>
-                            {w.name} · {w.currency}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setWalletOpen((o) => !o)}
+                          className={cn(
+                            "flex w-full items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] transition",
+                            walletOpen && "border-[var(--border-strong)]",
+                          )}
+                        >
+                          {form.wallet_id ? (
+                            (() => {
+                              const w = wallets.find((x) => x.id === Number(form.wallet_id))
+                              return (
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
+                                    {w?.image_url ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img src={w.image_url} alt="" className="h-full w-full object-cover" />
+                                    ) : (
+                                      <WalletIcon size={13} />
+                                    )}
+                                  </span>
+                                  <span className="truncate font-medium">{w?.name || tr("Pilih wallet", "Select wallet")}</span>
+                                </span>
+                              )
+                            })()
+                          ) : (
+                            <span className="flex items-center gap-2 text-[var(--muted)]">
+                              <WalletIcon size={15} />
+                              {tr("Pilih wallet", "Select wallet")}
+                            </span>
+                          )}
+                          <ChevronDown size={16} className={cn("shrink-0 text-[var(--muted)] transition-transform", walletOpen && "rotate-180")} />
+                        </button>
+                        {walletOpen ? (
+                          <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-60 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-xl shadow-black/20">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setForm((prev) => ({ ...prev, wallet_id: "", currency: prev.currency }))
+                                setWalletOpen(false)
+                              }}
+                              className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-sm text-[var(--muted)] transition hover:bg-[var(--surface-tint)]"
+                            >
+                              <WalletIcon size={15} />
+                              {tr("Tiada wallet", "No wallet")}
+                            </button>
+                            {wallets.map((w) => {
+                              const selected = form.wallet_id === String(w.id)
+                              return (
+                                <button
+                                  key={w.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setForm((prev) => ({ ...prev, wallet_id: String(w.id), currency: w.currency || prev.currency }))
+                                    setWalletOpen(false)
+                                  }}
+                                  className={cn(
+                                    "flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition",
+                                    selected ? "bg-[var(--surface-tint)]" : "hover:bg-[var(--surface-tint)]",
+                                  )}
+                                >
+                                  <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
+                                    {w.image_url ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img src={w.image_url} alt="" className="h-full w-full object-cover" />
+                                    ) : (
+                                      <WalletIcon size={14} />
+                                    )}
+                                  </span>
+                                  <span className="truncate text-sm font-medium text-[var(--text)]">{w.name}</span>
+                                  {selected ? <span className="ml-auto text-[var(--accent2)]">✓</span> : null}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
 

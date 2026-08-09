@@ -1129,6 +1129,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               icon: Shield,
             },
             {
+              name: lang === "BM" ? "Acara Saya" : "My Events",
+              subtitle:
+                lang === "BM"
+                  ? "Jejak acara dengan bajet, tarikh dan wallet"
+                  : "Track events with a budget, date and wallet",
+              href: `/${sessionId}/event`,
+              icon: CalendarDays,
+            },
+            {
               name: t.debt,
               subtitle:
                 lang === "BM"
