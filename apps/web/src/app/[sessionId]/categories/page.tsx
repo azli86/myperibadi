@@ -1412,7 +1412,7 @@ export default function CategoriesPage() {
         className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-4 py-2.5 text-[0.625rem] font-black uppercase tracking-[0.14em] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--text)]"
       >
         <Plus size={14} />
-        {lang === "EN" ? "Buat Group" : "Create Group"}
+        {lang === "EN" ? "Create Group" : "Buat Group"}
       </button>
       <div className="space-y-2">
         {orderedGroups.map((g) => renderGroupCard(g))}
