@@ -105,7 +105,7 @@ export default function BnplPage() {
   const { lang } = useLang()
   const isBm = lang === "BM"
   const tr = (bm: string, en: string) => (isBm ? bm : en)
-  const { showAlert, alertModal } = usePageAlert(lang)
+  const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
 
   const [items, setItems] = useState<BnplItem[]>([])
   const [mounted, setMounted] = useState(false)
@@ -281,8 +281,16 @@ export default function BnplPage() {
     }
   }
 
-  const handleDelete = async (item: BnplItem) => {
-    if (!window.confirm(tr(`Padam ${item.name}?`, `Delete ${item.name}?`))) return
+  const handleDelete = (item: BnplItem) => {
+    showConfirm(
+      tr("Padam BNPL", "Delete BNPL"),
+      tr(`Padam ${item.name}? Tindakan ini tidak boleh dibatalkan.`, `Delete ${item.name}? This cannot be undone.`),
+      () => void doDelete(item),
+      "warning",
+    )
+  }
+
+  const doDelete = async (item: BnplItem) => {
     setDeletingId(item.id)
     try {
       const token = getAccessToken()
