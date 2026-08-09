@@ -71,7 +71,7 @@ export function AppSheetHeader({
               {eyebrow}
             </p>
           )}
-          <h3 className="truncate text-xl font-black text-[var(--text)]">{title}</h3>
+          <h3 className="mx-auto w-fit border-b-2 border-[var(--btn-primary-bg)] pb-1.5 text-xl font-black tracking-wide text-[var(--text)]">{title}</h3>
           {subtitle && (
             <p className="mt-0.5 text-xs leading-snug text-[var(--muted)]">{subtitle}</p>
           )}
