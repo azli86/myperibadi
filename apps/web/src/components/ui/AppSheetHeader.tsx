@@ -71,9 +71,8 @@ export function AppSheetHeader({
               {eyebrow}
             </p>
           )}
-          <div className="flex flex-col items-center gap-1.5">
-            <h3 className="text-xl font-black tracking-wide text-[var(--text)]">{title}</h3>
-            <span className="h-[3px] w-12 rounded-full bg-[var(--accent)]" />
+          <div className="flex flex-col items-center">
+            <h3 className="border-b-2 border-current pb-1 text-xl font-black tracking-wide text-[var(--text)]">{title}</h3>
           </div>
           {subtitle && (
             <p className="mt-0.5 text-xs leading-snug text-[var(--muted)]">{subtitle}</p>
