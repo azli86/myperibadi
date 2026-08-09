@@ -320,11 +320,12 @@ export default function CategoriesPage() {
   const [editCatIconName, setEditCatIconName] = useState<string>("🏷️")
   const [activeKindTab, setActiveKindTab] = useState<"expense" | "income">("expense")
 
-  // UI-only drag reorder + sub-category grouping (ephemeral; resets on reload)
-  const [parentMap, setParentMap] = useState<Record<number, number>>({})
+  // UI-only drag reorder + custom-named groups (persisted to backend)
+  type Group = { id: string; name: string; members: number[] }
+  const [groups, setGroups] = useState<Group[]>([])
   const [order, setOrder] = useState<number[] | null>(null)
   const [dragId, setDragId] = useState<number | null>(null)
-  const [dropTargetId, setDropTargetId] = useState<number | null>(null)
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null)
 
   const [kwPhrase, setKwPhrase] = useState("")
   const [kwMatchType, setKwMatchType] = useState("contains")
@@ -362,44 +363,33 @@ export default function CategoriesPage() {
     return m
   }, [categories])
 
-  // top-level ids (no parent), ordered
-  const topLevelIds = renderIds.filter((id) => !parentMap[id])
-  // children keyed by parent
-  const childrenById = useMemo(() => {
-    const m = new Map<number, number[]>()
-    for (const [childId, parentId] of Object.entries(parentMap)) {
-      if (!activeTabIds.has(Number(childId))) continue
-      const arr = m.get(parentId) || []
-      arr.push(Number(childId))
-      m.set(parentId, arr)
-    }
-    for (const arr of m.values()) {
-      arr.sort((a, b) => {
-        const ia = renderIds.indexOf(a)
-        const ib = renderIds.indexOf(b)
-        return ia - ib
-      })
-    }
-    return m
-  }, [parentMap, activeTabIds, renderIds])
+  // Members of any group (for this tab only)
+  const memberIds = useMemo(() => {
+    const s = new Set<number>()
+    for (const g of groups) for (const m of g.members) if (activeTabIds.has(m)) s.add(m)
+    return s
+  }, [groups, activeTabIds])
 
-  // Flat ordered render list: top-level followed by their children (indented).
-  const orderedRender: { id: number; depth: number; c: Category }[] = []
-  for (const id of topLevelIds) {
-    const c = catById.get(id)
-    if (!c) continue
-    orderedRender.push({ id, depth: 0, c })
-    for (const childId of childrenById.get(id) || []) {
-      const cc = catById.get(childId)
-      if (cc) orderedRender.push({ id: childId, depth: 1, c: cc })
-    }
-  }
-  // any children whose parent isn't in this tab -> promote to top level in place
-  for (const id of renderIds) {
-    if (orderedRender.some((x) => x.id === id)) continue
-    const c = catById.get(id)
-    if (c) orderedRender.push({ id, depth: 0, c })
-  }
+  // Standalone (top-level) categories, ordered
+  const standaloneIds = renderIds.filter((id) => !memberIds.has(id))
+
+  // Groups visible in this tab (contain at least one member in this tab or any)
+  const visibleGroups = useMemo(
+    () => groups.filter((g) => g.members.some((m) => activeTabIds.has(m)) || g.members.length === 0),
+    [groups, activeTabIds],
+  )
+  const orderedGroups = visibleGroups
+
+  // member list for a group, ordered by renderIds
+  const orderedMembers = (g: Group): number[] =>
+    g.members
+      .filter((m) => activeTabIds.has(m))
+      .sort((a, b) => renderIds.indexOf(a) - renderIds.indexOf(b))
+
+  // All categories not in any group get standalone cards (plus groups as blocks).
+  const standaloneEntries: { id: number; c: Category }[] = standaloneIds
+    .map((id) => ({ id, c: catById.get(id) }))
+    .filter((e): e is { id: number; c: Category } => !!e.c)
 
   const stats = useMemo(() => {
     const active = categories.filter(c => c.status !== "archived")
@@ -515,7 +505,7 @@ export default function CategoriesPage() {
           const data = (json && typeof json.data === "string" && JSON.parse(json.data)) || {}
           if (!cancelled) {
             if (Array.isArray(data.order) && data.order.length) setOrder(data.order)
-            if (data.parentMap) setParentMap(data.parentMap)
+            if (Array.isArray(data.groups)) setGroups(data.groups)
           }
         }
       } catch {
@@ -530,7 +520,7 @@ export default function CategoriesPage() {
 
   // Persist arrangement to backend (debounced).
   useEffect(() => {
-    if (!sessionId || (order === null && Object.keys(parentMap).length === 0)) return
+    if (!sessionId || (order === null && groups.length === 0)) return
     const t = setTimeout(() => {
       const token = getAccessToken()
       const headers: HeadersInit = {
@@ -541,12 +531,12 @@ export default function CategoriesPage() {
         method: "PUT",
         credentials: "include",
         headers,
-        body: JSON.stringify({ data: JSON.stringify({ order, parentMap }) }),
+        body: JSON.stringify({ data: JSON.stringify({ order, groups }) }),
       })
     }, 600)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order, parentMap, sessionId])
+  }, [order, groups, sessionId])
 
   useEffect(() => {
     fetchCategories()
@@ -1142,72 +1132,62 @@ export default function CategoriesPage() {
     })
   }
 
-  const renderDragCard = (entry: { id: number; depth: number; c: Category }) => {
-    const { id, depth, c } = entry
+  const addToGroup = (groupId: string, catId: number) => {
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.id === groupId
+          ? { ...g, members: g.members.includes(catId) ? g.members : [...g.members, catId] }
+          : { ...g, members: g.members.filter((m) => m !== catId) },
+      ),
+    )
+  }
+
+  const removeFromGroup = (groupId: string, catId: number) => {
+    setGroups((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, members: g.members.filter((m) => m !== catId) } : g)),
+    )
+  }
+
+  const moveMember = (groupId: string, catId: number, dir: -1 | 1) => {
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id !== groupId) return g
+        const arr = [...g.members]
+        const i = arr.indexOf(catId)
+        const t = i + dir
+        if (i < 0 || t < 0 || t >= arr.length) return g
+        ;[arr[i], arr[t]] = [arr[t], arr[i]]
+        return { ...g, members: arr }
+      }),
+    )
+  }
+
+  const moveGroup = (groupId: string, dir: -1 | 1) => {
+    setGroups((prev) => {
+      const arr = [...prev]
+      const i = arr.findIndex((g) => g.id === groupId)
+      const t = i + dir
+      if (i < 0 || t < 0 || t >= arr.length) return arr
+      ;[arr[i], arr[t]] = [arr[t], arr[i]]
+      return arr
+    })
+  }
+
+  const createGroup = () => {
+    const name = window.prompt(lang === "EN" ? "Group name:" : "Nama kumpulan:")
+    if (!name || !name.trim()) return
+    setGroups((prev) => [
+      ...prev,
+      { id: `g${Date.now()}`, name: name.trim(), members: [] },
+    ])
+  }
+
+  const renderStandaloneCard = (id: number, c: Category) => {
     const isDragging = dragId === id
-    const isDropTarget = dropTargetId === id && !isDragging
-    const hasChildren = (childrenById.get(id) || []).length > 0
-
-    // Parent with children -> render as a group header (title row).
-    if (depth === 0 && hasChildren) {
-      const childCount = childrenById.get(id)!.length
-      return (
-        <div
-          key={id}
-          style={{ marginTop: 2 }}
-          className={cn(
-            "flex items-center gap-2 rounded-xl border border-[var(--border)]/70 bg-[var(--surface-tint)] px-3 py-2",
-            isDragging && "opacity-40",
-          )}
-        >
-          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[var(--border)] text-[var(--text)]">
-            <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind={c.kind} size={15} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[0.72rem] font-black uppercase tracking-[0.08em] text-[var(--text)]">{c.name}</p>
-            <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-              {lang === "EN" ? `${childCount} sub-categor${childCount > 1 ? "ies" : "y"}` : `${childCount} sub-kategori`}
-            </p>
-          </div>
-          <span className="flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                moveItem(id, -1)
-              }}
-              aria-label={lang === "EN" ? "Move group up" : "Naik"}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
-            >
-              <MoveUp size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                moveItem(id, 1)
-              }}
-              aria-label={lang === "EN" ? "Move group down" : "Turun"}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
-            >
-              <MoveDown size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={() => openCategoryDetail(id)}
-              aria-label={lang === "EN" ? "Open category" : "Buka"}
-              className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
-            >
-              <ChevronRight size={15} />
-            </button>
-          </span>
-        </div>
-      )
-    }
-
+    const isDropTarget = dropTargetId === String(id) && !isDragging
     return (
       <div
-        key={id}
+        key={`cat-${id}`}
         draggable
         onDragStart={(e) => {
           setDragId(id)
@@ -1226,42 +1206,28 @@ export default function CategoriesPage() {
           if (dragId === null || dragId === id) return
           e.preventDefault()
           e.dataTransfer.dropEffect = "move"
-          setDropTargetId(id)
+          setDropTargetId(String(id))
         }}
         onDragLeave={(e) => {
           if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTargetId(null)
         }}
         onDrop={(e) => {
           e.preventDefault()
-          if (dragId === null || dragId === id) {
-            setDragId(null)
-            setDropTargetId(null)
-            return
-          }
-          // Drop onto a category -> become its sub-category (no self-parenting / cycles).
-          const fromId = dragId
-          if (fromId !== id && !parentMap[id] && id !== parentMap[fromId]) {
-            setParentMap((prev) => ({ ...prev, [fromId]: id }))
-          }
           setDragId(null)
           setDropTargetId(null)
         }}
-        style={{ paddingLeft: depth * 1.25 + "rem", marginTop: depth === 1 ? 2 : 0 }}
         className={cn(
-          "flex items-stretch gap-2 rounded-[var(--card-radius-lg)] border transition",
-          depth === 1 ? "border-[var(--border)]/60 bg-[var(--surface-tint)]/40" : "border-[var(--border)] bg-[var(--card)]",
+          "flex items-stretch gap-2 rounded-[var(--card-radius-lg)] border border-[var(--border)] bg-[var(--card)] transition",
           isDragging && "opacity-40",
           isDropTarget && "border-[var(--accent2)] ring-2 ring-[var(--accent2)]/30",
         )}
       >
-        {/* drag handle */}
         <span
           aria-hidden
-          className="flex w-7 shrink-0 cursor-grab touch-none select-none items-center justify-center rounded-l-[var(--card-radius-lg)] text-[var(--muted)]/60 active:cursor-grabbing"
+          className="flex w-7 shrink-0 cursor-grab touch-none select-none items-center justify-center text-[var(--muted)]/60 active:cursor-grabbing"
         >
           <GripVertical size={16} />
         </span>
-
         <button
           type="button"
           onClick={() => openCategoryDetail(id)}
@@ -1279,34 +1245,8 @@ export default function CategoriesPage() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium leading-tight text-[var(--text)]">{c.name}</p>
-            {hasChildren && (
-              <p className="truncate text-[0.6rem] font-semibold text-[var(--muted)]">
-                {lang === "EN"
-                  ? `${childrenById.get(id)!.length} sub-categor${childrenById.get(id)!.length > 1 ? "ies" : "y"}`
-                  : `${childrenById.get(id)!.length} sub-kategori`}
-              </p>
-            )}
           </div>
-          {depth === 1 ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                setParentMap((prev) => {
-                  const next = { ...prev }
-                  delete next[id]
-                  return next
-                })
-              }}
-              title={lang === "EN" ? "Remove from sub-category" : "Buang dari sub-kategori"}
-              aria-label={lang === "EN" ? "Remove from sub-category" : "Buang dari sub-kategori"}
-              className="flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)] transition hover:text-rose-500"
-            >
-              <X size={10} />
-              {lang === "EN" ? "Sub" : "Sub"}
-            </button>
-          ) : null}
-          <ChevronRight size={15} className="shrink-0 text-[var(--muted)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
+          <ChevronRight size={15} className="shrink-0 text-[var(--muted)] opacity-50" />
         </button>
         <span className="flex shrink-0 flex-col justify-center gap-0.5 pr-1.5">
           <button
@@ -1336,6 +1276,120 @@ export default function CategoriesPage() {
     )
   }
 
+  const renderMemberCard = (g: Group, id: number, c: Category) => (
+    <div key={`mem-${id}`} className="flex items-stretch gap-2 rounded-xl border border-[var(--border)]/60 bg-[var(--card)]">
+      <button
+        type="button"
+        onClick={() => openCategoryDetail(id)}
+        className="flex min-w-0 flex-1 items-center gap-2.5 py-2 pl-2.5 pr-2 text-left active:scale-[0.99]"
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "h-2 w-2 shrink-0 rounded-full",
+            c.kind === "expense" ? "bg-rose-500" : c.kind === "income" ? "bg-emerald-500" : "bg-[var(--muted)]",
+          )}
+        />
+        <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[var(--border)] text-[var(--text)]">
+          <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind={c.kind} size={15} />
+        </div>
+        <p className="truncate text-sm font-medium leading-tight text-[var(--text)]">{c.name}</p>
+      </button>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          removeFromGroup(g.id, id)
+        }}
+        aria-label={lang === "EN" ? "Remove from group" : "Buang dari kumpulan"}
+        title={lang === "EN" ? "Remove from group" : "Buang dari kumpulan"}
+        className="flex h-6 w-6 shrink-0 items-center justify-center self-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-rose-500"
+      >
+        <X size={13} />
+      </button>
+    </div>
+  )
+
+  const renderGroupCard = (g: Group) => {
+    const members = orderedMembers(g).map((m) => catById.get(m)).filter((cc): cc is Category => !!cc)
+    const isDropTarget = dropTargetId === `g:${g.id}`
+    return (
+      <div
+        key={g.id}
+        onDragOver={(e) => {
+          if (dragId === null) return
+          e.preventDefault()
+          e.dataTransfer.dropEffect = "move"
+          setDropTargetId(`g:${g.id}`)
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTargetId(null)
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          if (dragId !== null) addToGroup(g.id, dragId)
+          setDragId(null)
+          setDropTargetId(null)
+        }}
+        className={cn(
+          "rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-2 transition",
+          isDropTarget && "border-[var(--accent2)] ring-2 ring-[var(--accent2)]/30",
+        )}
+      >
+        <div className="flex items-center gap-2 px-1 py-1">
+          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--text)]">
+            <FolderTree size={15} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[0.72rem] font-black uppercase tracking-[0.08em] text-[var(--text)]">{g.name}</p>
+            <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+              {members.length} {lang === "EN" ? "categories" : "kategori"}
+            </p>
+          </div>
+          <span className="flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => moveGroup(g.id, -1)}
+              aria-label={lang === "EN" ? "Move group up" : "Naik"}
+              className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+            >
+              <MoveUp size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={() => moveGroup(g.id, 1)}
+              aria-label={lang === "EN" ? "Move group down" : "Turun"}
+              className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+            >
+              <MoveDown size={13} />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm(lang === "EN" ? `Delete group "${g.name}"?` : `Padam kumpulan "${g.name}"?`)) {
+                  setGroups((prev) => prev.filter((x) => x.id !== g.id))
+                }
+              }}
+              aria-label={lang === "EN" ? "Delete group" : "Padam kumpulan"}
+              className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-rose-500"
+            >
+              <Trash2 size={13} />
+            </button>
+          </span>
+        </div>
+        {members.length > 0 ? (
+          <div className="mt-1 space-y-1.5">
+            {members.map((c) => renderMemberCard(g, c.id, c))}
+          </div>
+        ) : (
+          <p className="mt-1 rounded-xl border border-dashed border-[var(--border)] px-3 py-3 text-center text-[0.6rem] font-semibold text-[var(--muted)]">
+            {lang === "EN" ? "Drag categories here" : "Seret kategori ke sini"}
+          </p>
+        )}
+      </div>
+    )
+  }
+
   const listBody = showDataSkeleton ? (
     <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => (
@@ -1346,28 +1400,35 @@ export default function CategoriesPage() {
     emptyState
   ) : (
     <div>
-      {/* hint */}
       <p className="mb-2 flex items-center gap-1.5 text-[0.6rem] font-semibold text-[var(--muted)]">
         <GripVertical size={12} />
         {lang === "EN"
-          ? "Drag the handle to reorder. Drop a category onto another to make it a sub-category. Use the arrows to move up/down."
-          : "Seret handle untuk susun. Letak kategori atas kategori lain untuk jadikan sub-kategori. Guna anak panah untuk naik/turun."}
+          ? "Create a group, then drag categories into its card to organize."
+          : "Buat kumpulan, kemudian seret kategori masuk ke dalam kad untuk susun."}
       </p>
+      <button
+        type="button"
+        onClick={createGroup}
+        className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-4 py-2.5 text-[0.625rem] font-black uppercase tracking-[0.14em] text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--text)]"
+      >
+        <Plus size={14} />
+        {lang === "EN" ? "Buat Group" : "Create Group"}
+      </button>
       <div className="space-y-2">
-        {orderedRender.map((entry, idx) => {
-          const strip = dragId !== null && dragId !== entry.id ? (
+        {orderedGroups.map((g) => renderGroupCard(g))}
+        {standaloneEntries.map((e, idx) => {
+          const strip = dragId !== null && dragId !== e.id ? (
             <div
-              key={`strip-${entry.id}`}
-              onDragOver={(e) => {
+              key={`strip-${e.id}`}
+              onDragOver={(e2) => {
                 if (dragId === null) return
-                e.preventDefault()
-                e.dataTransfer.dropEffect = "move"
+                e2.preventDefault()
+                e2.dataTransfer.dropEffect = "move"
               }}
-              onDrop={(e) => {
-                e.preventDefault()
+              onDrop={(e2) => {
+                e2.preventDefault()
                 if (dragId === null) return
                 const from = dragId
-                // reorder (move from's position to idx) without nesting
                 setOrder((prev) => {
                   const base = prev || renderIds
                   const arr = [...base]
@@ -1379,38 +1440,17 @@ export default function CategoriesPage() {
                 setDragId(null)
                 setDropTargetId(null)
               }}
-              className="h-1.5 -my-0.5 rounded-full bg-transparent transition data-[over]:bg-[var(--accent2)]"
+              className="h-1.5 rounded-full transition"
             />
           ) : null
           return (
-            <div key={`wrap-${entry.id}`}>
+            <div key={`wrap-${e.id}`}>
               {strip}
-              {renderDragCard(entry)}
+              {renderStandaloneCard(e.id, e.c)}
             </div>
           )
         })}
         {addCategoryTile}
-        <div
-          onDragOver={(e) => {
-            if (dragId === null) return
-            e.preventDefault()
-            e.dataTransfer.dropEffect = "move"
-          }}
-          onDrop={(e) => {
-            e.preventDefault()
-            if (dragId === null) return
-            setParentMap((prev) => {
-              const next = { ...prev }
-              delete next[dragId]
-              return next
-            })
-            setDragId(null)
-            setDropTargetId(null)
-          }}
-          className="rounded-[var(--card-radius-lg)] border border-dashed border-[var(--border)] px-4 py-3 text-center text-[0.62rem] font-semibold text-[var(--muted)]"
-        >
-          {lang === "EN" ? "Drop here to move out of a sub-category" : "Letak di sini untuk keluar dari sub-kategori"}
-        </div>
       </div>
     </div>
   )
