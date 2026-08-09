@@ -901,10 +901,10 @@ export default function VehicleListPage() {
       {mounted &&
         showSheet &&
         createPortal(
-          <div className="fixed inset-0 z-[140] flex h-[100dvh] w-screen touch-none items-end justify-center overscroll-none bg-transparent p-0 md:items-center md:p-4">
+          <div className="fixed inset-0 z-[140] flex h-[100dvh] w-screen touch-none items-end justify-center overscroll-none bg-transparent p-0 md:items-stretch md:justify-end">
             <div
               data-swipe-sheet
-              className="app-sheet-panel max-h-[82dvh] w-full overflow-y-auto overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] shadow-2xl touch-pan-y md:max-h-[85vh] md:max-w-[30rem] md:rounded-[1.75rem]"
+              className="app-sheet-panel app-sheet-panel--lg max-h-[82dvh] w-full overflow-y-auto overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] shadow-2xl touch-pan-y md:h-[100dvh] md:max-h-none md:max-w-[420px] md:rounded-none md:border-y-0 md:border-l md:border-r-0"
               {...sheetSwipe}
             >
               <AppSheetHeader
@@ -921,7 +921,7 @@ export default function VehicleListPage() {
                   </button>
                 }
               />
-              <form id="vehicle-add-form" onSubmit={handleSave} className="grid grid-cols-2 gap-3 p-4">
+              <form id="vehicle-add-form" onSubmit={handleSave} className="grid grid-cols-2 gap-3 p-4 md:px-6">
                 <div className="col-span-2 block">
                   <span className="mb-1 block text-xs font-bold text-[var(--muted)]">
                     {tr("Jenis", "Type")}
