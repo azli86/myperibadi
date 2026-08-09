@@ -553,38 +553,37 @@ export default function EventPage() {
                 />
 
                 <form id="event-sheet-form" className="space-y-4 px-3 py-3 pb-4 text-[var(--text)] md:px-6 md:py-6" onSubmit={handleSaveEvent}>
-                  {/* Image upload */}
-                  <div className="flex items-center justify-center">
-                    <div className="relative">
-                      <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--icon-fg)]">
-                        {editingEvent && editingEvent.has_image && editingEvent.image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={editingEvent.image_url} alt={form.name || tr("Gambar acara", "Event image")} className="h-full w-full object-cover" />
-                        ) : (
-                          <CategoryIconGlyph iconName={form.icon_name} categoryName={form.name} kind="expense" size={38} />
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadingImage || !editingEvent}
-                        className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--text)] shadow transition active:scale-90 disabled:opacity-50"
-                        aria-label={tr("Muat naik gambar", "Upload image")}
-                      >
-                        {uploadingImage ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
-                      </button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) void uploadImage(file)
-                          e.target.value = ""
-                        }}
-                      />
-                    </div>
+                  {/* Budget hero + image upload */}
+                  <div className="flex flex-col items-center gap-3">
+                    <label className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                      {tr("Bajet Acara", "Event Budget")}
+                    </label>
+                    <MoneyAmount
+                      value={Number(form.budget || 0)}
+                      currency={form.currency}
+                      size="hero"
+                      className="text-[var(--text)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingImage || !editingEvent}
+                      className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-2 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--text)] active:scale-95 disabled:opacity-50"
+                    >
+                      {uploadingImage ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                      {tr("Muat Naik Gambar", "Upload Image")}
+                    </button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) void uploadImage(file)
+                        e.target.value = ""
+                      }}
+                    />
                   </div>
                   {!editingEvent ? (
                     <p className="text-center text-[0.625rem] text-[var(--muted)]">
@@ -631,7 +630,7 @@ export default function EventPage() {
                   </div>
 
                   {/* Dates */}
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
                         {tr("Tarikh Mula", "Start Date")}
