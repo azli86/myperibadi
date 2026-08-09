@@ -11,6 +11,8 @@ export interface TransactionDetail {
   amount: number
   category_id: number | null
   subscription_id?: number | null
+  linked_loan_name?: string | null
+  linked_subscription_name?: string | null
   category_name: string | null
   category_icon_name?: string | null
   category_is_internal?: boolean

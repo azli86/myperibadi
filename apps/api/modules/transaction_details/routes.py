@@ -158,6 +158,25 @@ async def get_transaction_detail_route(
     )
     items = [serialize_transaction_item(item) for item in item_result.scalars().all()]
 
+    # Linked loan (via LoanPayment) and subscription names for reference display.
+    linked_loan_name: str | None = None
+    loan_payment_result = await db.execute(
+        select(models.LoanPayment).where(models.LoanPayment.transaction_id == txn.id)
+    )
+    loan_payment = loan_payment_result.scalars().first()
+    if loan_payment:
+        loan_row = await db.execute(
+            select(models.Loan.name).where(models.Loan.id == loan_payment.loan_id)
+        )
+        linked_loan_name = loan_row.scalar_one_or_none()
+
+    linked_subscription_name: str | None = None
+    if txn.subscription_id is not None:
+        sub_row = await db.execute(
+            select(models.Subscription.name).where(models.Subscription.id == txn.subscription_id)
+        )
+        linked_subscription_name = sub_row.scalar_one_or_none()
+
     category_is_internal = bool(row[3])
     category_system_code = row[4]
     is_wallet_transfer = is_wallet_transfer_signature(
@@ -212,6 +231,8 @@ async def get_transaction_detail_route(
         "amount": float(txn.amount),
         "category_id": txn.category_id,
         "subscription_id": txn.subscription_id,
+        "linked_loan_name": linked_loan_name,
+        "linked_subscription_name": linked_subscription_name,
         "category_name": row[1],
         "category_icon_name": row[2],
         "category_is_internal": category_is_internal,

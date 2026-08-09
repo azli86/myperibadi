@@ -56,6 +56,12 @@ export default function TxnDetailsList({
         <Row label={isBm ? "Status" : "Status"} value={statusLabel} />
         <Row label={isBm ? "Cara Simpan" : "Saved Via"} value={sourceChannelLabel} />
         <Row label={isBm ? "Wallet" : "Wallet"} value={walletLabel} />
+        {txn.linked_loan_name && (
+          <Row label={isBm ? "Pinjaman Dikait" : "Linked Loan"} value={txn.linked_loan_name} />
+        )}
+        {txn.linked_subscription_name && (
+          <Row label={isBm ? "Langganan Dikait" : "Linked Subscription"} value={txn.linked_subscription_name} />
+        )}
       </div>
 
       {displayNotes && (
