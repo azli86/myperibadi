@@ -568,6 +568,7 @@ export default function BnplPage() {
             <div
               {...sheetSwipe}
               data-swipe-sheet
+              onClick={(event) => event.stopPropagation()}
               className="app-sheet-panel app-sheet-panel--lg max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] will-change-transform md:max-h-[85vh] md:max-w-md"
             >
               <AppSheetHeader
