@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { WifiOff, RefreshCw, ArrowLeft } from "lucide-react"
+import Link from "next/link"
 
 export default function OfflinePage() {
   const [isOnline, setIsOnline] = useState(true)
@@ -19,57 +20,58 @@ export default function OfflinePage() {
   }, [])
 
   return (
- <main className="fixed inset-0 z-[9999] flex h-dvh w-dvw items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-6 text-white">
-      <section className="w-full max-w-md rounded-[32px] border border-white/10 bg-white/5 p-8 text-center shadow-2xl backdrop-blur-xl md:p-10">
-        <div className="relative mx-auto mb-8 flex h-24 w-24 items-center justify-center">
-          <span className="absolute inset-0 rounded-3xl bg-amber-500/20 blur-xl" />
-          <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-orange-500/30">
-            <WifiOff size={36} className="text-white" />
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-auto p-6 bg-[var(--page-bg)] relative">
+      {/* Glow blobs — subtle, theme-aware */}
+      <div className="absolute top-[-20%] left-[-10%] w-[48%] h-[48%] blur-[120px] rounded-full pointer-events-none bg-amber-500/10" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[48%] h-[48%] blur-[120px] rounded-full pointer-events-none bg-orange-500/10" />
+
+      <div className="w-full max-w-2xl relative z-10">
+        <div className="bg-[var(--card)]/85 backdrop-blur-2xl border border-[var(--border)] rounded-[2rem] shadow-2xl p-8 md:p-10">
+          <div className="flex flex-col items-center text-center">
+            {/* Icon */}
+            <div className="h-18 w-18 md:h-20 md:w-20 rounded-[1.75rem] flex items-center justify-center shadow-xl mb-6 bg-amber-500/10 text-amber-500 shadow-amber-500/10">
+              <WifiOff size={36} />
+            </div>
+
+            <p className="text-xs font-bold uppercase tracking-[0.35em] mb-3 text-amber-500">
+              No Internet Connection
+            </p>
+
+            <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-[var(--text)]">
+              You are offline
+            </h1>
+
+            <p className="mt-4 text-base md:text-lg text-[var(--muted)] max-w-xl leading-relaxed">
+              Please check your internet connection. The app will resume automatically once your network is available.
+            </p>
+
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
+              {isOnline ? (
+                <Link
+                  href="/"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[var(--text)] text-[var(--bg)] font-bold shadow-xl transition-all hover:opacity-90 active:scale-[0.97]"
+                >
+                  <RefreshCw size={18} />
+                  Retry Connection
+                </Link>
+              ) : (
+                <div className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] font-bold">
+                  <RefreshCw size={18} className="animate-pulse" />
+                  Waiting for connection...
+                </div>
+              )}
+
+              <Link
+                href="/"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] font-bold hover:bg-[var(--surface-tint-strong)] transition-all active:scale-[0.97]"
+              >
+                <ArrowLeft size={18} />
+                Back to Home
+              </Link>
+            </div>
           </div>
         </div>
-
-        <p className="text-xs font-black uppercase tracking-[0.22em] text-amber-400">
-          No Internet Connection
-        </p>
-
-        <h1 className="mt-4 text-3xl font-black tracking-tight text-white md:text-4xl">
-          You are offline
-        </h1>
-
-        <p className="mt-3 text-sm leading-6 text-slate-300">
-          Please check your internet connection. The app will resume once your network is available.
-        </p>
-
-        <div className="mt-8 space-y-3">
-          {isOnline ? (
-            <a
-              href="/"
-              className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white text-sm font-black text-slate-900 transition-all hover:bg-slate-100 active:scale-[0.97]"
-            >
-              <RefreshCw size={18} />
-              Retry Connection
-            </a>
-          ) : (
-            <div className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 text-sm font-black text-slate-300">
-              <RefreshCw size={18} className="animate-pulse" />
-              Waiting for connection...
-            </div>
-          )}
-
-          <a
-            href="/"
-            className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-transparent px-4 text-sm font-bold text-slate-300 transition-all hover:bg-white/5 active:scale-[0.97]"
-          >
-            <ArrowLeft size={16} />
-            Back to Home
-          </a>
-        </div>
-
-        <div className="mt-8 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-400">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-          Auto-retrying connection
-        </div>
-      </section>
-    </main>
+      </div>
+    </div>
   )
 }
