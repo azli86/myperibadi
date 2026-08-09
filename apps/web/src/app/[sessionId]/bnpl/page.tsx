@@ -108,6 +108,7 @@ export default function BnplPage() {
   const { showAlert, alertModal } = usePageAlert(lang)
 
   const [items, setItems] = useState<BnplItem[]>([])
+  const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [categories, setCategories] = useState<CategoryItem[]>([])
   const [wallets, setWallets] = useState<WalletItem[]>([])
@@ -163,6 +164,7 @@ export default function BnplPage() {
 
   useEffect(() => {
     void fetchData()
+    setMounted(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -558,34 +560,26 @@ export default function BnplPage() {
       )}
 
       {/* ─── Add/Edit sheet ─── */}
-      {showSheet &&
+      {mounted && showSheet &&
         createPortal(
           <div
-            className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center overflow-hidden bg-transparent p-0 md:items-center"
+            className="fixed inset-0 z-50 flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-transparent p-0 md:items-center"
             onClick={requestSheetClose}
             onTouchMove={(event) => event.preventDefault()}
           >
             <div
               {...sheetSwipe}
               data-swipe-sheet
+              data-prevent-pull-refresh="true"
+              style={{ transform: "translateZ(0)" }}
               onClick={(event) => event.stopPropagation()}
-              className="app-sheet-panel app-sheet-panel--lg max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] will-change-transform md:max-h-[85vh] md:max-w-md"
+              className="app-sheet-panel app-sheet-panel--lg max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] will-change-transform md:max-h-[85vh] md:max-w-md"
             >
               <AppSheetHeader
                 title={editing ? tr("Edit BNPL", "Edit BNPL") : tr("Tambah BNPL", "Add BNPL")}
                 onClose={requestSheetClose}
-                action={
-                  <button
-                    type="submit"
-                    form="bnpl-sheet-form"
-                    disabled={saving}
-                    className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
-                  >
-                    {saving ? tr("Menyimpan…", "Saving…") : tr("Simpan", "Save")}
-                  </button>
-                }
               />
-              <form id="bnpl-sheet-form" className="space-y-4 px-4 pb-6 pt-1 text-[var(--text)]" onSubmit={handleSave}>
+              <form id="bnpl-sheet-form" className="space-y-4 px-3 py-3 pb-4 text-[var(--text)] md:px-6 md:py-6" onSubmit={handleSave}>
                 {/* Name */}
                 <div>
                   <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
@@ -798,6 +792,25 @@ export default function BnplPage() {
                     rows={2}
                     className="w-full resize-none rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none"
                   />
+                </div>
+
+                <div className="mt-6 -mx-3 flex items-center gap-2 border-t border-[var(--border)] bg-[var(--sheet-bg)] px-3 pb-2 pt-5 md:-mx-6 md:px-6">
+                  <button
+                    type="button"
+                    onClick={requestSheetClose}
+                    className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-bold text-[var(--muted)] transition active:scale-95"
+                  >
+                    {tr("Batal", "Cancel")}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="flex-1 rounded-full bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-black text-white transition active:scale-[0.98] disabled:opacity-60"
+                  >
+                    {saving
+                      ? (isBm ? "Menyimpan…" : "Saving…")
+                      : editing ? tr("Update", "Update") : tr("Simpan BNPL", "Save BNPL")}
+                  </button>
                 </div>
               </form>
             </div>
