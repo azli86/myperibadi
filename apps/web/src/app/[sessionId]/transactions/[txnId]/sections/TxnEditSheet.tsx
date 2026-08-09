@@ -261,12 +261,23 @@ export default function TxnEditSheet({
 
             <div className="relative">
               <button type="button" aria-label={langT.category} onClick={toggleCategory} className={pickerBtn}>
-                <span className="min-w-0 flex-1">
-                  <span className={cn("block", pickerLabel)}>{langT.category}</span>
-                  <span className={cn("block", pickerValue(Boolean(editForm.category_id)))}>
-                    {editForm.category_id
-                      ? categories.find((cat) => String(cat.id) === editForm.category_id)?.name || langT.category
-                      : langT.category}
+                <span className="flex min-w-0 flex-1 items-center gap-3">
+                  {editForm.category_id &&
+                    (() => {
+                      const cat = categories.find((c) => String(c.id) === editForm.category_id)
+                      return (
+                        <span className={rowIcon}>
+                          <CategoryIconGlyph iconName={cat?.icon_name} categoryName={cat?.name || ""} kind="expense" size={16} />
+                        </span>
+                      )
+                    })()}
+                  <span className="min-w-0">
+                    <span className={cn("block", pickerLabel)}>{langT.category}</span>
+                    <span className={cn("block", pickerValue(Boolean(editForm.category_id)))}>
+                      {editForm.category_id
+                        ? categories.find((cat) => String(cat.id) === editForm.category_id)?.name || langT.category
+                        : langT.category}
+                    </span>
                   </span>
                 </span>
                 <ChevronDown size={20} className={cn("shrink-0 text-[var(--muted)] transition-transform", showCategoryPicker && "rotate-180")} />
