@@ -94,6 +94,10 @@ async def update_transaction_route(
         subscription = await db.scalar(select(models.Subscription).where(models.Subscription.id == subscription_id, models.Subscription.user_id == current_user.id))
         if not subscription:
             raise HTTPException(status_code=404, detail="Subscription not found.")
+        # Linking a transaction to a subscription records its last payment date.
+        if txn_date:
+            subscription.last_payment_date = txn_date
+        subscription.updated_at = datetime.utcnow()
 
     parsed_txn_time = _parse_txn_time(txn_in.txn_time)
     if parsed_txn_time is None and txn_date == current_business_date():
