@@ -896,6 +896,12 @@ async def ensure_database_schema():
                 text("ALTER TABLE loans ADD COLUMN IF NOT EXISTS due_day_of_month INTEGER NULL")
             )
             await conn.execute(
+                text("ALTER TABLE loans ADD COLUMN IF NOT EXISTS category_id BIGINT NULL REFERENCES categories(id)")
+            )
+            await conn.execute(
+                text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS category_id BIGINT NULL REFERENCES categories(id)")
+            )
+            await conn.execute(
                 text("CREATE INDEX IF NOT EXISTS ix_loans_record_kind ON loans (record_kind)")
             )
             await conn.execute(
@@ -10469,6 +10475,7 @@ def _serialize_loan_response(
         status=str(loan.status),
         record_kind=str(getattr(loan, "record_kind", "loan") or "loan"),
         due_day_of_month=int(loan.due_day_of_month) if getattr(loan, "due_day_of_month", None) is not None else None,
+        category_id=int(loan.category_id) if loan.category_id is not None else None,
         payment_count=int(payment_count or 0),
         last_payment_at=last_payment_at,
         created_at=loan.created_at,

@@ -91,6 +91,7 @@ async def create_loan_route(
         opening_amount=opening_amount,
         outstanding_amount=opening_amount,
         monthly_payment=monthly_payment if monthly_payment > 0 else None,
+        category_id=payload.category_id,
         start_date=start_date,
         notes=(payload.notes or "").strip() or None,
         status="active",
@@ -170,6 +171,9 @@ async def update_loan_route(
 
     if "notes" in updates:
         loan.notes = (payload.notes or "").strip() or None
+
+    if "category_id" in updates:
+        loan.category_id = payload.category_id
 
     loan.status = "settled" if float(loan.outstanding_amount or 0) <= 0.004 else "active"
     await db.commit()

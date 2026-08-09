@@ -568,6 +568,7 @@ class LoanCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=190)
     opening_amount: float
     monthly_payment: Optional[float] = None
+    category_id: Optional[int] = None
     start_date: Optional[str] = None
     notes: Optional[str] = None
     record_kind: Optional[str] = Field(default="loan", max_length=20)
@@ -577,6 +578,7 @@ class LoanUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=190)
     opening_amount: Optional[float] = None
     monthly_payment: Optional[float] = None
+    category_id: Optional[int] = None
     start_date: Optional[str] = None
     notes: Optional[str] = None
     record_kind: Optional[str] = Field(default=None, max_length=20)
@@ -623,6 +625,7 @@ class LoanResponse(BaseModel):
     status: str
     record_kind: str = "loan"
     due_day_of_month: Optional[int] = None
+    category_id: Optional[int] = None
     payment_count: int = 0
     last_payment_at: Optional[datetime] = None
     created_at: datetime
@@ -632,12 +635,14 @@ class SubscriptionCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=190)
     amount: float
     due_day_of_month: int = Field(..., ge=1, le=31)
+    category_id: Optional[int] = None
     notes: Optional[str] = None
 
 class SubscriptionUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=190)
     amount: Optional[float] = None
     due_day_of_month: Optional[int] = Field(default=None, ge=1, le=31)
+    category_id: Optional[int] = None
     notes: Optional[str] = None
     status: Optional[str] = None
 
@@ -649,6 +654,7 @@ class SubscriptionResponse(BaseModel):
     due_day_of_month: int
     notes: Optional[str] = None
     status: str
+    category_id: Optional[int] = None
     start_date: str
     last_payment_date: Optional[str] = None
     created_at: datetime

@@ -52,6 +52,7 @@ def _serialize_subscription(c: models.Subscription, last_payment_date: Optional[
         due_day_of_month=int(c.due_day_of_month),
         notes=c.notes,
         status=str(c.status),
+        category_id=int(c.category_id) if c.category_id is not None else None,
         start_date=c.start_date.strftime("%Y-%m-%d"),
         last_payment_date=last_payment_date.isoformat() if last_payment_date else None,
         created_at=c.created_at,
@@ -91,6 +92,7 @@ async def create_subscription_route(
         amount=amount,
         due_day_of_month=due_day,
         notes=(payload.notes or "").strip() or None,
+        category_id=payload.category_id,
         status="active",
         start_date=current_business_date_fn(),
     )
@@ -149,6 +151,8 @@ async def update_subscription_route(
         c.due_day_of_month = dd
     if "notes" in updates:
         c.notes = (payload.notes or "").strip() or None
+    if "category_id" in updates:
+        c.category_id = payload.category_id
     if "status" in updates and payload.status:
         c.status = payload.status
     await db.commit()
