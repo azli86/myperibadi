@@ -163,7 +163,8 @@ export default function BnplPage() {
 
   useEffect(() => {
     void fetchData()
-  }, [fetchData])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const { requestClose: requestPayClose } = useOverlayBackClose({
     id: "bnpl-pay",
