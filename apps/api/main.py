@@ -13181,6 +13181,9 @@ app.include_router(create_vehicles_router(get_current_user=get_current_user))
 from modules.warranties import create_warranties_router
 app.include_router(create_warranties_router(get_current_user=get_current_user))
 
+from modules.events import create_events_router
+app.include_router(create_events_router(get_current_user=get_current_user))
+
 from modules.places import create_places_router
 app.include_router(
     create_places_router(

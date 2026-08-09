@@ -938,6 +938,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { name: "Loan", href: `/${sessionId}/loan`, icon: CreditCard },
     { name: lang === "BM" ? "Kenderaan" : "My Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
     { name: lang === "BM" ? "Waranti Saya" : "My Warranty", href: `/${sessionId}/warranty`, icon: Shield },
+    { name: lang === "BM" ? "Acara Saya" : "My Events", href: `/${sessionId}/event`, icon: CalendarDays },
     { name: t.budget, href: `/${sessionId}/budget`, icon: Wallet },
     { name: t.receipts, href: `/${sessionId}/receipts`, icon: Images },
     {
@@ -964,6 +965,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const desktopPersonalNavigation = [
     { name: lang === "BM" ? "Kenderaan" : "My Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
     { name: lang === "BM" ? "Waranti Saya" : "My Warranty", href: `/${sessionId}/warranty`, icon: Shield },
+    { name: lang === "BM" ? "Acara Saya" : "My Events", href: `/${sessionId}/event`, icon: CalendarDays },
     { name: lang === "BM" ? "Subscription" : "Subscription", href: `/${sessionId}/subscription`, icon: CreditCard },
     { name: "Loan", href: `/${sessionId}/loan`, icon: CreditCard },
     { name: t.debt, href: `/${sessionId}/debt`, icon: HandCoins },

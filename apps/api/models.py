@@ -1255,3 +1255,23 @@ class WarrantyAttachment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
     device: Mapped["WarrantyDevice"] = relationship(back_populates="attachments")
+
+
+class Event(Base):
+    __tablename__ = "events"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    household_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("households.id"), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String(190), nullable=False)
+    icon_name: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    image_object_key: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
+    currency: Mapped[str] = mapped_column(String(10), default="RM")
+    wallet_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("wallets.id"), nullable=True, index=True)
+    budget: Mapped[Optional[float]] = mapped_column(DECIMAL(14, 2), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="upcoming", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
