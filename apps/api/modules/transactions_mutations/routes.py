@@ -482,6 +482,26 @@ async def create_transaction_route(
         await replace_transaction_items(db, db_txn.id, normalized_items)
     await db.commit()
     await db.refresh(db_txn)
+
+    # BNPL auto-payment for manual web expense entries in a linked category.
+    if txn_type == "expense" and db_txn.bnpl_id is None and resolved_category_id:
+        try:
+            from modules.bnpl import service as bnpl_service
+
+            await bnpl_service.apply_bnpl_auto_payment(
+                db,
+                user_id=current_user.id,
+                category_id=int(resolved_category_id),
+                amount=float(resolved_amount or 0),
+                txn_date=txn_date,
+                txn_wallet_id=int(db_txn.wallet_id),
+                txn_id=int(db_txn.id),
+                source_channel="web",
+            )
+            await db.refresh(db_txn)
+        except Exception:
+            await db.rollback()
+
     return db_txn
 
 

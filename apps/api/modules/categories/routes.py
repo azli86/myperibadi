@@ -195,6 +195,24 @@ async def delete_category_route(
             status_code=400,
             detail="Kategori Monthly Salary tidak boleh dipadam.",
         )
+
+    # BNPL-linked categories cannot be deleted while they carry BNPL transactions.
+    linked_bnpl = (await db.execute(
+        select(models.Bnpl.id).where(models.Bnpl.category_id == cat_id).limit(1)
+    )).scalar_one_or_none()
+    if linked_bnpl is not None:
+        txn_count = await db.scalar(
+            select(func.count(models.Transaction.id)).where(
+                models.Transaction.bnpl_id.is_not(None),
+                models.Transaction.category_id == cat_id,
+            )
+        )
+        if txn_count:
+            raise HTTPException(
+                status_code=400,
+                detail="Kategori tidak boleh dipadam kerana ia dilink dengan transaksi BNPL.",
+            )
+
     await db.execute(models.CategoryKeyword.__table__.delete().where(models.CategoryKeyword.category_id == cat_id))
     await db.execute(models.CategoryBudget.__table__.delete().where(models.CategoryBudget.category_id == cat_id))
     await db.execute(models.Category.__table__.delete().where(models.Category.id == cat_id))

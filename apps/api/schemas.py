@@ -658,6 +658,59 @@ class SubscriptionCommandResponse(BaseModel):
     message: str
     commitment: SubscriptionResponse
 
+class BnplCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=190)
+    provider: str = Field(..., min_length=1, max_length=60)
+    category_id: int = Field(..., gt=0)
+    icon_name: Optional[str] = None
+    total_amount: float
+    installment_count: int = Field(..., ge=1, le=60)
+    monthly_amount: float
+    due_day_of_month: int = Field(..., ge=1, le=31)
+    start_date: Optional[str] = None
+    notes: Optional[str] = None
+
+class BnplUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=190)
+    provider: Optional[str] = Field(default=None, min_length=1, max_length=60)
+    category_id: Optional[int] = Field(default=None, gt=0)
+    icon_name: Optional[str] = None
+    total_amount: Optional[float] = None
+    installment_count: Optional[int] = Field(default=None, ge=1, le=60)
+    monthly_amount: Optional[float] = None
+    due_day_of_month: Optional[int] = Field(default=None, ge=1, le=31)
+    start_date: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None
+
+class BnplResponse(BaseModel):
+    id: int
+    name: str
+    key: str
+    provider: str
+    category_id: int
+    category_name: Optional[str] = None
+    icon_name: Optional[str] = None
+    has_image: bool = False
+    image_url: Optional[str] = None
+    total_amount: float
+    installment_count: int
+    monthly_amount: float
+    due_day_of_month: int
+    start_date: str
+    last_payment_date: Optional[str] = None
+    outstanding_amount: float
+    paid_amount: float = 0.0
+    status: str
+    notes: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+class BnplPayCreate(BaseModel):
+    wallet_id: Optional[int] = None
+    amount: Optional[float] = None
+    notes: Optional[str] = None
+
 
 class MonthlyCheckoffCreate(BaseModel):
     item_type: str = Field(..., pattern=r"^(loan|subscription)$")

@@ -13184,6 +13184,9 @@ app.include_router(create_warranties_router(get_current_user=get_current_user))
 from modules.events import create_events_router
 app.include_router(create_events_router(get_current_user=get_current_user))
 
+from modules.bnpl import create_bnpl_router
+app.include_router(create_bnpl_router(get_current_user=get_current_user))
+
 from modules.places import create_places_router
 app.include_router(
     create_places_router(

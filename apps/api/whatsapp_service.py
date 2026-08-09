@@ -4549,6 +4549,33 @@ async def _process_whatsapp_message_impl(
         await db.commit()
         await db.refresh(txn)
 
+        # BNPL auto-payment: when an expense is recorded in a category linked to an
+        # active BNPL (and it wasn't itself a BNPL payment), apply one monthly
+        # installment automatically.
+        if (
+            txn_type == "expense"
+            and txn.bnpl_id is None
+            and getattr(txn, "category_id", None)
+            and txn.id
+        ):
+            try:
+                from modules.bnpl import service as bnpl_service
+
+                await bnpl_service.apply_bnpl_auto_payment(
+                    db,
+                    user_id=user_id,
+                    category_id=int(txn.category_id),
+                    amount=float(txn.amount or 0),
+                    txn_date=txn.txn_date,
+                    txn_wallet_id=int(txn.wallet_id),
+                    txn_id=int(txn.id),
+                    source_channel=source_channel,
+                )
+                await db.refresh(txn)
+            except Exception as exc:
+                await db.rollback()
+                _safe_print(f"[WA] BNPL auto-payment skipped: {exc}")
+
         # Attach the receipt media that was scanned earlier but deferred until the
         # user chose a category/wallet (OCR media flow).
         pending_media = _take_pending_receipt_media(user_id, source_channel)

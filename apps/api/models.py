@@ -241,6 +241,7 @@ class Transaction(Base):
     amount: Mapped[float] = mapped_column(DECIMAL(12, 2), nullable=False)
     category_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("categories.id"), nullable=True)
     subscription_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("subscriptions.id"), nullable=True, index=True)
+    bnpl_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("bnpl.id"), nullable=True, index=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     latitude: Mapped[Optional[float]] = mapped_column(DECIMAL(10, 7), nullable=True)
     longitude: Mapped[Optional[float]] = mapped_column(DECIMAL(11, 8), nullable=True)
@@ -364,6 +365,52 @@ class LoanPayment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
     loan: Mapped["Loan"] = relationship(back_populates="payments")
+
+class Bnpl(Base):
+    __tablename__ = "bnpl"
+    __table_args__ = (
+        UniqueConstraint("user_id", "key", name="uq_bnpl_user_key"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), index=True)
+    household_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("households.id"), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String(190), nullable=False)
+    key: Mapped[str] = mapped_column(String(190), nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(String(60), nullable=False)
+    category_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("categories.id"), nullable=False, index=True)
+    icon_name: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    image_object_key: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    total_amount: Mapped[float] = mapped_column(DECIMAL(12, 2), nullable=False)
+    installment_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    monthly_amount: Mapped[float] = mapped_column(DECIMAL(12, 2), nullable=False)
+    due_day_of_month: Mapped[int] = mapped_column(Integer, nullable=False)
+    start_date: Mapped[datetime] = mapped_column(Date, nullable=False)
+    last_payment_date: Mapped[Optional[datetime]] = mapped_column(Date, nullable=True)
+    outstanding_amount: Mapped[float] = mapped_column(DECIMAL(12, 2), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="active", index=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    payments: Mapped[List["BnplPayment"]] = relationship(back_populates="bnpl", cascade="all, delete-orphan")
+
+class BnplPayment(Base):
+    __tablename__ = "bnpl_payments"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), index=True)
+    household_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("households.id"), nullable=True, index=True)
+    bnpl_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("bnpl.id"), index=True)
+    wallet_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("wallets.id"), nullable=True, index=True)
+    transaction_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("transactions.id"), nullable=True, index=True)
+    amount: Mapped[float] = mapped_column(DECIMAL(12, 2), nullable=False)
+    payment_date: Mapped[datetime] = mapped_column(Date, nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    source_channel: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+    bnpl: Mapped["Bnpl"] = relationship(back_populates="payments")
 
 
 class UserLocationContext(Base):
