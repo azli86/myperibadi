@@ -50,6 +50,7 @@ import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 import { MonthlyChecklistSection } from "@/components/dashboard/MonthlyChecklistSection"
 import { VehicleOverdueWidget } from "@/components/dashboard/VehicleOverdueWidget"
 import { DashboardVehicleHeroRow } from "@/components/dashboard/DashboardVehicleHeroRow"
+import { DashboardBnplHeroRow } from "@/components/dashboard/DashboardBnplHeroRow"
 import { CatPlayground } from "@/components/dashboard/CatPlayground"
 import { WeatherClockMini } from "@/components/layout/SidebarWeatherClock"
 import Onboarding from "@/components/onboarding/Onboarding"
@@ -2327,6 +2328,7 @@ export default function Dashboard() {
           {/* Vehicle details — below wallets, outside hero */}
           <div className="px-1">
             <DashboardVehicleHeroRow variant="card" className="mt-0" />
+            <DashboardBnplHeroRow variant="card" className="mt-2" />
           </div>
 
           {/* Cat playground — slim chip; full arena opens in sheet */}
@@ -2735,6 +2737,9 @@ export default function Dashboard() {
 
             {/* Vehicle details — large desktop showcase */}
             <DashboardVehicleHeroRow variant="card" layout="desktop" className="mt-0" />
+
+            {/* BNPL monthly total — desktop */}
+            <DashboardBnplHeroRow variant="card" layout="desktop" className="mt-0" />
 
             {/* Charts — monthly + daily — 3 split cards */}
             <div className="flex flex-col gap-4">

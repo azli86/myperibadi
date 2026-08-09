@@ -939,6 +939,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { name: lang === "BM" ? "Kenderaan" : "My Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
     { name: lang === "BM" ? "Waranti Saya" : "My Warranty", href: `/${sessionId}/warranty`, icon: Shield },
     { name: lang === "BM" ? "Acara Saya" : "My Events", href: `/${sessionId}/event`, icon: CalendarDays },
+    { name: "BNPL", href: `/${sessionId}/bnpl`, icon: CreditCard },
     { name: t.budget, href: `/${sessionId}/budget`, icon: Wallet },
     { name: t.receipts, href: `/${sessionId}/receipts`, icon: Images },
     {
@@ -966,6 +967,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { name: lang === "BM" ? "Kenderaan" : "My Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
     { name: lang === "BM" ? "Waranti Saya" : "My Warranty", href: `/${sessionId}/warranty`, icon: Shield },
     { name: lang === "BM" ? "Acara Saya" : "My Events", href: `/${sessionId}/event`, icon: CalendarDays },
+    { name: "BNPL", href: `/${sessionId}/bnpl`, icon: CreditCard },
     { name: lang === "BM" ? "Subscription" : "Subscription", href: `/${sessionId}/subscription`, icon: CreditCard },
     { name: "Loan", href: `/${sessionId}/loan`, icon: CreditCard },
     { name: t.debt, href: `/${sessionId}/debt`, icon: HandCoins },
@@ -1136,6 +1138,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   : "Track events with a budget, date and wallet",
               href: `/${sessionId}/event`,
               icon: CalendarDays,
+            },
+            {
+              name: "BNPL",
+              subtitle:
+                lang === "BM"
+                  ? "Jejak ansuran Buy Now Pay Later dengan duedate"
+                  : "Track Buy Now Pay Later installments with due dates",
+              href: `/${sessionId}/bnpl`,
+              icon: CreditCard,
             },
             {
               name: t.debt,
