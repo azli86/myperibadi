@@ -1230,9 +1230,23 @@ export default function CategoriesPage() {
             )}
           </div>
           {depth === 1 ? (
-            <span className="flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setParentMap((prev) => {
+                  const next = { ...prev }
+                  delete next[id]
+                  return next
+                })
+              }}
+              title={lang === "EN" ? "Remove from sub-category" : "Buang dari sub-kategori"}
+              aria-label={lang === "EN" ? "Remove from sub-category" : "Buang dari sub-kategori"}
+              className="flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)] transition hover:text-rose-500"
+            >
+              <X size={10} />
               {lang === "EN" ? "Sub" : "Sub"}
-            </span>
+            </button>
           ) : null}
           <ChevronRight size={15} className="shrink-0 text-[var(--muted)] opacity-50 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
         </button>
