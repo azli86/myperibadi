@@ -558,12 +558,16 @@ export default function EventPage() {
                     <label className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
                       {tr("Bajet Acara", "Event Budget")}
                     </label>
-                    <MoneyAmount
-                      value={Number(form.budget || 0)}
-                      currency={form.currency}
-                      size="hero"
-                      className="text-[var(--text)]"
-                    />
+                    <div className="flex w-full max-w-[15rem] flex-col items-center">
+                      <input
+                        inputMode="decimal"
+                        value={form.budget}
+                        onChange={(e) => setForm((prev) => ({ ...prev, budget: e.target.value }))}
+                        placeholder="0.00"
+                        className="w-full bg-transparent text-center text-[1.85rem] font-black leading-tight text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
+                      />
+                      <span className="mt-0.5 block text-sm font-bold text-[var(--muted)]">{form.currency || "RM"}</span>
+                    </div>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
@@ -745,23 +749,6 @@ export default function EventPage() {
                           </div>
                         ) : null}
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Budget */}
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Bajet", "Budget")}
-                    </label>
-                    <div className="relative">
-                      <input
-                        inputMode="decimal"
-                        value={form.budget}
-                        onChange={(e) => setForm((prev) => ({ ...prev, budget: e.target.value }))}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 pr-12 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                        placeholder="0.00"
-                      />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--muted)]">{form.currency || "RM"}</span>
                     </div>
                   </div>
 
