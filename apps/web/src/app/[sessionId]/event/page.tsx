@@ -564,7 +564,7 @@ export default function EventPage() {
                         value={form.budget}
                         onChange={(e) => setForm((prev) => ({ ...prev, budget: e.target.value }))}
                         placeholder="0.00"
-                        className="w-full bg-transparent text-center text-[1.85rem] font-black leading-tight text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
+                        className="w-full bg-transparent text-center text-4xl font-black leading-tight text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
                       />
                       <span className="mt-0.5 block text-sm font-bold text-[var(--muted)]">{form.currency || "RM"}</span>
                     </div>
