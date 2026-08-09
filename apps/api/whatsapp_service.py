@@ -4576,6 +4576,56 @@ async def _process_whatsapp_message_impl(
                 await db.rollback()
                 _safe_print(f"[WA] BNPL auto-payment skipped: {exc}")
 
+        # Loan & subscription auto-payment: when an expense is recorded in a
+        # category linked to an active loan/subscription, apply it automatically.
+        if txn_type == "expense" and txn.bnpl_id is None and txn.category_id:
+            try:
+                loan = (await db.execute(
+                    select(models.Loan).where(
+                        models.Loan.user_id == user_id,
+                        models.Loan.category_id == int(txn.category_id),
+                        models.Loan.status == "active",
+                    ).limit(1)
+                )).scalar_one_or_none()
+                if loan:
+                    remaining = float(loan.outstanding_amount or 0)
+                    applied = min(float(txn.amount or 0), remaining)
+                    if applied > 0:
+                        loan.outstanding_amount = round(remaining - applied, 2)
+                        loan.updated_at = datetime.utcnow()
+                        if float(loan.outstanding_amount or 0) <= 0:
+                            loan.status = "settled"
+                            loan.outstanding_amount = 0.0
+                        db.add(models.LoanPayment(
+                            user_id=user_id,
+                            household_id=loan.household_id,
+                            loan_id=loan.id,
+                            wallet_id=txn.wallet_id,
+                            transaction_id=txn.id,
+                            amount=applied,
+                            payment_date=txn.txn_date,
+                            source_channel=source_channel,
+                        ))
+
+                sub = (await db.execute(
+                    select(models.Subscription).where(
+                        models.Subscription.user_id == user_id,
+                        models.Subscription.category_id == int(txn.category_id),
+                        models.Subscription.status == "active",
+                    ).limit(1)
+                )).scalar_one_or_none()
+                if sub and txn.subscription_id is None:
+                    txn.subscription_id = sub.id
+                    sub.last_payment_date = txn.txn_date
+                    sub.updated_at = datetime.utcnow()
+
+                if loan or sub:
+                    await db.commit()
+                    await db.refresh(txn)
+            except Exception as exc:
+                await db.rollback()
+                _safe_print(f"[WA] loan/sub auto-payment skipped: {exc}")
+
         # Attach the receipt media that was scanned earlier but deferred until the
         # user chose a category/wallet (OCR media flow).
         pending_media = _take_pending_receipt_media(user_id, source_channel)
