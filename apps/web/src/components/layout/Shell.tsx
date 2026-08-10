@@ -74,6 +74,7 @@ import {
   Palette,
   Images,
   Car,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { cn, getTodayDateInTimeZone } from "@/lib/utils";
@@ -939,6 +940,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { name: lang === "BM" ? "Kenderaan" : "My Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
     { name: lang === "BM" ? "Waranti Saya" : "My Warranty", href: `/${sessionId}/warranty`, icon: Shield },
     { name: lang === "BM" ? "Acara Saya" : "My Events", href: `/${sessionId}/event`, icon: CalendarDays },
+    { name: "Split Bill", href: `/${sessionId}/split-bills`, icon: Users },
     { name: "BNPL", href: `/${sessionId}/bnpl`, icon: CreditCard },
     { name: t.budget, href: `/${sessionId}/budget`, icon: Wallet },
     { name: t.receipts, href: `/${sessionId}/receipts`, icon: Images },
@@ -967,6 +969,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { name: lang === "BM" ? "Kenderaan" : "My Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
     { name: lang === "BM" ? "Waranti Saya" : "My Warranty", href: `/${sessionId}/warranty`, icon: Shield },
     { name: lang === "BM" ? "Acara Saya" : "My Events", href: `/${sessionId}/event`, icon: CalendarDays },
+    { name: "Split Bill", href: `/${sessionId}/split-bills`, icon: Users },
     { name: "BNPL", href: `/${sessionId}/bnpl`, icon: CreditCard },
     { name: lang === "BM" ? "Subscription" : "Subscription", href: `/${sessionId}/subscription`, icon: CreditCard },
     { name: "Loan", href: `/${sessionId}/loan`, icon: CreditCard },
@@ -1138,6 +1141,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   : "Track events with a budget, date and wallet",
               href: `/${sessionId}/event`,
               icon: CalendarDays,
+            },
+            {
+              name: "Split Bill",
+              subtitle:
+                lang === "BM"
+                  ? "Bahagi bil dan kumpul bayaran balik daripada rakan"
+                  : "Split a bill and collect reimbursements from friends",
+              href: `/${sessionId}/split-bills`,
+              icon: Users,
             },
             {
               name: "BNPL",

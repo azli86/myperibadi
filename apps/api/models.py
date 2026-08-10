@@ -1331,3 +1331,49 @@ class Event(Base):
     status: Mapped[str] = mapped_column(String(20), default="upcoming", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class SplitBill(Base):
+    __tablename__ = "split_bills"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    household_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("households.id"), nullable=True, index=True)
+    transaction_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("transactions.id"), nullable=True, index=True)
+    title: Mapped[str] = mapped_column(String(190), nullable=False)
+    currency: Mapped[str] = mapped_column(String(10), default="RM")
+    total_amount: Mapped[Optional[float]] = mapped_column(DECIMAL(14, 2), nullable=True)
+    people_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    share_amount: Mapped[Optional[float]] = mapped_column(DECIMAL(14, 2), nullable=True)
+    collect_amount: Mapped[Optional[float]] = mapped_column(DECIMAL(14, 2), nullable=True)
+    amount_received: Mapped[float] = mapped_column(DECIMAL(14, 2), default=0.0)
+    balance_amount: Mapped[float] = mapped_column(DECIMAL(14, 2), default=0.0)
+    am_i_included: Mapped[bool] = mapped_column(Boolean, default=True)
+    status: Mapped[str] = mapped_column(String(20), default="active", index=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    original_txn_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    payments: Mapped[List["SplitBillPayment"]] = relationship(
+        back_populates="split", cascade="all, delete-orphan", order_by="SplitBillPayment.payment_date.desc(), SplitBillPayment.id.desc()"
+    )
+
+
+class SplitBillPayment(Base):
+    __tablename__ = "split_bill_payments"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    household_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("households.id"), nullable=True, index=True)
+    split_bill_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("split_bills.id"), nullable=False, index=True)
+    wallet_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("wallets.id"), nullable=True, index=True)
+    transaction_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("transactions.id"), nullable=True, index=True)
+    amount: Mapped[float] = mapped_column(DECIMAL(14, 2), nullable=False)
+    payment_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    payment_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    media_object_key: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+    split: Mapped["SplitBill"] = relationship(back_populates="payments")

@@ -11,6 +11,7 @@ import {
   Loader2,
   Trash2,
   Undo2,
+  Users,
 } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
@@ -311,6 +312,15 @@ export default function TransactionDetailPage() {
     transaction_reference_id?: string | null
   } | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
+  const [splitBill, setSplitBill] = useState<{
+    id: number
+    title: string
+    status: string
+    balance_amount: number
+    collect_amount?: number | null
+    currency?: string | null
+  } | null>(null)
+  const [splitLoaded, setSplitLoaded] = useState(false)
   const [receiptDownloading, setReceiptDownloading] = useState(false)
   const [editForm, setEditForm] = useState<{
     description: string
@@ -573,6 +583,7 @@ export default function TransactionDetailPage() {
         if (activeFetchIdRef.current !== fetchId) return
 
         setTxn({ ...data, attachments })
+        void fetchSplitForTxn(data.id)
         clearAttachmentUrls(new Set(attachments.map((att: { id: number }) => att.id)))
         void preloadImagePreviews(attachments)
         if (!attachments.length) {
@@ -626,6 +637,27 @@ export default function TransactionDetailPage() {
       })
       if (res.ok) setCategories(await res.json())
     } catch {}
+  }
+
+  const fetchSplitForTxn = async (transactionId: number) => {
+    try {
+      const token = getAccessToken()
+      const res = await fetch("/api/split-bills?limit=100", {
+        credentials: "include",
+        headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+        cache: "no-store",
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        const match = data.find((s) => s.transaction_id === transactionId)
+        setSplitBill(match || null)
+      }
+    } catch {
+      // silent
+    } finally {
+      setSplitLoaded(true)
+    }
   }
 
   const fetchWallets = async () => {
@@ -1546,6 +1578,54 @@ export default function TransactionDetailPage() {
               </span>
               <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
             </Link>
+          ) : null}
+
+          {splitLoaded ? (
+            splitBill ? (
+              <Link
+                href={`/${sessionId}/split-bills`}
+                className="mt-3 flex items-center gap-3 rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--accent)]">
+                  <Users size={18} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+                    {lang === "BM" ? "Split Bill" : "Split Bill"}
+                  </span>
+                  <span className="mt-0.5 block truncate text-sm font-bold text-[var(--text)]">{splitBill.title}</span>
+                  <span className="mt-0.5 block text-xs font-semibold text-[var(--muted)]">
+                    {splitBill.status === "completed"
+                      ? (lang === "BM" ? "Selesai" : "Completed")
+                      : splitBill.balance_amount > 0
+                        ? `${lang === "BM" ? "Baki" : "Balance"}: ${splitBill.currency || "RM"} ${splitBill.balance_amount.toFixed(2)}`
+                        : (lang === "BM" ? "Separa" : "Partial")}
+                  </span>
+                </span>
+                <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
+              </Link>
+            ) : (
+              <Link
+                href={`/${sessionId}/split-bills?create=1&txn=${txn?.id}`}
+                className="mt-3 flex items-center gap-3 rounded-[16px] border border-dashed border-[var(--border)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)]">
+                  <Users size={18} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+                    {lang === "BM" ? "Split Bill" : "Split Bill"}
+                  </span>
+                  <span className="mt-0.5 block text-sm font-bold text-[var(--text)]">
+                    {lang === "BM" ? "Buat Split Bill" : "Create Split Bill"}
+                  </span>
+                  <span className="mt-0.5 block text-xs font-semibold text-[var(--muted)]">
+                    {lang === "BM" ? "Bahagi bil dengan rakan" : "Split this bill with friends"}
+                  </span>
+                </span>
+                <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
+              </Link>
+            )
           ) : null}
 
           <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
