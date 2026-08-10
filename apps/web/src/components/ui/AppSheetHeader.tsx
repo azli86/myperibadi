@@ -72,7 +72,7 @@ export function AppSheetHeader({
             </p>
           )}
           <div className="flex flex-col items-center">
-            <h3 className="inline-block border-b-[3px] border-current pb-1 text-xl font-black tracking-wide text-[var(--text)]">{title}</h3>
+            <h3 className="inline-block border-b-[3px] border-[var(--text)] pb-1 text-xl font-black tracking-wide text-[var(--text)]">{title}</h3>
           </div>
           {subtitle && (
             <p className="mt-0.5 text-xs leading-snug text-[var(--muted)]">{subtitle}</p>
