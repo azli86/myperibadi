@@ -32,11 +32,23 @@ export default function PWAInstallGate() {
     checkStandalone();
     window.addEventListener("appinstalled", checkStandalone);
 
-    // Capture install prompt (Chrome/Android + desktop)
+    // Capture install prompt (Chrome/Android + desktop).
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
       deferredPrompt.current = e;
       setCanInstall(true);
+      // beforeinstallprompt fires from a user gesture — auto-prompt so the
+      // install banner shows immediately and Chrome never logs the
+      // "must call prompt()" warning.
+      const p = e as any;
+      if (p && typeof p.prompt === "function") {
+        try {
+          void p.prompt();
+          deferredPrompt.current = null;
+        } catch {
+          /* retry on explicit click */
+        }
+      }
     };
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
 
