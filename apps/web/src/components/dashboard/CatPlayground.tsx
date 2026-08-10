@@ -1601,13 +1601,15 @@ export function CatPlayground({
                         }
                       }}
                       className="h-7 w-full min-w-0 max-w-[11rem] rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-2 text-sm font-black text-[var(--text)] outline-none focus:ring-2 focus:ring-[var(--text)]/20"
+                      onBlur={saveName}
                     />
                     <button
                       type="button"
                       onClick={saveName}
-                      className="h-7 shrink-0 rounded-lg bg-[var(--text)] px-2 text-[0.65rem] font-bold text-[var(--bg)]"
+                      onMouseDown={(e) => e.preventDefault()}
+                      className="h-7 shrink-0 rounded-lg bg-[var(--btn-primary-bg)] px-2.5 text-[0.7rem] font-bold text-[var(--bg)]"
                     >
-                      OK
+                      {lang === "BM" ? "Simpan" : "Save"}
                     </button>
                   </div>
                 ) : (
