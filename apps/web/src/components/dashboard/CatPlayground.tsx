@@ -853,7 +853,7 @@ export function CatPlayground({
       // CustomEvent inside the updater makes sibling CatPlayground listeners
       // call setState while React is still updating this instance.
       if (!nextState || typeof window === "undefined") return
-      const next = nextState
+      const next: PetState = nextState
       saveLocal(userKey, next)
       console.log("[cat-pet] commit saved local", { name: next.name, nameUpdatedAt: next.nameUpdatedAt })
       window.queueMicrotask(() => {
