@@ -119,6 +119,11 @@ export default function TxnEditSheet({
     onEditItemsChange(editItems.filter((_, i) => i !== index))
   }
 
+  const bumpQuantity = (index: number, delta: number) => {
+    const qty = Math.max(0, (Number.parseFloat(editItems[index]?.quantity || "0") || 0) + delta)
+    onEditItemsChange(editItems.map((item, i) => (i === index ? { ...item, quantity: String(qty) } : item)))
+  }
+
   const selectOption = (setter: (value: string) => void, value: string, close: () => void) => {
     setter(value)
     close()
@@ -452,14 +457,33 @@ export default function TxnEditSheet({
                               <span className="mb-1 block text-[0.6rem] font-black uppercase tracking-wider text-[var(--muted)]">
                                 {isBm ? "Kuantiti" : "Quantity"}
                               </span>
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={item.quantity}
-                                onChange={(e) => updateEditItem(index, "quantity", sanitizeDecimalInput(e.target.value))}
-                                placeholder="1"
-                                className="w-full rounded-xl border border-transparent bg-[var(--surface-tint)] px-2 py-2.5 text-center text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:outline-none"
-                              />
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => bumpQuantity(index, -1)}
+                                  disabled={quantity <= 0}
+                                  aria-label={isBm ? "Kurang" : "Decrease"}
+                                  className="flex h-[42px] w-9 shrink-0 items-center justify-center rounded-l-xl border border-transparent bg-[var(--surface-tint)] text-lg font-black text-[var(--text)] transition-colors focus:border-[var(--border-strong)] focus:outline-none disabled:opacity-40"
+                                >
+                                  −
+                                </button>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={item.quantity}
+                                  onChange={(e) => updateEditItem(index, "quantity", sanitizeDecimalInput(e.target.value))}
+                                  placeholder="1"
+                                  className="w-full min-w-0 flex-1 rounded-none border border-transparent bg-[var(--surface-tint)] px-1 py-2.5 text-center text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:outline-none"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => bumpQuantity(index, 1)}
+                                  aria-label={isBm ? "Tambah" : "Increase"}
+                                  className="flex h-[42px] w-9 shrink-0 items-center justify-center rounded-r-xl border border-transparent bg-[var(--surface-tint)] text-lg font-black text-[var(--text)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
+                                >
+                                  +
+                                </button>
+                              </div>
                             </label>
                             <label className="block">
                               <span className="mb-1 block text-[0.6rem] font-black uppercase tracking-wider text-[var(--muted)]">
