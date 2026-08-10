@@ -838,45 +838,39 @@ export function CatPlayground({
   const { requestClose: requestSheetClose } = useOverlayBackClose({ id: "cat-playground", isOpen: sheetOpen, onClose: closeSheet })
   const sheetSwipe = useSwipeDownToClose(requestSheetClose)
 
-  useEffect(() => {
-    stateRef.current = state
-  }, [state])
-
   const commitState = useCallback(
     (updater: (prev: PetState) => PetState, opts?: { sync?: boolean }) => {
-      // React may defer state updaters. Derive synchronously so persistence never
-      // depends on an updater side effect having already run.
-      const base = mergeStates(stateRef.current, loadLocal(userKey))
-      const next = updater(base)
-      stateRef.current = next
-      setState(next)
-
-      if (typeof window === "undefined") return
-      saveLocal(userKey, next)
-      window.queueMicrotask(() => {
-        try {
-          window.dispatchEvent(
-            new CustomEvent("bdp-cat-pet-updated", {
-              detail: { userKey, pet: next },
-            }),
-          )
-        } catch {
-          /* ignore */
-        }
-        if (opts?.sync !== false) {
-          if (persistTimer.current) window.clearTimeout(persistTimer.current)
-          persistTimer.current = window.setTimeout(() => {
-            setSyncLabel("syncing")
-            void apiPutPet(next).finally(() => {
-              setSyncLabel("ok")
-              window.setTimeout(() => setSyncLabel("idle"), 1200)
-            })
-          }, 400)
-        }
+      setState((prev) => {
+        // Always re-read localStorage so dual CatPlayground instances
+        // (dashboard + sidebar) do not overwrite each other's feed.
+        const base = mergeStates(prev, loadLocal(userKey))
+        const next = updater(base)
+        stateRef.current = next
+        return next
       })
+      return stateRef.current
     },
     [userKey],
   )
+
+  // Persist after every committed state change — guaranteed to run post-render.
+  useEffect(() => {
+    if (!hydrated) return
+    const next = stateRef.current
+    saveLocal(userKey, next)
+    window.dispatchEvent(
+      new CustomEvent("bdp-cat-pet-updated", { detail: { userKey, pet: next } }),
+    )
+    if (persistTimer.current) window.clearTimeout(persistTimer.current)
+    persistTimer.current = window.setTimeout(() => {
+      setSyncLabel("syncing")
+      void apiPutPet(next).finally(() => {
+        setSyncLabel("ok")
+        window.setTimeout(() => setSyncLabel("idle"), 1200)
+      })
+    }, 400)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, hydrated, userKey])
 
   useEffect(() => {
     let cancelled = false
@@ -894,22 +888,16 @@ export function CatPlayground({
       // Re-read local after network wait — another instance may have fed.
       const latestLocal = loadLocal(userKey)
       if (!remote) {
-        // Keep timestamps; only derive for UI. Persist original (no lastSeenAt bump).
+        // Keep timestamps; only derive for UI.
         stateRef.current = latestLocal
         setState(latestLocal)
         setNameDraft(latestLocal.name)
-        void apiPutPet(latestLocal)
         return
       }
       const soft = mergeStates(latestLocal, remote)
       stateRef.current = soft
       setState(soft)
-      saveLocal(userKey, soft)
       setNameDraft(soft.name)
-      // Only push if we have a strictly newer feed (avoid clobbering remote).
-      if (Number(soft.lastFedAt || 0) >= Number(remote.lastFedAt || 0)) {
-        void apiPutPet(soft)
-      }
     })()
 
     return () => {
@@ -924,7 +912,11 @@ export function CatPlayground({
       if (e.key !== storageKey(userKey) || !e.newValue) return
       try {
         const incoming = normalizeState(JSON.parse(e.newValue) as Partial<PetState>)
-        setState((prev) => mergeStates(prev, incoming))
+        setState((prev) => {
+          const merged = mergeStates(prev, incoming)
+          stateRef.current = merged
+          return merged
+        })
         setNameDraft(incoming.name)
         setNow(Date.now())
       } catch {
@@ -934,7 +926,11 @@ export function CatPlayground({
     const onLocal = (e: Event) => {
       const detail = (e as CustomEvent<{ userKey?: string; pet?: PetState }>).detail
       if (!detail || detail.userKey !== userKey || !detail.pet) return
-      setState((prev) => mergeStates(prev, detail.pet as PetState))
+      setState((prev) => {
+        const merged = mergeStates(prev, detail.pet as PetState)
+        stateRef.current = merged
+        return merged
+      })
       setNameDraft(detail.pet.name)
       setNow(Date.now())
     }
