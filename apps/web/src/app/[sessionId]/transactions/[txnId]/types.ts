@@ -57,6 +57,7 @@ export interface WalletOption {
   name: string
   label?: string | null
   image_url?: string
+  currency?: string | null
 }
 
 export interface LoanOption {

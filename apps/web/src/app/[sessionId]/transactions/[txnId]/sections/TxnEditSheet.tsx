@@ -5,6 +5,7 @@ import { useState, useRef } from "react"
 import { createPortal } from "react-dom"
 import { X, Check, ChevronDown, Plus, MinusCircle, Wallet, HandCoins, Repeat, Tag, Upload, XCircle, TrendingDown, TrendingUp } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { formatCurrencyLabel } from "@/components/ui/MoneyAmount"
 import { CategoryIconGlyph } from "@/lib/category-icons"
 import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
@@ -162,6 +163,10 @@ export default function TxnEditSheet({
   const activePickers =
     showCategoryPicker || showWalletPicker || showLoanPicker || showSubscriptionPicker
 
+  const selectedWallet = wallets.find((w) => String(w.id) === String(editForm.wallet_id))
+  const selectedWalletCurrency =
+    selectedWallet?.currency || wallets[0]?.currency || "RM"
+
   if (!open) return null
 
   return createPortal(
@@ -246,16 +251,21 @@ export default function TxnEditSheet({
                   required
                   className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
                 />
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  aria-label={langT.amount}
-                  placeholder={langT.amount}
-                  value={editForm.amount}
-                  onChange={(e) => onEditFormChange({ amount: sanitizeDecimalInput(e.target.value) })}
-                  required
-                  className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    aria-label={langT.amount}
+                    placeholder={langT.amount}
+                    value={editForm.amount}
+                    onChange={(e) => onEditFormChange({ amount: sanitizeDecimalInput(e.target.value) })}
+                    required
+                    className="w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] py-3 pl-4 pr-16 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] transition-colors focus:border-[var(--border-strong)] focus:outline-none"
+                  />
+                  <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-semibold text-[var(--muted)]">
+                    {formatCurrencyLabel(selectedWalletCurrency)}
+                  </span>
+                </div>
               </>
             )}
 
