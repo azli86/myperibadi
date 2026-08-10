@@ -481,7 +481,7 @@ async function apiGetPet(): Promise<PetState | null> {
 async function apiPutPet(pet: PetState): Promise<void> {
   try {
     const token = getAccessToken()
-    await fetch("/api/users/me/cat-pet", {
+    const res = await fetch("/api/users/me/cat-pet", {
       method: "PUT",
       credentials: "include",
       headers: {
@@ -490,6 +490,9 @@ async function apiPutPet(pet: PetState): Promise<void> {
       },
       body: JSON.stringify({ pet }),
     })
+    if (!res.ok) {
+      console.log("[cat-pet] PUT failed", res.status, await res.text())
+    }
   } catch {
     /* offline ok */
   }
@@ -852,6 +855,7 @@ export function CatPlayground({
       if (!nextState || typeof window === "undefined") return
       const next = nextState
       saveLocal(userKey, next)
+      console.log("[cat-pet] commit saved local", { name: next.name, nameUpdatedAt: next.nameUpdatedAt })
       window.queueMicrotask(() => {
         try {
           window.dispatchEvent(
@@ -881,6 +885,7 @@ export function CatPlayground({
     let cancelled = false
     // Read local only — do not decay+persist on mount (that raced two instances).
     const local = loadLocal(userKey)
+    console.log("[cat-pet] mount local", { name: local.name, nameUpdatedAt: local.nameUpdatedAt })
     setState(local)
     setNameDraft(local.name)
     setHydrated(true)
@@ -888,9 +893,11 @@ export function CatPlayground({
 
     void (async () => {
       const remote = await apiGetPet()
+      console.log("[cat-pet] mount remote", { name: remote?.name, nameUpdatedAt: remote?.nameUpdatedAt })
       if (cancelled) return
       // Re-read local after network wait — another instance may have fed.
       const latestLocal = loadLocal(userKey)
+      console.log("[cat-pet] mount latestLocal", { name: latestLocal.name, nameUpdatedAt: latestLocal.nameUpdatedAt })
       if (!remote) {
         // Keep timestamps; only derive for UI. Persist original (no lastSeenAt bump).
         setState(latestLocal)
@@ -899,6 +906,7 @@ export function CatPlayground({
         return
       }
       const soft = mergeStates(latestLocal, remote)
+      console.log("[cat-pet] mount merged", { name: soft.name, nameUpdatedAt: soft.nameUpdatedAt })
       setState(soft)
       saveLocal(userKey, soft)
       setNameDraft(soft.name)
@@ -1197,6 +1205,7 @@ export function CatPlayground({
 
   const saveName = useCallback(() => {
     const nextName = nameDraft.trim().slice(0, 24) || "Mimi"
+    console.log("[cat-pet] saveName", { nextName })
     setNameDraft(nextName)
     setEditingName(false)
     commitState((prev) => ({ ...applyDecay(prev), name: nextName, nameUpdatedAt: Date.now(), lastSeenAt: Date.now() }))
