@@ -421,11 +421,6 @@ export default function TxnEditSheet({
 
                 {editItems.length > 0 ? (
                   <div className="space-y-2">
-                    <div className="grid grid-cols-4 gap-1.5 px-1 text-[0.62rem] font-black uppercase tracking-wider text-[var(--muted)]">
-                      <span className="col-span-2">{isBm ? "Qty" : "Qty"}</span>
-                      <span className="text-center">{isBm ? "Harga" : "Price"}</span>
-                      <span className="text-right">{isBm ? "Total" : "Total"}</span>
-                    </div>
                     {editItems.map((item, index) => {
                       const quantity = Number.parseFloat(item.quantity || "0") || 0
                       const unitPrice = Number.parseFloat(item.unit_price || "0") || 0
@@ -433,14 +428,14 @@ export default function TxnEditSheet({
                       return (
                         <div
                           key={index}
-                          className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-2.5"
+                          className="space-y-2.5 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] p-3"
                         >
                           <div className="flex items-center gap-2">
                             <input
                               type="text"
                               value={item.name}
                               onChange={(e) => updateEditItem(index, "name", e.target.value)}
-                              placeholder={isBm ? "Nama item" : "Item"}
+                              placeholder={isBm ? "Nama item" : "Item name"}
                               className="min-w-0 flex-1 rounded-xl border border-transparent bg-[var(--surface-tint)] px-3 py-2.5 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:outline-none"
                             />
                             <button
@@ -452,24 +447,41 @@ export default function TxnEditSheet({
                               <MinusCircle size={18} />
                             </button>
                           </div>
-                          <div className="grid grid-cols-4 items-center gap-1.5">
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={item.quantity}
-                              onChange={(e) => updateEditItem(index, "quantity", sanitizeDecimalInput(e.target.value))}
-                              placeholder="1"
-                              className="w-full rounded-xl border border-transparent bg-[var(--surface-tint)] px-2 py-2 text-center text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:outline-none"
-                            />
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={item.unit_price}
-                              onChange={(e) => updateEditItem(index, "unit_price", sanitizeDecimalInput(e.target.value))}
-                              placeholder="0.00"
-                              className="w-full rounded-xl border border-transparent bg-[var(--surface-tint)] px-2 py-2 text-right text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:outline-none"
-                            />
-                            <div className="col-span-2 truncate text-right text-sm font-black text-[var(--text)]">{subtotal.toFixed(2)}</div>
+                          <div className="grid grid-cols-3 items-end gap-2">
+                            <label className="block">
+                              <span className="mb-1 block text-[0.6rem] font-black uppercase tracking-wider text-[var(--muted)]">
+                                {isBm ? "Kuantiti" : "Quantity"}
+                              </span>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={item.quantity}
+                                onChange={(e) => updateEditItem(index, "quantity", sanitizeDecimalInput(e.target.value))}
+                                placeholder="1"
+                                className="w-full rounded-xl border border-transparent bg-[var(--surface-tint)] px-2 py-2.5 text-center text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:outline-none"
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="mb-1 block text-[0.6rem] font-black uppercase tracking-wider text-[var(--muted)]">
+                                {isBm ? "Harga" : "Price"}
+                              </span>
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={item.unit_price}
+                                onChange={(e) => updateEditItem(index, "unit_price", sanitizeDecimalInput(e.target.value))}
+                                placeholder="0.00"
+                                className="w-full rounded-xl border border-transparent bg-[var(--surface-tint)] px-2 py-2.5 text-right text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--border-strong)] focus:outline-none"
+                              />
+                            </label>
+                            <div className="flex flex-col items-end">
+                              <span className="mb-1 block text-[0.6rem] font-black uppercase tracking-wider text-[var(--muted)]">
+                                {isBm ? "Jumlah" : "Total"}
+                              </span>
+                              <div className="flex h-[42px] w-full items-center justify-end rounded-xl bg-[var(--surface-tint)] px-3 text-sm font-black tabular-nums text-[var(--text)]">
+                                {subtotal.toFixed(2)}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       )
