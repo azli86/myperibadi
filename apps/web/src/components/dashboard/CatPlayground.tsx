@@ -926,6 +926,15 @@ export function CatPlayground({
     const onLocal = (e: Event) => {
       const detail = (e as CustomEvent<{ userKey?: string; pet?: PetState }>).detail
       if (!detail || detail.userKey !== userKey || !detail.pet) return
+      // Ignore own broadcast (bounced back via CustomEvent) to avoid render loop.
+      // Compare only stable identity fields — hunger/happy decay on each instance.
+      const cur = stateRef.current
+      const same =
+        detail.pet.name === cur.name &&
+        Number(detail.pet.nameUpdatedAt || 0) === Number(cur.nameUpdatedAt || 0) &&
+        detail.pet.catSkin === cur.catSkin &&
+        detail.pet.houseSkin === cur.houseSkin
+      if (same) return
       setState((prev) => {
         const merged = mergeStates(prev, detail.pet as PetState)
         stateRef.current = merged
