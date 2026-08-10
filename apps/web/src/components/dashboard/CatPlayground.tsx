@@ -23,6 +23,8 @@ type PetState = {
   deaths: number
   revives: number
   name: string
+  /** epoch ms of last rename — merge picks the newer name */
+  nameUpdatedAt: number
   remindersEnabled: boolean
   /** first birth timestamp — used for age */
   bornAt: number
@@ -284,6 +286,7 @@ function defaultState(): PetState {
     deaths: 0,
     revives: 0,
     name: "Mimi",
+    nameUpdatedAt: 0,
     remindersEnabled: true,
     bornAt: now,
     catSkin: "amber",
@@ -311,6 +314,7 @@ function normalizeState(raw: Partial<PetState> | null | undefined): PetState {
     deaths: Math.max(0, Math.floor(Number(raw.deaths || 0))),
     revives: Math.max(0, Math.floor(Number(raw.revives || 0))),
     name: String(raw.name || d.name).trim().slice(0, 24) || d.name,
+    nameUpdatedAt: Math.max(0, Number(raw.nameUpdatedAt || 0)) || d.nameUpdatedAt,
     remindersEnabled: raw.remindersEnabled !== false,
     bornAt,
     catSkin: isCatSkin(raw.catSkin) ? raw.catSkin : d.catSkin,
@@ -384,7 +388,8 @@ function mergeStates(a: PetState, b: PetState): PetState {
     ...feedWinner,
     lastFedAt: Math.max(aFed, bFed),
     lastSeenAt: Math.max(Number(a.lastSeenAt || 0), Number(b.lastSeenAt || 0)),
-    name: touchWinner.name || feedWinner.name,
+    name: (Number(a.nameUpdatedAt || 0) >= Number(b.nameUpdatedAt || 0) ? a : b).name || feedWinner.name,
+    nameUpdatedAt: Math.max(Number(a.nameUpdatedAt || 0), Number(b.nameUpdatedAt || 0)),
     remindersEnabled: touchWinner.remindersEnabled,
     catSkin: touchWinner.catSkin || feedWinner.catSkin,
     houseSkin: touchWinner.houseSkin || feedWinner.houseSkin,
@@ -1194,7 +1199,7 @@ export function CatPlayground({
     const nextName = nameDraft.trim().slice(0, 24) || "Mimi"
     setNameDraft(nextName)
     setEditingName(false)
-    commitState((prev) => ({ ...applyDecay(prev), name: nextName, lastSeenAt: Date.now() }))
+    commitState((prev) => ({ ...applyDecay(prev), name: nextName, nameUpdatedAt: Date.now(), lastSeenAt: Date.now() }))
   }, [nameDraft, commitState])
 
   const toggleReminders = useCallback(async () => {

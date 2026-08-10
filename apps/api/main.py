@@ -9945,6 +9945,7 @@ def _normalize_cat_pet_payload(data: dict | None) -> dict:
             return default
 
     name = str(raw.get("name") or "Mimi").strip()[:24] or "Mimi"
+    name_updated_at = max(0, _int("nameUpdatedAt", 0))
     hunger = max(0.0, min(100.0, _num("hunger", 100)))
     happy = max(0.0, min(100.0, _num("happy", 100)))
     last_fed = _int("lastFedAt", 0)
@@ -9970,6 +9971,7 @@ def _normalize_cat_pet_payload(data: dict | None) -> dict:
         "deaths": max(0, _int("deaths", 0)),
         "revives": max(0, _int("revives", 0)),
         "name": name,
+        "nameUpdatedAt": name_updated_at,
         "remindersEnabled": bool(raw.get("remindersEnabled", True)),
         "bornAt": born,
         "catSkin": cat_skin,
