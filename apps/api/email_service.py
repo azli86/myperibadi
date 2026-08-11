@@ -12,6 +12,73 @@ SMTP_PASS = os.getenv("SMTP_PASS", "")
 SMTP_FROM = os.getenv("SMTP_FROM", "BudgetDigitalPort <noreply@budget.digitalport.my>")
 APP_PUBLIC_URL = os.getenv("APP_PUBLIC_URL", "https://budget.digitalport.my").rstrip("/")
 
+async def send_account_verification_email(email: str, user_name: str):
+    """Requests that a suspended account confirm ownership before access is restored.
+    Response is reviewed manually by an admin before reactivation."""
+    subject = "Action Required: Verify Your BudgetDigitalPort Account"
+    greeting = f"Hi {user_name},"
+    message = ("Your BudgetDigitalPort account has been suspended pending verification. "
+               "To restore access, please confirm that this email address belongs to you "
+               "by replying directly to this email.")
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            .container {{ font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #f0f0f0; border-radius: 12px; }}
+            .header {{ text-align: center; padding-bottom: 20px; }}
+            .logo {{ font-size: 24px; font-weight: 800; color: #d97706; letter-spacing: -1px; }}
+            .content {{ line-height: 1.6; color: #333; }}
+            .button-container {{ text-align: center; padding: 30px 0; }}
+            .button {{ background: #d97706; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; }}
+            .footer {{ font-size: 12px; color: #999; text-align: center; margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="logo">BudgetDigitalPort</div>
+                <div style="color: #666; font-size: 14px; margin-top: 5px;">Account Verification Required</div>
+            </div>
+            <div class="content">
+                <h3>Verify Your Account</h3>
+                <p>{greeting}</p>
+                <p>{message}</p>
+                <p style="font-size: 13px; color: #666;">
+                    If you did not create this account or do not recognise this request, you can ignore this email.
+                </p>
+            </div>
+            <div class="footer">
+                <p>This is an automated notification from BudgetDigitalPort.</p>
+                <p>&copy; 2026 BudgetDigitalPort. DigitalPort 2 Budget.</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+    if not SMTP_USER or not SMTP_PASS:
+        print(f"⚠️ SMTP credentials not set. Account verification email skipped for {email}.")
+        return False
+
+    try:
+        msg = MIMEMultipart()
+        msg["From"] = SMTP_FROM
+        msg["To"] = email
+        msg["Subject"] = subject
+        msg.attach(MIMEText(html_content, "html"))
+
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            server.send_message(msg)
+
+        return True
+    except Exception as e:
+        print(f"❌ Failed to send account verification email: {e}")
+        return False
+
 async def send_reset_password_email(email: str, token: str, user_name: str, language: str = "BM"):
     """
     Sends a password reset email to the user.
