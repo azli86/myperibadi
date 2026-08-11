@@ -39,6 +39,8 @@ class User(Base):
     default_household_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    deactivated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # set when account is deactivated
+    verification_email_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # account-verification email sent
     language: Mapped[str] = mapped_column(String(5), default="BM") # 'EN' or 'BM'
     onboarding_done: Mapped[bool] = mapped_column(Boolean, default=True)  # False => new user sees onboarding intro after first login
     category_language: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)  # 'bm' | 'en' | 'manual' (auto-seeded category set)

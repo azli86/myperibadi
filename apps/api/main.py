@@ -862,6 +862,8 @@ async def ensure_database_schema():
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_done BOOLEAN NOT NULL DEFAULT TRUE"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS category_language VARCHAR(10) NULL"))
             await conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_kind VARCHAR(20) NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_email_sent_at TIMESTAMP NULL"))
         elif conn.dialect.name in {"mysql", "mariadb"}:
             index_exists = await conn.execute(
                 text(
@@ -878,6 +880,8 @@ async def ensure_database_schema():
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_done BOOLEAN NOT NULL DEFAULT TRUE"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS category_language VARCHAR(10) NULL"))
             await conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_kind VARCHAR(20) NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_email_sent_at TIMESTAMP NULL"))
         if conn.dialect.name != "postgresql":
             print(f"INFO:  PostgreSQL-only schema patch block skipped for {conn.dialect.name}.")
         else:
@@ -1145,6 +1149,51 @@ async def start_chat_cleanup_task():
             except Exception as e:
                 print(f"[cleanup] Error during chat cleanup: {e}")
     asyncio.create_task(_cleanup_loop())
+
+@app.on_event("startup")
+async def start_account_verification_email_task():
+    """Background task: email a verification request when an account is deactivated.
+    Sends at most once per account (tracked by verification_email_sent_at).
+    Reactivation stays manual/admin-driven."""
+    async def _verification_loop():
+        while True:
+            await asyncio.sleep(60)  # check every 60s
+            try:
+                async with database.SessionLocal() as db:
+                    now = datetime.utcnow()
+                    # Backfill deactivated_at for deactivated accounts missing it.
+                    await db.execute(
+                        update(models.User)
+                        .where(models.User.is_active.is_(False))
+                        .where(models.User.deactivated_at.is_(None))
+                        .values(deactivated_at=now)
+                    )
+                    await db.commit()
+
+                    # Find deactivated accounts that still need a verification email.
+                    result = await db.execute(
+                        select(models.User).where(
+                            models.User.is_active.is_(False),
+                            models.User.deactivated_at.isnot(None),
+                            models.User.verification_email_sent_at.is_(None),
+                        )
+                    )
+                    pending = result.scalars().all()
+                    for user in pending:
+                        email = (user.email or "").strip()
+                        if not email:
+                            continue
+                        name = (user.name or "").strip() or email
+                        sent = await email_service.send_account_verification_email(email, name)
+                        if sent:
+                            user.verification_email_sent_at = datetime.utcnow()
+                            print(f"[account-verify] Verification email sent to {email}")
+                        else:
+                            print(f"[account-verify] Failed to send verification email to {email}")
+                    await db.commit()
+            except Exception as e:
+                print(f"[account-verify] Error: {e}")
+    asyncio.create_task(_verification_loop())
 
 app.add_middleware(
     CORSMiddleware,
