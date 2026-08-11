@@ -121,6 +121,7 @@ export default function HelpPage() {
         { id: "group", label: "Mode Group", icon: <MessageSquare size={14} /> },
         { id: "receipt", label: "Upload Resit", icon: <FileImage size={14} /> },
         { id: "places", label: "My Places", icon: <MapPin size={14} /> },
+        { id: "split", label: "Split Bill", icon: <CreditCard size={14} /> },
         { id: "security", label: "6PIN & Sekuriti", icon: <KeyRound size={14} /> },
         { id: "tips", label: "Tips & Keselamatan", icon: <Shield size={14} /> },
               ]
@@ -139,6 +140,7 @@ export default function HelpPage() {
         { id: "group", label: "Group Mode", icon: <MessageSquare size={14} /> },
         { id: "receipt", label: "Receipt Upload", icon: <FileImage size={14} /> },
         { id: "places", label: "My Places", icon: <MapPin size={14} /> },
+        { id: "split", label: "Split Bill", icon: <CreditCard size={14} /> },
         { id: "security", label: "6PIN & Security", icon: <KeyRound size={14} /> },
         { id: "tips", label: "Tips & Safety", icon: <Shield size={14} /> },
               ]
@@ -614,6 +616,53 @@ food fried rice 10`}</ExampleBlock>
                 <>Assign a category to each pin for easy filtering on the map and Map Analysis.</>,
                 <>Pins can be shared to other WhatsApp numbers via <strong>Share</strong> on the portal.</>,
                 <>Transaction pins (reply + attach location) appear on Map and Map Analysis, separate from My Places.</>,
+              ]).map((tip, i) => (
+                <li key={i} className="leading-relaxed">{tip}</li>
+              ))}
+            </ul>
+          </section>
+
+          {/* ── Split Bill ── */}
+          <section className={getSectionClassName("split")}>
+            <SectionHeading id="split" icon={<CreditCard size={16} />} title={isBM ? "Split Bill (Kongsi Bil)" : "Split Bill (Shared Bills)"} />
+            <TipBox isLight={isLight}>
+              {isBM
+                ? <>Split Bill kongsi satu bil besar kepada beberapa orang. Bahagian anda dicatat sebagai expense, dan bila orang lain bayar anda, jumlah itu masuk sebagai <strong>reimbursement</strong> (masuk baki wallet, tidak dikira sebagai income).</>
+                : <>Split Bill splits one big bill among several people. Your share is recorded as expense, and when others pay you back, the amount comes in as <strong>reimbursement</strong> (adds to wallet balance, not counted as income).</>
+              }
+            </TipBox>
+            <div className="divide-y divide-[var(--border)] mt-4">
+              {(isBM ? [
+                { cmd: "makan tng split 6", desc: "Buat split untuk resit terakhir. Hantar gambar resit dahulu, kemudian taip command ini. Ia catat bahagian anda (1 orang) sebagai expense dan bahagian kutip (5 orang) sebagai baki split.", example: "makan tng split 6" },
+                { cmd: "splitx tng", desc: "Rekod bayaran balik. Hantar screenshot pembayaran dahulu, kemudian taip command ini dengan nama wallet (untuk wallet TOUCH & GO guna tng).", example: "splitx tng" },
+                { cmd: "splitx", desc: "Papar panduan command split bill (format lama).", example: "splitx" },
+                { cmd: "splitx create <tajuk> <jumlah> <orang>", desc: "Buat split secara manual tanpa resit.", example: "splitx create dinner 66 6" },
+                { cmd: "splitx list", desc: "Senarai split aktif berserta baki.", example: "splitx list" },
+                { cmd: "splitx pay <id> <jumlah>", desc: "Bayar balik split tertentu.", example: "splitx pay 3 11" },
+                { cmd: "splitx done <id>", desc: "Tanda split selesai.", example: "splitx done 3" },
+                { cmd: "Halaman Split Bill", desc: "Buka halaman Split Bill di portal untuk lihat, bayar, dan padam split.", example: "Menu → Personal → Split Bill" },
+              ] : [
+                { cmd: "makan tng split 6", desc: "Create a split for the last receipt. Send the receipt image first, then type this command. It records your share (1 person) as expense and the collectable share (5 people) as split balance.", example: "makan tng split 6" },
+                { cmd: "splitx tng", desc: "Record a repayment. Send the payment screenshot first, then type this command with the wallet name (use tng for TOUCH & GO).", example: "splitx tng" },
+                { cmd: "splitx", desc: "Show split bill command guide (legacy format).", example: "splitx" },
+                { cmd: "splitx create <title> <amount> <people>", desc: "Create a split manually without a receipt.", example: "splitx create dinner 66 6" },
+                { cmd: "splitx list", desc: "List active splits with balances.", example: "splitx list" },
+                { cmd: "splitx pay <id> <amount>", desc: "Record repayment for a specific split.", example: "splitx pay 3 11" },
+                { cmd: "splitx done <id>", desc: "Mark a split as done.", example: "splitx done 3" },
+                { cmd: "Split Bill page", desc: "Open the Split Bill page in the portal to view, pay, and delete splits.", example: "Menu → Personal → Split Bill" },
+              ]).map((row) => (
+                <CommandRow key={row.cmd} cmd={row.cmd} desc={row.desc} example={row.example} exLabel={exLabel} />
+              ))}
+            </div>
+            <ul className="space-y-2 text-sm text-[var(--text-soft)] list-disc pl-5 marker:text-[var(--muted)] mt-4">
+              {(isBM ? [
+                <>Split paling sedikit <strong>2 orang</strong>. Jumlah dikongsi sama rata: bahagian anda = jumlah / orang, baki kutip = jumlah - bahagian anda.</>,
+                <>Untuk bil yang kena bayar pada tarikh sama, boleh guna command yang sama pada setiap resit.</>,
+                <>Ciri lain yang berkongsi konsep kongsi kos: <strong>BNPL</strong> (Buy Now Pay Later, ansuran bayar kemudian) dan <strong>MyEvent</strong> (tracking bayaran berkumpulan untuk event) — lihat halaman masing-masing di portal.</>,
+              ] : [
+                <>Split must have at least <strong>2 people</strong>. Amount is shared equally: your share = amount / people, collectable = amount - your share.</>,
+                <>For bills due on the same date, you can use the same command for each receipt.</>,
+                <>Related cost-sharing features: <strong>BNPL</strong> (Buy Now Pay Later, installment later payment) and <strong>MyEvent</strong> (group payment tracking for events) — see their pages in the portal.</>,
               ]).map((tip, i) => (
                 <li key={i} className="leading-relaxed">{tip}</li>
               ))}

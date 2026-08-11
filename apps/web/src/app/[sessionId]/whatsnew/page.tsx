@@ -25,6 +25,19 @@ export default function ChangelogPage() {
   const entries: ChangelogEntry[] = isBm
     ? [
         {
+          version: "v2026.08.10",
+          date: "10 Ogos 2026",
+          title: "Split Bill & Command OCR Split",
+          items: [
+            "Split Bill: kongsi satu bil besar kepada beberapa orang. Bahagian anda dicatat sebagai expense, baki kutip jadi balance split — buka Menu → Personal → Split Bill.",
+            "Command baharu dari gambar resit: hantar resit, kemudian taip `makan tng split 6` untuk kongsi bil 6 orang dengan dompet TOUCH & GO. Bahagian anda = jumlah / 6, baki = jumlah - bahagian.",
+            "Rekod bayaran balik: hantar screenshot bayaran, kemudian taip `splitx tng` — jumlah masuk sebagai reimbursement (tambah baki wallet, tidak dikira sebagai income).",
+            "Command lama `splitx` / `splitx create` / `splitx list` / `splitx pay` / `splitx done` masih disokong.",
+            "Reimbursement kini tidak termasuk dalam laporan income, dashboard, dan budget — hanya menambah baki wallet dan dipaparkan dalam sejarah transaksi.",
+            "Halaman Split Bill di portal untuk lihat, bayar, dan padam split. Ciri kongsi kos berkaitan: BNPL dan MyEvent tersedia di menu masing-masing.",
+          ],
+        },
+        {
           version: "v2026.08.06",
           date: "6 Ogos 2026",
           title: "Masa Resit, Resit Terlekat Selepas Kategori & Dompet Unik",
@@ -137,6 +150,19 @@ export default function ChangelogPage() {
         },
       ]
     : [
+        {
+          version: "v2026.08.10",
+          date: "10 Aug 2026",
+          title: "Split Bill & OCR Split Commands",
+          items: [
+            "Split Bill: split one big bill among several people. Your share is recorded as expense, the collectable share becomes split balance — open Menu → Personal → Split Bill.",
+            "New commands from a receipt image: send the receipt, then type `makan tng split 6` to split a 6-person bill with the TOUCH & GO wallet. Your share = amount / 6, collectable = amount - your share.",
+            "Record repayments: send the payment screenshot, then type `splitx tng` — the amount comes in as reimbursement (adds to wallet balance, not counted as income).",
+            "Legacy commands `splitx` / `splitx create` / `splitx list` / `splitx pay` / `splitx done` are still supported.",
+            "Reimbursements are now excluded from income reports, dashboard, and budget — they only add to wallet balance and appear in transaction history.",
+            "Split Bill page in the portal to view, pay, and delete splits. Related cost-sharing features: BNPL and MyEvent are available under their own menus.",
+          ],
+        },
         {
           version: "v2026.08.06",
           date: "6 August 2026",
