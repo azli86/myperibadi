@@ -8,6 +8,7 @@ import {
   BookOpen,
   Bot,
   CalendarClock,
+  CalendarDays,
   ChevronDown,
   CreditCard,
   FileImage,
@@ -122,6 +123,8 @@ export default function HelpPage() {
         { id: "receipt", label: "Upload Resit", icon: <FileImage size={14} /> },
         { id: "places", label: "My Places", icon: <MapPin size={14} /> },
         { id: "split", label: "Split Bill", icon: <CreditCard size={14} /> },
+        { id: "bnpl", label: "BNPL", icon: <CreditCard size={14} /> },
+        { id: "event", label: "My Event", icon: <CalendarDays size={14} /> },
         { id: "security", label: "6PIN & Sekuriti", icon: <KeyRound size={14} /> },
         { id: "tips", label: "Tips & Keselamatan", icon: <Shield size={14} /> },
               ]
@@ -141,6 +144,8 @@ export default function HelpPage() {
         { id: "receipt", label: "Receipt Upload", icon: <FileImage size={14} /> },
         { id: "places", label: "My Places", icon: <MapPin size={14} /> },
         { id: "split", label: "Split Bill", icon: <CreditCard size={14} /> },
+        { id: "bnpl", label: "BNPL", icon: <CreditCard size={14} /> },
+        { id: "event", label: "My Event", icon: <CalendarDays size={14} /> },
         { id: "security", label: "6PIN & Security", icon: <KeyRound size={14} /> },
         { id: "tips", label: "Tips & Safety", icon: <Shield size={14} /> },
               ]
@@ -658,11 +663,57 @@ food fried rice 10`}</ExampleBlock>
               {(isBM ? [
                 <>Split paling sedikit <strong>2 orang</strong>. Jumlah dikongsi sama rata: bahagian anda = jumlah / orang, baki kutip = jumlah - bahagian anda.</>,
                 <>Untuk bil yang kena bayar pada tarikh sama, boleh guna command yang sama pada setiap resit.</>,
-                <>Ciri lain yang berkongsi konsep kongsi kos: <strong>BNPL</strong> (Buy Now Pay Later, ansuran bayar kemudian) dan <strong>MyEvent</strong> (tracking bayaran berkumpulan untuk event) — lihat halaman masing-masing di portal.</>,
               ] : [
                 <>Split must have at least <strong>2 people</strong>. Amount is shared equally: your share = amount / people, collectable = amount - your share.</>,
                 <>For bills due on the same date, you can use the same command for each receipt.</>,
-                <>Related cost-sharing features: <strong>BNPL</strong> (Buy Now Pay Later, installment later payment) and <strong>MyEvent</strong> (group payment tracking for events) — see their pages in the portal.</>,
+              ]).map((tip, i) => (
+                <li key={i} className="leading-relaxed">{tip}</li>
+              ))}
+            </ul>
+          </section>
+
+          {/* ── BNPL ── */}
+          <section className={getSectionClassName("bnpl")}>
+            <SectionHeading id="bnpl" icon={<CreditCard size={16} />} title={isBM ? "BNPL (Bayar Kemudian)" : "BNPL (Buy Now Pay Later)"} />
+            <TipBox isLight={isLight}>
+              {isBM
+                ? <>BNPL ialah ansuran <strong>Buy Now Pay Later</strong> — beli sekarang, bayar kemudian dalam beberapa ansuran. Setiap bayaran direkod sebagai transaksi expense ke wallet pilihan.</>
+                : <>BNPL is <strong>Buy Now Pay Later</strong> installment — buy now, pay later in several installments. Each payment is recorded as an expense transaction to the selected wallet.</>
+              }
+            </TipBox>
+            <ul className="space-y-2 text-sm text-[var(--text-soft)] list-disc pl-5 marker:text-[var(--muted)] mt-2">
+              {(isBM ? [
+                <>Uruskan pembelian ansuran (contoh Shopee PayLater, SPayLater) di halaman <strong>BNPL</strong> portal.</>,
+                <>Rekod bayaran ansuran untuk setiap item BNPL; sistem menjejak baki dan status selesai.</>,
+                <>Setiap bayaran automatik dicatat sebagai transaksi expense mengikut kategori dan wallet yang dipilih.</>,
+              ] : [
+                <>Manage installment purchases (e.g. Shopee PayLater, SPayLater) on the <strong>BNPL</strong> portal page.</>,
+                <>Record installment payments for each BNPL item; the system tracks balance and settled status.</>,
+                <>Each payment is automatically recorded as an expense transaction with the selected category and wallet.</>,
+              ]).map((tip, i) => (
+                <li key={i} className="leading-relaxed">{tip}</li>
+              ))}
+            </ul>
+          </section>
+
+          {/* ── MyEvent ── */}
+          <section className={getSectionClassName("event")}>
+            <SectionHeading id="event" icon={<CalendarDays size={16} />} title={isBM ? "My Event (Acara Saya)" : "My Event"} />
+            <TipBox isLight={isLight}>
+              {isBM
+                ? <>My Event menjejak perbelanjaan dan bayaran untuk acara (contoh majlis, gathering) dengan <strong>budget, tarikh, dan wallet</strong>.</>
+                : <>My Event tracks spending and payments for events (e.g. gatherings) with a <strong>budget, date, and wallet</strong>.</>
+              }
+            </TipBox>
+            <ul className="space-y-2 text-sm text-[var(--text-soft)] list-disc pl-5 marker:text-[var(--muted)] mt-2">
+              {(isBM ? [
+                <>Buka halaman <strong>Acara Saya</strong> di portal untuk cipta acara dengan budget, tarikh, dan wallet.</>,
+                <>Rekod perbelanjaan berkaitan acara dan pantau baki budget secara berkala.</>,
+                <>Sesuai untuk bayaran berkumpulan dan pengurusan kos event yang tersusun.</>,
+              ] : [
+                <>Open the <strong>My Events</strong> page in the portal to create events with a budget, date, and wallet.</>,
+                <>Record event-related spending and monitor remaining budget over time.</>,
+                <>Great for group payments and organized event cost management.</>,
               ]).map((tip, i) => (
                 <li key={i} className="leading-relaxed">{tip}</li>
               ))}
