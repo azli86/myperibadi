@@ -244,7 +244,7 @@ async def forgot_password_route(
     result = await db.execute(select(models.User).where(models.User.email == normalized_email))
     user = result.scalars().first()
 
-    if user and user.is_active:
+    if user:
         token = secrets.token_urlsafe(32)
         user.reset_token = hash_reset_token(token)
         user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
@@ -283,7 +283,6 @@ async def reset_password_route(
                 models.User.reset_token == hash_reset_token(req.token),
             ),
             models.User.reset_token_expires > datetime.utcnow(),
-            models.User.is_active.is_(True),
         )
     )
     user = result.scalars().first()
@@ -294,6 +293,10 @@ async def reset_password_route(
     user.password_hash = auth_utils.get_password_hash(new_password)
     user.reset_token = None
     user.reset_token_expires = None
+    # Reset completed proves email ownership -> restore access automatically.
+    user.is_active = True
+    user.deactivated_at = None
+    user.verification_email_sent_at = None
     clear_user_pin(user)
     await clear_user_refresh_token(user, db=db)
     await db.commit()

@@ -2131,7 +2131,11 @@ async def _handle_google_login(
         await db.flush()
 
     if not user.is_active:
-        raise HTTPException(status_code=403, detail="Account is deactivated")
+        # Auto-reactivate on successful Google sign-in: the user proving control of
+        # this email/Google account restores access without manual admin approval.
+        user.is_active = True
+        user.deactivated_at = None
+        user.verification_email_sent_at = None
 
     token_bundle = await issue_auth_tokens_for_user(user, db=db, session_id=payload.session_id)
     set_auth_cookies(response, token_bundle)
