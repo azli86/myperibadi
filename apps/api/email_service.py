@@ -41,6 +41,7 @@ async def send_account_verification_email(email: str, user_name: str):
     message = ("Your MyPeribadi account has been suspended pending verification. "
                "To restore access, please confirm that this email address belongs to you "
                "by replying directly to this email.")
+    login_url = APP_PUBLIC_URL
 
     html_content = f"""
     <!DOCTYPE html>
@@ -66,6 +67,12 @@ async def send_account_verification_email(email: str, user_name: str):
                 <h3>Verify Your Account</h3>
                 <p>{greeting}</p>
                 <p>{message}</p>
+                <div class="button-container">
+                    <a href="{login_url}" class="button">Go to MyPeribadi Login</a>
+                </div>
+                <p style="font-size: 13px; color: #666;">
+                    After confirming, sign in at the link above. If you have forgotten your password, use the "Forgot Password" option on the login page to reset it.
+                </p>
                 <p style="font-size: 13px; color: #666;">
                     If you did not create this account or do not recognise this request, you can ignore this email.
                 </p>
