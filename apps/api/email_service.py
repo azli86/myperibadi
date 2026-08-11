@@ -2,6 +2,7 @@ import smtplib
 import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.image import MIMEImage
 from typing import Optional
 
 # SMTP configuration from environment variables
@@ -11,6 +12,26 @@ SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASS = os.getenv("SMTP_PASS", "")
 SMTP_FROM = os.getenv("SMTP_FROM", "MyPeribadi <noreply@myperibadi.com>")
 APP_PUBLIC_URL = os.getenv("APP_PUBLIC_URL", "https://app.myperibadi.com").rstrip("/")
+
+LOGO_CID = "myperibadi_logo"
+LOGO_PATH = os.getenv("MYPE_LOGO_PATH", "../web/public/logoweb.png")
+LOGO_PATH = os.path.join(os.path.dirname(__file__), LOGO_PATH)
+
+LOGO_HTML = (
+    f'<img src="cid:{LOGO_CID}" alt="MyPeribadi" '
+    'style="height:44px;max-width:220px;display:inline-block;"/>'
+)
+
+def _attach_logo(msg: MIMEMultipart):
+    """Attach the MyPeribadi logo as an inline CID image (works without remote image loading)."""
+    try:
+        with open(LOGO_PATH, "rb") as f:
+            img = MIMEImage(f.read(), _subtype="png")
+        img.add_header("Content-ID", f"<{LOGO_CID}>")
+        img.add_header("Content-Disposition", "inline", filename="logoweb.png")
+        msg.attach(img)
+    except Exception as e:
+        print(f"⚠️ Could not attach logo: {e}")
 
 async def send_account_verification_email(email: str, user_name: str):
     """Requests that a suspended account confirm ownership before access is restored.
@@ -38,7 +59,7 @@ async def send_account_verification_email(email: str, user_name: str):
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">MyPeribadi</div>
+                {LOGO_HTML}
                 <div style="color: #666; font-size: 14px; margin-top: 5px;">Account Verification Required</div>
             </div>
             <div class="content">
@@ -68,6 +89,7 @@ async def send_account_verification_email(email: str, user_name: str):
         msg["To"] = email
         msg["Subject"] = subject
         msg.attach(MIMEText(html_content, "html"))
+        _attach_logo(msg)
 
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
             server.starttls()
@@ -118,7 +140,7 @@ async def send_reset_password_email(email: str, token: str, user_name: str, lang
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">MyPeribadi</div>
+                {LOGO_HTML}
                 <div style="color: #666; font-size: 14px; margin-top: 5px;">Modern Expense Management</div>
             </div>
             <div class="content">
@@ -154,6 +176,7 @@ async def send_reset_password_email(email: str, token: str, user_name: str, lang
         msg['Subject'] = subject
 
         msg.attach(MIMEText(html_content, 'html'))
+        _attach_logo(msg)
 
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
             server.starttls()
@@ -199,7 +222,7 @@ async def send_email_change_verification_email(email: str, code: str, user_name:
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">MyPeribadi</div>
+                {LOGO_HTML}
                 <div style="color: #666; font-size: 14px; margin-top: 5px;">Modern Expense Management</div>
             </div>
             <div class="content">
@@ -228,6 +251,7 @@ async def send_email_change_verification_email(email: str, code: str, user_name:
         msg["To"] = email
         msg["Subject"] = subject
         msg.attach(MIMEText(html_content, "html"))
+        _attach_logo(msg)
 
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
             server.starttls()
@@ -261,7 +285,7 @@ async def send_removed_business_activation_email(email: str, user_name: str):
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">MyPeribadi</div>
+                {LOGO_HTML}
                 <div style="color: #666; font-size: 14px; margin-top: 5px;">Business Tools Activated</div>
             </div>
             <div class="content">
@@ -292,6 +316,7 @@ async def send_removed_business_activation_email(email: str, user_name: str):
         msg["To"] = email
         msg["Subject"] = subject
         msg.attach(MIMEText(html_content, "html"))
+        _attach_logo(msg)
 
         with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
             server.starttls()
