@@ -1156,6 +1156,7 @@ async def start_account_verification_email_task():
     Sends at most once per account (tracked by verification_email_sent_at).
     Reactivation stays manual/admin-driven."""
     async def _verification_loop():
+        print("[account-verify] background verification loop started")
         while True:
             await asyncio.sleep(60)  # check every 60s
             try:
