@@ -293,10 +293,15 @@ async def reset_password_route(
     user.password_hash = auth_utils.get_password_hash(new_password)
     user.reset_token = None
     user.reset_token_expires = None
-    # Reset completed proves email ownership -> restore access automatically.
-    user.is_active = True
-    user.deactivated_at = None
-    user.verification_email_sent_at = None
+    if user.deactivated_reason == "manual":
+        # Admin-deactivated accounts are not re-activated automatically on reset.
+        user.is_active = False
+    else:
+        # Reset completed proves email ownership -> restore access automatically.
+        user.is_active = True
+        user.deactivated_at = None
+        user.deactivated_reason = None
+        user.verification_email_sent_at = None
     clear_user_pin(user)
     await clear_user_refresh_token(user, db=db)
     await db.commit()

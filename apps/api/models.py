@@ -40,6 +40,7 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
     deactivated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # set when account is deactivated
+    deactivated_reason: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # 'manual' | 'inactivity'; NULL=legacy
     verification_email_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # account-verification email sent
     language: Mapped[str] = mapped_column(String(5), default="BM") # 'EN' or 'BM'
     onboarding_done: Mapped[bool] = mapped_column(Boolean, default=True)  # False => new user sees onboarding intro after first login

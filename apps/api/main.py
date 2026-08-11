@@ -864,6 +864,7 @@ async def ensure_database_schema():
             await conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_kind VARCHAR(20) NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_email_sent_at TIMESTAMP NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_reason VARCHAR(20) NULL"))
         elif conn.dialect.name in {"mysql", "mariadb"}:
             index_exists = await conn.execute(
                 text(
@@ -882,6 +883,7 @@ async def ensure_database_schema():
             await conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_kind VARCHAR(20) NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_email_sent_at TIMESTAMP NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_reason VARCHAR(20) NULL"))
         if conn.dialect.name != "postgresql":
             print(f"INFO:  PostgreSQL-only schema patch block skipped for {conn.dialect.name}.")
         else:
@@ -1195,6 +1197,64 @@ async def start_account_verification_email_task():
             except Exception as e:
                 print(f"[account-verify] Error: {e}")
     asyncio.create_task(_verification_loop())
+
+
+@app.on_event("startup")
+async def start_inactivity_deactivation_task():
+    """Background task: auto-deactivate accounts with no login AND no transaction for 60+ days.
+    Manual (admin) deactivations are untouched (deactivated_reason='manual').
+    Runs in LOG-ONLY mode unless AUTO_DEACTIVATE=true, so admins can review candidates first."""
+    AUTO_DEACTIVATE = os.getenv("AUTO_DEACTIVATE", "false").strip().lower() in {"1", "true", "yes", "on"}
+    async def _inactivity_loop():
+        print(f"[inactivity] loop started (mode={'AUTO-DEACTIVATE' if AUTO_DEACTIVATE else 'LOG-ONLY'})")
+        while True:
+            await asyncio.sleep(24 * 3600)  # daily
+            try:
+                async with database.SessionLocal() as db:
+                    # dialect-aware 60-day cutoff comparison
+                    sql = text("""
+                        SELECT u.id, u.email, u.created_at
+                        FROM users u
+                        WHERE u.is_active = true
+                          AND COALESCE(u.deactivated_reason, '') != 'manual'
+                          AND u.created_at < NOW() - INTERVAL '60 days'
+                          AND (
+                            (SELECT MAX(al.created_at) FROM access_logs al
+                              WHERE al.user_id = u.id AND NOT al.is_blocked) IS NULL
+                            OR (SELECT MAX(al.created_at) FROM access_logs al
+                              WHERE al.user_id = u.id AND NOT al.is_blocked)
+                                 < NOW() - INTERVAL '60 days'
+                          )
+                          AND (
+                            (SELECT MAX(t.created_at) FROM transactions t WHERE t.user_id = u.id) IS NULL
+                            OR (SELECT MAX(t.created_at) FROM transactions t WHERE t.user_id = u.id)
+                                 < NOW() - INTERVAL '60 days'
+                          )
+                    """)
+                    rows = (await db.execute(sql)).fetchall()
+                    if AUTO_DEACTIVATE:
+                        if rows:
+                            print(f"[inactivity] AUTO-DEACTIVATING {len(rows)} inactive account(s)")
+                            for row in rows:
+                                await db.execute(
+                                    update(models.User)
+                                    .where(models.User.id == row.id)
+                                    .values(
+                                        is_active=False,
+                                        deactivated_at=datetime.utcnow(),
+                                        deactivated_reason="inactivity",
+                                    )
+                                )
+                                print(f"[inactivity] deactivated {row.email} ({row.id})")
+                            await db.commit()
+                    else:
+                        print(f"[inactivity] LOG-ONLY: {len(rows)} inactive candidate(s) (set AUTO_DEACTIVATE=true to actually deactivate)")
+                        for row in rows[:20]:
+                            print(f"[inactivity]   candidate: {row.email} (created {row.created_at})")
+            except Exception as e:
+                print(f"[inactivity] Error: {e}")
+    asyncio.create_task(_inactivity_loop())
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -2131,10 +2191,13 @@ async def _handle_google_login(
         await db.flush()
 
     if not user.is_active:
+        if user.deactivated_reason == "manual":
+            raise HTTPException(status_code=403, detail="Account is deactivated")
         # Auto-reactivate on successful Google sign-in: the user proving control of
         # this email/Google account restores access without manual admin approval.
         user.is_active = True
         user.deactivated_at = None
+        user.deactivated_reason = None
         user.verification_email_sent_at = None
 
     token_bundle = await issue_auth_tokens_for_user(user, db=db, session_id=payload.session_id)
