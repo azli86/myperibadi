@@ -9,15 +9,15 @@ SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASS = os.getenv("SMTP_PASS", "")
-SMTP_FROM = os.getenv("SMTP_FROM", "BudgetDigitalPort <noreply@budget.digitalport.my>")
-APP_PUBLIC_URL = os.getenv("APP_PUBLIC_URL", "https://budget.digitalport.my").rstrip("/")
+SMTP_FROM = os.getenv("SMTP_FROM", "MyPeribadi <noreply@myperibadi.com>")
+APP_PUBLIC_URL = os.getenv("APP_PUBLIC_URL", "https://app.myperibadi.com").rstrip("/")
 
 async def send_account_verification_email(email: str, user_name: str):
     """Requests that a suspended account confirm ownership before access is restored.
     Response is reviewed manually by an admin before reactivation."""
-    subject = "Action Required: Verify Your BudgetDigitalPort Account"
+    subject = "Action Required: Verify Your MyPeribadi Account"
     greeting = f"Hi {user_name},"
-    message = ("Your BudgetDigitalPort account has been suspended pending verification. "
+    message = ("Your MyPeribadi account has been suspended pending verification. "
                "To restore access, please confirm that this email address belongs to you "
                "by replying directly to this email.")
 
@@ -38,7 +38,7 @@ async def send_account_verification_email(email: str, user_name: str):
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">BudgetDigitalPort</div>
+                <div class="logo">MyPeribadi</div>
                 <div style="color: #666; font-size: 14px; margin-top: 5px;">Account Verification Required</div>
             </div>
             <div class="content">
@@ -50,8 +50,8 @@ async def send_account_verification_email(email: str, user_name: str):
                 </p>
             </div>
             <div class="footer">
-                <p>This is an automated notification from BudgetDigitalPort.</p>
-                <p>&copy; 2026 BudgetDigitalPort. DigitalPort 2 Budget.</p>
+                <p>This is an automated notification from MyPeribadi.</p>
+                <p>&copy; 2026 MyPeribadi. MyPeribadi.</p>
             </div>
         </div>
     </body>
@@ -87,14 +87,14 @@ async def send_reset_password_email(email: str, token: str, user_name: str, lang
     reset_link = f"{APP_PUBLIC_URL}/reset-password?token={token}"
     
     if language == "BM":
-        subject = "Tetapan Semula Kata Laluan BudgetDigitalPort"
+        subject = "Tetapan Semula Kata Laluan MyPeribadi"
         title = "Tetapan Semula Kata Laluan"
         greeting = f"Hai {user_name},"
         message = "Anda telah meminta untuk menetapkan semula kata laluan anda. Klik butang di bawah untuk meneruskan:"
         button_text = "Tetapkan Kata Laluan Baru"
         footer = "Jika anda tidak meminta perubahan ini, sila abaikan e-mel ini."
     else:
-        subject = "BudgetDigitalPort Password Reset"
+        subject = "MyPeribadi Password Reset"
         title = "Reset Your Password"
         greeting = f"Hi {user_name},"
         message = "You have requested to reset your password. Click the button below to proceed:"
@@ -118,7 +118,7 @@ async def send_reset_password_email(email: str, token: str, user_name: str, lang
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">BudgetDigitalPort</div>
+                <div class="logo">MyPeribadi</div>
                 <div style="color: #666; font-size: 14px; margin-top: 5px;">Modern Expense Management</div>
             </div>
             <div class="content">
@@ -135,7 +135,7 @@ async def send_reset_password_email(email: str, token: str, user_name: str, lang
             </div>
             <div class="footer">
                 <p>{footer}</p>
-                <p>&copy; 2026 BudgetDigitalPort. DigitalPort 2 Budget.</p>
+                <p>&copy; 2026 MyPeribadi. MyPeribadi.</p>
             </div>
         </div>
     </body>
@@ -171,13 +171,13 @@ async def send_email_change_verification_email(email: str, code: str, user_name:
     Sends email verification code for changing account email.
     """
     if language == "BM":
-        subject = "Kod Pengesahan Tukar E-mel BudgetDigitalPort"
+        subject = "Kod Pengesahan Tukar E-mel MyPeribadi"
         title = "Sahkan E-mel Baru Anda"
         greeting = f"Hai {user_name},"
         message = "Gunakan kod di bawah untuk sahkan pertukaran e-mel akaun anda:"
         footer = "Jika anda tidak meminta pertukaran e-mel, sila abaikan e-mel ini."
     else:
-        subject = "BudgetDigitalPort Email Change Verification Code"
+        subject = "MyPeribadi Email Change Verification Code"
         title = "Verify Your New Email"
         greeting = f"Hi {user_name},"
         message = "Use the code below to verify your account email change:"
@@ -199,7 +199,7 @@ async def send_email_change_verification_email(email: str, code: str, user_name:
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">BudgetDigitalPort</div>
+                <div class="logo">MyPeribadi</div>
                 <div style="color: #666; font-size: 14px; margin-top: 5px;">Modern Expense Management</div>
             </div>
             <div class="content">
@@ -211,7 +211,7 @@ async def send_email_change_verification_email(email: str, code: str, user_name:
             </div>
             <div class="footer">
                 <p>{footer}</p>
-                <p>&copy; 2026 BudgetDigitalPort. DigitalPort 2 Budget.</p>
+                <p>&copy; 2026 MyPeribadi. MyPeribadi.</p>
             </div>
         </div>
     </body>
@@ -241,7 +241,7 @@ async def send_email_change_verification_email(email: str, code: str, user_name:
 
 
 async def send_removed_business_activation_email(email: str, user_name: str):
-    subject = "Your BudgetDigitalPort Business Account Has Been Activated"
+    subject = "Your MyPeribadi Business Account Has Been Activated"
     greeting = f"Hi {user_name},"
 
     html_content = f"""
@@ -261,21 +261,21 @@ async def send_removed_business_activation_email(email: str, user_name: str):
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">BudgetDigitalPort</div>
+                <div class="logo">MyPeribadi</div>
                 <div style="color: #666; font-size: 14px; margin-top: 5px;">Business Tools Activated</div>
             </div>
             <div class="content">
                 <h3>Your Business Account Is Now Active</h3>
                 <p>{greeting}</p>
-                <p>Your BudgetDigitalPort Business account has been activated. You can now access Business Mode and start using tools for orders, products, stock, reports, customers, riders, and WhatsApp business features.</p>
+                <p>Your MyPeribadi Business account has been activated. You can now access Business Mode and start using tools for orders, products, stock, reports, customers, riders, and WhatsApp business features.</p>
                 <div class="button-container">
-                    <a href="{APP_PUBLIC_URL}" class="button">Open BudgetDigitalPort</a>
+                    <a href="{APP_PUBLIC_URL}" class="button">Open MyPeribadi</a>
                 </div>
                 <p style="font-size: 13px; color: #666;">If you did not request Business access, please contact support.</p>
             </div>
             <div class="footer">
-                <p>This is an automated notification from BudgetDigitalPort.</p>
-                <p>&copy; 2026 BudgetDigitalPort. DigitalPort 2 Budget.</p>
+                <p>This is an automated notification from MyPeribadi.</p>
+                <p>&copy; 2026 MyPeribadi. MyPeribadi.</p>
             </div>
         </div>
     </body>
