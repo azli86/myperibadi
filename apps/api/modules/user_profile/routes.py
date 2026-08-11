@@ -179,6 +179,7 @@ async def verify_my_pin_route(
     normalize_email: Callable[[str | None], str],
     validate_pin_value: Callable[..., str],
     is_user_pin_locked: Callable[[models.User], bool],
+    record_pin_failed_attempt: Callable[[models.User], bool],
     clear_user_pin_lock: Callable[[models.User], None],
     pin_lock_minutes: int,
 ) -> dict[str, str]:
@@ -195,6 +196,8 @@ async def verify_my_pin_route(
         )
 
     if not auth_utils.verify_password(pin, current_user.pin_hash):
+        record_pin_failed_attempt(current_user)
+        await db.commit()
         raise HTTPException(status_code=401, detail="Invalid PIN")
 
     clear_user_pin_lock(current_user)

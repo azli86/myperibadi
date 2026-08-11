@@ -1,11 +1,14 @@
-﻿module.exports = {
+// PM2 config for the Linux homeserver deployment.
+// NOTE: The project deploys via restart_api.sh / restart_web.sh (systemd-style
+// background processes), not PM2. This file is kept only for parity and should
+// NOT run Next in dev mode. If unused, it can be deleted.
+module.exports = {
   apps: [
     {
       name: "budget-api",
-      cwd: "E:/Project/budgetsw/apps/api",
-      script: "E:/Project/budgetsw/apps/api/venv/Scripts/python.exe",
+      cwd: "/home/digitalport2budget/htdocs/budget.digitalport.my/apps/api",
+      script: "venv/bin/python",
       args: "main.py",
-      interpreter: "none",
       autorestart: true,
       max_restarts: 50,
       min_uptime: "5s",
@@ -16,10 +19,9 @@
     },
     {
       name: "budget-web",
-      cwd: "E:/Project/budgetsw/apps/web",
-      script: "E:/Project/budgetsw/apps/web/node_modules/next/dist/bin/next",
-      args: "dev",
-      interpreter: "C:/Program Files/nodejs/node.exe",
+      cwd: "/home/digitalport2budget/htdocs/budget.digitalport.my/apps/web",
+      script: "node_modules/.bin/next",
+      args: "start",
       autorestart: true,
       max_restarts: 50,
       min_uptime: "5s",

@@ -93,6 +93,7 @@ async def pin_login_route(
     validate_turnstile_token: Callable[[str | None], Awaitable[None]],
     validate_pin_value: Callable[[str | None], str],
     is_user_pin_locked: Callable[[models.User], bool],
+    record_pin_failed_attempt: Callable[[models.User], bool],
     clear_user_pin_lock: Callable[[models.User], None],
     is_mobile_user_agent: Callable[[str | None], bool],
     issue_auth_tokens_for_user: Callable[..., Awaitable[schemas.Token]],
@@ -117,6 +118,8 @@ async def pin_login_route(
         )
 
     if not auth_utils.verify_password(pin, user.pin_hash):
+        record_pin_failed_attempt(user)
+        await db.commit()
         raise HTTPException(status_code=401, detail="Invalid email or PIN")
 
     clear_user_pin_lock(user)

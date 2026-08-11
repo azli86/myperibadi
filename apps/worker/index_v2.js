@@ -27,7 +27,10 @@ const WA_AUTOSTART_MAX_SESSIONS = Number.isFinite(WA_AUTOSTART_MAX_SESSIONS_RAW)
   : 0;
 const WA_KEEP_ACTIVE_MS = Math.max(30000, parseInt(process.env.WA_KEEP_ACTIVE_MS || "60000", 10) || 60000);
 const WA_KEEP_ACTIVE_STUCK_MS = Math.max(60000, parseInt(process.env.WA_KEEP_ACTIVE_STUCK_MS || "120000", 10) || 120000);
-const WHATSAPP_WEBHOOK_SECRET = getEnvValue("WHATSAPP_WEBHOOK_SECRET") || getEnvValue("SECRET_KEY") || "";
+const WHATSAPP_WEBHOOK_SECRET = getEnvValue("WHATSAPP_WEBHOOK_SECRET") || "";
+if (!WHATSAPP_WEBHOOK_SECRET) {
+  throw new Error("WHATSAPP_WEBHOOK_SECRET environment variable is required");
+}
 const GROUP_RULE_CACHE_MS = 15000;
 const WA_MARK_READ_MODE_OPTIONS = new Set(["none", "self", "self_and_allowed_groups"]);
 const WA_MARK_READ_MODE_RAW = (process.env.WA_MARK_READ_MODE || "none").toLowerCase();

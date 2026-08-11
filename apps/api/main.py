@@ -487,7 +487,7 @@ RECEIPT_DIRECT_UPLOAD_EXPIRES_SECONDS = int(os.getenv("RECEIPT_DIRECT_UPLOAD_EXP
 AUTH_RATE_LIMIT_RULES = {
     "register": (6, 300),           # 6 requests per 5 minutes
     "login": (8, 300),              # 8 requests per 5 minutes
-    "pin_login": (1000, 300),       # Increased from 8 -> 1000 as per user request
+    "pin_login": (10, 300),        # 10 requests per 5 minutes
     "forgot_password": (5, 900),    # 5 requests per 15 minutes
     "reset_password": (8, 900),     # 8 requests per 15 minutes
     "refresh": (30, 300),           # 30 requests per 5 minutes
@@ -519,7 +519,9 @@ DEFAULT_CORS_ALLOW_ORIGINS = [
 ]
 CORS_ALLOW_ORIGINS = _split_csv_env("CORS_ALLOW_ORIGINS", DEFAULT_CORS_ALLOW_ORIGINS)
 WORKER_BASE_URL = os.getenv("WHATSAPP_WORKER_BASE_URL", "http://127.0.0.1:8024").rstrip("/")
-WHATSAPP_WEBHOOK_SECRET = os.getenv("WHATSAPP_WEBHOOK_SECRET", auth_utils.SECRET_KEY)
+WHATSAPP_WEBHOOK_SECRET = os.getenv("WHATSAPP_WEBHOOK_SECRET", "").strip()
+if not WHATSAPP_WEBHOOK_SECRET:
+    raise RuntimeError("WHATSAPP_WEBHOOK_SECRET environment variable is required")
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_ADMIN_CHAT_ID = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "").strip()
 TELEGRAM_ACCESS_LOG_ALERTS = os.getenv("TELEGRAM_ACCESS_LOG_ALERTS", "true").strip().lower() in {"1", "true", "yes", "on"}
@@ -2098,8 +2100,24 @@ def _clear_user_pin(user: models.User):
     _clear_user_pin_lock(user)
 
 
+PIN_LOCK_THRESHOLD = int(os.getenv("PIN_LOCK_THRESHOLD", "5"))
+
+
 def _is_user_pin_locked(user: models.User) -> bool:
-    # Lockout disabled as per user request
+    locked_until = getattr(user, "pin_locked_until", None)
+    return bool(locked_until and locked_until > datetime.utcnow())
+
+
+def _record_pin_failed_attempt(user: models.User) -> bool:
+    """Increment failed-PIN counter; lock the PIN when threshold is reached.
+    Returns True if the PIN is now (or already) locked."""
+    if _is_user_pin_locked(user):
+        return True
+    attempts = int(getattr(user, "pin_failed_attempts", 0) or 0) + 1
+    user.pin_failed_attempts = attempts
+    if attempts >= PIN_LOCK_THRESHOLD:
+        user.pin_locked_until = datetime.utcnow() + timedelta(minutes=PIN_LOCK_MINUTES)
+        return True
     return False
 
 
@@ -8890,6 +8908,7 @@ async def pin_login(
         validate_turnstile_token=validate_turnstile_token,
         validate_pin_value=validate_pin_value,
         is_user_pin_locked=_is_user_pin_locked,
+        record_pin_failed_attempt=_record_pin_failed_attempt,
         clear_user_pin_lock=_clear_user_pin_lock,
         is_mobile_user_agent=_is_mobile_user_agent,
         issue_auth_tokens_for_user=_issue_auth_tokens_for_user,
@@ -10078,6 +10097,7 @@ async def verify_my_pin(
         normalize_email=_normalize_email,
         validate_pin_value=validate_pin_value,
         is_user_pin_locked=_is_user_pin_locked,
+        record_pin_failed_attempt=_record_pin_failed_attempt,
         clear_user_pin_lock=_clear_user_pin_lock,
         pin_lock_minutes=PIN_LOCK_MINUTES,
     )

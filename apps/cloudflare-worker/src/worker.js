@@ -27,11 +27,21 @@ function getSecret(req) {
   return req.headers.get("X-WhatsApp-Webhook-Secret") || "";
 }
 
+function timingSafeEqual(a, b) {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
 async function verify(req, env) {
   const secret = getSecret(req);
-  if (env.WEBHOOK_SECRET && secret === env.WEBHOOK_SECRET) return true;
+  if (env.WEBHOOK_SECRET && timingSafeEqual(secret, env.WEBHOOK_SECRET)) return true;
   const token = (req.headers.get("Authorization") || "").slice(7);
-  if (env.WEBHOOK_SECRET && token === env.WEBHOOK_SECRET) return true;
+  if (env.WEBHOOK_SECRET && timingSafeEqual(token, env.WEBHOOK_SECRET)) return true;
   return false;
 }
 
@@ -184,6 +194,13 @@ function stripThinkTags(text) {
 }
 
 async function serveR2Object(env, objectKey, req) {
+  // Authenticate the requester and enforce object ownership.
+  const user = await getAuthenticatedUser(req, env);
+  const ownerId = user?.id;
+  const prefix = `receipts/${ownerId}/`;
+  if (!ownerId || !objectKey.startsWith(prefix)) {
+    return json({ detail: "Unauthorized" }, 401);
+  }
   try {
     const obj = await env.BUDGET_R2.get(objectKey);
     if (!obj) {
@@ -191,7 +208,7 @@ async function serveR2Object(env, objectKey, req) {
     }
     const headers = new Headers();
     obj.writeHttpMetadata(headers);
-    headers.set("Cache-Control", "public, max-age=31536000, immutable");
+    headers.set("Cache-Control", "private, no-store");
     headers.set("etag", obj.httpEtag);
     if (req.method === "HEAD") {
       return new Response(null, { status: 200, headers });
