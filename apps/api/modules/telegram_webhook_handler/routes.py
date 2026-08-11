@@ -25,6 +25,7 @@ async def handle_telegram_webhook_payload_route(
     _build_telegram_debt_help_text: Callable[..., Any],
     _build_telegram_loan_help_text: Callable[..., Any],
     _handle_telegram_loanx_command: Callable[..., Any],
+    _handle_telegram_splitx_command: Callable[..., Any],
     _build_telegram_transfer_help_text: Callable[..., Any],
     _sweep_telegram_pending_media: Callable[..., Any],
     _sweep_telegram_add_flows: Callable[..., Any],
@@ -242,6 +243,15 @@ async def handle_telegram_webhook_payload_route(
         return {"ok": True}
 
     if await _handle_telegram_loanx_command(
+        db,
+        current_user=user,
+        chat_id=chat_id,
+        command_text=bot_text,
+        is_bm=is_bm,
+    ):
+        return {"ok": True}
+
+    if await _handle_telegram_splitx_command(
         db,
         current_user=user,
         chat_id=chat_id,

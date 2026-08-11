@@ -91,8 +91,8 @@ def normalize_telegram_command_route(text: str) -> str:
         return f"debt {rest}".strip() if rest else "__telegram_debt_menu__"
     if command == "loanx":
         return f"loanx {rest}".strip() if rest else "__telegram_loan_menu__"
-    if command == "lang":
-        return f"lang {rest}".strip() if rest else "__telegram_lang_menu__"
+    if command == "splitx":
+        return f"splitx {rest}".strip() if rest else "splitx"
     if command == "add":
         return rest if rest else "__telegram_add_menu__"
     return value

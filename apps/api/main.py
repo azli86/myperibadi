@@ -225,6 +225,9 @@ from modules.telegram_callback import (
 from modules.telegram_loanx import (
     handle_telegram_loanx_command_route as _module_handle_telegram_loanx_command_route,
 )
+from modules.telegram_splitx import (
+    handle_telegram_splitx_command_route as _module_handle_telegram_splitx_command_route,
+)
 from modules.telegram_wallet_category import (
     build_telegram_add_category_keyboard_route as _module_build_telegram_add_category_keyboard_route,
     build_telegram_numeric_choice_keyboard_route as _module_build_telegram_numeric_choice_keyboard_route,
@@ -11994,6 +11997,27 @@ async def _handle_telegram_loanx_command(
         current_business_date=current_business_date,
     )
 
+async def _handle_telegram_splitx_command(
+    db: AsyncSession,
+    *,
+    current_user: models.User,
+    chat_id: str,
+    command_text: str,
+    is_bm: bool,
+) -> bool:
+    return await _module_handle_telegram_splitx_command_route(
+        db,
+        current_user=current_user,
+        chat_id=chat_id,
+        command_text=command_text,
+        is_bm=is_bm,
+        _send_telegram_message=_send_telegram_message,
+        _wallet_label=_wallet_label,
+        _get_accessible_wallets_for_user=_get_accessible_wallets_for_user,
+        _match_wallet_by_hint=_match_wallet_by_hint,
+        _select_transaction_wallet=_select_transaction_wallet,
+    )
+
 def _build_telegram_add_category_keyboard(categories: list[models.Category], *, is_bm: bool, page: int = 0) -> dict[str, Any]:
     return _module_build_telegram_add_category_keyboard_route(
         categories=categories,
@@ -12222,6 +12246,7 @@ async def _handle_telegram_webhook_payload(
         _build_telegram_debt_help_text=_build_telegram_debt_help_text,
         _build_telegram_loan_help_text=_build_telegram_loan_help_text,
         _handle_telegram_loanx_command=_handle_telegram_loanx_command,
+        _handle_telegram_splitx_command=_handle_telegram_splitx_command,
         _build_telegram_transfer_help_text=_build_telegram_transfer_help_text,
         _sweep_telegram_pending_media=_sweep_telegram_pending_media,
         _sweep_telegram_add_flows=_sweep_telegram_add_flows,
