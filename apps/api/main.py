@@ -859,6 +859,7 @@ async def ensure_database_schema():
             )
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_done BOOLEAN NOT NULL DEFAULT TRUE"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS category_language VARCHAR(10) NULL"))
+            await conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_kind VARCHAR(20) NULL"))
         elif conn.dialect.name in {"mysql", "mariadb"}:
             index_exists = await conn.execute(
                 text(
@@ -874,6 +875,7 @@ async def ensure_database_schema():
                 )
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_done BOOLEAN NOT NULL DEFAULT TRUE"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS category_language VARCHAR(10) NULL"))
+            await conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_kind VARCHAR(20) NULL"))
         if conn.dialect.name != "postgresql":
             print(f"INFO:  PostgreSQL-only schema patch block skipped for {conn.dialect.name}.")
         else:

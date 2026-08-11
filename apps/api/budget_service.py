@@ -2,7 +2,7 @@ import re
 from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
@@ -311,6 +311,10 @@ async def get_budget_summary(
         select(func.coalesce(func.sum(models.Transaction.amount), 0)).where(
             models.Transaction.user_id == user_id,
             models.Transaction.type == "income",
+            or_(
+                models.Transaction.transaction_kind.is_(None),
+                models.Transaction.transaction_kind != "reimbursement",
+            ),
             models.Transaction.txn_date >= month_start,
             models.Transaction.txn_date < month_end_exclusive,
         )

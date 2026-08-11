@@ -67,7 +67,9 @@ async def get_dashboard_stats_route(
     monthly_income = sum(
         float(txn.amount)
         for txn in reporting_txns
-        if txn.type == "income" and month_start <= txn.txn_date < month_end
+        if txn.type == "income"
+        and txn.transaction_kind != "reimbursement"
+        and month_start <= txn.txn_date < month_end
     )
     monthly_expense = sum(
         float(txn.amount)

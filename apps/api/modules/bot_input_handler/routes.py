@@ -239,6 +239,27 @@ async def process_bot_input_route(
                         ocr_summary = f"{ocr_summary}\n\n{dup_msg}"
                 print(f"[receipt-ocr] draft description={draft.description!r} amount={draft.amount} date={draft.txn_date} category_options={len(category_rows)}")
                 print(f"[receipt-ocr] built text={text!r}")
+                # Store pending OCR so a follow-up split/splitx command can reuse
+                # amount/title/date/time/media without the user retyping them.
+                from modules.split_bills import bot_flow
+
+                bot_flow.set_pending_ocr(
+                    user_id,
+                    source_channel,
+                    {
+                        "amount": str(draft.amount),
+                        "title": safe_description or None,
+                        "txn_date": draft.txn_date.isoformat(),
+                        "txn_time": (draft.txn_time or "") if draft.txn_time else None,
+                        "media": {
+                            "object_key": media_object_key,
+                            "payload": media_payload,
+                            "mime_type": media_mime_type,
+                            "file_name": media_file_name,
+                            "size_bytes": media_size_bytes,
+                        },
+                    },
+                )
             except Exception as exc:
                 print(f"[receipt-ocr] failed user={user_id} channel={source_channel}: {type(exc).__name__}")
                 if not text or not has_amount:
@@ -253,6 +274,84 @@ async def process_bot_input_route(
         except storage_service.StorageValidationError as exc:
             return {"reply": f"Receipt rejected: {exc}" if is_en else f"Resit ditolak: {exc}"}
     is_reference_only_caption = bool(text) and bool(txn_ref_pattern.fullmatch(text))
+
+    # ---- Split Bill bot commands (create `<cat> <wallet> split N` and
+    # payment `splitx <wallet>`) — intercepted before normal category handling. ----
+    split_intercept = None
+    if text and not has_location:
+        from modules.split_bills import bot_flow
+
+        user_res = await db.execute(select(models.User).where(models.User.id == user_id))
+        split_user = user_res.scalar_one_or_none()
+        split_cmd_text = text or ""
+        pending_ocr = bot_flow.get_pending_ocr(user_id, source_channel)
+
+        # 1. Pending overpayment confirmation
+        over = bot_flow.get_pending_overpayment(user_id, source_channel)
+        if over and split_user:
+            lowered = (split_cmd_text or "").strip().lower()
+            if lowered in {"confirm", "ya", "yes"}:
+                bot_flow.clear_pending_overpayment(user_id, source_channel)
+                split_row = await db.get(models.SplitBill, int(over["split_id"]))
+                if split_row and split_row.user_id == user_id:
+                    from decimal import Decimal
+                    wrow = await db.get(models.Wallet, int(over["wallet_id"]))
+                    if wrow:
+                        split_intercept = await bot_flow._commit_split_payment(
+                            db, user=split_user, source_channel=source_channel,
+                            split=split_row, amount=Decimal(str(over["amount"])),
+                            wallet=wrow, pending_ocr=over.get("pending_ocr") or {},
+                        )
+                if not split_intercept:
+                    split_intercept = ("Tiada split untuk bayaran ini." if bot_flow._is_bm(split_user) else "No split for this payment.")
+            elif lowered in {"cancel", "batal"}:
+                bot_flow.clear_pending_overpayment(user_id, source_channel)
+                split_intercept = "Bayaran dibatalkan." if bot_flow._is_bm(split_user) else "Payment cancelled."
+
+        # 2. Pending split selection (reply with a number)
+        if not split_intercept:
+            sel = bot_flow.get_pending_split_selection(user_id, source_channel)
+            if sel and split_user and (split_cmd_text or "").strip().isdigit():
+                idx = int(split_cmd_text.strip()) - 1
+                ids = sel.get("split_ids") or []
+                if 0 <= idx < len(ids):
+                    bot_flow.clear_pending_split_selection(user_id, source_channel)
+                    from decimal import Decimal
+                    split_row = await db.get(models.SplitBill, int(ids[idx]))
+                    wrow = await db.get(models.Wallet, int(sel["wallet_id"]))
+                    if split_row and split_row.user_id == user_id and wrow:
+                        split_intercept = await bot_flow._commit_split_payment(
+                            db, user=split_user, source_channel=source_channel,
+                            split=split_row, amount=Decimal(str(sel["amount"])),
+                            wallet=wrow, pending_ocr=sel.get("pending_ocr") or {},
+                        )
+                    else:
+                        split_intercept = "Pilihan tidak sah." if bot_flow._is_bm(split_user) else "Invalid selection."
+                else:
+                    split_intercept = "Nombor tidak sah." if bot_flow._is_bm(split_user) else "Invalid number."
+
+        # 3. Payment command `splitx <wallet>` (skip legacy keywords)
+        if not split_intercept and split_user:
+            from modules.split_bills.bot_flow import SPLIT_PAYMENT_PATTERN
+            # For an image with a caption, the command lives in the caption (receipt_user_note).
+            candidate = (receipt_user_note or "").strip() if has_media and (receipt_user_note or "").strip() else (split_cmd_text or "").strip()
+            pm = SPLIT_PAYMENT_PATTERN.match(candidate)
+            if pm and pm.group("wallet").strip().lower() not in bot_flow.LEGACY_SPLITX_KEYWORDS:
+                split_intercept = await bot_flow.handle_splitx_payment_command(
+                    db, user=split_user, source_channel=source_channel,
+                    command_text=candidate, pending_ocr=pending_ocr,
+                )
+
+        # 4. Create command `<cat> <wallet> split N`
+        if not split_intercept and split_user:
+            create_text = (receipt_user_note or "").strip() if has_media and (receipt_user_note or "").strip() else (split_cmd_text or "").strip()
+            split_intercept = await bot_flow.handle_create_split_command(
+                db, user=split_user, source_channel=source_channel,
+                command_text=create_text, pending_ocr=pending_ocr,
+            )
+
+    if split_intercept:
+        return {"reply": whatsapp_service.format_corporate_bot_reply(split_intercept)}
 
     # 1. Process Text (Transaction / Command / Bot)
     # If media is replying to an existing transaction, caption must not create a new transaction.

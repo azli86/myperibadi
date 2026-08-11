@@ -54,9 +54,13 @@ async def main():
     ok, sent = await run("splitx help", is_bm=False)
     assert ok is True and any("Split Bill" in s for s in sent), "splitx help must send text"
 
-    # unrecognized subcommand
-    ok, sent = await run("splitx foobar")
-    assert ok is True and sent, "unrecognized subcommand must return True and reply"
+    # unrecognized subcommand falls through to the shared bot flow
+    ok, sent = await run("splitx tng")
+    assert ok is False, "unrecognized/non-legacy subcommand must fall through (return False)"
+
+    # legacy keywords still consumed by the legacy handler
+    ok, sent = await run("splitx help", is_bm=False)
+    assert ok is True and any("Split Bill" in s for s in sent), "legacy splitx help must be consumed"
 
     print("splitx_command OK")
 

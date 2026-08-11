@@ -3964,6 +3964,12 @@ async def _process_whatsapp_message_impl(
                 .where(models.Transaction.user_id == user_id, models.Transaction.type == "income", models.Transaction.txn_date >= start_of_month, models.Transaction.txn_date < end_exclusive)
                 .where(
                     or_(
+                        models.Transaction.transaction_kind.is_(None),
+                        models.Transaction.transaction_kind != "reimbursement",
+                    )
+                )
+                .where(
+                    or_(
                         models.Category.system_code.is_(None),
                         models.Category.system_code.notin_(excluded_codes),
                     )

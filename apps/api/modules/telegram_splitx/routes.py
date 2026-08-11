@@ -297,6 +297,8 @@ async def handle_telegram_splitx_command_route(
         )
         return True
 
+    # `splitx <wallet>` (payment from OCR) is handled by the shared bot flow in
+    # bot_input_handler. Let it through instead of consuming it as a legacy command.
     await _send_telegram_message(
         chat_id,
         (
@@ -306,4 +308,4 @@ async def handle_telegram_splitx_command_route(
         ),
         linked=True,
     )
-    return True
+    return False

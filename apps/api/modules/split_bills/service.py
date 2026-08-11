@@ -316,6 +316,7 @@ async def record_payment(
         category_id=category.id,
         notes=(payload.notes or "").strip() or None,
         source_channel="web",
+        transaction_kind="reimbursement",
     )
     db.add(txn)
     await db.flush()

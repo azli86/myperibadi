@@ -254,6 +254,7 @@ class Transaction(Base):
     longitude: Mapped[Optional[float]] = mapped_column(DECIMAL(11, 8), nullable=True)
     location_name: Mapped[Optional[str]] = mapped_column(String(190), nullable=True)
     source_channel: Mapped[Optional[str]] = mapped_column(String(30)) # whatsapp / web
+    transaction_kind: Mapped[Optional[str]] = mapped_column(String(20), nullable=True) # normal / reimbursement / split / subscription / loan
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user: Mapped["User"] = relationship(back_populates="transactions")
