@@ -2033,9 +2033,9 @@ export default function Dashboard() {
                   <span className="text-xl">❤️</span>
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">Support</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">Donate</p>
                   <h3 className="text-lg font-bold tracking-tight text-[var(--text)]">
-                    {lang === "EN" ? "Support This App" : "Sokong App Ini"}
+                    {lang === "EN" ? "Donate This App" : "Derma App Ini"}
                   </h3>
                 </div>
               </div>
@@ -2473,7 +2473,7 @@ export default function Dashboard() {
                 className="accent-solid-btn inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-3 text-xs font-bold transition hover:opacity-90 active:scale-95"
               >
                 <HeartHandshake size={13} strokeWidth={2.4} />
-                <span>{lang === "EN" ? "Support" : "Sokong"}</span>
+                <span>{lang === "EN" ? "Donate" : "Derma"}</span>
               </button>
             </div>
           </div>
