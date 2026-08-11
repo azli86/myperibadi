@@ -53,7 +53,7 @@ async def send_account_verification_email(email: str, user_name: str):
             .logo {{ font-size: 24px; font-weight: 800; color: #d97706; letter-spacing: -1px; }}
             .content {{ line-height: 1.6; color: #333; }}
             .button-container {{ text-align: center; padding: 30px 0; }}
-            .button {{ background: #d97706; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; }}
+            .button {{ background: #111827; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; }}
             .footer {{ font-size: 12px; color: #999; text-align: center; margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px; }}
         </style>
     </head>
