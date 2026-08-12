@@ -23,9 +23,11 @@ async def get_dashboard_stats_route(
     is_wallet_transfer_signature: Callable[..., bool],
     current_business_date: Callable[[], date],
 ) -> schemas.DashboardStats:
-    await ensure_wallet(db, current_user.id)
+    user_id = current_user.id  # capture before ensure_wallet commit (expires attrs)
+    await ensure_wallet(db, user_id)
+    await db.refresh(current_user)  # ensure_wallet committed → restore expired attrs
     household_id = await ensure_current_user_household(db, current_user)
-    await backfill_wallet_transfer_categories(db, user_id=current_user.id, household_id=household_id)
+    await backfill_wallet_transfer_categories(db, user_id=user_id, household_id=household_id)
 
     res = await db.execute(
         select(
@@ -34,7 +36,7 @@ async def get_dashboard_stats_route(
             models.Category.system_code.label("category_system_code"),
         )
         .outerjoin(models.Category, models.Transaction.category_id == models.Category.id)
-        .where(models.Transaction.user_id == current_user.id)
+        .where(models.Transaction.user_id == user_id)
     )
     txn_rows = res.all()
 

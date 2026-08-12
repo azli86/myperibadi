@@ -491,6 +491,7 @@ AUTH_RATE_LIMIT_RULES = {
     "forgot_password": (5, 900),    # 5 requests per 15 minutes
     "reset_password": (8, 900),     # 8 requests per 15 minutes
     "refresh": (30, 300),           # 30 requests per 5 minutes
+    "data_get": (600, 60),         # 600 requests per minute per user (anti-bot polling; blocks 873/min bots)
 }
 AUTH_RATE_LIMIT_BUCKETS: dict[str, deque[float]] = {}
 AUTH_RATE_LIMIT_LAST_SWEEP = 0.0
@@ -1350,6 +1351,10 @@ async def get_current_user(request: Request, token: str | None = Depends(oauth2_
     user = result.scalars().first()
     if user is None or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found")
+
+    # Per-user request rate limit (anti-bot polling) — identity = user id, not IP,
+    # so shared ISP/VPN IPv6 ranges are never wrongly blocked.
+    await enforce_auth_rate_limit("data_get", request, identity=user.id)
     return user
 
 
@@ -2415,14 +2420,30 @@ async def _save_user_setting_json(db: AsyncSession, user_id: str, key: str, data
             models.UserSetting.user_id == user_id,
             models.UserSetting.key == key,
         )
-    )).scalar_one_or_none()
+    )).scalars().first()
     value = json.dumps(data, ensure_ascii=False)
     if row is None:
         row = models.UserSetting(user_id=user_id, key=key, value=value)
         db.add(row)
     else:
         row.value = value
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        # concurrent request inserted the same (user_id, key) row first
+        row = (
+            await db.execute(
+                select(models.UserSetting).where(
+                    models.UserSetting.user_id == user_id,
+                    models.UserSetting.key == key,
+                )
+            )
+        ).scalars().first()
+        if row is None:
+            raise
+        row.value = value
+        await db.flush()
     return row
 
 
@@ -10132,7 +10153,7 @@ async def get_my_cat_pet(
                 models.UserSetting.key == CAT_PET_SETTING_KEY,
             )
         )
-    ).scalar_one_or_none()
+    ).scalars().first()
     if not row or not row.value:
         return {"pet": None}
     try:

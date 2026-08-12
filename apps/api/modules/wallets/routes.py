@@ -17,10 +17,11 @@ async def get_wallets_route(
     current_user: models.User,
     ensure_wallet: Callable[..., Awaitable[models.Wallet]],
 ) -> list[models.Wallet]:
-    await ensure_wallet(db, current_user.id)
+    user_id = current_user.id  # capture before ensure_wallet commit (expires attrs)
+    await ensure_wallet(db, user_id)
     result = await db.execute(
         select(models.Wallet)
-        .where(models.Wallet.owner_user_id == current_user.id)
+        .where(models.Wallet.owner_user_id == user_id)
         .order_by(models.Wallet.created_at.asc(), models.Wallet.id.asc())
     )
     wallets = result.scalars().all()
@@ -40,7 +41,7 @@ async def get_wallets_route(
                 ).label("balance"),
                 func.count(models.Transaction.id).label("transaction_count"),
             )
-            .where(models.Transaction.wallet_id.in_(wallet_ids), models.Transaction.user_id == current_user.id)
+            .where(models.Transaction.wallet_id.in_(wallet_ids), models.Transaction.user_id == user_id)
             .group_by(models.Transaction.wallet_id)
         )
         for wallet_id, balance, transaction_count in aggregate_result.all():

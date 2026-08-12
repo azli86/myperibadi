@@ -1306,6 +1306,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const currentDesktopNavigationSections = desktopNavigationSections;
 
   const [stats, setStats] = useState<ShellStats>({ balance: 0, income_month: 0, expense_month: 0 });
+  const [isMounted, setIsMounted] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -2172,6 +2173,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     }
 
   };
+
+  useEffect(() => setIsMounted(true), [])
 
   useEffect(() => {
     let delayedFetchTimer: number | undefined;
@@ -4309,6 +4312,17 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       
     </div>
   );
+
+  // Visitor without any session: skip shell render entirely (empty-dashboard flash),
+  // the effect above will router.replace("/login").
+  if (
+    isMounted &&
+    !isAuthPage &&
+    !getAccessToken() &&
+    !getRefreshToken()
+  ) {
+    return null;
+  }
 
   return (
     <>
