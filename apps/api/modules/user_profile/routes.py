@@ -278,6 +278,10 @@ async def delete_my_account_route(
             raise HTTPException(status_code=400, detail="Current password is incorrect")
 
     user_id = current_user.id
+    # Hard delete removes the users row; detach current_user so the final
+    # commit doesn't try to flush pending attribute changes onto a deleted
+    # row (StaleDataError: 0 rows matched).
+    db.expunge(current_user)
     await clear_user_refresh_token(current_user, db=db)
     await account_cleanup(db, user_id=user_id, reset_only=False)
     await db.commit()

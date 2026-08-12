@@ -34,8 +34,11 @@ async def get_receipts_route(
 
     start_day = int(getattr(current_user, "cycle_start_day", 1) or 1)
     if month_key:
-        month_key = budget_service.normalize_month_key(month_key, start_day)
-        month_start, month_end_exclusive = budget_service.month_bounds(month_key, start_day)
+        try:
+            month_key = budget_service.normalize_month_key(month_key, start_day)
+            month_start, month_end_exclusive = budget_service.month_bounds(month_key, start_day)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     else:
         cycle = await budget_service.resolve_user_cycle(db, user=current_user)
         month_key = cycle["month_key"]
