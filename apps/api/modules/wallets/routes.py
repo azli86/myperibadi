@@ -4,6 +4,7 @@ from typing import Any, Awaitable, Callable
 
 from fastapi import HTTPException
 from sqlalchemy import case, func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
@@ -89,7 +90,11 @@ async def create_wallet_route(
         )
 
     db.add(db_wallet)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="Wallet dengan nama ini sudah wujud") from None
     await db.refresh(db_wallet)
     return db_wallet
 
