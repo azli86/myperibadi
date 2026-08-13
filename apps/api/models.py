@@ -45,6 +45,11 @@ class User(Base):
     email_verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # email ownership confirmed via verify link / oauth
     email_verify_token: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # hashed verify-email token
     email_verify_token_expires: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    verification_email_resend_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+
+    @property
+    def email_verified(self) -> bool:
+        return self.email_verified_at is not None
     language: Mapped[str] = mapped_column(String(5), default="BM") # 'EN' or 'BM'
     onboarding_done: Mapped[bool] = mapped_column(Boolean, default=True)  # False => new user sees onboarding intro after first login
     category_language: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)  # 'bm' | 'en' | 'manual' (auto-seeded category set)
@@ -124,6 +129,17 @@ class McpIdempotencyKey(Base):
     idempotency_key: Mapped[str] = mapped_column(String(100), nullable=False)
     transaction_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("transactions.id", ondelete="CASCADE"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+class McpAuditLog(Base):
+    __tablename__ = "mcp_audit_log"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    mcp_token_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("mcp_access_tokens.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    tool: Mapped[str] = mapped_column(String(60), nullable=False)
+    target_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    success: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    error_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
 class McpUpdateConfirmation(Base):
     __tablename__ = "mcp_update_confirmations"

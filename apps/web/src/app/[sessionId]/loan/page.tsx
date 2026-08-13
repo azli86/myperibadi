@@ -117,7 +117,7 @@ export default function LoanPage() {
   }
 
   const isBm = lang === "BM"
-  const tr = (bm: string, en: string) => (isBm ? bm : en)
+  const tr = useCallback((bm: string, en: string) => (isBm ? bm : en), [isBm])
 
   useEffect(() => {
     showAlertRef.current = showAlert

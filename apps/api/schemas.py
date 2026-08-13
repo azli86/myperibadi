@@ -53,6 +53,9 @@ class UserResponse(UserBase):
     onboarding_done: bool = True
     has_password: bool = False
     created_at: datetime
+    email_verified: Optional[bool] = None
+    verification_email_sent_at: Optional[datetime] = None
+    verification_email_resend_count: int = 0
 
     class Config:
         from_attributes = True

@@ -1,6 +1,8 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { Wallet } from "lucide-react"
+import { CategoryIconGlyph } from "@/lib/category-icons"
 import { useLang } from "@/lib/lang"
 import type { TransactionDetail } from "../types"
 
@@ -15,10 +17,13 @@ export type TxnDetailsListProps = {
   merchantLabel?: string
 }
 
-function Row({ label, value, children }: { label: string; value?: string; children?: React.ReactNode }) {
+function Row({ label, value, leading, children }: { label: string; value?: string; leading?: React.ReactNode; children?: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-2.5">
-      <span className="text-sm font-medium text-[var(--text-soft)]">{label}</span>
+    <div className="flex items-center justify-between gap-4 py-2.5">
+      <span className="flex items-center gap-2 text-sm font-medium text-[var(--text-soft)]">
+        {leading}
+        {label}
+      </span>
       {children ?? (
         <span className="max-w-[60%] text-right text-sm font-semibold text-[var(--text)]">
           {value}
@@ -51,11 +56,47 @@ export default function TxnDetailsList({
         {merchantLabel && (
           <Row label={isBm ? "Peniaga / Penerangan" : "Merchant / Description"} value={merchantLabel} />
         )}
-        <Row label={isBm ? "Kategori" : "Category"} value={categoryLabel} />
+        <Row
+          label={isBm ? "Kategori" : "Category"}
+          value={categoryLabel}
+          leading={
+            txn.category_name || txn.category_icon_name ? (
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center">
+                <CategoryIconGlyph
+                  iconName={txn.category_icon_name}
+                  categoryName={txn.category_name}
+                  kind={txn.type}
+                  size={18}
+                  brandScale={1}
+                  brandFramed={false}
+                  brandFill
+                />
+              </span>
+            ) : null
+          }
+        />
         <Row label={isBm ? "Tarikh" : "Date"} value={transactionDateLabel} />
         <Row label={isBm ? "Status" : "Status"} value={statusLabel} />
         <Row label={isBm ? "Cara Simpan" : "Saved Via"} value={sourceChannelLabel} />
-        <Row label={isBm ? "Wallet" : "Wallet"} value={walletLabel} />
+        <Row
+          label={isBm ? "Wallet" : "Wallet"}
+          value={walletLabel}
+          leading={
+            txn.wallet_image_url ? (
+              <img
+                src={txn.wallet_image_url}
+                alt=""
+                width={22}
+                height={22}
+                className="h-[22px] w-[22px] shrink-0 rounded-md object-cover"
+              />
+            ) : (
+              <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-[var(--surface-tint)] text-[var(--muted)]">
+                <Wallet size={14} />
+              </span>
+            )
+          }
+        />
         {txn.linked_loan_name && (
           <Row label={isBm ? "Pinjaman Dikait" : "Linked Loan"} value={txn.linked_loan_name} />
         )}

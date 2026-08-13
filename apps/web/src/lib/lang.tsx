@@ -369,6 +369,20 @@ export const translations = {
     waExample3Desc: "Check your current month summary",
     allow: "Allow",
     summary: "Summary",
+
+    // Email verification
+    verifyEmail: "Verify your email address to secure your account.",
+    verifyEmailAction: "Resend email",
+    verifySending: "Sending...",
+    verifyEmailTitle: "Email Verified",
+    verifyEmailSuccess: "Thanks! Your email address has been verified.",
+    verifyEmailFailedTitle: "Verification Failed",
+    verifyEmailInvalid: "Invalid or expired verification link.",
+    verifyEmailLoading: "Verifying email...",
+    verifyEmailGoBack: "Go to sign in",
+    verifyEmailBackHome: "Back",
+    verifyEmailDisableWarning: "Your account will be disabled if you don't verify your email within",
+    verifyEmailDisableWarningLegacy: "Verify your email to keep your account active.",
   },
 
   BM: {
@@ -741,6 +755,20 @@ export const translations = {
     debtWaKitaBayar: "Kita Bayar",
     debtWaCheckList: "Check Senarai",
     debtWaGuide: "Panduan",
+
+    // Email verification
+    verifyEmail: "Sahkan alamat e-mel anda untuk melindungi akaun.",
+    verifyEmailAction: "Hantar e-mel",
+    verifySending: "Menghantar...",
+    verifyEmailTitle: "E-mel Disahkan",
+    verifyEmailSuccess: "Terima kasih! Alamat e-mel anda telah disahkan.",
+    verifyEmailFailedTitle: "Pengesahan Gagal",
+    verifyEmailInvalid: "Pautan tidak sah atau telah tamat tempoh.",
+    verifyEmailLoading: "Mengesahkan e-mel...",
+    verifyEmailGoBack: "Ke halaman log masuk",
+    verifyEmailBackHome: "Kembali",
+    verifyEmailDisableWarning: "Akaun anda akan dilumpuhkan jika tidak sahkan e-mel dalam tempoh",
+    verifyEmailDisableWarningLegacy: "Sahkan e-mel anda untuk pastikan akaun kekal aktif.",
   },
 }
 

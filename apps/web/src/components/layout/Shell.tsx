@@ -106,6 +106,7 @@ import {
   getEmailVerified,
   getSessionId,
   hasPinEnabledSession,
+  setEmailVerified,
   isCookieAuthSentinel,
   logoutAuthSession,
 } from "@/lib/auth-session";
@@ -169,6 +170,10 @@ type ShellUser = {
   name: string;
   email?: string;
   is_admin?: boolean;
+  email_verified?: boolean;
+  verification_email_sent_at?: string;
+  verification_email_resend_count?: number;
+  created_at?: string;
 };
 
 type ShellCategory = {
@@ -880,6 +885,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     async function loadNoticeBanners() {
       try {
         const token = getAccessToken();
+        if (!token) return; // no valid session -> don't emit 401 noise
         const res = await fetch("/api/notice-banners", { credentials: "include", headers: authHeaders(token), cache: "no-store" });
         if (!res.ok) return;
         const data = await res.json();
@@ -1308,8 +1314,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   const [stats, setStats] = useState<ShellStats>({ balance: 0, income_month: 0, expense_month: 0 });
   const [isMounted, setIsMounted] = useState(false);
-  const [emailVerified, setEmailVerifiedState] = useState(false);
+  const [emailVerified, setEmailVerifiedState] = useState(() =>
+    typeof window !== "undefined" ? getEmailVerified() : false
+  );
+  const [emailVerifiedKnown, setEmailVerifiedKnown] = useState(false);
   const [resendingVerify, setResendingVerify] = useState(false);
+  const [verifyCooldownUntil, setVerifyCooldownUntil] = useState(0);
+  const [verifyResendCount, setVerifyResendCount] = useState(0);
+  const [verifyDeadlineAt, setVerifyDeadlineAt] = useState(0);
+  const [nowTick, setNowTick] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -2161,6 +2174,31 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           Array.isArray(walletsResult.value) ? walletsResult.value : [],
         );
       if (userResult.status === "fulfilled") setUser(userResult.value);
+      // Source of truth for email verification (covers legacy/Google users whose local flag was never set).
+      if (userResult.status === "fulfilled" && userResult.value && typeof userResult.value.email_verified === "boolean") {
+        setEmailVerifiedState(userResult.value.email_verified);
+        setEmailVerified(userResult.value.email_verified);
+        setEmailVerifiedKnown(true);
+      }
+      // Derive resend cooldown from server-provided last-sent time (server clock, not device).
+      if (userResult.status === "fulfilled" && userResult.value?.verification_email_sent_at) {
+        const sent = new Date(userResult.value.verification_email_sent_at).getTime()
+        if (!Number.isNaN(sent)) {
+          const count = userResult.value.verification_email_resend_count ?? 0
+          setVerifyResendCount(count)
+          const cd = count >= 1 ? 300_000 : 60_000
+          setVerifyCooldownUntil(Math.max(verifyCooldownUntil, sent + cd))
+          // Account auto-disable deadline: 2 days after the verification email was sent.
+          setVerifyDeadlineAt(sent + 2 * 24 * 60 * 60 * 1000)
+        }
+      }
+      // Legacy email users (no sent_at) still get a deadline from account creation.
+      if (userResult.status === "fulfilled" && userResult.value?.created_at && verifyDeadlineAt <= 0) {
+        const created = new Date(userResult.value.created_at).getTime()
+        if (!Number.isNaN(created)) {
+          setVerifyDeadlineAt(created + 2 * 24 * 60 * 60 * 1000)
+        }
+      }
       if (transactionsResult.status === "fulfilled")
         setTransactions(
           Array.isArray(transactionsResult.value)
@@ -2188,24 +2226,52 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     const onAuth = () => {
       setEmailVerifiedState(getEmailVerified())
     }
+    const onVisible = () => {
+      if (document.visibilityState === "visible") setEmailVerifiedState(getEmailVerified())
+    }
     window.addEventListener(AUTH_SESSION_CHANGED_EVENT, onAuth)
-    return () => window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, onAuth)
+    window.addEventListener("focus", onAuth)
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, onAuth)
+      window.removeEventListener("focus", onAuth)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
   }, [])
+
+  // Tick each second while a resend cooldown or account-disable deadline is active.
+  useEffect(() => {
+    if (verifyCooldownUntil <= 0 && verifyDeadlineAt <= 0) return
+    const iv = setInterval(() => setNowTick((n) => n + 1), 1000)
+    return () => clearInterval(iv)
+  }, [verifyCooldownUntil, verifyDeadlineAt])
 
   const handleResendVerify = useCallback(async () => {
     setResendingVerify(true)
     try {
       const token = getAccessToken()
-      await fetch("/api/verify-email/resend", {
+      const res = await fetch("/api/verify-email/resend", {
         method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        credentials: "include",
+        headers: authHeaders(token),
       })
+      if (res.ok) {
+        // Cooldown after send: first resend 60s, subsequent 300s. Server increments count.
+        const cd = verifyResendCount >= 1 ? 300_000 : 60_000
+        setVerifyCooldownUntil(Date.now() + cd)
+        setVerifyResendCount((c) => c + 1)
+      } else if (res.status === 429) {
+        // Server-enforced cooldown still active; honour Retry-After from server.
+        const retryAfter = Number(res.headers.get("Retry-After")) || 60
+        setVerifyCooldownUntil(Date.now() + retryAfter * 1000)
+      }
+      // Ignore other errors — banner stays; user can retry.
     } catch {
       // ignore — banner stays; user can retry
     } finally {
       setResendingVerify(false)
     }
-  }, [])
+  }, [verifyResendCount])
 
   useEffect(() => {
     let delayedFetchTimer: number | undefined;
@@ -2897,20 +2963,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           : "bg-black text-[#f0f2fa]",
       )}
     >
-      {!emailVerified && !isAuthPage && !pinLockRequired && (
-        <div className="z-40 flex items-center justify-between gap-3 px-4 py-2 text-xs font-medium text-[var(--text)] bg-[var(--surface-tint)] border-b border-[var(--border)]">
-          <span>{lang === "BM" ? "Sahkan alamat e-mel anda untuk melindungi akaun." : "Verify your email address to secure your account."}</span>
-          <button
-            type="button"
-            disabled={resendingVerify}
-            onClick={handleResendVerify}
-            className="shrink-0 font-bold text-[var(--primary)] underline disabled:opacity-50"
-          >
-            {lang === "BM" ? (resendingVerify ? "Menghantar..." : "Hantar e-mel") : (resendingVerify ? "Sending..." : "Resend email")}
-          </button>
-        </div>
-      )}
-
       {pinLockRequired && !suppressPinLockUi && (
  <div className="fixed inset-0 z-[99999] overflow-hidden">
           <div
@@ -3266,6 +3318,45 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       >
         {/* Global Status Bar Background for iOS immersive mode */}
         <div className="fixed top-0 left-0 right-0 h-[env(safe-area-inset-top,0px)] z-[110] bg-[var(--bg)] pointer-events-none" />
+        {/* Verify email banner — notice-banner style, follows theme & announcement format */}
+        {emailVerifiedKnown && !emailVerified && !isAuthPage && !pinLockRequired && (() => {
+          const remaining = Math.max(0, Math.ceil((verifyCooldownUntil - Date.now()) / 1000))
+          const inCooldown = remaining > 0
+          const hasDeadline = verifyDeadlineAt > 0
+          const msLeft = Math.max(0, verifyDeadlineAt - Date.now())
+          const ds = Math.floor(msLeft / 86400000)
+          const hs = Math.floor((msLeft % 86400000) / 3600000)
+          const mins = Math.floor((msLeft % 3600000) / 60000)
+          const secs = Math.floor((msLeft % 60000) / 1000)
+          const timerLabel = `${ds}d ${String(hs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
+          return (
+            <section className="mb-4 ml-3 mr-3 mt-3 rounded-2xl border border-sky-500/25 bg-sky-500/12 px-4 py-3 text-sm text-sky-700 shadow-[var(--shadow-soft)] dark:text-sky-200">
+              <div className="flex items-start gap-3">
+                <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="font-black leading-tight">{t.verifyEmailTitle}</p>
+                  <p className="mt-0.5 text-xs font-semibold leading-5 opacity-90">{t.verifyEmail}</p>
+                  {hasDeadline ? (
+                    <p className="mt-1 text-xs font-bold">
+                      {t.verifyEmailDisableWarning}{" "}
+                      <span className="rounded-md bg-sky-600/15 px-1.5 py-0.5 font-mono tabular-nums">{timerLabel}</span>
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs font-semibold opacity-90">{t.verifyEmailDisableWarningLegacy}</p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  disabled={inCooldown || resendingVerify}
+                  onClick={handleResendVerify}
+                  className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed bg-sky-600 hover:bg-sky-700"
+                >
+                  {resendingVerify ? t.verifySending : inCooldown ? `${remaining}s` : t.verifyEmailAction}
+                </button>
+              </div>
+            </section>
+          )
+        })()}
         {/* Page Content */}
         <main
           key={refreshKey}

@@ -55,6 +55,7 @@ async def register_route(
         db_user.email_verify_token = hash_email_verify_token(verify_token)
         db_user.email_verify_token_expires = datetime.utcnow() + timedelta(days=2)
         db_user.verification_email_sent_at = datetime.utcnow()
+        db_user.verification_email_resend_count = 0
         await db.commit()
         language = getattr(db_user, "language", "BM") or "BM"
         await email_service.send_email_verification_email(normalized_email, verify_token, user_in.name, language)
@@ -324,6 +325,7 @@ async def reset_password_route(
         user.deactivated_at = None
         user.deactivated_reason = None
         user.verification_email_sent_at = None
+        user.verification_email_resend_count = 0
     clear_user_pin(user)
     await clear_user_refresh_token(user, db=db)
     await db.commit()

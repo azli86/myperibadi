@@ -68,7 +68,9 @@ async def send_account_verification_email(email: str, user_name: str):
                 <p>{greeting}</p>
                 <p>{message}</p>
                 <div class="button-container">
-                    <a href="{login_url}" class="button">Go to MyPeribadi Login</a>
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="border-radius:8px;background:#111827;background-color:#111827;">
+                    <a href="{login_url}" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:15px;background:#111827;background-color:#111827;" bgcolor="#111827">Go to MyPeribadi Login</a>
+                  </td></tr></table>
                 </div>
                 <p style="font-size: 13px; color: #666;">
                     After confirming, sign in at the link above. If you have forgotten your password, use the "Forgot Password" option on the login page to reset it.
@@ -155,7 +157,9 @@ async def send_reset_password_email(email: str, token: str, user_name: str, lang
                 <p>{greeting}</p>
                 <p>{message}</p>
                 <div class="button-container">
-                    <a href="{reset_link}" class="button">{button_text}</a>
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="border-radius:8px;background:#6366f1;background-color:#6366f1;">
+                    <a href="{reset_link}" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:15px;background:#6366f1;background-color:#6366f1;" bgcolor="#6366f1">{button_text}</a>
+                  </td></tr></table>
                 </div>
                 <p style="font-size: 13px; color: #666;">
                     Or copy and paste this link in your browser:<br>
@@ -232,7 +236,11 @@ async def send_email_verification_email(email: str, token: str, user_name: str, 
                 <h3>{title}</h3>
                 <p>{greeting}</p>
                 <p>{message}</p>
-                <div class="button-container"><a href="{verify_link}" class="button">{button_text}</a></div>
+                <div class="button-container">
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="border-radius:8px;background:#6366f1;background-color:#6366f1;">
+                    <a href="{verify_link}" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:15px;background:#6366f1;background-color:#6366f1;" bgcolor="#6366f1">{button_text}</a>
+                  </td></tr></table>
+                </div>
                 <p style="font-size: 13px; color: #666;">Or copy and paste this link in your browser:<br>
                 <a href="{verify_link}" style="color: #6366f1;">{verify_link}</a></p>
             </div>
@@ -365,7 +373,9 @@ async def send_removed_business_activation_email(email: str, user_name: str):
                 <p>{greeting}</p>
                 <p>Your MyPeribadi Business account has been activated. You can now access Business Mode and start using tools for orders, products, stock, reports, customers, riders, and WhatsApp business features.</p>
                 <div class="button-container">
-                    <a href="{APP_PUBLIC_URL}" class="button">Open MyPeribadi</a>
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;"><tr><td style="border-radius:8px;background:#16a34a;background-color:#16a34a;">
+                    <a href="{APP_PUBLIC_URL}" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:bold;font-size:15px;background:#16a34a;background-color:#16a34a;" bgcolor="#16a34a">Open MyPeribadi</a>
+                  </td></tr></table>
                 </div>
                 <p style="font-size: 13px; color: #666;">If you did not request Business access, please contact support.</p>
             </div>

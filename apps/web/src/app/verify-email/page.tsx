@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 import { ArrowLeft, Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
 import { useLang } from "@/lib/lang"
 import ThemeToggle from "@/components/theme/ThemeToggle"
+import { AUTH_SESSION_CHANGED_EVENT, setEmailVerified } from "@/lib/auth-session"
 import styles from "../auth-page.module.css"
 
 export default function VerifyEmailPage() {
@@ -31,7 +32,7 @@ export default function VerifyEmailPage() {
 
 function VerifyForm() {
   const searchParams = useSearchParams()
-  const { lang } = useLang()
+  const { lang, t } = useLang()
   const [state, setState] = useState<"loading" | "success" | "error">("loading")
   const [detail, setDetail] = useState("")
 
@@ -39,21 +40,28 @@ function VerifyForm() {
     const token = searchParams.get("token") || ""
     if (!token) {
       setState("error")
-      setDetail(lang === "BM" ? "Pautan tidak sah." : "Invalid link.")
+      setDetail(t.verifyEmailInvalid)
       return
     }
     fetch(`/api/verify-email?token=${encodeURIComponent(token)}`)
       .then(async (res) => {
         if (res.ok) {
+          // Mark verified locally so the Shell banner clears immediately.
+          setEmailVerified(true)
+          try {
+            window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT))
+          } catch {
+            // ignore
+          }
           setState("success")
         } else {
           setState("error")
-          setDetail(lang === "BM" ? "Pautan tidak sah atau telah tamat tempoh." : "Invalid or expired verification link.")
+          setDetail(t.verifyEmailInvalid)
         }
       })
       .catch(() => {
         setState("error")
-        setDetail(lang === "BM" ? "Ralat. Cuba lagi." : "Something went wrong. Please try again.")
+        setDetail(t.verifyEmailFailedTitle)
       })
   }, [searchParams, lang])
 
@@ -62,25 +70,25 @@ function VerifyForm() {
       {state === "loading" && (
         <>
           <Loader2 size={40} className="animate-spin mx-auto text-[var(--auth-tint)]" />
-          <h3 className="mt-4 text-lg font-bold">{lang === "BM" ? "Mengesahkan e-mel..." : "Verifying email..."}</h3>
+          <h3 className="mt-4 text-lg font-bold">{t.verifyEmailLoading}</h3>
         </>
       )}
       {state === "success" && (
         <>
           <CheckCircle2 size={44} className="mx-auto text-emerald-500" />
-          <h3 className="mt-4 text-lg font-bold">{lang === "BM" ? "E-mel Disahkan" : "Email Verified"}</h3>
-          <p className="mt-2 text-sm opacity-80">{lang === "BM" ? "Terima kasih! Alamat e-mel anda telah disahkan." : "Thanks! Your email address has been verified."}</p>
+          <h3 className="mt-4 text-lg font-bold">{t.verifyEmailTitle}</h3>
+          <p className="mt-2 text-sm opacity-80">{t.verifyEmailSuccess}</p>
         </>
       )}
       {state === "error" && (
         <>
           <AlertCircle size={44} className="mx-auto text-red-500" />
-          <h3 className="mt-4 text-lg font-bold">{lang === "BM" ? "Pengesahan Gagal" : "Verification Failed"}</h3>
+          <h3 className="mt-4 text-lg font-bold">{t.verifyEmailFailedTitle}</h3>
           <p className="mt-2 text-sm opacity-80">{detail}</p>
         </>
       )}
       <Link href="/login" className="mt-6 inline-block text-sm font-bold text-[var(--auth-tint)] underline">
-        {lang === "BM" ? "Ke halaman log masuk" : "Go to sign in"}
+        {t.verifyEmailGoBack}
       </Link>
     </div>
   )

@@ -463,6 +463,7 @@ function ageStage(bornAt: number, now: number, lang: Lang) {
 async function apiGetPet(): Promise<PetState | null> {
   try {
     const token = getAccessToken()
+    if (!token) return null // no valid session -> skip, avoid 401 noise
     const res = await fetch("/api/users/me/cat-pet", {
       credentials: "include",
       headers: {

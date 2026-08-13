@@ -492,6 +492,7 @@ AUTH_RATE_LIMIT_RULES = {
     "reset_password": (8, 900),     # 8 requests per 15 minutes
     "refresh": (30, 300),           # 30 requests per 5 minutes
     "data_get": (1000, 60),         # 1000 requests per minute per user (anti-bot polling; blocks 873/min bots)
+    "loans_get": (90, 60),          # 90 loans per minute per user (stops runaway /loans poll loops)
 }
 AUTH_RATE_LIMIT_BUCKETS: dict[str, deque[float]] = {}
 AUTH_RATE_LIMIT_LAST_SWEEP = 0.0
@@ -868,6 +869,7 @@ async def ensure_database_schema():
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token VARCHAR(100) NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token_expires TIMESTAMP NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_email_resend_count INTEGER NOT NULL DEFAULT 0"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_reason VARCHAR(20) NULL"))
         elif conn.dialect.name in {"mysql", "mariadb"}:
             index_exists = await conn.execute(
@@ -890,6 +892,7 @@ async def ensure_database_schema():
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token VARCHAR(100) NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token_expires TIMESTAMP NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_email_resend_count INTEGER NOT NULL DEFAULT 0"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_reason VARCHAR(20) NULL"))
         if conn.dialect.name != "postgresql":
             print(f"INFO:  PostgreSQL-only schema patch block skipped for {conn.dialect.name}.")
@@ -2246,6 +2249,11 @@ async def _handle_google_login(
             user.auth_provider = "google"
         if not user.name or user.name == user.email:
             user.name = name
+        # Google verified this email at sign-in; mark existing accounts verified too.
+        if user.email_verified_at is None:
+            user.email_verified_at = datetime.utcnow()
+            user.email_verify_token = None
+            user.email_verify_token_expires = None
         await db.flush()
     else:
         user = models.User(
@@ -2269,6 +2277,7 @@ async def _handle_google_login(
         user.deactivated_at = None
         user.deactivated_reason = None
         user.verification_email_sent_at = None
+        user.verification_email_resend_count = 0
 
     token_bundle = await issue_auth_tokens_for_user(user, db=db, session_id=payload.session_id)
     set_auth_cookies(response, token_bundle)
@@ -9200,18 +9209,34 @@ async def verify_email(token: str, db: AsyncSession = Depends(database.get_db)):
 
 @app.post("/verify-email/resend")
 async def resend_verify_email(
-    payload: schemas.ResendVerifyEmailRequest,
     request: Request,
     db: AsyncSession = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     await enforce_auth_rate_limit("register", request, identity=current_user.email)
+    now = datetime.utcnow()
     if current_user.email_verified_at is not None:
         return {"message": "Email already verified"}
+
+    # Server-side resend cooldown (DB-sourced so device clock can't be spoofed).
+    # First resend 60s; subsequent resends 300s.
+    VERIFY_RESEND_COOLDOWN_SECONDS = 300 if current_user.verification_email_resend_count >= 1 else 60
+    last_sent = current_user.verification_email_sent_at
+    if last_sent is not None:
+        elapsed = (now - last_sent).total_seconds()
+        if elapsed < VERIFY_RESEND_COOLDOWN_SECONDS:
+            remaining = max(1, int(VERIFY_RESEND_COOLDOWN_SECONDS - elapsed))
+            raise HTTPException(
+                status_code=429,
+                detail=f"Please wait {remaining}s before resending.",
+                headers={"Retry-After": str(remaining)},
+            )
+
     verify_token = secrets.token_urlsafe(32)[:43]
     current_user.email_verify_token = _hash_email_verify_token(verify_token)
     current_user.email_verify_token_expires = datetime.utcnow() + timedelta(days=2)
-    current_user.verification_email_sent_at = datetime.utcnow()
+    current_user.verification_email_sent_at = now
+    current_user.verification_email_resend_count += 1
     await db.commit()
     language = getattr(current_user, "language", "BM") or "BM"
     await email_service.send_email_verification_email(current_user.email, verify_token, current_user.name, language)
@@ -10777,10 +10802,12 @@ async def _get_loan_payment_summary(
 
 @app.get("/loans", response_model=List[schemas.LoanResponse])
 async def get_loans(
+    request: Request,
     include_settled: bool = Query(default=False),
     db: AsyncSession = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
+    await enforce_auth_rate_limit("loans_get", request, identity=current_user.id)
     return await _module_get_loans_route(
         include_settled=include_settled,
         db=db,
@@ -13564,6 +13591,10 @@ async def _mcp_user(request: Request, db: AsyncSession) -> tuple[models.User, mo
     await db.commit()
     return user, row
 
+async def _mcp_write_audit(db: AsyncSession, token, user, tool: str, target_id: int | None, err: str | None):
+    db.add(models.McpAuditLog(mcp_token_id=token.id, user_id=user.id, tool=tool, target_id=target_id, success=err is None, error_code=err))
+    await db.commit()
+
 MCP_TOOLS = [
     {"name": "list_transactions", "description": "List the authenticated user's recent transactions.", "inputSchema": {"type": "object", "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 100}}, "additionalProperties": False}},
     {"name": "get_transaction", "description": "Get one transaction owned by the authenticated user.", "inputSchema": {"type": "object", "properties": {"transaction_id": {"type": "integer"}}, "required": ["transaction_id"], "additionalProperties": False}},
@@ -13632,53 +13663,74 @@ async def mcp_endpoint(request: Request, db: AsyncSession = Depends(database.get
         result = {"tools": MCP_TOOLS}
     elif method == "tools/call":
         params = body.get("params") or {}; name = params.get("name"); args = params.get("arguments") or {}
-        if name == "list_transactions":
-            limit = max(1, min(int(args.get("limit", 50)), 100))
-            rows = (await db.execute(select(models.Transaction).where(models.Transaction.user_id == user.id).order_by(models.Transaction.txn_date.desc(), models.Transaction.id.desc()).limit(limit))).scalars().all()
-            result = _mcp_result([{"id": r.id, "reference_id": r.reference_id, "date": r.txn_date.isoformat(), "type": r.type, "description": r.vendor_or_source, "amount": str(r.amount), "wallet_id": r.wallet_id, "category_id": r.category_id, "notes": r.notes} for r in rows])
-        elif name == "get_transaction":
-            row = (await db.execute(select(models.Transaction).where(models.Transaction.id == int(args.get("transaction_id", 0)), models.Transaction.user_id == user.id))).scalar_one_or_none()
-            if row is None: raise HTTPException(status_code=404, detail="Transaction not found")
-            result = _mcp_result({"id": row.id, "reference_id": row.reference_id, "date": row.txn_date.isoformat(), "type": row.type, "description": row.vendor_or_source, "amount": str(row.amount), "wallet_id": row.wallet_id, "category_id": row.category_id, "notes": row.notes})
-        elif name == "list_wallets":
-            rows = (await db.execute(select(models.Wallet).where(models.Wallet.owner_user_id == user.id, models.Wallet.status == "active").order_by(models.Wallet.name))).scalars().all()
-            result = _mcp_result([{"id": r.id, "name": r.name, "type": r.type, "currency": r.currency} for r in rows])
-        elif name == "list_categories":
-            rows = (await db.execute(select(models.Category).where(or_(models.Category.household_id == user.default_household_id, and_(models.Category.household_id.is_(None), models.Category.is_default.is_(True))), models.Category.is_internal.is_(False)).order_by(models.Category.kind, models.Category.name))).scalars().all()
-            result = _mcp_result([{"id": r.id, "name": r.name, "kind": r.kind} for r in rows])
-        elif name == "create_transaction":
-            idem = str(args.get("idempotency_key") or "")
-            if len(idem) < 8 or len(idem) > 100: raise HTTPException(status_code=400, detail="Invalid idempotency key")
-            existing = (await db.execute(select(models.McpIdempotencyKey).where(models.McpIdempotencyKey.token_id == _token.id, models.McpIdempotencyKey.idempotency_key == idem))).scalar_one_or_none()
-            if existing:
-                result = _mcp_result({"transaction_id": existing.transaction_id, "duplicate": True})
+        _mcp_tool = name or ""
+        _mcp_target: int | None = None
+        _mcp_err: str | None = None
+        try:
+            if name == "list_transactions":
+                limit = max(1, min(int(args.get("limit", 50)), 100))
+                rows = (await db.execute(select(models.Transaction).where(models.Transaction.user_id == user.id).order_by(models.Transaction.txn_date.desc(), models.Transaction.id.desc()).limit(limit))).scalars().all()
+                result = _mcp_result([{"id": r.id, "reference_id": r.reference_id, "date": r.txn_date.isoformat(), "type": r.type, "description": r.vendor_or_source, "amount": str(r.amount), "wallet_id": r.wallet_id, "category_id": r.category_id, "notes": r.notes} for r in rows])
+            elif name == "get_transaction":
+                row = (await db.execute(select(models.Transaction).where(models.Transaction.id == int(args.get("transaction_id", 0)), models.Transaction.user_id == user.id))).scalar_one_or_none()
+                if row is None: raise HTTPException(status_code=404, detail="Transaction not found")
+                _mcp_target = row.id
+                result = _mcp_result({"id": row.id, "reference_id": row.reference_id, "date": row.txn_date.isoformat(), "type": row.type, "description": row.vendor_or_source, "amount": str(row.amount), "wallet_id": row.wallet_id, "category_id": row.category_id, "notes": row.notes})
+            elif name == "list_wallets":
+                rows = (await db.execute(select(models.Wallet).where(models.Wallet.owner_user_id == user.id, models.Wallet.status == "active").order_by(models.Wallet.name))).scalars().all()
+                result = _mcp_result([{"id": r.id, "name": r.name, "type": r.type, "currency": r.currency} for r in rows])
+            elif name == "list_categories":
+                rows = (await db.execute(select(models.Category).where(or_(models.Category.household_id == user.default_household_id, and_(models.Category.household_id.is_(None), models.Category.is_default.is_(True))), models.Category.is_internal.is_(False)).order_by(models.Category.kind, models.Category.name))).scalars().all()
+                result = _mcp_result([{"id": r.id, "name": r.name, "kind": r.kind} for r in rows])
+            elif name == "create_transaction":
+                idem = str(args.get("idempotency_key") or "")
+                if len(idem) < 8 or len(idem) > 100: raise HTTPException(status_code=400, detail="Invalid idempotency key")
+                existing = (await db.execute(select(models.McpIdempotencyKey).where(models.McpIdempotencyKey.token_id == _token.id, models.McpIdempotencyKey.idempotency_key == idem))).scalar_one_or_none()
+                if existing:
+                    result = _mcp_result({"transaction_id": existing.transaction_id, "duplicate": True})
+                else:
+                    clean = await _mcp_validate_transaction_args(db, user, {k: v for k, v in args.items() if k != "idempotency_key"})
+                    row = models.Transaction(user_id=user.id, household_id=user.default_household_id, type=clean["type"], amount=Decimal(clean["amount"]), vendor_or_source=clean["description"], txn_date=date.fromisoformat(clean["date"]), wallet_id=clean["wallet_id"], category_id=clean["category_id"], notes=clean.get("notes"), source_channel="mcp")
+                    db.add(row); await db.flush(); db.add(models.McpIdempotencyKey(token_id=_token.id, idempotency_key=idem, transaction_id=row.id)); await db.commit()
+                    _mcp_target = row.id
+                    result = _mcp_result({"transaction_id": row.id, "reference_id": row.reference_id, "duplicate": False})
+            elif name == "preview_transaction_update":
+                import json
+                transaction_id = int(args.get("transaction_id", 0)); patch = await _mcp_validate_transaction_args(db, user, args.get("patch"), partial=True)
+                row = (await db.execute(select(models.Transaction).where(models.Transaction.id == transaction_id, models.Transaction.user_id == user.id))).scalar_one_or_none()
+                if row is None: raise HTTPException(status_code=404, detail="Transaction not found")
+                _mcp_target = row.id
+                before = {"type": row.type, "amount": str(row.amount), "description": row.vendor_or_source, "date": row.txn_date.isoformat(), "wallet_id": row.wallet_id, "category_id": row.category_id, "notes": row.notes}
+                raw_confirmation = "bdp_confirm_" + secrets.token_urlsafe(32)
+                db.add(models.McpUpdateConfirmation(mcp_token_id=_token.id, user_id=user.id, transaction_id=row.id, token_hash=hashlib.sha256(raw_confirmation.encode()).hexdigest(), patch_json=json.dumps(patch, sort_keys=True), expires_at=datetime.utcnow() + timedelta(minutes=5))); await db.commit()
+                result = _mcp_result({"transaction_id": row.id, "before": before, "after": {**before, **patch}, "confirmation_token": raw_confirmation, "expires_in_seconds": 300})
+            elif name == "update_transaction":
+                import json
+                raw_confirmation = str(args.get("confirmation_token") or "")
+                confirmation = (await db.execute(select(models.McpUpdateConfirmation).where(models.McpUpdateConfirmation.token_hash == hashlib.sha256(raw_confirmation.encode()).hexdigest(), models.McpUpdateConfirmation.mcp_token_id == _token.id, models.McpUpdateConfirmation.user_id == user.id, models.McpUpdateConfirmation.used_at.is_(None), models.McpUpdateConfirmation.expires_at > datetime.utcnow()).with_for_update())).scalar_one_or_none()
+                if confirmation is None: raise HTTPException(status_code=400, detail="Invalid or expired confirmation token")
+                row = (await db.execute(select(models.Transaction).where(models.Transaction.id == confirmation.transaction_id, models.Transaction.user_id == user.id).with_for_update())).scalar_one_or_none()
+                if row is None: raise HTTPException(status_code=404, detail="Transaction not found")
+                _mcp_target = row.id
+                patch = json.loads(confirmation.patch_json)
+                mapping = {"description": "vendor_or_source", "date": "txn_date"}
+                for key, value in patch.items(): setattr(row, mapping.get(key, key), date.fromisoformat(value) if key == "date" else Decimal(value) if key == "amount" else value)
+                confirmation.used_at = datetime.utcnow(); await db.commit()
+                result = _mcp_result({"transaction_id": row.id, "updated": True})
             else:
-                clean = await _mcp_validate_transaction_args(db, user, {k: v for k, v in args.items() if k != "idempotency_key"})
-                row = models.Transaction(user_id=user.id, household_id=user.default_household_id, type=clean["type"], amount=Decimal(clean["amount"]), vendor_or_source=clean["description"], txn_date=date.fromisoformat(clean["date"]), wallet_id=clean["wallet_id"], category_id=clean["category_id"], notes=clean.get("notes"), source_channel="mcp")
-                db.add(row); await db.flush(); db.add(models.McpIdempotencyKey(token_id=_token.id, idempotency_key=idem, transaction_id=row.id)); await db.commit()
-                result = _mcp_result({"transaction_id": row.id, "reference_id": row.reference_id, "duplicate": False})
-        elif name == "preview_transaction_update":
-            import json
-            transaction_id = int(args.get("transaction_id", 0)); patch = await _mcp_validate_transaction_args(db, user, args.get("patch"), partial=True)
-            row = (await db.execute(select(models.Transaction).where(models.Transaction.id == transaction_id, models.Transaction.user_id == user.id))).scalar_one_or_none()
-            if row is None: raise HTTPException(status_code=404, detail="Transaction not found")
-            before = {"type": row.type, "amount": str(row.amount), "description": row.vendor_or_source, "date": row.txn_date.isoformat(), "wallet_id": row.wallet_id, "category_id": row.category_id, "notes": row.notes}
-            raw_confirmation = "bdp_confirm_" + secrets.token_urlsafe(32)
-            db.add(models.McpUpdateConfirmation(mcp_token_id=_token.id, user_id=user.id, transaction_id=row.id, token_hash=hashlib.sha256(raw_confirmation.encode()).hexdigest(), patch_json=json.dumps(patch, sort_keys=True), expires_at=datetime.utcnow() + timedelta(minutes=5))); await db.commit()
-            result = _mcp_result({"transaction_id": row.id, "before": before, "after": {**before, **patch}, "confirmation_token": raw_confirmation, "expires_in_seconds": 300})
-        elif name == "update_transaction":
-            import json
-            raw_confirmation = str(args.get("confirmation_token") or "")
-            confirmation = (await db.execute(select(models.McpUpdateConfirmation).where(models.McpUpdateConfirmation.token_hash == hashlib.sha256(raw_confirmation.encode()).hexdigest(), models.McpUpdateConfirmation.mcp_token_id == _token.id, models.McpUpdateConfirmation.user_id == user.id, models.McpUpdateConfirmation.used_at.is_(None), models.McpUpdateConfirmation.expires_at > datetime.utcnow()).with_for_update())).scalar_one_or_none()
-            if confirmation is None: raise HTTPException(status_code=400, detail="Invalid or expired confirmation token")
-            row = (await db.execute(select(models.Transaction).where(models.Transaction.id == confirmation.transaction_id, models.Transaction.user_id == user.id).with_for_update())).scalar_one_or_none()
-            if row is None: raise HTTPException(status_code=404, detail="Transaction not found")
-            patch = json.loads(confirmation.patch_json)
-            mapping = {"description": "vendor_or_source", "date": "txn_date"}
-            for key, value in patch.items(): setattr(row, mapping.get(key, key), date.fromisoformat(value) if key == "date" else Decimal(value) if key == "amount" else value)
-            confirmation.used_at = datetime.utcnow(); await db.commit()
-            result = _mcp_result({"transaction_id": row.id, "updated": True})
-        else:
+                _mcp_err = "tool_not_found"
+        except HTTPException as _he:
+            _mcp_err = f"http_{_he.status_code}"
+            raise
+        except Exception:
+            _mcp_err = "internal"
+            raise
+        finally:
+            try:
+                await _mcp_write_audit(db, _token, user, _mcp_tool, _mcp_target, _mcp_err)
+            except Exception:
+                pass
+        if _mcp_err == "tool_not_found":
             return JSONResponse({"jsonrpc": "2.0", "id": request_id, "error": {"code": -32601, "message": "Tool not found"}})
     elif method == "ping": result = {}
     else:
