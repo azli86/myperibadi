@@ -23,10 +23,15 @@ async def register_route(
     enforce_auth_rate_limit: Callable[..., Awaitable[None]],
     validate_turnstile_token: Callable[[str | None], Awaitable[None]],
     validate_password_strength: Callable[..., str],
+    is_disposable_email: Callable[[str], bool],
+    hash_email_verify_token: Callable[[str], str],
 ) -> dict[str, str]:
     normalized_email = normalize_email(user_in.email)
     await enforce_auth_rate_limit("register", request, identity=normalized_email)
     await validate_turnstile_token(user_in.turnstile_token)
+    if is_disposable_email(normalized_email):
+        # Soft reject: disposable/throwaway domains are not allowed.
+        return {"message": "If the details are valid, you can sign in now."}
 
     result = await db.execute(select(models.User).where(models.User.email == normalized_email))
     if result.scalars().first():
@@ -43,6 +48,19 @@ async def register_route(
     )
     db.add(db_user)
     await db.commit()
+
+    # Soft email verification (does not block login). Send verify link in background.
+    try:
+        verify_token = secrets.token_urlsafe(32)[:43]
+        db_user.email_verify_token = hash_email_verify_token(verify_token)
+        db_user.email_verify_token_expires = datetime.utcnow() + timedelta(days=2)
+        db_user.verification_email_sent_at = datetime.utcnow()
+        await db.commit()
+        language = getattr(db_user, "language", "BM") or "BM"
+        await email_service.send_email_verification_email(normalized_email, verify_token, user_in.name, language)
+    except Exception as exc:
+        print(f"⚠️ Failed to queue email verification for {normalized_email}: {exc}")
+
     return {"message": "If the details are valid, you can sign in now."}
 
 
@@ -58,6 +76,7 @@ async def login_route(
     is_mobile_user_agent: Callable[[str | None], bool],
     issue_auth_tokens_for_user: Callable[..., Awaitable[schemas.Token]],
     set_auth_cookies: Callable[[Response, schemas.Token], None],
+    is_verify_grace_expired: Callable[[Any], bool],
 ) -> schemas.Token:
     normalized_email = normalize_email(login_data.email)
     await enforce_auth_rate_limit("login", request, identity=normalized_email)
@@ -68,6 +87,9 @@ async def login_route(
 
     if not user or not user.is_active or not auth_utils.verify_password(login_data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
+
+    if is_verify_grace_expired(user):
+        raise HTTPException(status_code=403, detail="Email not verified. Please verify your email within 2 days of sign-up.")
 
     session_kind = auth_utils.SESSION_KIND_MOBILE if is_mobile_user_agent(request.headers.get("user-agent")) else None
     token_bundle = await issue_auth_tokens_for_user(

@@ -63,10 +63,15 @@ class Token(BaseModel):
     token_type: str
     theme_mode: Optional[str] = "system"
     language: Optional[str] = "BM"
+    email_verified: Optional[bool] = None
 
 
 class MessageResponse(BaseModel):
     message: str
+
+
+class ResendVerifyEmailRequest(BaseModel):
+    pass
 
 
 class MyStatsResponse(BaseModel):

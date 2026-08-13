@@ -42,6 +42,9 @@ class User(Base):
     deactivated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # set when account is deactivated
     deactivated_reason: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # 'manual' | 'inactivity'; NULL=legacy
     verification_email_sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # account-verification email sent
+    email_verified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # email ownership confirmed via verify link / oauth
+    email_verify_token: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)  # hashed verify-email token
+    email_verify_token_expires: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     language: Mapped[str] = mapped_column(String(5), default="BM") # 'EN' or 'BM'
     onboarding_done: Mapped[bool] = mapped_column(Boolean, default=True)  # False => new user sees onboarding intro after first login
     category_language: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)  # 'bm' | 'en' | 'manual' (auto-seeded category set)

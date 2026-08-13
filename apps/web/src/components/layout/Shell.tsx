@@ -103,6 +103,7 @@ import {
   ensureSessionId,
   getAccessToken,
   getRefreshToken,
+  getEmailVerified,
   getSessionId,
   hasPinEnabledSession,
   isCookieAuthSentinel,
@@ -1307,6 +1308,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   const [stats, setStats] = useState<ShellStats>({ balance: 0, income_month: 0, expense_month: 0 });
   const [isMounted, setIsMounted] = useState(false);
+  const [emailVerified, setEmailVerifiedState] = useState(false);
+  const [resendingVerify, setResendingVerify] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBadgeModal, setShowBadgeModal] = useState(false);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
@@ -2177,6 +2180,34 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   useEffect(() => setIsMounted(true), [])
 
   useEffect(() => {
+    if (!isMounted) return
+    setEmailVerifiedState(getEmailVerified())
+  }, [isMounted])
+
+  useEffect(() => {
+    const onAuth = () => {
+      setEmailVerifiedState(getEmailVerified())
+    }
+    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, onAuth)
+    return () => window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, onAuth)
+  }, [])
+
+  const handleResendVerify = useCallback(async () => {
+    setResendingVerify(true)
+    try {
+      const token = getAccessToken()
+      await fetch("/api/verify-email/resend", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
+    } catch {
+      // ignore — banner stays; user can retry
+    } finally {
+      setResendingVerify(false)
+    }
+  }, [])
+
+  useEffect(() => {
     let delayedFetchTimer: number | undefined;
     if (!isAuthPage) {
       const token = getAccessToken();
@@ -2866,6 +2897,20 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           : "bg-black text-[#f0f2fa]",
       )}
     >
+      {!emailVerified && !isAuthPage && !pinLockRequired && (
+        <div className="z-40 flex items-center justify-between gap-3 px-4 py-2 text-xs font-medium text-[var(--text)] bg-[var(--surface-tint)] border-b border-[var(--border)]">
+          <span>{lang === "BM" ? "Sahkan alamat e-mel anda untuk melindungi akaun." : "Verify your email address to secure your account."}</span>
+          <button
+            type="button"
+            disabled={resendingVerify}
+            onClick={handleResendVerify}
+            className="shrink-0 font-bold text-[var(--primary)] underline disabled:opacity-50"
+          >
+            {lang === "BM" ? (resendingVerify ? "Menghantar..." : "Hantar e-mel") : (resendingVerify ? "Sending..." : "Resend email")}
+          </button>
+        </div>
+      )}
+
       {pinLockRequired && !suppressPinLockUi && (
  <div className="fixed inset-0 z-[99999] overflow-hidden">
           <div

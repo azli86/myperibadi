@@ -1,6 +1,7 @@
 export const ACCESS_TOKEN_STORAGE_KEY = "token"
 export const REFRESH_TOKEN_STORAGE_KEY = "refresh_token"
 export const SESSION_ID_STORAGE_KEY = "sessionId"
+export const EMAIL_VERIFIED_STORAGE_KEY = "email_verified"
 export const AUTH_SESSION_CHANGED_EVENT = "budget-auth-session-changed"
 export const COOKIE_AUTH_SENTINEL = "__cookie_auth__"
 
@@ -63,6 +64,16 @@ export function markCookieAuthSession() {
   authStore()?.setItem(ACCESS_TOKEN_STORAGE_KEY, COOKIE_AUTH_SENTINEL)
   authStore()?.setItem(REFRESH_TOKEN_STORAGE_KEY, COOKIE_AUTH_SENTINEL)
   notifyAuthSessionChanged()
+}
+
+export function getEmailVerified(): boolean {
+  if (!isBrowser()) return false
+  return authStore()?.getItem(EMAIL_VERIFIED_STORAGE_KEY) === "1"
+}
+
+export function setEmailVerified(verified: boolean): void {
+  if (!isBrowser()) return
+  authStore()?.setItem(EMAIL_VERIFIED_STORAGE_KEY, verified ? "1" : "0")
 }
 
 type SessionTokenPayload = {
@@ -145,6 +156,7 @@ export function clearAuthSession() {
   store?.removeItem(ACCESS_TOKEN_STORAGE_KEY)
   store?.removeItem(REFRESH_TOKEN_STORAGE_KEY)
   store?.removeItem(SESSION_ID_STORAGE_KEY)
+  store?.removeItem(EMAIL_VERIFIED_STORAGE_KEY)
   notifyAuthSessionChanged()
 }
 

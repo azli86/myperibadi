@@ -16,6 +16,7 @@ import {
   getRefreshToken,
   getSessionId,
   setAuthTokens,
+  setEmailVerified,
   getLoginRedirectPath,
 } from "@/lib/auth-session"
 import { initFirstAccount, initActiveAccount } from "@/lib/multi-account"
@@ -97,6 +98,7 @@ export default function LoginPage() {
         const data = await res.json()
         if (data.access_token) {
           setAuthTokens(data.access_token, data.refresh_token)
+          setEmailVerified(data.email_verified ?? false)
           initFirstAccount(email, email.split("@")[0], data.access_token, data.refresh_token ?? null, sessionId!)
           if (isThemeMode(data.theme_mode)) {
             setTheme(data.theme_mode)
@@ -148,6 +150,7 @@ export default function LoginPage() {
         const data = await res.json()
         if (data.access_token) {
           setAuthTokens(data.access_token, data.refresh_token)
+          setEmailVerified(true) // Google verified the email at sign-in
           const email = (() => { try { const p = JSON.parse(atob(data.access_token.split('.')[1])); return p.sub || "" } catch { return "" } })()
           initFirstAccount(email, email.split("@")[0], data.access_token, data.refresh_token ?? null, sessionId!)
           if (isThemeMode(data.theme_mode)) setTheme(data.theme_mode)

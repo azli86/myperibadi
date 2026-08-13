@@ -196,6 +196,71 @@ async def send_reset_password_email(email: str, token: str, user_name: str, lang
         return False
 
 
+async def send_email_verification_email(email: str, token: str, user_name: str, language: str = "BM"):
+    """Sends an email-ownership verification link (soft gate: does not block login)."""
+    verify_link = f"{APP_PUBLIC_URL}/verify-email?token={token}"
+    if language == "BM":
+        subject = "Sahkan E-mel MyPeribadi"
+        title = "Sahkan E-mel Anda"
+        greeting = f"Hai {user_name},"
+        message = "Terima kasih kerana mendaftar. Sahkan alamat e-mel anda dengan mengklik butang di bawah:"
+        button_text = "Sahkan E-mel"
+        footer = "Jika anda tidak mendaftar akaun ini, sila abaikan e-mel ini."
+    else:
+        subject = "Verify Your MyPeribadi Email"
+        title = "Verify Your Email"
+        greeting = f"Hi {user_name},"
+        message = "Thanks for registering. Confirm your email address by clicking the button below:"
+        button_text = "Verify Email"
+        footer = "If you did not create this account, please ignore this email."
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head><style>
+        .container {{ font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #f0f0f0; border-radius: 12px; }}
+        .header {{ text-align: center; padding-bottom: 20px; }}
+        .logo {{ font-size: 24px; font-weight: 800; color: #6366f1; letter-spacing: -1px; }}
+        .content {{ line-height: 1.6; color: #333; }}
+        .button-container {{ text-align: center; padding: 30px 0; }}
+        .button {{ background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; }}
+        .footer {{ font-size: 12px; color: #999; text-align: center; margin-top: 30px; border-top: 1px solid #eeeeee; padding-top: 20px; }}
+    </style></head>
+    <body>
+        <div class="container">
+            <div class="header">{LOGO_HTML}<div style="color: #666; font-size: 14px; margin-top: 5px;">Email Verification</div></div>
+            <div class="content">
+                <h3>{title}</h3>
+                <p>{greeting}</p>
+                <p>{message}</p>
+                <div class="button-container"><a href="{verify_link}" class="button">{button_text}</a></div>
+                <p style="font-size: 13px; color: #666;">Or copy and paste this link in your browser:<br>
+                <a href="{verify_link}" style="color: #6366f1;">{verify_link}</a></p>
+            </div>
+            <div class="footer"><p>{footer}</p><p>&copy; 2026 MyPeribadi.</p></div>
+        </div>
+    </body>
+    </html>
+    """
+    if not SMTP_USER or not SMTP_PASS:
+        print(f"⚠️ SMTP credentials not set. Verification email skipped for {email}.")
+        return False
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = SMTP_FROM
+        msg['To'] = email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(html_content, 'html'))
+        _attach_logo(msg)
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        print(f"❌ Failed to send email: {e}")
+        return False
+
+
 async def send_email_change_verification_email(email: str, code: str, user_name: str, language: str = "BM"):
     """
     Sends email verification code for changing account email.

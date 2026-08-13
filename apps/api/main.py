@@ -491,7 +491,7 @@ AUTH_RATE_LIMIT_RULES = {
     "forgot_password": (5, 900),    # 5 requests per 15 minutes
     "reset_password": (8, 900),     # 8 requests per 15 minutes
     "refresh": (30, 300),           # 30 requests per 5 minutes
-    "data_get": (600, 60),         # 600 requests per minute per user (anti-bot polling; blocks 873/min bots)
+    "data_get": (1000, 60),         # 1000 requests per minute per user (anti-bot polling; blocks 873/min bots)
 }
 AUTH_RATE_LIMIT_BUCKETS: dict[str, deque[float]] = {}
 AUTH_RATE_LIMIT_LAST_SWEEP = 0.0
@@ -865,6 +865,9 @@ async def ensure_database_schema():
             await conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_kind VARCHAR(20) NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_email_sent_at TIMESTAMP NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token VARCHAR(100) NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token_expires TIMESTAMP NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_reason VARCHAR(20) NULL"))
         elif conn.dialect.name in {"mysql", "mariadb"}:
             index_exists = await conn.execute(
@@ -884,6 +887,9 @@ async def ensure_database_schema():
             await conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_kind VARCHAR(20) NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_email_sent_at TIMESTAMP NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMP NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token VARCHAR(100) NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token_expires TIMESTAMP NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_reason VARCHAR(20) NULL"))
         if conn.dialect.name != "postgresql":
             print(f"INFO:  PostgreSQL-only schema patch block skipped for {conn.dialect.name}.")
@@ -1172,6 +1178,28 @@ async def start_account_verification_email_task():
                         .where(models.User.deactivated_at.is_(None))
                         .values(deactivated_at=now)
                     )
+                    await db.commit()
+
+                    # Auto-disable accounts that never verified email within the 2-day grace.
+                    # Legacy users (verification_email_sent_at is None) are exempt.
+                    cutoff = now - timedelta(days=2)
+                    unverified = (
+                        await db.execute(
+                            select(models.User).where(
+                                models.User.is_active.is_(True),
+                                models.User.email_verified_at.is_(None),
+                                models.User.verification_email_sent_at.isnot(None),
+                                models.User.verification_email_sent_at < cutoff,
+                                (models.User.deactivated_reason.is_(None))
+                                | (models.User.deactivated_reason == ""),
+                            )
+                        )
+                    ).scalars().all()
+                    for user in unverified:
+                        user.is_active = False
+                        user.deactivated_at = now
+                        user.deactivated_reason = "email_verify_expired"
+                        print(f"[account-verify] Auto-disabled {user.email}: email not verified within 2-day grace")
                     await db.commit()
 
                     # Find deactivated accounts that still need a verification email.
@@ -1867,6 +1895,40 @@ def _hash_reset_token(token: str) -> str:
     return auth_utils.hash_token(f"reset:{token}")
 
 
+def _hash_email_verify_token(token: str) -> str:
+    return auth_utils.hash_token(f"email-verify:{token}")
+
+
+# Soft anti-spam: reject disposable/throwaway email domains at registration.
+# ponytail: static list; replace with a maintained blocklist service (e.g. disposable-email-domains) when abuse grows.
+_DISPOSABLE_EMAIL_DOMAINS = {
+    "hidepost.net", "mailinator.com", "guerrillamail.com", "temp-mail.org",
+    "10minutemail.com", "yopmail.com", "throwawaymail.com", "dispostable.com",
+    "maildrop.cc", "mailnesia.com", "tempmail.com", "sharklasers.com",
+    "guerrillamailblock.com", "burnermail.io", "getnada.com", "emailnator.com",
+    "maileater.com", "inboxbear.com", "mailcatch.com", "trashmail.com",
+}
+
+
+def _email_domain(email: str) -> str:
+    return (email.split("@", 1)[-1] if "@" in email else email).strip().lower()
+
+
+def _is_verify_grace_expired(user: Any) -> bool:
+    """True when a user must have verified their email but the 2-day grace has lapsed.
+    Legacy users (verification_email_sent_at is None) are exempt so we never disable existing accounts."""
+    if getattr(user, "email_verified_at", None) is not None:
+        return False
+    sent_at = getattr(user, "verification_email_sent_at", None)
+    if sent_at is None:
+        return False
+    return datetime.utcnow() > sent_at + timedelta(days=2)
+
+
+def _is_disposable_email(email: str) -> bool:
+    return _email_domain(email) in _DISPOSABLE_EMAIL_DOMAINS
+
+
 def _hash_email_change_token(token: str) -> str:
     return auth_utils.hash_token(f"email-change:{token}")
 
@@ -2084,6 +2146,7 @@ async def _issue_auth_tokens_for_user(
         token_type="bearer",
         theme_mode=_normalize_theme_mode(getattr(user, "theme_mode", "system")),
         language=_normalize_language(getattr(user, "language", "BM")),
+        email_verified=bool(getattr(user, "email_verified_at", None)),
     )
 
 
@@ -2194,6 +2257,8 @@ async def _handle_google_login(
         )
         db.add(user)
         await db.flush()
+        # Google verified the email at sign-in.
+        user.email_verified_at = user.email_verified_at or datetime.utcnow()
 
     if not user.is_active:
         if user.deactivated_reason == "manual":
@@ -9012,6 +9077,8 @@ async def register(user_in: schemas.UserCreate, request: Request, db: AsyncSessi
         enforce_auth_rate_limit=enforce_auth_rate_limit,
         validate_turnstile_token=validate_turnstile_token,
         validate_password_strength=validate_password_strength,
+        is_disposable_email=_is_disposable_email,
+        hash_email_verify_token=_hash_email_verify_token,
     )
 
 @app.post("/login", response_model=schemas.Token)
@@ -9027,6 +9094,7 @@ async def login(login_data: schemas.LoginRequest, request: Request, response: Re
         is_mobile_user_agent=_is_mobile_user_agent,
         issue_auth_tokens_for_user=_issue_auth_tokens_for_user,
         set_auth_cookies=_set_auth_cookies,
+        is_verify_grace_expired=_is_verify_grace_expired,
     )
 
 @app.post("/auth/pin-login", response_model=schemas.Token)
@@ -9105,6 +9173,50 @@ async def logout_auth_session(
         clear_user_refresh_token=_clear_user_refresh_token,
         clear_auth_cookies=_clear_auth_cookies,
     )
+
+@app.get("/verify-email")
+async def verify_email(token: str, db: AsyncSession = Depends(database.get_db)):
+    # Soft verification: confirms email ownership via a single-use link. Does not gate login.
+    result = await db.execute(select(models.User).where(models.User.email_verify_token == _hash_email_verify_token(token)))
+    user = result.scalars().first()
+    if (
+        user is None
+        or user.email_verified_at is not None
+        or user.email_verify_token_expires is None
+        or user.email_verify_token_expires < datetime.utcnow()
+    ):
+        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+    user.email_verified_at = datetime.utcnow()
+    user.email_verify_token = None
+    user.email_verify_token_expires = None
+    # Successful verification proves ownership; restore access if auto-disabled by grace expiry.
+    if user.deactivated_reason == "email_verify_expired":
+        user.is_active = True
+        user.deactivated_at = None
+        user.deactivated_reason = None
+    await db.commit()
+    return {"message": "Email verified successfully", "email": user.email}
+
+
+@app.post("/verify-email/resend")
+async def resend_verify_email(
+    payload: schemas.ResendVerifyEmailRequest,
+    request: Request,
+    db: AsyncSession = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    await enforce_auth_rate_limit("register", request, identity=current_user.email)
+    if current_user.email_verified_at is not None:
+        return {"message": "Email already verified"}
+    verify_token = secrets.token_urlsafe(32)[:43]
+    current_user.email_verify_token = _hash_email_verify_token(verify_token)
+    current_user.email_verify_token_expires = datetime.utcnow() + timedelta(days=2)
+    current_user.verification_email_sent_at = datetime.utcnow()
+    await db.commit()
+    language = getattr(current_user, "language", "BM") or "BM"
+    await email_service.send_email_verification_email(current_user.email, verify_token, current_user.name, language)
+    return {"message": "Verification email sent"}
+
 
 @app.post("/auth/forgot-password")
 async def forgot_password(req: schemas.ForgotPasswordRequest, request: Request, db: AsyncSession = Depends(database.get_db)):

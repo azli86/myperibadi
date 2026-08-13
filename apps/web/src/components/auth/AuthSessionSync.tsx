@@ -9,6 +9,7 @@ import {
   isCookieAuthSentinel,
   markCookieAuthSession,
   setAuthTokens,
+  setEmailVerified,
 } from "@/lib/auth-session"
 import { isLang, storeLanguagePreference } from "@/lib/lang"
 
@@ -43,6 +44,7 @@ type RefreshResponse = {
   access_token?: string
   refresh_token?: string
   language?: string
+  email_verified?: boolean
 }
 
 let refreshInFlight: Promise<string | null> | null = null
@@ -154,6 +156,9 @@ async function refreshTokens(rawFetch: typeof window.fetch): Promise<string | nu
       refreshRateLimitedUntil = 0
       refreshAuthRejectedUntil = 0
       setAuthTokens(data.access_token, data.refresh_token ?? (isCookieAuthSentinel(refreshToken) ? undefined : refreshToken))
+      if (typeof data.email_verified === "boolean") {
+        setEmailVerified(data.email_verified)
+      }
       if (isLang(data.language)) {
         storeLanguagePreference(data.language)
       }
