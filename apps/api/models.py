@@ -106,53 +106,6 @@ class UserAuthSession(Base):
 
     user: Mapped["User"] = relationship(back_populates="auth_sessions")
 
-class McpAccessToken(Base):
-    __tablename__ = "mcp_access_tokens"
-    __table_args__ = (UniqueConstraint("token_hash", name="uq_mcp_access_tokens_hash"),)
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    name: Mapped[str] = mapped_column(String(80), nullable=False, default="Hermes")
-    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    token_prefix: Mapped[str] = mapped_column(String(20), nullable=False)
-    scopes: Mapped[str] = mapped_column(String(160), nullable=False, default="finance:read,transactions:create,transactions:update")
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    revoked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
-
-class McpIdempotencyKey(Base):
-    __tablename__ = "mcp_idempotency_keys"
-    __table_args__ = (UniqueConstraint("token_id", "idempotency_key", name="uq_mcp_token_idempotency"),)
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    token_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("mcp_access_tokens.id", ondelete="CASCADE"), nullable=False)
-    idempotency_key: Mapped[str] = mapped_column(String(100), nullable=False)
-    transaction_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("transactions.id", ondelete="CASCADE"), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
-
-class McpAuditLog(Base):
-    __tablename__ = "mcp_audit_log"
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    mcp_token_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("mcp_access_tokens.id", ondelete="CASCADE"), nullable=False)
-    user_id: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
-    tool: Mapped[str] = mapped_column(String(60), nullable=False)
-    target_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
-    success: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    error_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
-
-class McpUpdateConfirmation(Base):
-    __tablename__ = "mcp_update_confirmations"
-    __table_args__ = (UniqueConstraint("token_hash", name="uq_mcp_update_confirmation_hash"),)
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    mcp_token_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("mcp_access_tokens.id", ondelete="CASCADE"), nullable=False)
-    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    transaction_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("transactions.id", ondelete="CASCADE"), nullable=False)
-    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    patch_json: Mapped[str] = mapped_column(Text, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-
 class Household(Base):
     __tablename__ = "households"
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)

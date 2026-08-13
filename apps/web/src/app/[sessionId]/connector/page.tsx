@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   ChevronRight,
   Loader2,
-  Plug,
   RefreshCw,
   Send,
   Unplug,
@@ -24,7 +23,7 @@ import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 
-type ConnectorKey = "whatsapp" | "telegram" | "hermes"
+type ConnectorKey = "whatsapp" | "telegram"
 type ConnectionState = "loading" | "connected" | "disconnected" | "error"
 
 type ConnectorCard = {
@@ -167,17 +166,8 @@ export default function ConnectorPage() {
         state: tgState,
         detail: tgDetail,
       },
-      {
-        key: "hermes",
-        name: "Hermes MCP",
-        href: `/${sessionId}/hermes-mcp`,
-        icon: Plug,
-        accent: "bg-[var(--surface-tint)] text-[var(--text)]",
-        state: "disconnected",
-        detail: tr("Token peribadi selamat", "Secure personal token"),
-      },
     ],
-    [sessionId, tgDetail, tgState, tr, waDetail, waState],
+    [sessionId, tgDetail, tgState, waDetail, waState],
   )
 
   const stats = useMemo(() => {
@@ -208,9 +198,6 @@ export default function ConnectorPage() {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate text-base font-black tracking-tight text-[var(--text)] md:text-lg">{item.name}</p>
-            {item.key === "hermes" && (
-              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[0.5rem] font-black uppercase tracking-[0.12em] text-amber-600">Beta</span>
-            )}
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <span
@@ -243,7 +230,7 @@ export default function ConnectorPage() {
 
   const listBody = showSkeleton ? (
     <div className="grid gap-2 md:grid-cols-2">
-      {Array.from({ length: 3 }).map((_, i) => (
+      {Array.from({ length: 2 }).map((_, i) => (
         <div key={i} className="h-24 animate-pulse rounded-[var(--card-radius-lg)] border border-[var(--border)] bg-[var(--card)]" />
       ))}
     </div>
@@ -254,7 +241,7 @@ export default function ConnectorPage() {
   const summaryStrip = (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[0.625rem] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
       <span className="inline-flex items-center gap-1.5">
-        <Plug size={12} />
+        <Bot size={12} />
         {showSkeleton ? "—" : stats.total} {tr("jumlah", "total")}
       </span>
       <span className="inline-flex items-center gap-1.5">

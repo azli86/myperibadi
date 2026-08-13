@@ -60,8 +60,6 @@ _USER_DIRECT_TABLES = [
     "telegram_pair_codes",
     "telegram_links",
     "login_logs",
-    "mcp_access_tokens",
-    "mcp_update_confirmations",
     "user_push_tokens",
     "native_push_subscriptions",
     "push_devices",
