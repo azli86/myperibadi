@@ -174,15 +174,17 @@ export default function InventoryPage() {
 
   return (
     <>
-      <MobilePageHeader
-        title={tr("Barang Saya", "My Inventory")}
-        fallbackHref={`/${sessionId}`}
-        action={
-          <MobileIconButton label={tr("Tambah", "Add")} onClick={openCreate}>
-            <Plus className="h-5 w-5" />
-          </MobileIconButton>
-        }
-      />
+      <div className="border-b border-[color:var(--border)] pb-4 md:hidden">
+        <MobilePageHeader
+          title={tr("Barang Saya", "My Inventory")}
+          fallbackHref={`/${sessionId}`}
+          action={
+            <MobileIconButton label={tr("Tambah", "Add")} onClick={openCreate}>
+              <Plus className="h-5 w-5" />
+            </MobileIconButton>
+          }
+        />
+      </div>
       <DesktopPageHeader
         title={tr("Barang Saya", "My Inventory")}
         actions={
@@ -194,8 +196,9 @@ export default function InventoryPage() {
             {tr("Tambah Barang", "Add Item")}
           </button>
         }
+        className="hidden md:block"
       />
-      <DesktopPageBody>
+      <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
         <div className="mx-auto w-full max-w-5xl space-y-4 px-4 pb-24">
           {/* summary */}
           {summary && (

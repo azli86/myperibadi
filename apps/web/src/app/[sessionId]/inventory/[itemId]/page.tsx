@@ -202,7 +202,7 @@ export default function InventoryItemDetailPage() {
 
   return (
     <>
-      <div className="sticky top-0 z-50 bg-[var(--page-bg)] pb-2 pt-1 md:hidden">
+      <div className="border-b border-[color:var(--border)] pb-4 md:hidden">
         <MobilePageHeader
           title={item.name}
           fallbackHref={`/${sessionId}/inventory`}
