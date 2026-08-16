@@ -554,6 +554,23 @@ html[data-theme="dark"] .chatgpt-composer-shell {
 }
 
 /*
+ * Universal Popup / Modal / Sheet Glass Backdrop Blur
+ */
+.app-sheet-backdrop,
+.modal-backdrop,
+.portal-backdrop,
+[data-overlay-backdrop],
+div:has(> .app-sheet-panel),
+div:has(> [data-swipe-sheet]),
+div:has(> [data-modern-alert]),
+div:has(> [data-radix-dialog-content]),
+div:has(> [data-portal-modal]) {
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  background-color: rgba(0, 0, 0, 0.55) !important;
+}
+
+/*
  * App sheet system
  * Mobile: bottom sheet, top corners only (flush to screen edge)
  * sm+: centered dialog, full rounded

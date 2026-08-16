@@ -25,6 +25,18 @@ export default function ChangelogPage() {
   const entries: ChangelogEntry[] = isBm
     ? [
         {
+          version: "v2026.08.12",
+          date: "12 Ogos 2026",
+          title: "Barang Saya (Inventori Peribadi)",
+          items: [
+            "Barang Saya: simpan senarai barangan peribadi dengan lokasi, bekas, kuantiti, status, dan foto.",
+            "Buka Menu → Personal → Barang Saya untuk tambah, cari, pindah, dan urus status setiap item.",
+            "Command bot: `stuff <nama barang>` untuk tambah, `stuff cari <kata>` untuk cari, `tambah stor <lokasi>` dan `tambah bekas <nama>` untuk cipta lokasi/bekas.",
+            "Tambah barang dengan foto: hantar gambar bersama caption `stuff <nama barang>` dari WhatsApp, Telegram, atau webchat — foto dimuat naik ke storan awan.",
+            "Lokasi & bekas boleh dibuat terus dari halaman Barang Saya atau melalui bot.",
+          ],
+        },
+        {
           version: "v2026.08.10",
           date: "10 Ogos 2026",
           title: "Split Bill & Command OCR Split",
@@ -150,6 +162,18 @@ export default function ChangelogPage() {
         },
       ]
     : [
+        {
+          version: "v2026.08.12",
+          date: "12 August 2026",
+          title: "My Inventory (Personal Items)",
+          items: [
+            "My Inventory: keep a list of your personal items with location, container, quantity, status, and photo.",
+            "Open Menu → Personal → My Inventory to add, search, move, and manage the status of each item.",
+            "Bot commands: `stuff <item name>` to add, `stuff cari <keyword>` to search, `tambah stor <location>` and `tambah bekas <name>` to create locations/containers.",
+            "Add items with a photo: send an image with the `stuff <item name>` caption from WhatsApp, Telegram, or webchat — the photo is uploaded to cloud storage.",
+            "Locations & containers can be created from the My Inventory page or via the bot.",
+          ],
+        },
         {
           version: "v2026.08.10",
           date: "10 Aug 2026",

@@ -12,6 +12,9 @@ import {
   Pencil,
   X,
   FolderTree,
+  Folder,
+  FolderOpen,
+  ChevronDown,
   Tag,
   Image as ImageIcon,
   FolderPlus,
@@ -19,6 +22,7 @@ import {
   ChevronRight,
   LayoutGrid,
   List as ListIcon,
+  ExternalLink,
 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { createPortal } from "react-dom"
@@ -44,6 +48,8 @@ type InvItem = {
   model?: string | null
   serial_number?: string | null
   has_image?: boolean
+  location_id?: number | null
+  container_id?: number | null
   location_path?: string | null
   container_name?: string | null
   transaction_id?: number | null
@@ -75,63 +81,54 @@ const STATUS_CONFIG: Record<
   { badge: string; pillActive: string; pillInactive: string; dot: string; labelBm: string; labelEn: string }
 > = {
   available: {
-    badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-    pillActive: "bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-sm",
-    pillInactive: "border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10",
+    badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30",
+    pillActive: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/50 shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
     dot: "bg-emerald-500",
     labelBm: "Ada",
     labelEn: "Available",
   },
   loaned: {
-    badge: "bg-sky-500/15 text-sky-400 border-sky-500/30",
-    pillActive: "bg-sky-500/20 text-sky-400 border-sky-500/50 shadow-sm",
-    pillInactive: "border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10",
+    badge: "bg-sky-500/15 text-sky-600 dark:text-sky-300 border-sky-500/30",
+    pillActive: "bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-500/50 shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
     dot: "bg-sky-400",
     labelBm: "Dipinjam",
     labelEn: "Loaned",
   },
   missing: {
-    badge: "bg-rose-500/15 text-rose-400 border-rose-500/30",
-    pillActive: "bg-rose-500/20 text-rose-400 border-rose-500/50 shadow-sm",
-    pillInactive: "border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10",
+    badge: "bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/30",
+    pillActive: "bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/50 shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
     dot: "bg-rose-500",
     labelBm: "Hilang",
     labelEn: "Missing",
   },
   damaged: {
-    badge: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-    pillActive: "bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-sm",
-    pillInactive: "border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10",
+    badge: "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30",
+    pillActive: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/50 shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
     dot: "bg-amber-400",
     labelBm: "Rosak",
     labelEn: "Damaged",
   },
   disposed: {
-    badge: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30",
-    pillActive: "bg-zinc-500/20 text-zinc-300 border-zinc-500/50 shadow-sm",
-    pillInactive: "border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10",
+    badge: "bg-zinc-500/15 text-zinc-600 dark:text-zinc-300 border-zinc-500/30",
+    pillActive: "bg-zinc-500/20 text-zinc-700 dark:text-zinc-300 border-zinc-500/50 shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
     dot: "bg-zinc-400",
     labelBm: "Dilupus",
     labelEn: "Disposed",
   },
   used_up: {
-    badge: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30",
-    pillActive: "bg-zinc-500/20 text-zinc-300 border-zinc-500/50 shadow-sm",
-    pillInactive: "border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10",
+    badge: "bg-zinc-500/15 text-zinc-600 dark:text-zinc-300 border-zinc-500/30",
+    pillActive: "bg-zinc-500/20 text-zinc-700 dark:text-zinc-300 border-zinc-500/50 shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
     dot: "bg-zinc-400",
     labelBm: "Habis",
     labelEn: "Used Up",
   },
 }
-
-const STATUS_OPTIONS: { value: InvStatus; label: string }[] = [
-  { value: "available", label: "Available" },
-  { value: "loaned", label: "Loaned" },
-  { value: "missing", label: "Missing" },
-  { value: "damaged", label: "Damaged" },
-  { value: "disposed", label: "Disposed" },
-  { value: "used_up", label: "Used Up" },
-]
 
 const CATEGORY_OPTIONS = [
   "Electronics",
@@ -191,12 +188,19 @@ export default function InventoryPage() {
 
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<InvItem | null>(null)
+  const [prefilledLocId, setPrefilledLocId] = useState<string>("")
+  const [prefilledContId, setPrefilledContId] = useState<string>("")
+
   const [showLocModal, setShowLocModal] = useState(false)
   const [showContModal, setShowContModal] = useState(false)
   const [editingLoc, setEditingLoc] = useState<InvLocation | null>(null)
   const [editingCont, setEditingCont] = useState<InvContainer | null>(null)
   const [defaultParentLocId, setDefaultParentLocId] = useState<string>("")
   const [defaultContLocId, setDefaultContLocId] = useState<string>("")
+
+  // Location / Container Items View Sheet
+  const [selectedLocationForView, setSelectedLocationForView] = useState<InvLocation | null>(null)
+  const [selectedContainerForView, setSelectedContainerForView] = useState<InvContainer | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -227,24 +231,10 @@ export default function InventoryPage() {
     return () => clearTimeout(t)
   }, [load, search])
 
-  const deleteItem = useCallback((item: InvItem, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation()
-    showConfirmRef.current(
-      tr(`Padam ${item.name}?`, `Delete ${item.name}?`),
-      tr("Rekod akan disembunyikan daripada senarai.", "Record will be hidden from the list."),
-      async () => {
-        const res = await fetch(`/api/inventory/items/${item.id}`, { method: "DELETE", headers: authHeaders(), credentials: "include" })
-        if (res.ok) load()
-        else showAlertRef.current(tr("Ralat", "Error"), tr("Gagal padam.", "Failed to delete."), "error")
-      },
-      "warning",
-    )
-  }, [authHeaders, load, tr])
-
-  const openCreate = useCallback(() => { setEditing(null); setShowForm(true) }, [])
-  const openEdit = useCallback((item: InvItem, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation()
-    setEditing(item)
+  const openCreate = useCallback((locId?: string, contId?: string) => {
+    setEditing(null)
+    setPrefilledLocId(locId || "")
+    setPrefilledContId(contId || "")
     setShowForm(true)
   }, [])
 
@@ -258,8 +248,75 @@ export default function InventoryPage() {
     return Array.from(set).sort()
   }, [items])
 
+  // Desktop Folder Tree selection state
+  const [selectedFolder, setSelectedFolder] = useState<
+    | { type: "all" }
+    | { type: "unassigned" }
+    | { type: "location"; id: number; name: string }
+    | { type: "container"; id: number; name: string; locName?: string }
+  >({ type: "all" })
+
+  // Collapsed / Expanded state for folder tree
+  const [expandedLocIds, setExpandedLocIds] = useState<Set<number>>(new Set())
+  const toggleExpand = useCallback((locId: number) => {
+    setExpandedLocIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(locId)) next.delete(locId)
+      else next.add(locId)
+      return next
+    })
+  }, [])
+
+  // Count items matching each location and container
+  const locationItemCounts = useMemo(() => {
+    const counts = new Map<number, { types: number; units: number }>()
+    for (const loc of locations) {
+      const matched = items.filter(
+        (i) => i.location_id === loc.id || i.location_path === loc.name || i.location_path?.startsWith(loc.name + " >") || i.location_path?.includes(loc.name)
+      )
+      counts.set(loc.id, {
+        types: matched.length,
+        units: matched.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0),
+      })
+    }
+    return counts
+  }, [items, locations])
+
+  const containerItemCounts = useMemo(() => {
+    const counts = new Map<number, { types: number; units: number }>()
+    for (const cont of containers) {
+      const matched = items.filter(
+        (i) => i.container_id === cont.id || i.container_name === cont.name
+      )
+      counts.set(cont.id, {
+        types: matched.length,
+        units: matched.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0),
+      })
+    }
+    return counts
+  }, [items, containers])
+
+  const unassignedCount = useMemo(() => {
+    return items.filter((i) => !i.location_path && !i.location_id).length
+  }, [items])
+
   const filteredItems = useMemo(() => {
     let result = items
+    if (selectedFolder.type === "location") {
+      result = result.filter(
+        (i) =>
+          i.location_id === selectedFolder.id ||
+          i.location_path === selectedFolder.name ||
+          i.location_path?.startsWith(selectedFolder.name + " >") ||
+          i.location_path?.includes(selectedFolder.name)
+      )
+    } else if (selectedFolder.type === "container") {
+      result = result.filter(
+        (i) => i.container_id === selectedFolder.id || i.container_name === selectedFolder.name
+      )
+    } else if (selectedFolder.type === "unassigned") {
+      result = result.filter((i) => !i.location_path && !i.location_id)
+    }
     if (categoryFilter) {
       result = result.filter((item) => item.category?.trim() === categoryFilter)
     }
@@ -267,7 +324,7 @@ export default function InventoryPage() {
       result = result.filter((item) => item.location_path?.includes(locationFilter))
     }
     return result
-  }, [items, categoryFilter, locationFilter])
+  }, [items, selectedFolder, categoryFilter, locationFilter])
 
   const locationTree = useMemo(() => {
     const byParent = new Map<number | null, InvLocation[]>()
@@ -288,19 +345,25 @@ export default function InventoryPage() {
   }, [locations])
 
   const totalBoxesCount = useMemo(() => containers.length, [containers])
-  const hasActiveFilters = Boolean(search || statusFilter || categoryFilter || locationFilter)
+  const hasActiveFilters = Boolean(
+    search ||
+      statusFilter ||
+      categoryFilter ||
+      locationFilter ||
+      selectedFolder.type !== "all"
+  )
 
   const clearAllFilters = useCallback(() => {
     setSearch("")
     setStatusFilter("")
     setCategoryFilter("")
     setLocationFilter("")
+    setSelectedFolder({ type: "all" })
   }, [])
 
   // ── RENDER PHOTO GALLERY CARD ──────────────────────────────────────────────
   const renderGalleryCard = (item: InvItem) => {
     const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.available
-    const subtitle = [item.brand, item.category].filter(Boolean).join(" · ")
     return (
       <button
         key={item.id}
@@ -340,30 +403,99 @@ export default function InventoryPage() {
         </div>
 
         {/* Card Body Details */}
-        <div className="flex flex-1 flex-col justify-between p-3 sm:p-3.5">
-          <div>
-            <h4 className="truncate text-xs sm:text-sm font-black text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
-              {item.name}
-            </h4>
-            <p className="mt-0.5 truncate text-[10px] sm:text-[11px] font-semibold text-[var(--muted)]">
-              {subtitle || "—"}
-            </p>
-          </div>
+        <div className="flex flex-1 flex-col justify-between gap-1.5 p-3 sm:p-3.5">
+          <h4 className="truncate text-sm sm:text-base font-black text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+            {item.name}
+          </h4>
 
-          {/* Location & Box Tag */}
-          <div className="mt-2 flex items-center gap-1 truncate text-[10px] text-[var(--muted)]">
-            <MapPin className="h-3 w-3 shrink-0 text-emerald-400" />
-            <span className="truncate">
-              {item.location_path || tr("Tiada lokasi", "No location")}
-              {item.container_name ? ` · ${item.container_name}` : ""}
-            </span>
+          {/* Location & Box Tag - High Visibility Badges */}
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            {item.location_path ? (
+              <span className="inline-flex max-w-[140px] items-center gap-1 truncate rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-400">
+                <MapPin className="h-3 w-3 shrink-0 text-emerald-400" />
+                <span className="truncate">{item.location_path}</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-tint)] px-2 py-0.5 text-[11px] font-medium text-[var(--muted)]">
+                <MapPin className="h-3 w-3 shrink-0 opacity-50" />
+                <span>{tr("Tiada lokasi", "No location")}</span>
+              </span>
+            )}
+
+            {item.container_name && (
+              <span className="inline-flex max-w-[140px] items-center gap-1.5 truncate rounded-lg border border-sky-500/40 bg-sky-500/20 px-2 py-0.5 text-[11px] font-black text-sky-200 shadow-sm ring-1 ring-sky-400/20">
+                <Boxes className="h-3.5 w-3.5 shrink-0 text-sky-400" />
+                <span className="truncate">{item.container_name}</span>
+              </span>
+            )}
           </div>
         </div>
       </button>
     )
   }
 
-  // ── RENDER COMPACT LIST ROW ────────────────────────────────────────────────
+  // ── RENDER COMPACT 3-COL MOBILE GALLERY CARD ──────────────────────────────
+  const renderMobile3ColCard = (item: InvItem) => {
+    const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.available
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => router.push(`/${sessionId}/inventory/${item.id}`)}
+        className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1.5 text-left transition active:scale-95 shadow-sm hover:border-[var(--accent)]/40"
+      >
+        {/* Photo Container */}
+        <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[var(--surface-tint)]">
+          {item.has_image ? (
+            <img
+              src={`/api/inventory/items/${item.id}/image`}
+              alt={item.name}
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-900/30 via-neutral-800/10 to-transparent text-[var(--muted)]">
+              <Package className="h-6 w-6 opacity-40" />
+            </div>
+          )}
+
+          {/* Floating Quantity Tag (Top-Left) */}
+          <span className="absolute left-1.5 top-1.5 inline-flex items-center rounded-md bg-black/65 backdrop-blur-md px-1.5 py-0.5 text-[9px] font-black text-white shadow">
+            {item.quantity} {item.unit}
+          </span>
+
+          {/* Floating Status Dot (Top-Right) */}
+          <span
+            className={cn("absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full ring-2 ring-black/30 shadow", cfg.dot)}
+            title={isBm ? cfg.labelBm : item.status_label || cfg.labelEn}
+          />
+        </div>
+
+        {/* Card Body */}
+        <div className="flex flex-1 flex-col justify-between pt-1.5 px-0.5">
+          <h4 className="line-clamp-2 text-[11px] font-bold leading-snug text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+            {item.name}
+          </h4>
+
+          {/* Compact Location / Box Tag */}
+          {(item.container_name || item.location_path) && (
+            <div className="mt-1 flex items-center gap-0.5 truncate text-[9.5px] font-bold text-sky-600 dark:text-sky-400">
+              {item.container_name ? (
+                <>
+                  <Boxes className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{item.container_name}</span>
+                </>
+              ) : (
+                <>
+                  <MapPin className="h-3 w-3 shrink-0 text-emerald-500 dark:text-emerald-400" />
+                  <span className="truncate">{item.location_path}</span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </button>
+    )
+  }
   const renderListRow = (item: InvItem) => {
     const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.available
     const subtitle = [item.brand, item.category].filter(Boolean).join(" · ")
@@ -437,7 +569,7 @@ export default function InventoryPage() {
           title={tr("Barang Saya", "My Inventory")}
           fallbackHref={`/${sessionId}`}
           action={
-            <MobileIconButton label={tr("Tambah", "Add")} onClick={openCreate}>
+            <MobileIconButton label={tr("Tambah", "Add")} onClick={() => openCreate()}>
               <Plus className="h-5 w-5" />
             </MobileIconButton>
           }
@@ -449,7 +581,7 @@ export default function InventoryPage() {
           title={tr("Barang Saya", "My Inventory")}
           homeHref={`/${sessionId}`}
           actions={
-            <DesktopPageAction onClick={openCreate}>
+            <DesktopPageAction onClick={() => openCreate()}>
               <Plus size={16} />
               {tr("Tambah Barang", "Add Item")}
             </DesktopPageAction>
@@ -460,39 +592,39 @@ export default function InventoryPage() {
       {/* ── MOBILE VIEW ── */}
       <div className="md:hidden px-1 pb-24 pt-1 space-y-4">
         {/* Mobile Hero Card */}
-        <section className="relative overflow-hidden rounded-[1.85rem] border border-[var(--border)] bg-[#171717] p-4 text-white shadow-xl">
-          <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-[var(--accent)]/15 blur-3xl" />
+        <section className="relative overflow-hidden rounded-[1.85rem] border border-[var(--border)] bg-[var(--card)] p-4 text-[var(--text)] shadow-sm">
+          <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-[var(--accent)]/10 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-10 left-6 h-36 w-36 rounded-full bg-sky-500/10 blur-3xl" />
 
           <div className="relative z-10 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
                   {tr("Jumlah Keseluruhan", "Total Inventory")}
                 </p>
                 <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-3xl font-black tracking-tight text-white">
+                  <span className="text-3xl font-black tracking-tight text-[var(--text)]">
                     {summary ? summary.total_units : 0}
                   </span>
-                  <span className="text-xs font-semibold text-neutral-400">
+                  <span className="text-xs font-semibold text-[var(--muted)]">
                     {tr("unit", "units")} · {summary ? summary.total_types : 0} {tr("jenis", "types")}
                   </span>
                 </div>
-                <p className="mt-0.5 text-[11px] text-neutral-400">
+                <p className="mt-0.5 text-[11px] text-[var(--muted)]">
                   {locations.length} {tr("lokasi", "locations")} · {containers.length} {tr("bekas/kotak", "boxes")}
                 </p>
               </div>
 
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white shadow-inner">
-                <Package className="h-5 w-5 text-emerald-400" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] shadow-sm">
+                <Package className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={openCreate}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--accent)] px-3 py-2.5 text-xs font-bold text-white shadow-md transition active:scale-[0.98]"
+                onClick={() => openCreate()}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--accent)] px-3 py-2.5 text-xs font-bold text-white shadow-sm transition active:scale-[0.98]"
               >
                 <Plus className="h-4 w-4" />
                 <span>{tr("Tambah Barang", "Add Item")}</span>
@@ -500,15 +632,15 @@ export default function InventoryPage() {
               <button
                 type="button"
                 onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-xs font-bold text-white backdrop-blur transition active:scale-[0.98]"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2.5 text-xs font-bold text-[var(--text)] transition active:scale-[0.98] hover:bg-[var(--card-active)]"
               >
-                <FolderPlus className="h-4 w-4 text-emerald-400" />
+                <FolderPlus className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
                 <span>{tr("Tambah Lokasi", "Add Location")}</span>
               </button>
             </div>
 
             {summary && (
-              <div className="border-t border-white/10 pt-3">
+              <div className="border-t border-[var(--border)]/60 pt-3">
                 <div className="no-scrollbar -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-0.5">
                   <button
                     type="button"
@@ -516,8 +648,8 @@ export default function InventoryPage() {
                     className={cn(
                       "inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold transition active:scale-95",
                       statusFilter === ""
-                        ? "bg-white text-black shadow-sm"
-                        : "border border-white/10 bg-white/5 text-neutral-300"
+                        ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
+                        : "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]"
                     )}
                   >
                     <span>{tr("Semua", "All")}</span>
@@ -693,9 +825,9 @@ export default function InventoryPage() {
             )}
 
             {loading && items.length === 0 ? (
-              <div className="grid grid-cols-2 gap-2.5 py-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="aspect-[4/3] animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
+              <div className="grid grid-cols-3 gap-2 sm:gap-2.5 py-2">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="aspect-square animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
                 ))}
               </div>
             ) : filteredItems.length === 0 ? (
@@ -706,8 +838,8 @@ export default function InventoryPage() {
                 </p>
               </div>
             ) : displayMode === "gallery" ? (
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                {filteredItems.map(renderGalleryCard)}
+              <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
+                {filteredItems.map(renderMobile3ColCard)}
               </div>
             ) : (
               <div className="space-y-2">
@@ -751,16 +883,20 @@ export default function InventoryPage() {
                 return (
                   <div
                     key={loc.id}
-                    className="relative rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm"
+                    className="relative rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm transition hover:border-[var(--accent)]/30"
                     style={{ marginLeft: depth ? `${depth * 14}px` : "0px" }}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-tint)] text-emerald-400">
-                          <MapPin className="h-3.5 w-3.5" />
+                      {/* Clickable location title to view items inside */}
+                      <div
+                        onClick={() => setSelectedLocationForView(loc)}
+                        className="flex flex-1 cursor-pointer items-center gap-2.5 active:opacity-75"
+                      >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-emerald-400">
+                          <MapPin className="h-4 w-4" />
                         </div>
-                        <div>
-                          <span className="font-bold text-xs text-[var(--text)]">{loc.name}</span>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold text-xs text-[var(--text)] group-hover:text-[var(--accent)]">{loc.name}</span>
                           <p className="text-[10px] text-[var(--muted)]">
                             {loc.item_types} {tr("jenis", "types")} · {loc.item_units} {tr("unit", "units")}
                           </p>
@@ -771,21 +907,24 @@ export default function InventoryPage() {
                         <button
                           type="button"
                           onClick={() => { setEditingLoc(null); setDefaultParentLocId(String(loc.id)); setShowLocModal(true) }}
-                          className="rounded-lg p-1.5 text-[var(--muted)]"
+                          className="rounded-lg p-1.5 text-[var(--muted)] hover:text-[var(--text)]"
+                          title={tr("Tambah Sub-Lokasi", "Add Sub-location")}
                         >
                           <Plus className="h-3.5 w-3.5" />
                         </button>
                         <button
                           type="button"
                           onClick={() => { setEditingCont(null); setDefaultContLocId(String(loc.id)); setShowContModal(true) }}
-                          className="rounded-lg p-1.5 text-[var(--muted)]"
+                          className="rounded-lg p-1.5 text-[var(--muted)] hover:text-[var(--text)]"
+                          title={tr("Tambah Bekas", "Add Box")}
                         >
                           <Boxes className="h-3.5 w-3.5" />
                         </button>
                         <button
                           type="button"
                           onClick={() => { setEditingLoc(loc); setShowLocModal(true) }}
-                          className="rounded-lg p-1.5 text-[var(--muted)]"
+                          className="rounded-lg p-1.5 text-[var(--muted)] hover:text-[var(--text)]"
+                          title={tr("Edit", "Edit")}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
@@ -793,21 +932,38 @@ export default function InventoryPage() {
                     </div>
 
                     {conts.length > 0 && (
-                      <div className="mt-2.5 flex flex-wrap items-center gap-1 border-t border-[var(--border)]/60 pt-2">
-                        {conts.map((c) => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => { setEditingCont(c); setShowContModal(true) }}
-                            className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[10px] font-medium text-[var(--text)] active:scale-95"
-                          >
-                            <Boxes className="h-3 w-3 text-sky-400" />
-                            <span>{c.name}</span>
-                            <span className="rounded bg-[var(--surface-tint-strong)] px-1 text-[9px] font-bold text-[var(--muted)]">
-                              {c.item_types}
-                            </span>
-                          </button>
-                        ))}
+                      <div className="mt-3 border-t border-[var(--border)]/60 pt-2.5">
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-sky-400">
+                            <Boxes className="h-3.5 w-3.5" />
+                            {tr("Bekas / Kotak", "Boxes & Containers")} ({conts.length})
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {conts.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => setSelectedContainerForView(c)}
+                              className="group relative flex flex-col items-start justify-between rounded-2xl border border-sky-500/35 bg-sky-500/5 dark:bg-[#151a21] p-2.5 text-left shadow-sm transition hover:border-sky-400 hover:bg-sky-500/10 active:scale-[0.96]"
+                            >
+                              <div className="flex w-full items-center justify-between gap-1">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-500/20 text-sky-600 dark:text-sky-400 ring-1 ring-sky-400/30">
+                                  <Boxes className="h-3.5 w-3.5" />
+                                </div>
+                                <span className="rounded-full bg-sky-400/15 border border-sky-400/30 px-1.5 py-0.2 text-[9px] font-black text-sky-700 dark:text-sky-300">
+                                  {c.item_types} {tr("jenis", "types")}
+                                </span>
+                              </div>
+                              <span className="mt-2 line-clamp-1 w-full text-xs font-black text-[var(--text)] group-hover:text-sky-500 dark:group-hover:text-sky-300 transition-colors">
+                                {c.name}
+                              </span>
+                              <span className="mt-0.5 text-[9px] font-semibold text-[var(--muted)]">
+                                {c.item_units} {tr("unit", "units")}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -818,313 +974,451 @@ export default function InventoryPage() {
         )}
       </div>
 
-      {/* ── DESKTOP VIEW (FULL WIDTH PORTAL PAGE BODY) ── */}
+      {/* ── DESKTOP VIEW (LEFT FOLDER TREE + RIGHT ITEMS GRID) ── */}
       <div className="hidden md:block">
         <DesktopPageBody className="space-y-5">
-          {/* Desktop Hero */}
-          <section className="relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[#171717] p-6 text-white shadow-xl">
-            <div className="pointer-events-none absolute -right-12 -top-12 h-56 w-56 rounded-full bg-[var(--accent)]/15 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-12 left-10 h-48 w-48 rounded-full bg-sky-500/10 blur-3xl" />
-
-            <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-neutral-400">
-                  {tr("Pengurusan Inventori & Barang", "Inventory & Storage Management")}
-                </p>
-                <div className="mt-1.5 flex items-baseline gap-3">
-                  <span className="text-3xl font-black text-white lg:text-4xl">
-                    {summary ? summary.total_units : 0}
-                  </span>
-                  <span className="text-sm font-semibold text-neutral-300">
-                    {tr("Jumlah Unit Keseluruhan", "Total Units Tracked")} · {summary ? summary.total_types : 0} {tr("Jenis Barang", "Item Types")}
-                  </span>
+          {/* Desktop Dual-Pane: Folder Tree (Left) + Main Explorer (Right) */}
+          <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] lg:grid-cols-[290px_1fr] gap-5 items-start">
+            {/* ── LEFT PANEL: FOLDER TREE SIDEBAR ── */}
+            <aside className="sticky top-20 flex flex-col rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-[var(--border)]/60 pb-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <FolderTree className="h-4 w-4 text-[var(--accent)]" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text)]">
+                    {tr("Struktur Folder", "Folder Tree")}
+                  </h3>
                 </div>
-                <p className="mt-1 text-xs text-neutral-400">
-                  {locations.length} {tr("lokasi penyimpanan", "locations")} · {containers.length} {tr("bekas/kotak", "boxes")}
-                </p>
-              </div>
-
-              {/* Status Chips */}
-              {summary && (
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => setStatusFilter("")}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition hover:opacity-90 active:scale-95",
-                      statusFilter === "" ? "bg-white text-black shadow-md" : "border border-white/10 bg-white/5 text-neutral-300"
-                    )}
+                    onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
+                    className="rounded-lg p-1 text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)] transition"
+                    title={tr("Tambah Lokasi", "Add Location")}
                   >
-                    <span>{tr("Semua", "All")}</span>
-                    <span>({summary.total_types})</span>
+                    <FolderPlus className="h-3.5 w-3.5 text-emerald-500" />
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEditingCont(null); setDefaultContLocId(""); setShowContModal(true) }}
+                    className="rounded-lg p-1 text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)] transition"
+                    title={tr("Tambah Bekas / Kotak", "Add Container")}
+                  >
+                    <Boxes className="h-3.5 w-3.5 text-sky-500" />
+                  </button>
+                </div>
+              </div>
 
-                  {(
-                    [
-                      { key: "available", label: tr("Ada", "Available"), count: summary.available },
-                      { key: "loaned", label: tr("Dipinjam", "Loaned"), count: summary.loaned },
-                      { key: "missing", label: tr("Hilang", "Missing"), count: summary.missing },
-                      { key: "damaged", label: tr("Rosak", "Damaged"), count: summary.damaged },
-                    ] as const
-                  ).map((st) => {
-                    const isSelected = statusFilter === st.key
-                    const cfg = STATUS_CONFIG[st.key as InvStatus]
-                    return (
-                      <button
-                        key={st.key}
-                        type="button"
-                        onClick={() => setStatusFilter(isSelected ? "" : st.key)}
+              {/* Tree Root & Items */}
+              <div className="space-y-1 overflow-y-auto max-h-[calc(100vh-14rem)] pr-1">
+                {/* Root: Semua Barang */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedFolder({ type: "all" })}
+                  className={cn(
+                    "group flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-bold transition active:scale-[0.98]",
+                    selectedFolder.type === "all"
+                      ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
+                      : "text-[var(--text)] hover:bg-[var(--surface-tint)]"
+                  )}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Folder className="h-4 w-4 shrink-0 opacity-80" />
+                    <span className="truncate">{tr("Semua Barang", "All Items")}</span>
+                  </div>
+                  <span className={cn(
+                    "rounded-full px-2 py-0.5 text-[10px] font-black",
+                    selectedFolder.type === "all"
+                      ? "bg-[var(--bg)] text-[var(--text)]"
+                      : "bg-[var(--surface-tint-strong)] text-[var(--muted)]"
+                  )}>
+                    {items.length}
+                  </span>
+                </button>
+
+                {/* Locations Tree with Nested Boxes */}
+                {locations.filter((l) => !l.parent_id).map((loc) => {
+                  const locStats = locationItemCounts.get(loc.id) || { types: 0, units: 0 }
+                  const locConts = containers.filter((c) => c.location_id === loc.id)
+                  const subLocations = locations.filter((sub) => sub.parent_id === loc.id)
+                  const isSelected = selectedFolder.type === "location" && selectedFolder.id === loc.id
+                  const isExpanded = expandedLocIds.has(loc.id) || locConts.some((c) => selectedFolder.type === "container" && selectedFolder.id === c.id)
+
+                  return (
+                    <div key={loc.id} className="space-y-1">
+                      <div
                         className={cn(
-                          "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition hover:opacity-90 active:scale-95",
-                          isSelected ? cfg.pillActive : cfg.pillInactive
+                          "group flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-bold transition",
+                          isSelected
+                            ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
+                            : "text-[var(--text)] hover:bg-[var(--surface-tint)]"
                         )}
                       >
-                        <span className={cn("h-2 w-2 rounded-full", cfg.dot)} />
-                        <span>{st.label}</span>
-                        <span>({st.count})</span>
+                        <div
+                          onClick={() => setSelectedFolder({ type: "location", id: loc.id, name: loc.name })}
+                          className="flex flex-1 items-center gap-2 min-w-0 cursor-pointer"
+                        >
+                          {(locConts.length > 0 || subLocations.length > 0) ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleExpand(loc.id)
+                              }}
+                              className="p-0.5 text-[var(--muted)] group-hover:text-[var(--text)]"
+                            >
+                              <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", isExpanded && "rotate-90")} />
+                            </button>
+                          ) : (
+                            <span className="w-3.5" />
+                          )}
+                          <Folder className={cn("h-4 w-4 shrink-0", isSelected ? "" : "text-amber-500")} />
+                          <span className="truncate">{loc.name}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <span className={cn(
+                            "rounded-full px-1.5 py-0.2 text-[10px] font-black",
+                            isSelected
+                              ? "bg-[var(--bg)] text-[var(--text)]"
+                              : "bg-[var(--surface-tint-strong)] text-[var(--muted)]"
+                          )}>
+                            {locStats.types}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingLoc(loc)
+                              setShowLocModal(true)
+                            }}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-[var(--muted)] hover:text-[var(--text)] transition"
+                            title={tr("Edit Lokasi", "Edit Location")}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Expanded Sub-locations and Containers */}
+                      {isExpanded && (
+                        <div className="ml-5 border-l-2 border-[var(--border)]/70 pl-2 space-y-1">
+                          {/* Nested Sub-locations */}
+                          {subLocations.map((subLoc) => {
+                            const subStats = locationItemCounts.get(subLoc.id) || { types: 0, units: 0 }
+                            const isSubSelected = selectedFolder.type === "location" && selectedFolder.id === subLoc.id
+                            return (
+                              <div
+                                key={subLoc.id}
+                                onClick={() => setSelectedFolder({ type: "location", id: subLoc.id, name: subLoc.name })}
+                                className={cn(
+                                  "group flex cursor-pointer items-center justify-between rounded-lg px-2 py-1 text-[11px] font-bold transition",
+                                  isSubSelected
+                                    ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
+                                    : "text-[var(--text)] hover:bg-[var(--surface-tint)]"
+                                )}
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <Folder className={cn("h-3.5 w-3.5 shrink-0", isSubSelected ? "" : "text-amber-400")} />
+                                  <span className="truncate">{subLoc.name}</span>
+                                </div>
+                                <span className={cn(
+                                  "rounded-full px-1.5 text-[9px] font-black",
+                                  isSubSelected
+                                    ? "bg-[var(--bg)] text-[var(--text)]"
+                                    : "bg-[var(--surface-tint-strong)] text-[var(--muted)]"
+                                )}>
+                                  {subStats.types}
+                                </span>
+                              </div>
+                            )
+                          })}
+
+                          {/* Nested Containers / Boxes */}
+                          {locConts.map((cont) => {
+                            const contStats = containerItemCounts.get(cont.id) || { types: 0, units: 0 }
+                            const isContSelected = selectedFolder.type === "container" && selectedFolder.id === cont.id
+                            return (
+                              <div
+                                key={cont.id}
+                                onClick={() => setSelectedFolder({ type: "container", id: cont.id, name: cont.name, locName: loc.name })}
+                                className={cn(
+                                  "group flex cursor-pointer items-center justify-between rounded-lg px-2 py-1 text-[11px] font-bold transition",
+                                  isContSelected
+                                    ? "bg-sky-500 text-white shadow-sm"
+                                    : "text-[var(--text)] hover:bg-sky-500/10 hover:text-sky-600 dark:hover:text-sky-300"
+                                )}
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <Boxes className={cn("h-3.5 w-3.5 shrink-0", isContSelected ? "text-white" : "text-sky-500 dark:text-sky-400")} />
+                                  <span className="truncate">{cont.name}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className={cn(
+                                    "rounded-full px-1.5 text-[9px] font-black",
+                                    isContSelected
+                                      ? "bg-white/20 text-white"
+                                      : "bg-sky-500/15 text-sky-600 dark:text-sky-300"
+                                  )}>
+                                    {contStats.types}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setEditingCont(cont)
+                                      setShowContModal(true)
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 p-0.5 text-[var(--muted)] hover:text-[var(--text)] transition"
+                                    title={tr("Edit Bekas", "Edit Box")}
+                                  >
+                                    <Pencil className="h-2.5 w-2.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {/* Unassigned Bucket */}
+                {unassignedCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedFolder({ type: "unassigned" })}
+                    className={cn(
+                      "group flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-bold transition active:scale-[0.98]",
+                      selectedFolder.type === "unassigned"
+                        ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
+                        : "text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)]"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MapPin className="h-3.5 w-3.5 shrink-0 opacity-60" />
+                      <span className="truncate">{tr("Tiada Lokasi", "Unassigned")}</span>
+                    </div>
+                    <span className={cn(
+                      "rounded-full px-2 py-0.5 text-[10px] font-black",
+                      selectedFolder.type === "unassigned"
+                        ? "bg-[var(--bg)] text-[var(--text)]"
+                        : "bg-[var(--surface-tint-strong)] text-[var(--muted)]"
+                    )}>
+                      {unassignedCount}
+                    </span>
+                  </button>
+                )}
+              </div>
+            </aside>
+
+            {/* ── RIGHT PANEL: MAIN ITEMS EXPLORER & GALLERY ── */}
+            <main className="space-y-4 min-w-0">
+              {/* Active Folder Header Banner */}
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+                <div>
+                  <div className="flex items-center gap-2">
+                    {selectedFolder.type === "container" ? (
+                      <Boxes className="h-5 w-5 text-sky-500" />
+                    ) : selectedFolder.type === "location" ? (
+                      <Folder className="h-5 w-5 text-amber-500" />
+                    ) : (
+                      <FolderTree className="h-5 w-5 text-[var(--accent)]" />
+                    )}
+                    <h2 className="text-base font-black text-[var(--text)]">
+                      {selectedFolder.type === "all"
+                        ? tr("Semua Barang Inventori", "All Inventory Items")
+                        : selectedFolder.type === "unassigned"
+                        ? tr("Barang Tiada Lokasi", "Unassigned Items")
+                        : selectedFolder.type === "location"
+                        ? selectedFolder.name
+                        : `${selectedFolder.name} (${selectedFolder.locName || ""})`}
+                    </h2>
+                  </div>
+                  <p className="mt-0.5 text-xs text-[var(--muted)]">
+                    {filteredItems.length} {tr("jenis barang dijumpai", "items in this folder")}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedFolder.type === "location") {
+                        openCreate(String(selectedFolder.id))
+                      } else if (selectedFolder.type === "container") {
+                        openCreate(undefined, String(selectedFolder.id))
+                      } else {
+                        openCreate()
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:opacity-90 active:scale-95"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>{tr("Tambah Barang", "Add Item")}</span>
+                  </button>
+
+                  {/* Display Mode Toggle */}
+                  <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setDisplayMode("gallery")}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition",
+                        displayMode === "gallery" ? "bg-[var(--card)] text-[var(--text)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--text)]"
+                      )}
+                      title={tr("Paparan Galeri", "Gallery View")}
+                    >
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                      <span>{tr("Galeri", "Gallery")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDisplayMode("list")}
+                      className={cn(
+                        "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition",
+                        displayMode === "list" ? "bg-[var(--card)] text-[var(--text)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--text)]"
+                      )}
+                      title={tr("Paparan Senarai", "List View")}
+                    >
+                      <ListIcon className="h-3.5 w-3.5" />
+                      <span>{tr("Senarai", "List")}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Chips & Search Row */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                {summary && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setStatusFilter("")}
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold transition active:scale-95",
+                        statusFilter === "" ? "bg-[var(--text)] text-[var(--bg)] shadow-sm" : "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]"
+                      )}
+                    >
+                      <span>{tr("Semua", "All")}</span>
+                      <span>({summary.total_types})</span>
+                    </button>
+
+                    {(
+                      [
+                        { key: "available", label: tr("Ada", "Available"), count: summary.available },
+                        { key: "loaned", label: tr("Dipinjam", "Loaned"), count: summary.loaned },
+                        { key: "missing", label: tr("Hilang", "Missing"), count: summary.missing },
+                        { key: "damaged", label: tr("Rosak", "Damaged"), count: summary.damaged },
+                      ] as const
+                    ).map((st) => {
+                      const isSelected = statusFilter === st.key
+                      const cfg = STATUS_CONFIG[st.key as InvStatus]
+                      return (
+                        <button
+                          key={st.key}
+                          type="button"
+                          onClick={() => setStatusFilter(isSelected ? "" : st.key)}
+                          className={cn(
+                            "inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition active:scale-95",
+                            isSelected ? cfg.pillActive : cfg.pillInactive
+                          )}
+                        >
+                          <span className={cn("h-1.5 w-1.5 rounded-full", cfg.dot)} />
+                          <span>{st.label}</span>
+                          <span>({st.count})</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Search Bar */}
+                <div className="relative w-64">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder={tr("Cari barang...", "Search items...")}
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] py-1.5 pl-9 pr-8 text-xs font-medium text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)]"
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => setSearch("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-[var(--muted)] hover:text-[var(--text)]"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Categories Toolbar */}
+              {categories.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setCategoryFilter("")}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-xs font-bold transition",
+                      categoryFilter === ""
+                        ? "bg-[var(--text)] text-[var(--bg)]"
+                        : "border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
+                    )}
+                  >
+                    {tr("Semua", "All")} ({items.length})
+                  </button>
+                  {categories.map((cat) => {
+                    const count = items.filter((i) => i.category === cat).length
+                    const isCatSelected = categoryFilter === cat
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setCategoryFilter(isCatSelected ? "" : cat)}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold transition",
+                          isCatSelected
+                            ? "bg-[var(--text)] text-[var(--bg)]"
+                            : "border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
+                        )}
+                      >
+                        <Tag className="h-3 w-3 opacity-60" />
+                        <span>{cat}</span>
+                        <span className="opacity-70">({count})</span>
                       </button>
                     )
                   })}
                 </div>
               )}
-            </div>
-          </section>
 
-          {/* Desktop Search & Tabs Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <div className="grid grid-cols-2 gap-1 rounded-2xl bg-[var(--surface-tint)] p-1">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("items")}
-                  className={cn(
-                    "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition active:scale-[0.98]",
-                    activeTab === "items"
-                      ? "bg-[var(--card)] text-[var(--text)] shadow-sm"
-                      : "text-[var(--muted)] hover:text-[var(--text)]"
-                  )}
-                >
-                  <Package className="h-4 w-4" />
-                  <span>{tr("Senarai Barang", "Items List")}</span>
-                  <span className="rounded-full bg-[var(--surface-tint-strong)] px-2 py-0.5 text-[10px] font-bold">
-                    {filteredItems.length}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("locations")}
-                  className={cn(
-                    "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition active:scale-[0.98]",
-                    activeTab === "locations"
-                      ? "bg-[var(--card)] text-[var(--text)] shadow-sm"
-                      : "text-[var(--muted)] hover:text-[var(--text)]"
-                  )}
-                >
-                  <FolderTree className="h-4 w-4" />
-                  <span>{tr("Lokasi & Bekas", "Locations & Boxes")}</span>
-                  <span className="rounded-full bg-[var(--surface-tint-strong)] px-2 py-0.5 text-[10px] font-bold">
-                    {locations.length + totalBoxesCount}
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {/* Display Mode Toggle */}
-              {activeTab === "items" && (
-                <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--card)] p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setDisplayMode("gallery")}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition",
-                      displayMode === "gallery" ? "bg-[var(--surface-tint-strong)] text-[var(--text)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--text)]"
-                    )}
-                    title={tr("Paparan Galeri Foto", "Photo Gallery View")}
-                  >
-                    <LayoutGrid className="h-3.5 w-3.5" />
-                    <span>{tr("Galeri", "Gallery")}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDisplayMode("list")}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition",
-                      displayMode === "list" ? "bg-[var(--surface-tint-strong)] text-[var(--text)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--text)]"
-                    )}
-                    title={tr("Paparan Senarai", "List View")}
-                  >
-                    <ListIcon className="h-3.5 w-3.5" />
-                    <span>{tr("Senarai", "List")}</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Search Bar */}
-              <div className="relative w-64">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder={tr("Cari barang...", "Search items...")}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] py-2 pl-9 pr-8 text-xs font-medium text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)]"
-                />
-                {search && (
-                  <button
-                    type="button"
-                    onClick={() => setSearch("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-[var(--muted)] hover:text-[var(--text)]"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-
-              {activeTab === "locations" && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint)]"
-                  >
-                    <FolderPlus className="h-4 w-4 text-emerald-400" />
-                    <span>{tr("Tambah Lokasi", "Add Location")}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setEditingCont(null); setDefaultContLocId(""); setShowContModal(true) }}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint)]"
-                  >
-                    <BoxSelect className="h-4 w-4 text-sky-400" />
-                    <span>{tr("Tambah Bekas", "Add Box")}</span>
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Desktop Categories Toolbar */}
-          {categories.length > 0 && activeTab === "items" && (
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setCategoryFilter("")}
-                className={cn(
-                  "rounded-full px-3.5 py-1.5 text-xs font-bold transition",
-                  categoryFilter === ""
-                    ? "bg-[var(--text)] text-[var(--bg)]"
-                    : "border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
-                )}
-              >
-                {tr("Semua Kategori", "All")} ({items.length})
-              </button>
-              {categories.map((cat) => {
-                const count = items.filter((i) => i.category === cat).length
-                const isCatSelected = categoryFilter === cat
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategoryFilter(isCatSelected ? "" : cat)}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition",
-                      isCatSelected
-                        ? "bg-[var(--text)] text-[var(--bg)]"
-                        : "border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
-                    )}
-                  >
-                    <Tag className="h-3 w-3 opacity-60" />
-                    <span>{cat}</span>
-                    <span className="opacity-70">({count})</span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Desktop Items (Photo Gallery / List) */}
-          {activeTab === "items" && (
-            <div>
-              {loading && items.length === 0 ? (
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                    <div key={i} className="aspect-[4/3] animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
-                  ))}
-                </div>
-              ) : filteredItems.length === 0 ? (
-                <div className="rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 p-12 text-center text-sm text-[var(--muted)]">
-                  {tr("Tiada barang dijumpai.", "No items found.")}
-                </div>
-              ) : displayMode === "gallery" ? (
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
-                  {filteredItems.map(renderGalleryCard)}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {filteredItems.map(renderListRow)}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Desktop Locations Grid */}
-          {activeTab === "locations" && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {locationTree.map(({ loc, depth }) => {
-                const conts = containers.filter((c) => c.location_id === loc.id)
-                return (
-                  <div
-                    key={loc.id}
-                    className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-emerald-400">
-                          <MapPin className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-black text-[var(--text)]">{loc.name}</h4>
-                          <span className="text-xs text-[var(--muted)]">
-                            {loc.item_types} {tr("jenis", "types")} · {loc.item_units} {tr("unit", "units")}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => { setEditingLoc(loc); setShowLocModal(true) }}
-                          className="rounded-lg p-1.5 text-[var(--muted)] hover:text-[var(--text)]"
-                          title={tr("Edit", "Edit")}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {conts.length > 0 && (
-                      <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-[var(--border)]/60 pt-2.5">
-                        {conts.map((c) => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => { setEditingCont(c); setShowContModal(true) }}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-1 text-xs font-semibold text-[var(--text)] transition hover:border-[var(--accent)]"
-                          >
-                            <Boxes className="h-3.5 w-3.5 text-sky-400" />
-                            <span>{c.name}</span>
-                            <span className="rounded bg-[var(--surface-tint-strong)] px-1.5 text-[10px] font-bold text-[var(--muted)]">
-                              {c.item_types}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+              {/* Items Grid / List Content */}
+              <div>
+                {loading && items.length === 0 ? (
+                  <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 xl:grid-cols-4">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                      <div key={i} className="aspect-[4/3] animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
+                    ))}
                   </div>
-                )
-              })}
-            </div>
-          )}
+                ) : filteredItems.length === 0 ? (
+                  <div className="rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 p-12 text-center text-sm text-[var(--muted)]">
+                    <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="font-bold text-[var(--text)]">{tr("Tiada barang dalam folder ini.", "No items in this folder.")}</p>
+                    <p className="text-xs text-[var(--muted)] mt-1">{tr("Sila tambah barang atau pilih folder lain.", "Add items or select another folder.")}</p>
+                  </div>
+                ) : displayMode === "gallery" ? (
+                  <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 xl:grid-cols-4">
+                    {filteredItems.map(renderGalleryCard)}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredItems.map(renderListRow)}
+                  </div>
+                )}
+              </div>
+            </main>
+          </div>
         </DesktopPageBody>
       </div>
 
@@ -1134,12 +1428,80 @@ export default function InventoryPage() {
           item={editing}
           locations={locations}
           containers={containers}
+          defaultLocId={prefilledLocId}
+          defaultContId={prefilledContId}
           onClose={() => setShowForm(false)}
           onSaved={() => { setShowForm(false); load() }}
           authHeaders={authHeaders}
           tr={tr}
         />
       )}
+
+      {/* Location Items Viewer Modal */}
+      {selectedLocationForView && (
+        <LocationItemsSheet
+          location={selectedLocationForView}
+          items={items}
+          containers={containers}
+          onClose={() => setSelectedLocationForView(null)}
+          onOpenItem={(it) => {
+            setSelectedLocationForView(null)
+            router.push(`/${sessionId}/inventory/${it.id}`)
+          }}
+          onAddItem={() => {
+            const locId = String(selectedLocationForView.id)
+            setSelectedLocationForView(null)
+            openCreate(locId)
+          }}
+          onEditLocation={(loc) => {
+            setSelectedLocationForView(null)
+            setEditingLoc(loc)
+            setShowLocModal(true)
+          }}
+          onViewInGallery={() => {
+            const locName = selectedLocationForView.name
+            setSelectedLocationForView(null)
+            setActiveTab("items")
+            setLocationFilter(locName)
+          }}
+          tr={tr}
+          isBm={isBm}
+        />
+      )}
+
+      {/* Container / Box Items Viewer Modal */}
+      {selectedContainerForView && (
+        <LocationItemsSheet
+          container={selectedContainerForView}
+          items={items}
+          containers={containers}
+          onClose={() => setSelectedContainerForView(null)}
+          onOpenItem={(it) => {
+            setSelectedContainerForView(null)
+            router.push(`/${sessionId}/inventory/${it.id}`)
+          }}
+          onAddItem={() => {
+            const locId = selectedContainerForView.location_id ? String(selectedContainerForView.location_id) : ""
+            const contId = String(selectedContainerForView.id)
+            setSelectedContainerForView(null)
+            openCreate(locId, contId)
+          }}
+          onEditContainer={(cont) => {
+            setSelectedContainerForView(null)
+            setEditingCont(cont)
+            setShowContModal(true)
+          }}
+          onViewInGallery={() => {
+            const contName = selectedContainerForView.name
+            setSelectedContainerForView(null)
+            setActiveTab("items")
+            setSearch(contName)
+          }}
+          tr={tr}
+          isBm={isBm}
+        />
+      )}
+
       {showLocModal && (
         <LocationModal
           locations={locations}
@@ -1168,12 +1530,243 @@ export default function InventoryPage() {
   )
 }
 
+// ── LOCATION / CONTAINER ITEMS VIEWER SHEET ──────────────────────────────────
+
+function LocationItemsSheet({
+  location,
+  container,
+  items,
+  containers,
+  onClose,
+  onOpenItem,
+  onAddItem,
+  onEditLocation,
+  onEditContainer,
+  onViewInGallery,
+  tr,
+  isBm,
+}: {
+  location?: InvLocation | null
+  container?: InvContainer | null
+  items: InvItem[]
+  containers: InvContainer[]
+  onClose: () => void
+  onOpenItem: (item: InvItem) => void
+  onAddItem: () => void
+  onEditLocation?: (loc: InvLocation) => void
+  onEditContainer?: (cont: InvContainer) => void
+  onViewInGallery?: () => void
+  tr: (bm: string, en: string) => string
+  isBm: boolean
+}) {
+  const swipe = useSwipeDownToClose(onClose)
+
+  const matchedItems = useMemo(() => {
+    if (container) {
+      return items.filter(
+        (i) =>
+          i.container_name === container.name ||
+          (container.id && i.container_id === container.id)
+      )
+    }
+    if (location) {
+      return items.filter(
+        (i) =>
+          i.location_path &&
+          (i.location_path === location.name ||
+            i.location_path.startsWith(location.name + " >") ||
+            i.location_path.includes(location.name))
+      )
+    }
+    return []
+  }, [items, location, container])
+
+  const totalUnits = useMemo(() => {
+    return matchedItems.reduce((acc, it) => acc + (it.quantity || 0), 0)
+  }, [matchedItems])
+
+  const title = container ? container.name : location?.name || ""
+  const subtitle = container
+    ? container.location_path
+      ? `📍 ${container.location_path}`
+      : tr("Bekas / Kotak", "Box / Container")
+    : tr("Lokasi Penyimpanan", "Storage Location")
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-black/50 backdrop-blur-sm p-0 sm:items-center"
+      onClick={onClose}
+      onTouchMove={(e) => e.preventDefault()}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        data-swipe-sheet
+        {...swipe}
+        className="app-sheet-panel app-sheet-panel--lg w-full max-h-[88dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[34rem] sm:rounded-3xl"
+      >
+        <AppSheetHeader
+          title={title}
+          eyebrow={subtitle}
+          onClose={onClose}
+          action={
+            <button
+              type="button"
+              onClick={onAddItem}
+              className="inline-flex items-center gap-1 rounded-xl bg-[var(--accent)] px-3 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-95"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>{tr("Tambah", "Add")}</span>
+            </button>
+          }
+        />
+
+        <div className="space-y-4 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
+          {/* Summary Banner */}
+          <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3.5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--card)] shadow-sm">
+                {container ? (
+                  <Boxes className="h-5 w-5 text-sky-400" />
+                ) : (
+                  <MapPin className="h-5 w-5 text-emerald-400" />
+                )}
+              </div>
+              <div>
+                <p className="text-xs font-bold text-[var(--text)]">
+                  {matchedItems.length} {tr("jenis barang", "item types")}
+                </p>
+                <p className="text-[11px] font-semibold text-[var(--muted)]">
+                  {totalUnits} {tr("unit keseluruhan", "total units")}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              {onViewInGallery && (
+                <button
+                  type="button"
+                  onClick={onViewInGallery}
+                  className="inline-flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-[11px] font-bold text-[var(--text)] transition hover:border-[var(--accent)] active:scale-95"
+                  title={tr("Lihat dalam paparan galeri", "View in gallery mode")}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5 text-[var(--accent)]" />
+                  <span>{tr("Galeri", "Gallery")}</span>
+                </button>
+              )}
+              {location && onEditLocation && (
+                <button
+                  type="button"
+                  onClick={() => onEditLocation(location)}
+                  className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-1.5 text-[var(--muted)] hover:text-[var(--text)]"
+                  title={tr("Edit Lokasi", "Edit Location")}
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+              )}
+              {container && onEditContainer && (
+                <button
+                  type="button"
+                  onClick={() => onEditContainer(container)}
+                  className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-1.5 text-[var(--muted)] hover:text-[var(--text)]"
+                  title={tr("Edit Bekas", "Edit Box")}
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* List of Items */}
+          {matchedItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 p-8 text-center">
+              <Package className="h-8 w-8 text-[var(--muted)] opacity-50" />
+              <p className="mt-2 text-xs font-bold text-[var(--text)]">
+                {tr("Tiada barang disimpan di sini lagi", "No items stored here yet")}
+              </p>
+              <button
+                type="button"
+                onClick={onAddItem}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 py-2 text-xs font-bold text-white shadow-sm transition active:scale-95"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>{tr("Tambah Barang Sekarang", "Add Item Now")}</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="px-1 text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">
+                {tr("Senarai Barang", "Items Stored")}
+              </p>
+
+              {matchedItems.map((item) => {
+                const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.available
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => onOpenItem(item)}
+                    className="group flex cursor-pointer items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 transition hover:border-[var(--accent)]/30 hover:bg-[var(--card-active)] active:scale-[0.98]"
+                  >
+                    <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]">
+                      {item.has_image ? (
+                        <img
+                          src={`/api/inventory/items/${item.id}/image`}
+                          alt={item.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <Package className="h-5 w-5 text-[var(--muted)] opacity-60" />
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="truncate text-xs font-black text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+                          {item.name}
+                        </p>
+                        <span className={cn("shrink-0 rounded-full border px-1.5 py-0.2 text-[8px] font-bold", cfg.badge)}>
+                          {isBm ? cfg.labelBm : item.status_label || cfg.labelEn}
+                        </span>
+                      </div>
+
+                      <div className="mt-1 flex items-center gap-2 text-[10px] text-[var(--muted)]">
+                        <span className="font-bold text-[var(--text)]">
+                          {item.quantity} {item.unit}
+                        </span>
+                        {item.container_name && !container && (
+                          <span className="inline-flex items-center gap-1 rounded bg-[var(--surface-tint)] px-1.5 py-0.5">
+                            <Boxes className="h-2.5 w-2.5 text-sky-400" />
+                            <span>{item.container_name}</span>
+                          </span>
+                        )}
+                        {item.category && (
+                          <span className="truncate">· {item.category}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 text-[var(--muted)] opacity-60">
+                      <ChevronRight className="h-4 w-4" />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 // ── ADD / EDIT ITEM SHEET FORM ───────────────────────────────────────────────
 
 function ItemForm({
   item,
   locations,
   containers,
+  defaultLocId,
+  defaultContId,
   onClose,
   onSaved,
   authHeaders,
@@ -1182,6 +1775,8 @@ function ItemForm({
   item: InvItem | null
   locations: InvLocation[]
   containers: InvContainer[]
+  defaultLocId?: string
+  defaultContId?: string
   onClose: () => void
   onSaved: () => void
   authHeaders: () => HeadersInit
@@ -1197,8 +1792,8 @@ function ItemForm({
   const [serial, setSerial] = useState("")
   const [purchaseDate, setPurchaseDate] = useState("")
   const [purchasePrice, setPurchasePrice] = useState("")
-  const [locationId, setLocationId] = useState<string>("")
-  const [containerId, setContainerId] = useState<string>("")
+  const [locationId, setLocationId] = useState<string>(defaultLocId || "")
+  const [containerId, setContainerId] = useState<string>(defaultContId || "")
   const [notes, setNotes] = useState(item?.notes || "")
   const [saving, setSaving] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -1422,7 +2017,11 @@ function ItemForm({
                 className={inputCls}
               >
                 <option value="">{tr("— Pilih kategori —", "— Select category —")}</option>
-                {CATEGORY_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                {CATEGORY_OPTIONS.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -1435,11 +2034,15 @@ function ItemForm({
                 onChange={(e) => setStatus(e.target.value as InvStatus)}
                 className={inputCls}
               >
-                {STATUS_OPTIONS.map((s) => (
-                  <option key={s.value} value={s.value}>
-                    {tr(STATUS_CONFIG[s.value]?.labelBm, s.label)}
-                  </option>
-                ))}
+                {STATUS_CONFIG &&
+                  Object.keys(STATUS_CONFIG).map((s) => {
+                    const cfg = STATUS_CONFIG[s as InvStatus]
+                    return (
+                      <option key={s} value={s}>
+                        {tr(cfg.labelBm, cfg.labelEn)}
+                      </option>
+                    )
+                  })}
               </select>
             </div>
           </div>
@@ -1697,6 +2300,43 @@ function LocationModal({
               {tr("Contoh: Pilih 'Bilik Stor' sebagai induk untuk 'Rak A'.", "Example: Select 'Storeroom' as parent for 'Shelf A'.")}
             </p>
           </div>
+
+          {editing && (
+            <div className="border-t border-[var(--border)]/60 pt-4">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={async () => {
+                  if (!window.confirm(tr(`Padam lokasi "${editing.name}"?`, `Delete location "${editing.name}"?`))) return
+                  setSaving(true)
+                  try {
+                    const res = await fetch(`/api/inventory/locations/${editing.id}`, {
+                      method: "DELETE",
+                      headers: authHeaders(),
+                      credentials: "include",
+                    })
+                    if (!res.ok) {
+                      const p = await res.json().catch(() => null)
+                      throw new Error(p?.detail || "Failed to delete location")
+                    }
+                    onSaved()
+                  } catch (err) {
+                    showAlertRef.current(
+                      tr("Ralat", "Error"),
+                      err instanceof Error ? err.message : tr("Gagal padam lokasi.", "Failed to delete location."),
+                      "error"
+                    )
+                  } finally {
+                    setSaving(false)
+                  }
+                }}
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 py-2.5 text-xs font-bold text-rose-500 transition hover:bg-rose-500/20 active:scale-95 disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>{tr("Padam Lokasi Ini", "Delete This Location")}</span>
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>,
@@ -1823,6 +2463,43 @@ function ContainerModal({
               {tr("Bekas akan dikaitkan dengan lokasi ini.", "Box will be associated with this location.")}
             </p>
           </div>
+
+          {editing && (
+            <div className="border-t border-[var(--border)]/60 pt-4">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={async () => {
+                  if (!window.confirm(tr(`Padam bekas "${editing.name}"?`, `Delete box "${editing.name}"?`))) return
+                  setSaving(true)
+                  try {
+                    const res = await fetch(`/api/inventory/containers/${editing.id}`, {
+                      method: "DELETE",
+                      headers: authHeaders(),
+                      credentials: "include",
+                    })
+                    if (!res.ok) {
+                      const p = await res.json().catch(() => null)
+                      throw new Error(p?.detail || "Failed to delete box")
+                    }
+                    onSaved()
+                  } catch (err) {
+                    showAlertRef.current(
+                      tr("Ralat", "Error"),
+                      err instanceof Error ? err.message : tr("Gagal padam bekas.", "Failed to delete box."),
+                      "error"
+                    )
+                  } finally {
+                    setSaving(false)
+                  }
+                }}
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 py-2.5 text-xs font-bold text-rose-500 transition hover:bg-rose-500/20 active:scale-95 disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>{tr("Padam Bekas / Kotak Ini", "Delete This Box / Container")}</span>
+              </button>
+            </div>
+          )}
         </form>
       </div>
     </div>,

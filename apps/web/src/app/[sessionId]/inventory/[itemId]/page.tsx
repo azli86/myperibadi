@@ -338,24 +338,33 @@ export default function InventoryItemDetailPage() {
           fallbackHref={`/${sessionId}/inventory`}
           backPreferHistory
           action={
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setShowMove(true)}
-                className="inline-flex items-center gap-1 rounded-xl bg-[var(--surface-tint)] px-2.5 py-1.5 text-xs font-bold text-[var(--text)] transition active:scale-[0.98]"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)] transition active:scale-[0.98]"
                 aria-label={tr("Pindahkan", "Move")}
+                title={tr("Pindahkan", "Move")}
               >
-                <ArrowRightLeft size={14} className="text-sky-400" />
-                <span>{tr("Pindah", "Move")}</span>
+                <ArrowRightLeft size={15} className="text-sky-500 dark:text-sky-400" />
               </button>
               <button
                 type="button"
                 onClick={() => setShowEdit(true)}
-                className="inline-flex items-center gap-1 rounded-xl bg-[var(--accent)] px-2.5 py-1.5 text-xs font-bold text-white transition active:scale-[0.98]"
+                className="inline-flex h-8 items-center gap-1 rounded-xl bg-[var(--accent)] px-2.5 text-xs font-bold text-white transition active:scale-[0.98]"
                 aria-label={tr("Edit", "Edit")}
               >
                 <Pencil size={14} />
                 <span>{tr("Edit", "Edit")}</span>
+              </button>
+              <button
+                type="button"
+                onClick={deleteItem}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-500 transition active:scale-[0.98] hover:bg-rose-500/20"
+                aria-label={tr("Padam", "Delete")}
+                title={tr("Padam", "Delete")}
+              >
+                <Trash2 size={15} />
               </button>
             </div>
           }
@@ -401,78 +410,78 @@ export default function InventoryItemDetailPage() {
 
       <DesktopPageBody className="space-y-5">
         {/* ── HERO SHOWCASE CARD ── */}
-          <section className="relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-gradient-to-br from-[#1c1c1c] via-[#161616] to-[#121212] p-5 text-white shadow-xl sm:p-6">
-            <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-[var(--accent)]/15 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-16 left-10 h-44 w-44 rounded-full bg-sky-500/10 blur-3xl" />
+        <section className="relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[var(--card)] p-5 text-[var(--text)] shadow-sm sm:p-6">
+          <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-[var(--accent)]/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-16 left-10 h-44 w-44 rounded-full bg-sky-500/10 blur-3xl" />
 
-            <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-4">
-                {/* Image / Thumbnail */}
-                <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-inner sm:h-24 sm:w-24">
-                  {item.has_image ? (
-                    <img
-                      src={`/api/inventory/items/${item.id}/image`}
-                      alt={item.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-white/[0.03] text-neutral-400">
-                      <Package className="h-10 w-10 opacity-60" />
-                    </div>
+          <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4">
+              {/* Image / Thumbnail */}
+              <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] shadow-sm sm:h-24 sm:w-24">
+                {item.has_image ? (
+                  <img
+                    src={`/api/inventory/items/${item.id}/image`}
+                    alt={item.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-[var(--muted)]">
+                    <Package className="h-10 w-10 opacity-60" />
+                  </div>
+                )}
+              </div>
+
+              {/* Main titles and badges */}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold",
+                      statusCfg.badge
+                    )}
+                  >
+                    <span className={cn("h-2 w-2 rounded-full", statusCfg.dot)} />
+                    {isBm ? statusCfg.labelBm : item.status_label || statusCfg.labelEn}
+                  </span>
+                  {item.category && (
+                    <span className="rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-0.5 text-xs font-medium text-[var(--muted)]">
+                      {item.category}
+                    </span>
                   )}
                 </div>
 
-                {/* Main titles and badges */}
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold",
-                        statusCfg.badge
-                      )}
-                    >
-                      <span className={cn("h-2 w-2 rounded-full", statusCfg.dot)} />
-                      {isBm ? statusCfg.labelBm : item.status_label || statusCfg.labelEn}
-                    </span>
-                    {item.category && (
-                      <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-xs font-medium text-neutral-300">
-                        {item.category}
-                      </span>
-                    )}
-                  </div>
+                <h1 className="mt-1.5 truncate text-xl font-black tracking-tight text-[var(--text)] sm:text-2xl">
+                  {item.name}
+                </h1>
 
-                  <h1 className="mt-1.5 truncate text-xl font-black tracking-tight text-white sm:text-2xl">
-                    {item.name}
-                  </h1>
+                <p className="mt-1 flex items-center gap-2 text-xs text-[var(--muted)]">
+                  <span className="font-semibold text-[var(--text)]">
+                    {item.quantity} {item.unit}
+                  </span>
+                  {item.brand && <span>· {item.brand}</span>}
+                  {item.model && <span>({item.model})</span>}
+                </p>
 
-                  <p className="mt-1 flex items-center gap-2 text-xs text-neutral-400">
-                    <span className="font-semibold text-neutral-200">
-                      {item.quantity} {item.unit}
+                {/* Storage Location & Box Breadcrumbs */}
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 font-bold text-emerald-600 dark:text-emerald-300">
+                    <MapPin className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
+                    <span>{item.location_path || tr("Tiada lokasi", "No location")}</span>
+                  </span>
+                  {item.container_name && (
+                    <span className="inline-flex items-center gap-1.5 rounded-xl border border-sky-500/40 bg-sky-500/15 px-2.5 py-1 font-black text-sky-700 dark:text-sky-200 shadow-sm ring-1 ring-sky-400/20">
+                      <Boxes className="h-3.5 w-3.5 text-sky-500 dark:text-sky-400" />
+                      <span>{item.container_name}</span>
                     </span>
-                    {item.brand && <span>· {item.brand}</span>}
-                    {item.model && <span>({item.model})</span>}
-                  </p>
-
-                  {/* Storage Location Breadcrumb */}
-                  <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs">
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-white/5 px-2 py-1 text-neutral-300">
-                      <MapPin className="h-3.5 w-3.5 text-emerald-400" />
-                      <span>{item.location_path || tr("Tiada lokasi", "No location")}</span>
-                    </span>
-                    {item.container_name && (
-                      <span className="inline-flex items-center gap-1 rounded-lg bg-white/5 px-2 py-1 text-sky-300">
-                        <Boxes className="h-3.5 w-3.5" />
-                        <span>{item.container_name}</span>
-                      </span>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Quick links to linked transaction or warranty */}
-            {(item.transaction_id || item.warranty_id) && (
-              <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-white/10 pt-3">
+          {/* Quick links to linked transaction or warranty */}
+          {(item.transaction_id || item.warranty_id) && (
+            <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--border)]/60 pt-3">
                 {item.transaction_id && (
                   <Link
                     href={`/${sessionId}/transactions/${item.transaction_id}`}
@@ -745,6 +754,26 @@ export default function InventoryItemDetailPage() {
                 })}
               </div>
             )}
+          </div>
+
+          {/* ── DANGER ZONE (DELETE ITEM) ── */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4 sm:p-5">
+            <div>
+              <p className="text-xs font-bold text-rose-500">
+                {tr("Padam Rekod Barang", "Delete Item Record")}
+              </p>
+              <p className="mt-0.5 text-[11px] text-[var(--muted)]">
+                {tr("Semua maklumat, gambar dan sejarah pergerakan barang ini akan dipadamkan.", "All details, photos, and movement logs for this item will be removed.")}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={deleteItem}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-rose-500/40 bg-rose-500/15 px-3.5 py-2 text-xs font-bold text-rose-500 transition hover:bg-rose-500/25 active:scale-95"
+            >
+              <Trash2 size={14} />
+              <span>{tr("Padam Barang Ini", "Delete This Item")}</span>
+            </button>
           </div>
       </DesktopPageBody>
 

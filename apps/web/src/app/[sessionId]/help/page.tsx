@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   BookOpen,
   Bot,
+  Boxes,
   CalendarClock,
   CalendarDays,
   ChevronDown,
@@ -113,6 +114,7 @@ export default function HelpPage() {
         { id: "recording", label: "Rekod Transaksi", icon: <Hash size={14} /> },
         { id: "salary", label: "Kitar Gaji", icon: <Wallet size={14} /> },
         { id: "items", label: "Item & Kuantiti", icon: <FileImage size={14} /> },
+        { id: "inventory", label: "Barang Saya", icon: <Boxes size={14} /> },
         { id: "commands", label: "Command WhatsApp", icon: <BookOpen size={14} /> },
         { id: "budget", label: "Command Budget", icon: <Wallet size={14} /> },
         { id: "debt", label: "Tracker Hutang", icon: <CreditCard size={14} /> },
@@ -134,6 +136,7 @@ export default function HelpPage() {
         { id: "recording", label: "Recording Transactions", icon: <Hash size={14} /> },
         { id: "salary", label: "Salary Cycle", icon: <Wallet size={14} /> },
         { id: "items", label: "Items & Quantity", icon: <FileImage size={14} /> },
+        { id: "inventory", label: "My Inventory", icon: <Boxes size={14} /> },
         { id: "commands", label: "WhatsApp Commands", icon: <BookOpen size={14} /> },
         { id: "budget", label: "Budget Commands", icon: <Wallet size={14} /> },
         { id: "debt", label: "Debt Tracker", icon: <CreditCard size={14} /> },
@@ -386,6 +389,51 @@ food fried rice 10`}</ExampleBlock>
                 <>Normal item format: <CodeBlock>item name amount</CodeBlock>.</>,
                 <>Quantity format: <CodeBlock>item name qty x price</CodeBlock>, <CodeBlock>item name qty @ price</CodeBlock>, or symbol <CodeBlock>×</CodeBlock>.</>,
                 <>Without <CodeBlock>item</CodeBlock>/<CodeBlock>bd</CodeBlock> prefix, bot only saves when at least 2 valid item rows exist.</>,
+              ]).map((tip, i) => (
+                <li key={i} className="leading-relaxed">{tip}</li>
+              ))}
+            </ul>
+          </section>
+
+          {/* ── 4b. Barang Saya / My Inventory ── */}
+          <section className={getSectionClassName("inventory")}>
+            <SectionHeading id="inventory" icon={<Boxes size={16} />} title={isBM ? "Barang Saya (Inventori Peribadi)" : "My Inventory (Personal Items)"} />
+            <TipBox isLight={isLight}>
+              {isBM
+                ? <><strong>Barang Saya</strong> simpan senarai barangan peribadi dengan lokasi, bekas, kuantiti, status, dan foto. Cipta lokasi & bekas, tambah barang, dan jejak status setiap item.</>
+                : <><strong>My Inventory</strong> keeps a list of your personal items with location, container, quantity, status, and photo. Create locations & containers, add items, and track each item's status.</>
+              }
+            </TipBox>
+            <div className="divide-y divide-[var(--border)] mt-4">
+              {(isBM ? [
+                { cmd: "stuff help", desc: "Papar panduan ringkas command Barang Saya.", example: "stuff help" },
+                { cmd: "stuff <nama barang>", desc: "Tambah barang ke inventori. Nama barang boleh lebih dari satu perkataan.", example: "stuff kabel hdmi" },
+                { cmd: "stuff <nama barang> <lokasi/bekas>", desc: "Tambah barang terus ke lokasi atau bekas. Bekas mengikut lokasi induknya.", example: "stuff kotak bilik stor" },
+                { cmd: "tambah barang <nama> [N]", desc: "Tambah barang dengan kuantiti. Guna [N] untuk lebih dari satu.", example: "tambah barang bateri 3" },
+                { cmd: "stuff cari <kata>", desc: "Cari barang mengikut nama. Hantar satu perkataan selepas stuff untuk cari terus.", example: "stuff cari kabel" },
+                { cmd: "tambah stor <nama lokasi>", desc: "Cipta lokasi baharu (cth. bilik, kabinet, gudang).", example: "tambah stor Ruang Tamu" },
+                { cmd: "tambah bekas <nama>", desc: "Cipta bekas baharu di dalam lokasi yang dipilih.", example: "tambah bekas Kotak A" },
+              ] : [
+                { cmd: "stuff help", desc: "Show quick My Inventory command guide.", example: "stuff help" },
+                { cmd: "stuff <item name>", desc: "Add an item to inventory. Item names can be multiple words.", example: "stuff hdmi cable" },
+                { cmd: "stuff <item name> <location/container>", desc: "Add an item directly into a location or container. Containers follow their parent location.", example: "stuff box storage room" },
+                { cmd: "tambah barang <name> [N]", desc: "Add an item with quantity. Use [N] for more than one.", example: "tambah barang batteries 3" },
+                { cmd: "stuff cari <keyword>", desc: "Search items by name. Send a single word after stuff to search directly.", example: "stuff cari cable" },
+                { cmd: "tambah stor <location name>", desc: "Create a new location (e.g. room, cabinet, warehouse).", example: "tambah stor Living Room" },
+                { cmd: "tambah bekas <name>", desc: "Create a new container inside a selected location.", example: "tambah bekas Box A" },
+              ]).map((row) => (
+                <CommandRow key={row.cmd} cmd={row.cmd} desc={row.desc} example={row.example} exLabel={exLabel} />
+              ))}
+            </div>
+            <ul className="space-y-2 text-sm text-[var(--text-soft)] list-disc pl-5 marker:text-[var(--muted)] mt-4">
+              {(isBM ? [
+                <>Tambah barang dengan foto: hantar gambar bersama caption <CodeBlock>{"stuff <nama barang>"}</CodeBlock> dalam mesej yang sama, atau dari Telegram & WhatsApp.</>,
+                <>Pengurusan penuh (status, pindah, lokasi, bekas, ringkasan, padam, kuantiti) dibuat di halaman <strong>Barang Saya</strong> portal.</>,
+                <>Status item: Available, Loaned, Missing, Damaged, Disposed, Used Up — dikemas kini di portal.</>,
+              ] : [
+                <>Add items with a photo: send an image with the <CodeBlock>{"stuff <item name>"}</CodeBlock> caption in the same message, from Telegram or WhatsApp.</>,
+                <>Full management (status, move, location, container, summary, delete, quantity) is done on the <strong>My Inventory</strong> portal page.</>,
+                <>Item statuses: Available, Loaned, Missing, Damaged, Disposed, Used Up — updated in the portal.</>,
               ]).map((tip, i) => (
                 <li key={i} className="leading-relaxed">{tip}</li>
               ))}

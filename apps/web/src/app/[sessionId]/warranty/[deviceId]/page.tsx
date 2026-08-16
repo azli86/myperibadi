@@ -3,13 +3,21 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Calendar,
+  CalendarDays,
+  Clock,
   FileText,
   Image as ImageIcon,
   Loader2,
-  MoreVertical,
+  Package,
   Paperclip,
   Pencil,
   Plus,
+  Receipt,
+  Shield,
+  ShieldAlert,
+  ShieldCheck,
+  Store,
+  Tag,
   Trash2,
   X,
 } from "lucide-react"
@@ -113,12 +121,62 @@ const DURATION_OPTIONS = [
   { value: "36", months: 36 },
 ] as const
 
+const CATEGORY_OPTIONS = [
+  "Electronics",
+  "Clothing",
+  "Documents",
+  "Tools",
+  "Furniture",
+  "Kitchen",
+  "Personal Care",
+  "Toys",
+  "Books",
+  "Sports",
+  "Medicines",
+  "Accessories",
+  "Other",
+]
+
 const RESOLUTION_OPTIONS = [
-  { value: "repaired", bm: "Dibaiki", en: "Repaired" },
-  { value: "replaced", bm: "Diganti", en: "Replaced" },
-  { value: "rejected", bm: "Tuntutan ditolak", en: "Claim rejected" },
-  { value: "other", bm: "Lain-lain", en: "Other" },
+  { value: "repaired", bm: "Dibaiki", en: "Repaired", badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
+  { value: "replaced", bm: "Diganti", en: "Replaced", badge: "bg-sky-500/15 text-sky-400 border-sky-500/30" },
+  { value: "rejected", bm: "Tuntutan ditolak", en: "Claim rejected", badge: "bg-rose-500/15 text-rose-400 border-rose-500/30" },
+  { value: "other", bm: "Lain-lain", en: "Other", badge: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30" },
 ] as const
+
+const STATUS_CONFIG: Record<
+  WarrantyStatus,
+  { badge: string; dot: string; labelBm: string; labelEn: string; bgGradient: string }
+> = {
+  active: {
+    badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+    dot: "bg-emerald-500",
+    labelBm: "Aktif",
+    labelEn: "Active",
+    bgGradient: "from-emerald-500/10 to-transparent",
+  },
+  expiring_soon: {
+    badge: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+    dot: "bg-amber-400",
+    labelBm: "Hampir Tamat",
+    labelEn: "Expiring Soon",
+    bgGradient: "from-amber-500/10 to-transparent",
+  },
+  expired: {
+    badge: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+    dot: "bg-rose-500",
+    labelBm: "Tamat",
+    labelEn: "Expired",
+    bgGradient: "from-rose-500/10 to-transparent",
+  },
+  unknown: {
+    badge: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30",
+    dot: "bg-zinc-400",
+    labelBm: "Tiada Tarikh",
+    labelEn: "No Date",
+    bgGradient: "from-white/5 to-transparent",
+  },
+}
 
 function addMonths(dateStr: string, months: number): string {
   if (!dateStr || !months) return ""
@@ -150,20 +208,12 @@ function formatDateShort(value?: string | null, locale = "en-MY") {
   return d.toLocaleDateString(locale, { day: "2-digit", month: "2-digit", year: "numeric" })
 }
 
-/** "MAKAN NASI" / "makan nasi" → "Makan Nasi" */
 function toTitleCase(value?: string | null) {
   const text = (value || "").trim()
   if (!text) return ""
   return text
     .toLowerCase()
     .replace(/(^|[\s\-_/&])([a-zA-ZÀ-ÿ])/g, (_, sep: string, ch: string) => `${sep}${ch.toUpperCase()}`)
-}
-
-function statusBadgeClass(status: WarrantyStatus) {
-  if (status === "active") return "bg-emerald-500/12 text-emerald-600"
-  if (status === "expiring_soon") return "bg-amber-500/12 text-amber-600"
-  if (status === "expired") return "bg-rose-500/12 text-rose-600"
-  return "bg-[var(--surface-tint)] text-[var(--muted)]"
 }
 
 function emptyClaimForm(): ClaimForm {
@@ -225,8 +275,6 @@ export default function WarrantyDetailPage() {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const mobileMenuRef = useRef<HTMLDivElement>(null)
   const showDataSkeleton = useDelayedSkeleton(loading && !hasLoaded)
 
   const isBm = lang === "BM"
@@ -247,17 +295,6 @@ export default function WarrantyDetailPage() {
   useEffect(() => {
     setMounted(true)
   }, [])
-
-  useEffect(() => {
-    if (!mobileMenuOpen) return
-    const handler = (e: MouseEvent) => {
-      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target as Node)) {
-        setMobileMenuOpen(false)
-      }
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [mobileMenuOpen])
 
   const loadData = useCallback(async () => {
     if (!deviceId) return
@@ -292,8 +329,7 @@ export default function WarrantyDetailPage() {
 
   useEffect(() => {
     void loadData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deviceId])
+  }, [loadData])
 
   useEffect(() => {
     let cancelled = false
@@ -324,48 +360,6 @@ export default function WarrantyDetailPage() {
     }
   }, [authHeaders, device?.has_image, deviceId])
 
-  useEffect(() => {
-    const open = showEditSheet || showClaimSheet
-    window.dispatchEvent(
-      new CustomEvent("portal:mobile-bottom-nav-visibility", { detail: { hidden: open } }),
-    )
-    return () => {
-      window.dispatchEvent(
-        new CustomEvent("portal:mobile-bottom-nav-visibility", { detail: { hidden: false } }),
-      )
-    }
-  }, [showEditSheet, showClaimSheet])
-
-  useEffect(() => {
-    const open = showEditSheet || showClaimSheet
-    if (!open) return
-
-    const scrollY = window.scrollY
-    const previousBodyOverflow = document.body.style.overflow
-    const previousBodyOverscroll = document.body.style.overscrollBehavior
-    const previousBodyPosition = document.body.style.position
-    const previousBodyTop = document.body.style.top
-    const previousBodyWidth = document.body.style.width
-    const previousHtmlOverscroll = document.documentElement.style.overscrollBehavior
-
-    document.body.style.overflow = "hidden"
-    document.body.style.overscrollBehavior = "none"
-    document.body.style.position = "fixed"
-    document.body.style.top = `-${scrollY}px`
-    document.body.style.width = "100%"
-    document.documentElement.style.overscrollBehavior = "none"
-
-    return () => {
-      document.body.style.overflow = previousBodyOverflow
-      document.body.style.overscrollBehavior = previousBodyOverscroll
-      document.body.style.position = previousBodyPosition
-      document.body.style.top = previousBodyTop
-      document.body.style.width = previousBodyWidth
-      document.documentElement.style.overscrollBehavior = previousHtmlOverscroll
-      window.scrollTo(0, scrollY)
-    }
-  }, [showEditSheet, showClaimSheet])
-
   const closeEditSheet = useCallback(() => {
     setShowEditSheet(false)
     setForm(null)
@@ -394,7 +388,7 @@ export default function WarrantyDetailPage() {
   const claimSwipe = useSwipeDownToClose(requestClaimClose)
 
   const recomputeWarrantyDates = useCallback((next: DeviceForm): DeviceForm => {
-    let result = { ...next }
+    const result = { ...next }
     if (result.purchase_date && !result.warranty_start_date) {
       result.warranty_start_date = result.purchase_date
     }
@@ -417,19 +411,17 @@ export default function WarrantyDetailPage() {
 
   const statusLabel = useCallback(
     (status: WarrantyStatus) => {
-      if (status === "active") return toTitleCase(tr("Aktif", "Active"))
-      if (status === "expiring_soon") return toTitleCase(tr("Hampir Tamat", "Expiring Soon"))
-      if (status === "expired") return toTitleCase(tr("Tamat", "Expired"))
-      return toTitleCase(tr("Tiada tarikh", "No date"))
+      const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.unknown
+      return isBm ? cfg.labelBm : cfg.labelEn
     },
-    [tr],
+    [isBm],
   )
 
-  const resolutionLabel = useCallback(
+  const resolutionInfo = useCallback(
     (value?: string | null) => {
       const opt = RESOLUTION_OPTIONS.find((o) => o.value === value)
-      if (!opt) return value ? toTitleCase(value) : "—"
-      return toTitleCase(isBm ? opt.bm : opt.en)
+      if (!opt) return { label: value ? toTitleCase(value) : "—", badge: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30" }
+      return { label: isBm ? opt.bm : opt.en, badge: opt.badge }
     },
     [isBm],
   )
@@ -476,7 +468,7 @@ export default function WarrantyDetailPage() {
 
   async function handleSaveDevice(e: React.FormEvent) {
     e.preventDefault()
-    if (!form || !device) return
+    if (!form || !device || saving) return
     if (!form.device_name.trim() || !form.serial_number.trim()) {
       showAlert(
         tr("Maklumat tak lengkap", "Incomplete"),
@@ -607,7 +599,7 @@ export default function WarrantyDetailPage() {
 
   async function handleSaveClaim(e: React.FormEvent) {
     e.preventDefault()
-    if (!device) return
+    if (!device || saving) return
     setSaving(true)
     try {
       const body = {
@@ -618,13 +610,14 @@ export default function WarrantyDetailPage() {
         date_sent: claimForm.date_sent || null,
         expected_completion_date: claimForm.expected_completion_date || null,
         date_received: claimForm.date_received || null,
-        resolution: claimForm.resolution || null,
+        resolution: claimForm.resolution.trim() || null,
         notes: claimForm.notes.trim() || null,
       }
       const url = editingClaim
         ? `/api/warranties/${device.id}/claims/${editingClaim.id}`
         : `/api/warranties/${device.id}/claims`
       const method = editingClaim ? "PATCH" : "POST"
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -635,11 +628,12 @@ export default function WarrantyDetailPage() {
         const payload = (await res.json().catch(() => null)) as { detail?: string } | null
         throw new Error(payload?.detail || tr("Gagal simpan tuntutan.", "Failed to save claim."))
       }
-      const saved = (await res.json()) as ClaimItem
+      const claimData = await res.json()
       if (claimFile) {
+        const cId = editingClaim ? editingClaim.id : claimData.id
         const fd = new FormData()
         fd.append("file", claimFile)
-        await fetch(`/api/warranties/${device.id}/claims/${saved.id}/attachment`, {
+        await fetch(`/api/warranties/${device.id}/claims/${cId}/attachment`, {
           method: "POST",
           headers: authHeaders(),
           credentials: "include",
@@ -647,12 +641,12 @@ export default function WarrantyDetailPage() {
         })
       }
       closeClaimSheet()
-      showAlert(tr("Berjaya", "Success"), tr("Tuntutan disimpan.", "Claim saved."), "success")
+      showAlert(tr("Berjaya", "Success"), tr("Rekod tuntutan disimpan.", "Claim record saved."), "success")
       await loadData()
     } catch (err) {
       showAlert(
         tr("Gagal", "Failed"),
-        err instanceof Error ? err.message : tr("Gagal simpan tuntutan.", "Failed to save claim."),
+        err instanceof Error ? err.message : tr("Gagal simpan.", "Failed to save."),
         "error",
       )
     } finally {
@@ -663,8 +657,8 @@ export default function WarrantyDetailPage() {
   function handleDeleteClaim(c: ClaimItem) {
     if (!device) return
     showConfirm(
-      tr("Padam tuntutan?", "Delete claim?"),
-      tr("Padam rekod tuntutan ini?", "Delete this claim record?"),
+      tr("Padam rekod tuntutan?", "Delete claim record?"),
+      tr("Rekod ini akan dipadamkan.", "This record will be deleted."),
       async () => {
         setSaving(true)
         try {
@@ -677,7 +671,7 @@ export default function WarrantyDetailPage() {
             const payload = (await res.json().catch(() => null)) as { detail?: string } | null
             throw new Error(payload?.detail || tr("Gagal padam.", "Failed to delete."))
           }
-          showAlert(tr("Berjaya", "Success"), tr("Tuntutan dipadam.", "Claim deleted."), "success")
+          showAlert(tr("Berjaya", "Success"), tr("Rekod dipadam.", "Record deleted."), "success")
           await loadData()
         } catch (err) {
           showAlert(
@@ -693,875 +687,826 @@ export default function WarrantyDetailPage() {
     )
   }
 
-  async function openAttachment(attachmentId: number) {
-    try {
-      const res = await fetch(`/api/warranties/attachments/${attachmentId}/file`, {
-        headers: authHeaders(),
-        credentials: "include",
-      })
-      if (!res.ok) throw new Error(tr("Gagal buka lampiran.", "Failed to open attachment."))
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      window.open(url, "_blank", "noopener,noreferrer")
-      setTimeout(() => URL.revokeObjectURL(url), 60_000)
-    } catch (err) {
-      showAlert(
-        tr("Gagal", "Failed"),
-        err instanceof Error ? err.message : tr("Gagal buka lampiran.", "Failed to open attachment."),
-        "error",
-      )
-    }
+  function openAttachment(attachmentId: number) {
+    if (!attachmentId) return
+    window.open(`/api/warranties/attachments/${attachmentId}`, "_blank", "noopener,noreferrer")
   }
 
-  const detailRows = device
-    ? [
-        { label: tr("Nama peranti", "Device name"), value: toTitleCase(device.device_name) },
-        { label: tr("Kategori", "Category"), value: toTitleCase(device.category) || "—" },
-        { label: tr("Jenama", "Brand"), value: toTitleCase(device.brand) || "—" },
-        { label: tr("Model", "Model"), value: toTitleCase(device.model) || "—" },
-        { label: tr("Nombor siri", "Serial number"), value: device.serial_number },
-        {
-          label: tr("Tarikh beli", "Purchase date"),
-          value: formatDateLabel(device.purchase_date, dateLocale),
-        },
-        {
-          label: tr("Harga beli", "Purchase price"),
-          value:
-            device.purchase_price != null ? (
-              <MoneyAmount value={Number(device.purchase_price)} size="xs" />
-            ) : (
-              "—"
-            ),
-        },
-        { label: tr("Kedai / penjual", "Store or seller"), value: device.store_or_seller || "—" },
-        {
-          label: tr("No. resit / pesanan", "Receipt / order no."),
-          value: device.receipt_or_order_number || "—",
-        },
-        {
-          label: tr("Tempoh waranti", "Warranty duration"),
-          value:
-            device.warranty_duration_months != null
-              ? tr(`${device.warranty_duration_months} bulan`, `${device.warranty_duration_months} months`)
-              : "—",
-        },
-        {
-          label: tr("Tarikh mula waranti", "Warranty start"),
-          value: formatDateLabel(device.warranty_start_date, dateLocale),
-        },
-        {
-          label: tr("Tarikh tamat waranti", "Warranty expiry"),
-          value: formatDateLabel(device.warranty_expiry_date, dateLocale),
-        },
-        { label: tr("Baki hari waranti", "Remaining days"), value: remainingLabel },
-        {
-          label: tr("Status waranti", "Warranty status"),
-          value: (
-            <span
-              className={cn(
-                "inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold tracking-wide",
-                statusBadgeClass(device.warranty_status),
-              )}
-            >
-              {statusLabel(device.warranty_status)}
-            </span>
-          ),
-        },
-        { label: tr("Nota", "Notes"), value: device.notes || "—" },
-      ]
-    : []
-
-  const editFormEl =
-    form != null ? (
-      <form id="warranty-edit-form" onSubmit={handleSaveDevice} className="space-y-5 pb-4">
-        <section className="space-y-3">
-          <p className="text-[0.625rem] font-bold tracking-wide text-[var(--muted)]">
-            {tr("Maklumat Peranti", "Device Information")}
-          </p>
-          <label className="block space-y-1.5">
-            <span className="text-xs font-semibold">{tr("Nama peranti", "Device name")} *</span>
-            <input
-              value={form.device_name}
-              onChange={(e) => updateForm({ device_name: e.target.value })}
-              className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-              required
-            />
-          </label>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {(
-              [
-                ["category", tr("Kategori", "Category")],
-                ["brand", tr("Jenama", "Brand")],
-                ["model", tr("Model", "Model")],
-                ["serial_number", tr("Nombor siri", "Serial number") + " *"],
-              ] as const
-            ).map(([key, label]) => (
-              <label key={key} className="block space-y-1.5">
-                <span className="text-xs font-semibold">{label}</span>
-                <input
-                  value={form[key]}
-                  onChange={(e) => updateForm({ [key]: e.target.value })}
-                  className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-                  required={key === "serial_number"}
-                />
-              </label>
-            ))}
-          </div>
-          <label className="block space-y-1.5">
-            <span className="text-xs font-semibold">{tr("Imej peranti", "Device image")}</span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-              className="w-full text-sm text-[var(--muted)] file:mr-3 file:rounded-full file:border-0 file:bg-[var(--surface-tint)] file:px-3 file:py-1.5 file:text-xs file:font-bold"
-            />
-          </label>
-        </section>
-
-        <section className="space-y-3">
-          <p className="text-[0.625rem] font-bold tracking-wide text-[var(--muted)]">
-            {tr("Maklumat Pembelian", "Purchase Information")}
-          </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold">{tr("Tarikh beli", "Purchase date")}</span>
-              <input
-                type="date"
-                value={form.purchase_date}
-                onChange={(e) => {
-                  const purchase_date = e.target.value
-                  setForm((prev) => {
-                    if (!prev) return prev
-                    const shouldSyncStart =
-                      !prev.warranty_start_date || prev.warranty_start_date === prev.purchase_date
-                    return recomputeWarrantyDates({
-                      ...prev,
-                      purchase_date,
-                      warranty_start_date: shouldSyncStart ? purchase_date : prev.warranty_start_date,
-                    })
-                  })
-                }}
-                className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-              />
-            </label>
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold">{tr("Harga beli", "Purchase price")}</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.purchase_price}
-                onChange={(e) => updateForm({ purchase_price: e.target.value })}
-                className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-              />
-            </label>
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold">{tr("Kedai / penjual", "Store or seller")}</span>
-              <input
-                value={form.store_or_seller}
-                onChange={(e) => updateForm({ store_or_seller: e.target.value })}
-                className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-              />
-            </label>
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold">
-                {tr("No. resit / pesanan", "Receipt / order no.")}
-              </span>
-              <input
-                value={form.receipt_or_order_number}
-                onChange={(e) => updateForm({ receipt_or_order_number: e.target.value })}
-                className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-              />
-            </label>
-          </div>
-          <label className="block space-y-1.5">
-            <span className="text-xs font-semibold">{tr("Lampiran resit", "Receipt attachment")}</span>
-            <input
-              type="file"
-              accept="image/*,.pdf"
-              onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
-              className="w-full text-sm text-[var(--muted)] file:mr-3 file:rounded-full file:border-0 file:bg-[var(--surface-tint)] file:px-3 file:py-1.5 file:text-xs file:font-bold"
-            />
-          </label>
-        </section>
-
-        <section className="space-y-3">
-          <p className="text-[0.625rem] font-bold tracking-wide text-[var(--muted)]">
-            {tr("Maklumat Waranti", "Warranty Information")}
-          </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold">
-                {tr("Tarikh mula waranti", "Warranty start date")} *
-              </span>
-              <input
-                type="date"
-                value={form.warranty_start_date}
-                onChange={(e) => updateForm({ warranty_start_date: e.target.value })}
-                className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-                required
-              />
-            </label>
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold">
-                {tr("Tempoh waranti", "Warranty duration")} *
-              </span>
-              <select
-                value={form.warranty_duration}
-                onChange={(e) => updateForm({ warranty_duration: e.target.value })}
-                className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-                required
-              >
-                {DURATION_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {tr(`${opt.months} bulan`, `${opt.months} months`)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {form.warranty_expiry_date ? (
-              <div className="sm:col-span-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/40 px-3.5 py-2.5">
-                <p className="text-[10px] font-semibold tracking-wide text-[var(--muted)]">
-                  {tr("Tarikh tamat (auto)", "Expiry date (auto)")}
-                </p>
-                <p className="mt-0.5 text-sm font-semibold text-[var(--text)]">
-                  {formatDateLabel(form.warranty_expiry_date, dateLocale)}
-                </p>
-              </div>
-            ) : (
-              <p className="sm:col-span-2 text-[11px] font-medium text-[var(--muted)]">
-                {tr(
-                  "Tarikh tamat dikira automatik selepas tarikh mula dan tempoh diisi.",
-                  "Expiry date is calculated automatically after start date and duration are set.",
-                )}
-              </p>
-            )}
-          </div>
-          <label className="block space-y-1.5">
-            <span className="text-xs font-semibold">{tr("Nota", "Notes")}</span>
-            <textarea
-              value={form.notes}
-              onChange={(e) => updateForm({ notes: e.target.value })}
-              rows={2}
-              className="w-full resize-none rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-            />
-          </label>
-        </section>
-
-      </form>
-    ) : null
-
-  const claimFormEl = (
-    <form id="warranty-claim-form" onSubmit={handleSaveClaim} className="space-y-4">
-      <label className="block space-y-1.5">
-        <span className="text-xs font-semibold">{tr("Tarikh tuntutan", "Claim date")}</span>
-        <input
-          type="date"
-          value={claimForm.claim_date}
-          onChange={(e) => setClaimForm((p) => ({ ...p, claim_date: e.target.value }))}
-          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-        />
-      </label>
-      <label className="block space-y-1.5">
-        <span className="text-xs font-semibold">{tr("Penerangan masalah", "Problem description")}</span>
-        <textarea
-          value={claimForm.problem_description}
-          onChange={(e) => setClaimForm((p) => ({ ...p, problem_description: e.target.value }))}
-          rows={3}
-          className="w-full resize-none rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-        />
-      </label>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="block space-y-1.5">
-          <span className="text-xs font-semibold">{tr("Pusat servis", "Service centre")}</span>
-          <input
-            value={claimForm.service_centre}
-            onChange={(e) => setClaimForm((p) => ({ ...p, service_centre: e.target.value }))}
-            className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-          />
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-xs font-semibold">{tr("No. rujukan", "Reference number")}</span>
-          <input
-            value={claimForm.reference_number}
-            onChange={(e) => setClaimForm((p) => ({ ...p, reference_number: e.target.value }))}
-            className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-          />
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-xs font-semibold">{tr("Tarikh hantar", "Date sent")}</span>
-          <input
-            type="date"
-            value={claimForm.date_sent}
-            onChange={(e) => setClaimForm((p) => ({ ...p, date_sent: e.target.value }))}
-            className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-          />
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-xs font-semibold">
-            {tr("Jangka siap", "Expected completion")}
-          </span>
-          <input
-            type="date"
-            value={claimForm.expected_completion_date}
-            onChange={(e) =>
-              setClaimForm((p) => ({ ...p, expected_completion_date: e.target.value }))
-            }
-            className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-          />
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-xs font-semibold">{tr("Tarikh terima", "Date received")}</span>
-          <input
-            type="date"
-            value={claimForm.date_received}
-            onChange={(e) => setClaimForm((p) => ({ ...p, date_received: e.target.value }))}
-            className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-          />
-        </label>
-        <label className="block space-y-1.5">
-          <span className="text-xs font-semibold">{tr("Resolusi", "Resolution")}</span>
-          <select
-            value={claimForm.resolution}
-            onChange={(e) => setClaimForm((p) => ({ ...p, resolution: e.target.value }))}
-            className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-          >
-            <option value="">{tr("Pilih...", "Select...")}</option>
-            {RESOLUTION_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {isBm ? opt.bm : opt.en}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <label className="block space-y-1.5">
-        <span className="text-xs font-semibold">{tr("Nota", "Notes")}</span>
-        <textarea
-          value={claimForm.notes}
-          onChange={(e) => setClaimForm((p) => ({ ...p, notes: e.target.value }))}
-          rows={2}
-          className="w-full resize-none rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-sm outline-none focus:border-[var(--accent2)]"
-        />
-      </label>
-      <label className="block space-y-1.5">
-        <span className="text-xs font-semibold">{tr("Lampiran", "Attachment")}</span>
-        <input
-          type="file"
-          accept="image/*,.pdf"
-          onChange={(e) => setClaimFile(e.target.files?.[0] || null)}
-          className="w-full text-sm text-[var(--muted)] file:mr-3 file:rounded-full file:border-0 file:bg-[var(--surface-tint)] file:px-3 file:py-1.5 file:text-xs file:font-bold"
-        />
-      </label>
-    </form>
-  )
+  const statusCfg = device ? (STATUS_CONFIG[device.warranty_status] || STATUS_CONFIG.unknown) : STATUS_CONFIG.unknown
 
   return (
-    <div className="space-y-4 pb-24 md:space-y-0 md:pb-0">
-      <div className="space-y-5 md:hidden">
+    <>
+      {/* ── HEADER BAR ── */}
+      <div className="border-b border-[color:var(--border)] pb-4 md:hidden">
         <MobilePageHeader
-          title={toTitleCase(device?.device_name) || tr("Butiran Peranti", "Device Details")}
+          title={tr("Butiran Waranti", "Warranty Details")}
           fallbackHref={`/${sessionId}/warranty`}
           action={
-            <div ref={mobileMenuRef} className="relative">
-              <MobileIconButton onClick={() => setMobileMenuOpen((v) => !v)} label={tr("Menu", "Menu")}>
-                <MoreVertical size={16} />
+            <div className="flex items-center gap-1">
+              <MobileIconButton label={tr("Tambah Tuntutan", "Add Claim")} onClick={openAddClaim}>
+                <Plus className="h-5 w-5" />
               </MobileIconButton>
-              {mobileMenuOpen ? (
-                <div className="absolute right-0 top-11 z-50 w-44 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] py-1 shadow-lg shadow-black/10">
-                  <button
-                    type="button"
-                    onClick={() => { setMobileMenuOpen(false); openEdit() }}
-                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--text)] transition active:scale-[0.98]"
-                  >
-                    <Pencil size={16} className="text-amber-500" />
-                    {tr("Edit", "Edit")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setMobileMenuOpen(false); handleDeleteDevice() }}
-                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-rose-500 transition active:scale-[0.98]"
-                  >
-                    <Trash2 size={16} />
-                    {tr("Padam", "Delete")}
-                  </button>
-                </div>
-              ) : null}
+              <MobileIconButton label={tr("Edit", "Edit")} onClick={openEdit}>
+                <Pencil className="h-5 w-5" />
+              </MobileIconButton>
             </div>
           }
         />
-
-        {showDataSkeleton || !device ? (
-          <div className="space-y-3 px-1">
-            <AmountSkeleton className="h-40 w-full rounded-[1.5rem]" />
-            <AmountSkeleton className="h-24 w-full rounded-[1.35rem]" />
-          </div>
-        ) : (
-          <div className="space-y-4 px-1">
-            <div className="overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)]">
-              <div className="relative h-28 w-full">
-                <WarrantyDeviceImage
-                  deviceId={device.id}
-                  hasImage={Boolean(device.has_image)}
-                  imageUrl={device.image_url}
-                  alt={device.device_name}
-                  className="absolute inset-0 h-full w-full"
-                  fallbackIconSize={36}
-                />
-                <span
-                  className={cn(
-                    "absolute right-3 top-3 rounded-full px-2 py-0.5 text-[9px] font-extrabold tracking-wide",
-                    statusBadgeClass(device.warranty_status),
-                  )}
-                >
-                  {statusLabel(device.warranty_status)}
-                </span>
-              </div>
-              <div className="space-y-2 p-4">
-                <div>
-                  <p className="truncate text-sm font-black text-[var(--text)]">
-                    {toTitleCase(device.device_name)}
-                  </p>
-                  <p className="mt-0.5 truncate text-[11px] font-semibold text-[var(--muted)]">
-                    {toTitleCase([device.brand, device.model].filter(Boolean).join(" · ")) ||
-                      device.serial_number}
-                  </p>
-                </div>
-                <p className="truncate text-[11px] text-[var(--muted)]">
-                  {tr("No. Siri", "Serial")}: {device.serial_number}
-                </p>
-                <div
-                  className={cn(
-                    "flex items-center justify-between rounded-2xl border px-3 py-2",
-                    device.warranty_status === "expired" && "border-rose-500/25 bg-rose-500/10",
-                    device.warranty_status === "expiring_soon" &&
-                      "border-amber-500/25 bg-amber-500/10",
-                    device.warranty_status === "active" &&
-                      "border-emerald-500/20 bg-[var(--btn-primary-bg)]/10",
-                    (device.warranty_status === "unknown" || !device.warranty_status) &&
-                      "border-[var(--border)] bg-[var(--surface-tint)]/40",
-                  )}
-                >
-                  <p className="text-[11px] font-black text-[var(--text)]">{remainingLabel}</p>
-                  <p className="text-[10px] font-semibold text-[var(--muted)]">
-                    {formatDateShort(device.warranty_expiry_date, dateLocale)}
-                  </p>
-                </div>
-                {device.purchase_price != null ? (
-                  <p className="text-xs font-bold text-[var(--text)]">
-                    <MoneyAmount value={Number(device.purchase_price)} size="xs" />
-                  </p>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-4">
-              <div className="grid grid-cols-2 gap-3">
-                {detailRows.map((row) => (
-                  <div key={String(row.label)} className="min-w-0">
-                    <p className="text-[10px] font-semibold tracking-wide text-[var(--muted)]">
-                      {row.label}
-                    </p>
-                    <div className="mt-0.5 break-words text-xs font-semibold text-[var(--text)]">
-                      {row.value}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {device.receipt_attachment_id ? (
-                  <button
-                    type="button"
-                    onClick={() => openAttachment(Number(device.receipt_attachment_id))}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-[11px] font-bold text-[var(--text)]"
-                  >
-                    <FileText size={13} />
-                    {tr("Lihat lampiran", "View attachment")}
-                  </button>
-                ) : null}
-                {device.has_image && imageUrl ? (
-                  <a
-                    href={imageUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-[11px] font-bold text-[var(--text)]"
-                  >
-                    <ImageIcon size={13} />
-                    {tr("Lihat imej", "View image")}
-                  </a>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-[0.625rem] font-bold tracking-wide text-[var(--muted)]">
-                  {tr("Rekod Tuntutan", "Claim Records")}
-                </p>
-                <button
-                  type="button"
-                  onClick={openAddClaim}
-                  className="inline-flex items-center gap-1 rounded-full bg-[var(--text)] px-3 py-1.5 text-[10px] font-bold tracking-wide text-[var(--bg)]"
-                >
-                  <Plus size={12} />
-                  {tr("Tambah", "Add")}
-                </button>
-              </div>
-              {claims.length === 0 ? (
-                <p className="text-xs text-[var(--muted)]">
-                  {tr("Tiada rekod tuntutan lagi.", "No claim records yet.")}
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {claims.map((c) => (
-                    <div
-                      key={c.id}
-                      className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-3"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-xs font-black text-[var(--text)]">
-                            {formatDateLabel(c.claim_date, dateLocale)}
-                          </p>
-                          <p className="mt-1 text-xs text-[var(--muted)]">
-                            {c.problem_description || "—"}
-                          </p>
-                          {c.service_centre ? (
-                            <p className="mt-1 text-[11px] font-semibold text-[var(--text)]">
-                              {c.service_centre}
-                            </p>
-                          ) : null}
-                          {c.resolution ? (
-                            <p className="mt-1 text-[11px] font-bold text-[var(--accent2)]">
-                              {resolutionLabel(c.resolution)}
-                            </p>
-                          ) : null}
-                        </div>
-                        <div className="flex shrink-0 gap-1">
-                          {c.attachment_id ? (
-                            <button
-                              type="button"
-                              onClick={() => openAttachment(Number(c.attachment_id))}
-                              className="rounded-full p-1.5 text-[var(--muted)] hover:bg-[var(--surface-tint)]"
-                            >
-                              <Paperclip size={14} />
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            onClick={() => openEditClaim(c)}
-                            className="rounded-full p-1.5 text-[var(--muted)] hover:bg-[var(--surface-tint)]"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteClaim(c)}
-                            className="rounded-full p-1.5 text-rose-500 hover:bg-rose-500/10"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={openEdit}
-                className="rounded-2xl border border-[var(--border)] px-3 py-3 text-xs font-bold"
-              >
-                {tr("Edit", "Edit")}
-              </button>
-              <button
-                type="button"
-                onClick={openAddClaim}
-                className="rounded-2xl bg-[var(--text)] px-3 py-3 text-xs font-bold text-[var(--bg)]"
-              >
-                {tr("Tambah tuntutan", "Add claim")}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="hidden md:block">
         <DesktopPageHeader
-          title={toTitleCase(device?.device_name) || tr("Butiran Peranti", "Device Details")}
-          breadcrumbs={[{ label: tr("Waranti Saya", "My Warranty"), href: `/${sessionId}/warranty` }]}
-          homeHref={`/${sessionId}`}
-          backHref={`/${sessionId}/warranty`}
+          title={tr("Butiran Waranti", "Warranty Details")}
+          homeHref={`/${sessionId}/warranty`}
           actions={
             <>
               <DesktopPageAction onClick={openAddClaim}>
                 <Plus size={16} />
-                {tr("Tambah tuntutan", "Add claim")}
+                {tr("Tambah Tuntutan", "Add Claim")}
               </DesktopPageAction>
               <DesktopPageAction onClick={openEdit} variant="solid">
                 <Pencil size={16} />
                 {tr("Edit", "Edit")}
               </DesktopPageAction>
-              <DesktopPageAction
+              <button
+                type="button"
                 onClick={handleDeleteDevice}
-                className="!bg-rose-500 !text-white"
+                className="inline-flex h-8 min-w-0 flex-1 shrink items-center justify-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 text-xs font-bold leading-none text-rose-500 transition active:scale-[0.98] sm:flex-none [&_svg]:h-3.5 [&_svg]:w-3.5"
               >
                 <Trash2 size={16} />
                 {tr("Padam", "Delete")}
-              </DesktopPageAction>
+              </button>
             </>
           }
         />
-        <DesktopPageBody>
-          {showDataSkeleton || !device ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              <AmountSkeleton className="h-64 w-full rounded-[1.5rem]" />
-              <AmountSkeleton className="h-64 w-full rounded-[1.5rem]" />
-            </div>
-          ) : (
-            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="space-y-4">
-                <div className="overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)]">
-                  <div className="relative h-40 w-full">
-                    <WarrantyDeviceImage
-                      deviceId={device.id}
-                      hasImage={Boolean(device.has_image)}
-                  imageUrl={device.image_url}
-                      alt={device.device_name}
-                      className="absolute inset-0 h-full w-full"
-                      fallbackIconSize={48}
-                    />
-                    <span
-                      className={cn(
-                        "absolute right-3 top-3 rounded-full px-2.5 py-1 text-[10px] font-extrabold tracking-wide",
-                        statusBadgeClass(device.warranty_status),
-                      )}
-                    >
-                      {statusLabel(device.warranty_status)}
-                    </span>
+      </div>
+
+      {/* ── MAIN BODY CONTENT ── */}
+      <DesktopPageBody className="space-y-5">
+        {showDataSkeleton || !device ? (
+          <div className="space-y-4">
+            <div className="h-44 animate-pulse rounded-[1.75rem] border border-[var(--border)] bg-[var(--card)]" />
+            <div className="h-64 animate-pulse rounded-[1.75rem] border border-[var(--border)] bg-[var(--card)]" />
+          </div>
+        ) : (
+          <>
+            {/* ── HERO SHOWCASE CARD ── */}
+            <section className="relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[var(--card)] p-5 text-[var(--text)] shadow-sm sm:p-6">
+              <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-[var(--accent)]/10 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-16 left-10 h-44 w-44 rounded-full bg-emerald-500/10 blur-3xl" />
+
+              <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-4">
+                  {/* Image / Thumbnail */}
+                  <div className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] shadow-sm sm:h-24 sm:w-24">
+                    {device.has_image ? (
+                      <WarrantyDeviceImage
+                        deviceId={device.id}
+                        hasImage={Boolean(device.has_image)}
+                        imageUrl={device.image_url}
+                        alt={device.device_name}
+                        className="h-full w-full"
+                        imgClassName="object-cover"
+                        fallbackIconSize={36}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[var(--muted)]">
+                        <Shield className="h-10 w-10 opacity-60 text-emerald-500 dark:text-emerald-400" />
+                      </div>
+                    )}
                   </div>
-                  <div className="space-y-3 p-5">
-                    <div>
-                      <p className="truncate text-lg font-black text-[var(--text)]">
-                        {toTitleCase(device.device_name)}
-                      </p>
-                      <p className="mt-1 truncate text-sm font-semibold text-[var(--muted)]">
-                        {toTitleCase([device.brand, device.model].filter(Boolean).join(" · ")) ||
-                          device.serial_number}
-                      </p>
-                    </div>
-                    <p className="truncate text-xs text-[var(--muted)]">
-                      {tr("No. Siri", "Serial")}: {device.serial_number}
-                    </p>
-                    <div
-                      className={cn(
-                        "flex items-center justify-between rounded-2xl border px-3.5 py-2.5",
-                        device.warranty_status === "expired" && "border-rose-500/25 bg-rose-500/10",
-                        device.warranty_status === "expiring_soon" &&
-                          "border-amber-500/25 bg-amber-500/10",
-                        device.warranty_status === "active" &&
-                          "border-emerald-500/20 bg-[var(--btn-primary-bg)]/10",
-                        (device.warranty_status === "unknown" || !device.warranty_status) &&
-                          "border-[var(--border)] bg-[var(--surface-tint)]/40",
+
+                  {/* Main titles and badges */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold",
+                          statusCfg.badge
+                        )}
+                      >
+                        <span className={cn("h-2 w-2 rounded-full", statusCfg.dot)} />
+                        {statusLabel(device.warranty_status)}
+                      </span>
+
+                      {device.category && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-0.5 text-xs font-medium text-[var(--muted)]">
+                          <Tag className="h-3 w-3 opacity-60" />
+                          {device.category}
+                        </span>
                       )}
-                    >
-                      <p className="text-sm font-black text-[var(--text)]">{remainingLabel}</p>
-                      <p className="text-xs font-semibold text-[var(--muted)]">
-                        {formatDateShort(device.warranty_expiry_date, dateLocale)}
-                      </p>
                     </div>
-                    {device.purchase_price != null ? (
-                      <p className="text-sm font-bold text-[var(--text)]">
-                        <MoneyAmount value={Number(device.purchase_price)} size="sm" />
-                      </p>
-                    ) : null}
+
+                    <h1 className="mt-2 truncate text-lg sm:text-2xl font-black tracking-tight text-[var(--text)]">
+                      {toTitleCase(device.device_name)}
+                    </h1>
+
+                    <p className="mt-0.5 truncate text-xs sm:text-sm font-semibold text-[var(--muted)]">
+                      {[device.brand, device.model].filter(Boolean).join(" · ") || (
+                        <span>{tr("No. Siri", "SN")}: {device.serial_number}</span>
+                      )}
+                    </p>
                   </div>
                 </div>
 
-                <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5">
-                  <p className="mb-4 text-[0.625rem] font-bold tracking-wide text-[var(--muted)]">
-                    {tr("Butiran Penuh", "Full Details")}
-                  </p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {detailRows.map((row) => (
-                      <div key={String(row.label)} className="rounded-2xl bg-[var(--bg)] p-3">
-                        <p className="text-[10px] font-semibold tracking-wide text-[var(--muted)]">
-                          {row.label}
-                        </p>
-                        <div className="mt-1 text-sm font-semibold text-[var(--text)]">{row.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {device.receipt_attachment_id ? (
-                      <button
-                        type="button"
-                        onClick={() => openAttachment(Number(device.receipt_attachment_id))}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-bold"
-                      >
-                        <FileText size={14} />
-                        {tr("Lihat lampiran", "View attachment")}
-                      </button>
-                    ) : null}
+                {/* Prominent Countdown Pill */}
+                <div className="flex flex-wrap items-center gap-3 sm:flex-col sm:items-end">
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-left sm:text-right backdrop-blur-sm">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
+                      {tr("Baki Tempoh Waranti", "Warranty Remaining")}
+                    </p>
+                    <p className="mt-0.5 text-lg font-black text-[var(--text)]">
+                      {remainingLabel}
+                    </p>
+                    <p className="mt-0.5 text-[11px] font-semibold text-[var(--muted)]">
+                      {tr("Tamat", "Expires")}: {formatDateShort(device.warranty_expiry_date, dateLocale)}
+                    </p>
                   </div>
                 </div>
               </div>
+            </section>
 
-              <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5">
-                <div className="mb-4 flex items-center justify-between">
-                  <p className="text-[0.625rem] font-bold tracking-wide text-[var(--muted)]">
-                    {tr("Rekod Tuntutan", "Claim Records")}
+            {/* ── DETAILS & SPECIFICATIONS ── */}
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
+              <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+                <Tag className="h-4 w-4 text-[var(--accent)]" />
+                {tr("Spesifikasi & Maklumat Waranti", "Warranty & Device Details")}
+              </h2>
+
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {/* Category */}
+                <div className="rounded-xl bg-[var(--surface-tint)] p-3">
+                  <span className="block text-[11px] font-semibold text-[var(--muted)]">
+                    {tr("Kategori", "Category")}
+                  </span>
+                  <span className="mt-1 block font-bold text-sm text-[var(--text)]">
+                    {device.category || "—"}
+                  </span>
+                </div>
+
+                {/* Brand & Model */}
+                <div className="rounded-xl bg-[var(--surface-tint)] p-3">
+                  <span className="block text-[11px] font-semibold text-[var(--muted)]">
+                    {tr("Jenama & Model", "Brand & Model")}
+                  </span>
+                  <span className="mt-1 block font-bold text-sm text-[var(--text)] truncate">
+                    {[device.brand, device.model].filter(Boolean).join(" · ") || "—"}
+                  </span>
+                </div>
+
+                {/* Serial Number */}
+                <div className="rounded-xl bg-[var(--surface-tint)] p-3">
+                  <span className="block text-[11px] font-semibold text-[var(--muted)]">
+                    {tr("No. Siri", "Serial Number")}
+                  </span>
+                  <span className="mt-1 block font-bold text-sm text-[var(--text)] font-mono truncate">
+                    {device.serial_number || "—"}
+                  </span>
+                </div>
+
+                {/* Purchase Date */}
+                <div className="rounded-xl bg-[var(--surface-tint)] p-3">
+                  <span className="block text-[11px] font-semibold text-[var(--muted)]">
+                    {tr("Tarikh Pembelian", "Purchase Date")}
+                  </span>
+                  <span className="mt-1 block font-bold text-sm text-[var(--text)]">
+                    {formatDateLabel(device.purchase_date, dateLocale)}
+                  </span>
+                </div>
+
+                {/* Purchase Price */}
+                <div className="rounded-xl bg-[var(--surface-tint)] p-3">
+                  <span className="block text-[11px] font-semibold text-[var(--muted)]">
+                    {tr("Harga Pembelian", "Purchase Price")}
+                  </span>
+                  <span className="mt-1 block font-bold text-sm text-[var(--text)]">
+                    {device.purchase_price != null ? (
+                      <MoneyAmount value={Number(device.purchase_price)} size="sm" />
+                    ) : (
+                      "—"
+                    )}
+                  </span>
+                </div>
+
+                {/* Store / Seller */}
+                <div className="rounded-xl bg-[var(--surface-tint)] p-3">
+                  <span className="block text-[11px] font-semibold text-[var(--muted)]">
+                    {tr("Kedai / Penjual", "Store / Seller")}
+                  </span>
+                  <span className="mt-1 block font-bold text-sm text-[var(--text)] truncate">
+                    {device.store_or_seller || "—"}
+                  </span>
+                </div>
+
+                {/* Receipt Number */}
+                <div className="rounded-xl bg-[var(--surface-tint)] p-3">
+                  <span className="block text-[11px] font-semibold text-[var(--muted)]">
+                    {tr("No. Resit / Pesanan", "Receipt / Order No.")}
+                  </span>
+                  <span className="mt-1 block font-bold text-sm text-[var(--text)] font-mono truncate">
+                    {device.receipt_or_order_number || "—"}
+                  </span>
+                </div>
+
+                {/* Warranty Duration */}
+                <div className="rounded-xl bg-[var(--surface-tint)] p-3">
+                  <span className="block text-[11px] font-semibold text-[var(--muted)]">
+                    {tr("Tempoh Waranti", "Warranty Duration")}
+                  </span>
+                  <span className="mt-1 block font-bold text-sm text-[var(--text)]">
+                    {device.warranty_duration_months ? `${device.warranty_duration_months} ${tr("Bulan", "Months")}` : "—"}
+                  </span>
+                </div>
+
+                {/* Warranty Dates (Start -> Expiry) */}
+                <div className="rounded-xl bg-[var(--surface-tint)] p-3">
+                  <span className="block text-[11px] font-semibold text-[var(--muted)]">
+                    {tr("Tempoh Mula & Tamat", "Start & Expiry Dates")}
+                  </span>
+                  <span className="mt-1 block font-bold text-sm text-[var(--text)]">
+                    {formatDateShort(device.warranty_start_date, dateLocale)} → {formatDateShort(device.warranty_expiry_date, dateLocale)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Notes & Receipt Attachment Button */}
+              {device.notes && (
+                <div className="mt-4 rounded-xl bg-[var(--surface-tint)] p-3.5">
+                  <span className="block text-[11px] font-semibold text-[var(--muted)]">
+                    {tr("Catatan / Nota", "Notes & Remarks")}
+                  </span>
+                  <p className="mt-1 text-xs font-medium text-[var(--text)] whitespace-pre-wrap">
+                    {device.notes}
                   </p>
+                </div>
+              )}
+
+              {device.receipt_attachment_id && (
+                <div className="mt-4 flex items-center gap-3 border-t border-[var(--border)] pt-4">
                   <button
                     type="button"
-                    onClick={openAddClaim}
-                    className="inline-flex items-center gap-1 rounded-full bg-[var(--text)] px-3 py-1.5 text-[10px] font-bold tracking-wide text-[var(--bg)]"
+                    onClick={() => openAttachment(Number(device.receipt_attachment_id))}
+                    className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-2 text-xs font-bold text-[var(--text)] transition hover:border-[var(--accent)] active:scale-95"
                   >
-                    <Plus size={12} />
-                    {tr("Tambah", "Add")}
+                    <FileText className="h-4 w-4 text-[var(--accent)]" />
+                    <span>{tr("Lihat Resit / Lampiran Pembelian", "View Purchase Receipt / Invoice")}</span>
                   </button>
                 </div>
-                {claims.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center">
-                    <Calendar size={28} className="mx-auto text-[var(--muted)]/40" />
-                    <p className="mt-2 text-sm text-[var(--muted)]">
-                      {tr("Tiada rekod tuntutan lagi.", "No claim records yet.")}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {claims.map((c) => (
+              )}
+            </div>
+
+            {/* ── SERVICE & CLAIMS HISTORY TIMELINE ── */}
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+                  <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                  {tr("Rekod Tuntutan & Servis", "Service & Claims History")}
+                </h2>
+
+                <button
+                  type="button"
+                  onClick={openAddClaim}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-95"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>{tr("Tambah Tuntutan", "Add Claim")}</span>
+                </button>
+              </div>
+
+              {claims.length === 0 ? (
+                <div className="mt-4 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/40 p-8 text-center">
+                  <Calendar className="mx-auto h-8 w-8 text-[var(--muted)] opacity-50" />
+                  <p className="mt-2 text-xs font-bold text-[var(--text)]">
+                    {tr("Tiada rekod tuntutan lagi", "No claim records yet")}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-[var(--muted)]">
+                    {tr("Tekan butang di atas untuk mendaftar tuntutan servis baharu.", "Click the button above to log a new repair or warranty claim.")}
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  {claims.map((c) => {
+                    const resInfo = resolutionInfo(c.resolution)
+                    return (
                       <div
                         key={c.id}
-                        className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-3.5"
+                        className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-4 transition hover:border-[var(--accent)]/30"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-black text-[var(--text)]">
-                              {formatDateLabel(c.claim_date, dateLocale)}
-                            </p>
-                            <p className="mt-1 text-xs text-[var(--muted)]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-black text-[var(--text)]">
+                                {formatDateLabel(c.claim_date, dateLocale)}
+                              </span>
+                              {c.resolution && (
+                                <span className={cn("rounded-md border px-2 py-0.5 text-[10px] font-bold", resInfo.badge)}>
+                                  {resInfo.label}
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="mt-1 text-xs font-medium text-[var(--text)]">
                               {c.problem_description || "—"}
                             </p>
-                            {c.service_centre ? (
-                              <p className="mt-1 text-xs font-semibold">{c.service_centre}</p>
-                            ) : null}
-                            {c.reference_number ? (
-                              <p className="mt-0.5 text-[11px] text-[var(--muted)]">
-                                {tr("Rujukan", "Ref")}: {c.reference_number}
+
+                            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 text-[11px] text-[var(--muted)]">
+                              {c.service_centre && (
+                                <div>
+                                  <span className="font-semibold">{tr("Pusat Servis", "Service Centre")}:</span> {c.service_centre}
+                                </div>
+                              )}
+                              {c.reference_number && (
+                                <div>
+                                  <span className="font-semibold">{tr("No. Rujukan", "Ref No.")}:</span> {c.reference_number}
+                                </div>
+                              )}
+                              {c.date_sent && (
+                                <div>
+                                  <span className="font-semibold">{tr("Tarikh Hantar", "Date Sent")}:</span> {formatDateShort(c.date_sent, dateLocale)}
+                                </div>
+                              )}
+                              {c.date_received && (
+                                <div>
+                                  <span className="font-semibold">{tr("Tarikh Terima", "Date Received")}:</span> {formatDateShort(c.date_received, dateLocale)}
+                                </div>
+                              )}
+                            </div>
+
+                            {c.notes && (
+                              <p className="mt-2 rounded-lg bg-[var(--card)] p-2 text-[11px] text-[var(--muted)]">
+                                {c.notes}
                               </p>
-                            ) : null}
-                            {c.resolution ? (
-                              <p className="mt-1 text-xs font-bold text-[var(--accent2)]">
-                                {resolutionLabel(c.resolution)}
-                              </p>
-                            ) : null}
+                            )}
                           </div>
-                          <div className="flex shrink-0 gap-1">
-                            {c.attachment_id ? (
+
+                          <div className="flex shrink-0 items-center gap-1">
+                            {c.attachment_id && (
                               <button
                                 type="button"
                                 onClick={() => openAttachment(Number(c.attachment_id))}
-                                className="rounded-full p-1.5 text-[var(--muted)] hover:bg-[var(--surface-tint)]"
+                                className="rounded-lg p-1.5 text-[var(--muted)] hover:bg-[var(--card)] hover:text-[var(--text)]"
+                                title={tr("Lampiran", "Attachment")}
                               >
-                                <Paperclip size={14} />
+                                <Paperclip className="h-4 w-4" />
                               </button>
-                            ) : null}
+                            )}
                             <button
                               type="button"
                               onClick={() => openEditClaim(c)}
-                              className="rounded-full p-1.5 text-[var(--muted)] hover:bg-[var(--surface-tint)]"
+                              className="rounded-lg p-1.5 text-[var(--muted)] hover:bg-[var(--card)] hover:text-[var(--text)]"
+                              title={tr("Edit", "Edit")}
                             >
-                              <Pencil size={14} />
+                              <Pencil className="h-4 w-4" />
                             </button>
                             <button
                               type="button"
                               onClick={() => handleDeleteClaim(c)}
-                              className="rounded-full p-1.5 text-rose-500 hover:bg-rose-500/10"
+                              className="rounded-lg p-1.5 text-rose-400 hover:bg-rose-500/10"
+                              title={tr("Padam", "Delete")}
                             >
-                              <Trash2 size={14} />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </DesktopPageBody>
-      </div>
-
-      {mounted && showEditSheet
-        ? createPortal(
-          <div className="fixed inset-0 z-[140] flex h-[100dvh] w-screen touch-none items-end justify-center overscroll-none bg-transparent p-0 md:items-center md:p-4">
-              <button type="button" className="absolute inset-0" onClick={requestEditClose} />
-              <div
-                data-swipe-sheet
-                className="app-sheet-panel relative z-10 flex max-h-[82dvh] w-full flex-col overflow-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl touch-pan-y md:max-h-[85vh] md:max-w-[30rem] md:rounded-[1.75rem]"
-                {...editSwipe}
-              >
-                <AppSheetHeader
-                  title={tr("Edit Peranti", "Edit Device")}
-                  onClose={requestEditClose}
-                  action={
-                    <button
-                      type="submit"
-                      form="warranty-edit-form"
-                      disabled={saving}
-                      className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
-                    >
-                      {saving ? (isBm ? "Menyimpan…" : "Saving…") : tr("Simpan", "Save")}
-                    </button>
-                  }
-                />
-                <div data-swipe-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">{editFormEl}</div>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
-
-      {mounted && showClaimSheet
-        ? createPortal(
-  <div className="fixed inset-0 z-[80] flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-transparent p-0 md:items-center md:p-4">
-              <button type="button" className="absolute inset-0" onClick={requestClaimClose} />
-              <div
-                data-swipe-sheet
-                className="app-sheet-panel relative z-10 flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] touch-pan-y md:max-h-[86vh] md:max-w-xl md:rounded-[1.75rem]"
-                {...claimSwipe}
-              >
-                <AppSheetHeader
-                  title={editingClaim
-                    ? tr("Edit Tuntutan", "Edit Claim")
-                    : tr("Tambah Tuntutan", "Add Claim")}
-                  onClose={requestClaimClose}
-                  action={
-                    <button
-                      type="submit"
-                      form="warranty-claim-form"
-                      disabled={saving}
-                      className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
-                    >
-                      {saving ? (isBm ? "Menyimpan…" : "Saving…") : tr("Simpan", "Save")}
-                    </button>
-                  }
-                />
-                <div data-swipe-scroll className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
-                {claimFormEl}
+                    )
+                  })}
                 </div>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+              )}
+            </div>
+          </>
+        )}
+      </DesktopPageBody>
+
+      {/* ── EDIT DEVICE SHEET ── */}
+      {mounted && showEditSheet && form ? (
+        createPortal(
+          <div
+            className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-black/50 backdrop-blur-sm p-0 sm:items-center"
+            onClick={closeEditSheet}
+            onTouchMove={(e) => e.preventDefault()}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              data-swipe-sheet
+              {...editSwipe}
+              className="app-sheet-panel app-sheet-panel--lg w-full max-h-[90dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[32rem] sm:rounded-3xl"
+            >
+              <AppSheetHeader
+                title={tr("Edit Peranti", "Edit Device")}
+                eyebrow={tr("Waranti Saya", "My Warranty")}
+                onClose={closeEditSheet}
+                action={
+                  <button
+                    type="submit"
+                    form="warranty-edit-form"
+                    disabled={saving || !form.device_name.trim()}
+                    className="px-2 py-1 text-base font-bold text-[var(--accent)] transition hover:opacity-80 disabled:opacity-50"
+                  >
+                    {saving ? tr("Menyimpan…", "Saving…") : tr("Simpan", "Save")}
+                  </button>
+                }
+              />
+              <form id="warranty-edit-form" onSubmit={handleSaveDevice} className="space-y-4 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="ed-name">
+                    {tr("Nama Peranti *", "Device Name *")}
+                  </label>
+                  <input
+                    id="ed-name"
+                    required
+                    value={form.device_name}
+                    onChange={(e) => updateForm({ device_name: e.target.value })}
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                    maxLength={190}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="ed-cat">
+                      {tr("Kategori", "Category")}
+                    </label>
+                    <select
+                      id="ed-cat"
+                      value={form.category}
+                      onChange={(e) => updateForm({ category: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                    >
+                      <option value="">{tr("— Pilih kategori —", "— Select category —")}</option>
+                      {CATEGORY_OPTIONS.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="ed-brand">
+                      {tr("Jenama", "Brand")}
+                    </label>
+                    <input
+                      id="ed-brand"
+                      value={form.brand}
+                      onChange={(e) => updateForm({ brand: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                      maxLength={80}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="ed-model">
+                      {tr("Model", "Model")}
+                    </label>
+                    <input
+                      id="ed-model"
+                      value={form.model}
+                      onChange={(e) => updateForm({ model: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                      maxLength={80}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="ed-serial">
+                      {tr("No. Siri *", "Serial Number *")}
+                    </label>
+                    <input
+                      id="ed-serial"
+                      required
+                      value={form.serial_number}
+                      onChange={(e) => updateForm({ serial_number: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                      maxLength={120}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="ed-pdate">
+                      {tr("Tarikh Pembelian", "Purchase Date")}
+                    </label>
+                    <input
+                      id="ed-pdate"
+                      type="date"
+                      value={form.purchase_date}
+                      onChange={(e) => updateForm({ purchase_date: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="ed-pprice">
+                      {tr("Harga Pembelian (RM)", "Purchase Price (RM)")}
+                    </label>
+                    <input
+                      id="ed-pprice"
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={form.purchase_price}
+                      onChange={(e) => updateForm({ purchase_price: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="ed-seller">
+                      {tr("Kedai / Penjual", "Store / Seller")}
+                    </label>
+                    <input
+                      id="ed-seller"
+                      value={form.store_or_seller}
+                      onChange={(e) => updateForm({ store_or_seller: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                      maxLength={120}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="ed-receipt-no">
+                      {tr("No. Resit / Pesanan", "Receipt / Order No.")}
+                    </label>
+                    <input
+                      id="ed-receipt-no"
+                      value={form.receipt_or_order_number}
+                      onChange={(e) => updateForm({ receipt_or_order_number: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                      maxLength={120}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="ed-start">
+                      {tr("Tarikh Mula Waranti *", "Warranty Start Date *")}
+                    </label>
+                    <input
+                      id="ed-start"
+                      type="date"
+                      required
+                      value={form.warranty_start_date}
+                      onChange={(e) => updateForm({ warranty_start_date: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="ed-dur">
+                      {tr("Tempoh Waranti *", "Duration *")}
+                    </label>
+                    <select
+                      id="ed-dur"
+                      value={form.warranty_duration}
+                      onChange={(e) => updateForm({ warranty_duration: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                    >
+                      {DURATION_OPTIONS.map((d) => (
+                        <option key={d.value} value={d.value}>
+                          {d.months} {tr("Bulan", "Months")}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="ed-exp">
+                    {tr("Tarikh Tamat Waranti", "Warranty Expiry Date")}
+                  </label>
+                  <input
+                    id="ed-exp"
+                    type="date"
+                    value={form.warranty_expiry_date}
+                    onChange={(e) => updateForm({ warranty_expiry_date: e.target.value })}
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="ed-notes">
+                    {tr("Catatan", "Notes")}
+                  </label>
+                  <textarea
+                    id="ed-notes"
+                    value={form.notes}
+                    onChange={(e) => updateForm({ notes: e.target.value })}
+                    rows={2}
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]">
+                      {tr("Gambar Peranti", "Device Image")}
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                      className="text-xs text-[var(--muted)] file:mr-2 file:rounded-lg file:border-0 file:bg-[var(--surface-tint)] file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-[var(--text)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]">
+                      {tr("Resit / Lampiran", "Receipt File")}
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                      className="text-xs text-[var(--muted)] file:mr-2 file:rounded-lg file:border-0 file:bg-[var(--surface-tint)] file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-[var(--text)]"
+                    />
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )
+      ) : null}
+
+      {/* ── ADD / EDIT CLAIM SHEET ── */}
+      {mounted && showClaimSheet ? (
+        createPortal(
+          <div
+            className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-black/50 backdrop-blur-sm p-0 sm:items-center"
+            onClick={closeClaimSheet}
+            onTouchMove={(e) => e.preventDefault()}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              data-swipe-sheet
+              {...claimSwipe}
+              className="app-sheet-panel app-sheet-panel--lg w-full max-h-[90dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[32rem] sm:rounded-3xl"
+            >
+              <AppSheetHeader
+                title={editingClaim ? tr("Edit Rekod Tuntutan", "Edit Claim Record") : tr("Tambah Rekod Tuntutan", "Add Claim Record")}
+                eyebrow={tr("Waranti Saya", "My Warranty")}
+                onClose={closeClaimSheet}
+                action={
+                  <button
+                    type="submit"
+                    form="warranty-claim-form"
+                    disabled={saving}
+                    className="px-2 py-1 text-base font-bold text-[var(--accent)] transition hover:opacity-80 disabled:opacity-50"
+                  >
+                    {saving ? tr("Menyimpan…", "Saving…") : tr("Simpan", "Save")}
+                  </button>
+                }
+              />
+              <form id="warranty-claim-form" onSubmit={handleSaveClaim} className="space-y-4 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="cl-date">
+                      {tr("Tarikh Tuntutan", "Claim Date")}
+                    </label>
+                    <input
+                      id="cl-date"
+                      type="date"
+                      value={claimForm.claim_date}
+                      onChange={(e) => setClaimForm({ ...claimForm, claim_date: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="cl-res">
+                      {tr("Status / Resolusi", "Resolution")}
+                    </label>
+                    <select
+                      id="cl-res"
+                      value={claimForm.resolution}
+                      onChange={(e) => setClaimForm({ ...claimForm, resolution: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                    >
+                      <option value="">{tr("— Pilih Resolusi —", "— Select Resolution —")}</option>
+                      {RESOLUTION_OPTIONS.map((r) => (
+                        <option key={r.value} value={r.value}>
+                          {isBm ? r.bm : r.en}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="cl-prob">
+                    {tr("Keterangan Masalah / Kerosakan", "Problem Description")}
+                  </label>
+                  <textarea
+                    id="cl-prob"
+                    value={claimForm.problem_description}
+                    onChange={(e) => setClaimForm({ ...claimForm, problem_description: e.target.value })}
+                    rows={2}
+                    placeholder={tr("Cth: Skrin tidak bernyala, bateri tidak cas...", "e.g. Screen not turning on, battery not charging...")}
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="cl-sc">
+                      {tr("Pusat Servis", "Service Centre")}
+                    </label>
+                    <input
+                      id="cl-sc"
+                      value={claimForm.service_centre}
+                      onChange={(e) => setClaimForm({ ...claimForm, service_centre: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                      maxLength={120}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="cl-ref">
+                      {tr("No. Rujukan Servis", "Service Ref Number")}
+                    </label>
+                    <input
+                      id="cl-ref"
+                      value={claimForm.reference_number}
+                      onChange={(e) => setClaimForm({ ...claimForm, reference_number: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                      maxLength={120}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="cl-sent">
+                      {tr("Tarikh Hantar", "Date Sent")}
+                    </label>
+                    <input
+                      id="cl-sent"
+                      type="date"
+                      value={claimForm.date_sent}
+                      onChange={(e) => setClaimForm({ ...claimForm, date_sent: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="cl-exp">
+                      {tr("Tarikh Jangka Siap", "Expected Date")}
+                    </label>
+                    <input
+                      id="cl-exp"
+                      type="date"
+                      value={claimForm.expected_completion_date}
+                      onChange={(e) => setClaimForm({ ...claimForm, expected_completion_date: e.target.value })}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="cl-rec">
+                    {tr("Tarikh Diterima Semula", "Date Received Back")}
+                  </label>
+                  <input
+                    id="cl-rec"
+                    type="date"
+                    value={claimForm.date_received}
+                    onChange={(e) => setClaimForm({ ...claimForm, date_received: e.target.value })}
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="cl-notes">
+                    {tr("Catatan Tambahan", "Additional Notes")}
+                  </label>
+                  <textarea
+                    id="cl-notes"
+                    value={claimForm.notes}
+                    onChange={(e) => setClaimForm({ ...claimForm, notes: e.target.value })}
+                    rows={2}
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-[var(--accent)]"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]">
+                    {tr("Lampiran Servis (Resit/Laporan)", "Service Attachment (Report/Invoice)")}
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={(e) => setClaimFile(e.target.files?.[0] || null)}
+                    className="text-xs text-[var(--muted)] file:mr-2 file:rounded-lg file:border-0 file:bg-[var(--surface-tint)] file:px-2.5 file:py-1 file:text-xs file:font-semibold file:text-[var(--text)]"
+                  />
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )
+      ) : null}
 
       {alertModal}
-    </div>
+    </>
   )
 }
