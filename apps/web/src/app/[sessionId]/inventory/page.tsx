@@ -1,9 +1,23 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Boxes, MapPin, Package, Plus, Search, Loader2, Trash2, Pencil, ArrowRightLeft } from "lucide-react"
-import { useParams } from "next/navigation"
-import Link from "next/link"
+import {
+  Boxes,
+  MapPin,
+  Package,
+  Plus,
+  Search,
+  Loader2,
+  Trash2,
+  Pencil,
+  X,
+  FolderTree,
+  Tag,
+  Image as ImageIcon,
+  FolderPlus,
+  BoxSelect,
+} from "lucide-react"
+import { useParams, useRouter } from "next/navigation"
 import { createPortal } from "react-dom"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
@@ -24,6 +38,8 @@ type InvItem = {
   status: InvStatus
   status_label: string
   brand?: string | null
+  model?: string | null
+  serial_number?: string | null
   has_image?: boolean
   location_path?: string | null
   container_name?: string | null
@@ -51,13 +67,58 @@ type InvContainer = {
   location_path?: string | null
 }
 
-const STATUS_BADGE: Record<InvStatus, string> = {
-  available: "bg-[var(--accent)]/15 text-[var(--accent)]",
-  loaned: "bg-[var(--info-bg)] text-[var(--info)]",
-  missing: "bg-rose-500/10 text-rose-500",
-  damaged: "bg-[var(--warning-bg)] text-[var(--warning)]",
-  disposed: "bg-[var(--surface-tint)] text-[var(--muted)]",
-  used_up: "bg-[var(--surface-tint)] text-[var(--muted)]",
+const STATUS_CONFIG: Record<
+  InvStatus,
+  { badge: string; pillActive: string; pillInactive: string; dot: string; labelBm: string; labelEn: string }
+> = {
+  available: {
+    badge: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+    pillActive: "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 ring-1 ring-emerald-500/30",
+    pillInactive: "bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)]",
+    dot: "bg-emerald-500",
+    labelBm: "Ada",
+    labelEn: "Available",
+  },
+  loaned: {
+    badge: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+    pillActive: "bg-sky-500/20 text-sky-400 border-sky-500/40 ring-1 ring-sky-500/30",
+    pillInactive: "bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)]",
+    dot: "bg-sky-400",
+    labelBm: "Dipinjam",
+    labelEn: "Loaned",
+  },
+  missing: {
+    badge: "bg-rose-500/10 text-rose-400 border-rose-500/20",
+    pillActive: "bg-rose-500/20 text-rose-400 border-rose-500/40 ring-1 ring-rose-500/30",
+    pillInactive: "bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)]",
+    dot: "bg-rose-500",
+    labelBm: "Hilang",
+    labelEn: "Missing",
+  },
+  damaged: {
+    badge: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    pillActive: "bg-amber-500/20 text-amber-400 border-amber-500/40 ring-1 ring-amber-500/30",
+    pillInactive: "bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)]",
+    dot: "bg-amber-400",
+    labelBm: "Rosak",
+    labelEn: "Damaged",
+  },
+  disposed: {
+    badge: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
+    pillActive: "bg-zinc-500/20 text-zinc-300 border-zinc-500/40 ring-1 ring-zinc-500/30",
+    pillInactive: "bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)]",
+    dot: "bg-zinc-400",
+    labelBm: "Dilupus",
+    labelEn: "Disposed",
+  },
+  used_up: {
+    badge: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
+    pillActive: "bg-zinc-500/20 text-zinc-300 border-zinc-500/40 ring-1 ring-zinc-500/30",
+    pillInactive: "bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)]",
+    dot: "bg-zinc-400",
+    labelBm: "Habis",
+    labelEn: "Used Up",
+  },
 }
 
 const STATUS_OPTIONS: { value: InvStatus; label: string }[] = [
@@ -71,6 +132,7 @@ const STATUS_OPTIONS: { value: InvStatus; label: string }[] = [
 
 export default function InventoryPage() {
   const params = useParams()
+  const router = useRouter()
   const sessionId = (params.sessionId as string) || ""
   const { lang } = useLang()
   const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
@@ -91,17 +153,30 @@ export default function InventoryPage() {
   const [items, setItems] = useState<InvItem[]>([])
   const [locations, setLocations] = useState<InvLocation[]>([])
   const [containers, setContainers] = useState<InvContainer[]>([])
-  const [summary, setSummary] = useState<{ total_types: number; total_units: number; available: number; loaned: number; missing: number; damaged: number; no_location: number } | null>(null)
+  const [summary, setSummary] = useState<{
+    total_types: number
+    total_units: number
+    available: number
+    loaned: number
+    missing: number
+    damaged: number
+    no_location: number
+  } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<"items" | "locations">("items")
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("")
+  const [categoryFilter, setCategoryFilter] = useState<string>("")
+  const [locationFilter, setLocationFilter] = useState<string>("")
+
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<InvItem | null>(null)
-  const [saving, setSaving] = useState(false)
   const [showLocModal, setShowLocModal] = useState(false)
   const [showContModal, setShowContModal] = useState(false)
   const [editingLoc, setEditingLoc] = useState<InvLocation | null>(null)
   const [editingCont, setEditingCont] = useState<InvContainer | null>(null)
+  const [defaultParentLocId, setDefaultParentLocId] = useState<string>("")
+  const [defaultContLocId, setDefaultContLocId] = useState<string>("")
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -109,7 +184,7 @@ export default function InventoryPage() {
       const qs = new URLSearchParams()
       if (search.trim()) qs.set("q", search.trim())
       if (statusFilter) qs.set("status", statusFilter)
-      qs.set("limit", "100")
+      qs.set("limit", "150")
       const [itemsRes, sumRes, locRes, contRes] = await Promise.all([
         fetch(`/api/inventory/items?${qs}`, { headers: authHeaders(), credentials: "include", cache: "no-store" }),
         fetch("/api/inventory/summary", { headers: authHeaders(), credentials: "include", cache: "no-store" }),
@@ -125,14 +200,15 @@ export default function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [authHeaders, search, statusFilter])
+  }, [authHeaders, search, statusFilter, tr])
 
   useEffect(() => {
-    const t = setTimeout(load, search ? 300 : 0)
+    const t = setTimeout(load, search ? 280 : 0)
     return () => clearTimeout(t)
   }, [load, search])
 
-  const deleteItem = useCallback((item: InvItem) => {
+  const deleteItem = useCallback((item: InvItem, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
     showConfirmRef.current(
       tr(`Padam ${item.name}?`, `Delete ${item.name}?`),
       tr("Rekod akan disembunyikan daripada senarai.", "Record will be hidden from the list."),
@@ -146,20 +222,32 @@ export default function InventoryPage() {
   }, [authHeaders, load, tr])
 
   const openCreate = useCallback(() => { setEditing(null); setShowForm(true) }, [])
-  const openEdit = useCallback((item: InvItem) => { setEditing(item); setShowForm(true) }, [])
+  const openEdit = useCallback((item: InvItem, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    setEditing(item)
+    setShowForm(true)
+  }, [])
 
-  const statCards = useMemo(() => {
-    if (!summary) return []
-    return [
-      { label: tr("Jenis", "Types"), value: summary.total_types },
-      { label: tr("Unit", "Units"), value: summary.total_units },
-      { label: tr("Ada", "Available"), value: summary.available },
-      { label: tr("Dipinjam", "Loaned"), value: summary.loaned },
-      { label: tr("Hilang", "Missing"), value: summary.missing },
-      { label: tr("Rosak", "Damaged"), value: summary.damaged },
-      { label: tr("Tanpa lokasi", "No location"), value: summary.no_location },
-    ]
-  }, [summary, tr])
+  const categories = useMemo(() => {
+    const set = new Set<string>()
+    for (const item of items) {
+      if (item.category && item.category.trim()) {
+        set.add(item.category.trim())
+      }
+    }
+    return Array.from(set).sort()
+  }, [items])
+
+  const filteredItems = useMemo(() => {
+    let result = items
+    if (categoryFilter) {
+      result = result.filter((item) => item.category?.trim() === categoryFilter)
+    }
+    if (locationFilter) {
+      result = result.filter((item) => item.location_path?.includes(locationFilter))
+    }
+    return result
+  }, [items, categoryFilter, locationFilter])
 
   const locationTree = useMemo(() => {
     const byParent = new Map<number | null, InvLocation[]>()
@@ -179,8 +267,20 @@ export default function InventoryPage() {
     return rows
   }, [locations])
 
+  const totalBoxesCount = useMemo(() => containers.length, [containers])
+
+  const hasActiveFilters = Boolean(search || statusFilter || categoryFilter || locationFilter)
+
+  const clearAllFilters = useCallback(() => {
+    setSearch("")
+    setStatusFilter("")
+    setCategoryFilter("")
+    setLocationFilter("")
+  }, [])
+
   return (
     <>
+      {/* ── HEADER PRESERVED UNTOUCHED ── */}
       <div className="border-b border-[color:var(--border)] pb-4 md:hidden">
         <MobilePageHeader
           title={tr("Barang Saya", "My Inventory")}
@@ -197,7 +297,7 @@ export default function InventoryPage() {
         actions={
           <button
             onClick={openCreate}
-            className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white"
+            className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90 active:scale-95"
           >
             <Plus className="h-4 w-4" />
             {tr("Tambah Barang", "Add Item")}
@@ -205,157 +305,600 @@ export default function InventoryPage() {
         }
         className="hidden md:block"
       />
-      <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
-        <div className="mx-auto w-full max-w-5xl space-y-4 px-4 pb-24">
-          {/* summary */}
-          {summary && (
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-              {statCards.map((s) => (
-                <div key={s.label} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 text-center">
-                  <div className="text-xl font-bold">{s.value}</div>
-                  <div className="text-[11px] text-[var(--muted)]">{s.label}</div>
-                </div>
-              ))}
-            </div>
-          )}
 
-          {/* search + filter */}
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={tr("Cari nama, kategori, jenama...", "Search name, category, brand...")}
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] py-2.5 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
-                aria-label={tr("Cari barang", "Search items")}
-              />
-            </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm"
-              aria-label={tr("Tapis status", "Filter status")}
-            >
-              <option value="">{tr("Semua status", "All status")}</option>
-              {STATUS_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
-          </div>
+      <DesktopPageBody className="px-2 pb-28 md:px-4 md:pb-16 lg:max-w-7xl">
+        <div className="mx-auto w-full max-w-5xl space-y-5">
+          {/* ── HERO OVERVIEW CARD ── */}
+          <section className="relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-gradient-to-br from-[#1c1c1c] via-[#171717] to-[#121212] p-5 text-white shadow-lg sm:p-6">
+            {/* Ambient background glows */}
+            <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-[var(--accent)]/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-10 left-1/4 h-36 w-36 rounded-full bg-blue-500/10 blur-2xl" />
 
-          {/* list */}
-          {loading && items.length === 0 ? (
-            <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-[var(--muted)]" /></div>
-          ) : items.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[var(--border)] py-16 text-center">
-              <Package className="mx-auto h-10 w-10 text-[var(--muted)]" />
-              <p className="mt-3 font-medium">{search || statusFilter ? tr("Barang tidak dijumpai", "No items found") : tr("Belum ada barang direkodkan", "No items recorded yet")}</p>
-              <p className="mt-1 text-sm text-[var(--muted)]">
-                {search || statusFilter
-                  ? tr("Cuba nama, kategori, lokasi atau kotak yang lain.", "Try another name, category, location or box.")
-                  : tr("Simpan barang anda di sini supaya mudah dicari apabila diperlukan.", "Store your items here so they are easy to find later.")}
-              </p>
-              {!search && !statusFilter && (
-                <button onClick={openCreate} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white">
-                  <Plus className="h-4 w-4" />
-                  {tr("Tambah Barang Pertama", "Add First Item")}
-                </button>
-              )}
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {items.map((item) => (
-                <li key={item.id} className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
-                  <Link href={`/${sessionId}/inventory/${item.id}`} className="flex min-w-0 flex-1 items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-tint)]">
-                      {item.has_image ? (
-                        <img src={`/api/inventory/items/${item.id}/image`} alt="" className="h-10 w-10 rounded-lg object-cover" />
-                      ) : (
-                        <Package className="h-5 w-5 text-[var(--muted)]" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate font-medium">{item.name}</span>
-                        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", STATUS_BADGE[item.status])}>{item.status_label}</span>
-                      </div>
-                      <div className="truncate text-xs text-[var(--muted)]">
-                        {item.quantity} {item.unit}
-                        {item.category ? ` · ${item.category}` : ""}
-                        {item.location_path ? ` · ${item.location_path}` : ""}
-                        {item.container_name ? ` → ${item.container_name}` : ""}
-                      </div>
-                    </div>
-                  </Link>
-                  <div className="flex shrink-0 gap-1">
-                    <button onClick={() => openEdit(item)} aria-label={tr("Edit", "Edit")} className="rounded-lg p-2 hover:bg-[var(--surface-tint)]">
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => deleteItem(item)} aria-label={tr("Padam", "Delete")} className="rounded-lg p-2 text-rose-500 hover:bg-rose-500/10">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+            <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-[var(--accent)]">
+                    <Package className="h-4 w-4" />
                   </div>
-                </li>
-              ))}
-            </ul>
-          )}
+                  <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                    {tr("Ringkasan Inventori", "Inventory Overview")}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-baseline gap-3">
+                  <span className="text-3xl font-black tracking-tight text-white sm:text-4xl">
+                    {summary ? summary.total_units : 0}
+                  </span>
+                  <span className="text-sm font-medium text-neutral-400">
+                    {tr("Jumlah Unit Keseluruhan", "Total Units")} ({summary ? summary.total_types : 0} {tr("jenis barang", "types")})
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-neutral-400">
+                  {tr(
+                    `${locations.length} lokasi berdaftar & ${containers.length} bekas/kotak penyimpanan`,
+                    `${locations.length} registered locations & ${containers.length} storage boxes`
+                  )}
+                </p>
+              </div>
 
-          {/* locations & containers */}
-          <section className="mt-8">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--muted)]">
-                <MapPin className="h-4 w-4" /> {tr("Lokasi & Bekas", "Locations & Boxes")}
-              </h2>
-              <div className="flex shrink-0 gap-1.5">
+              {/* Quick Actions in Hero */}
+              <div className="flex flex-wrap items-center gap-2">
                 <button
-                  onClick={() => { setEditingLoc(null); setShowLocModal(true) }}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium hover:bg-[var(--surface-tint)]"
+                  type="button"
+                  onClick={openCreate}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 py-2 text-xs font-bold text-white shadow-md transition hover:brightness-110 active:scale-95"
                 >
-                  <Plus className="h-3.5 w-3.5" /> {tr("Lokasi", "Location")}
+                  <Plus className="h-4 w-4" />
+                  {tr("Tambah Barang", "Add Item")}
                 </button>
                 <button
-                  onClick={() => { setEditingCont(null); setShowContModal(true) }}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium hover:bg-[var(--surface-tint)]"
+                  type="button"
+                  onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white/90 backdrop-blur transition hover:bg-white/10 active:scale-95"
                 >
-                  <Plus className="h-3.5 w-3.5" /> {tr("Bekas", "Box")}
+                  <MapPin className="h-3.5 w-3.5 text-neutral-300" />
+                  {tr("Lokasi", "Location")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setEditingCont(null); setDefaultContLocId(""); setShowContModal(true) }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white/90 backdrop-blur transition hover:bg-white/10 active:scale-95"
+                >
+                  <Boxes className="h-3.5 w-3.5 text-neutral-300" />
+                  {tr("Bekas", "Box")}
                 </button>
               </div>
             </div>
-            {locations.length === 0 && containers.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-[var(--muted)]">
-                {tr("Cipta lokasi melalui borang barang atau butang di atas.", "Create locations via the item form or the buttons above.")}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {locationTree.map(({ loc, depth }) => {
-                  const conts = containers.filter((c) => c.location_id === loc.id)
-                  return (
-                    <div key={loc.id} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3" style={{ marginLeft: depth * 16 }}>
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{loc.name}</span>
-                        <span className="text-xs text-[var(--muted)]">
-                          {loc.item_types} {tr("jenis", "types")} · {loc.item_units} {tr("unit", "units")}
-                        </span>
-                      </div>
-                      {conts.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {conts.map((c) => (
-                            <span key={c.id} className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2 py-0.5 text-[11px]">
-                              <Boxes className="h-3 w-3" /> {c.name} ({c.item_types})
-                            </span>
-                          ))}
-                        </div>
+
+            {/* Status Breakdown Bar & Interactive Filter Chips */}
+            {summary && (
+              <div className="relative z-10 mt-5 border-t border-white/10 pt-4">
+                <p className="mb-2.5 text-[11px] font-medium text-neutral-400">
+                  {tr("Tapis pantas mengikut status:", "Quick filter by status:")}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter("")}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition",
+                      statusFilter === ""
+                        ? "bg-white text-black font-semibold shadow-sm"
+                        : "bg-white/5 text-neutral-300 hover:bg-white/10"
+                    )}
+                  >
+                    <span>{tr("Semua", "All")}</span>
+                    <span className="text-[11px] opacity-75">({summary.total_types})</span>
+                  </button>
+
+                  {(
+                    [
+                      { key: "available", label: tr("Ada", "Available"), count: summary.available },
+                      { key: "loaned", label: tr("Dipinjam", "Loaned"), count: summary.loaned },
+                      { key: "missing", label: tr("Hilang", "Missing"), count: summary.missing },
+                      { key: "damaged", label: tr("Rosak", "Damaged"), count: summary.damaged },
+                    ] as const
+                  ).map((st) => {
+                    const isSelected = statusFilter === st.key
+                    const cfg = STATUS_CONFIG[st.key as InvStatus]
+                    return (
+                      <button
+                        key={st.key}
+                        type="button"
+                        onClick={() => setStatusFilter(isSelected ? "" : st.key)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition",
+                          isSelected
+                            ? cfg.pillActive
+                            : "border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10"
+                        )}
+                      >
+                        <span className={cn("h-2 w-2 rounded-full", cfg.dot)} />
+                        <span>{st.label}</span>
+                        <span className="text-[11px] opacity-75 font-semibold">({st.count})</span>
+                      </button>
+                    )
+                  })}
+
+                  {summary.no_location > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("items")
+                        setLocationFilter(locationFilter === "none" ? "" : "none")
+                      }}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition",
+                        locationFilter === "none"
+                          ? "border-amber-500/40 bg-amber-500/20 text-amber-300"
+                          : "border-white/10 bg-white/5 text-neutral-400 hover:bg-white/10"
                       )}
-                    </div>
-                  )
-                })}
+                    >
+                      <MapPin className="h-3 w-3" />
+                      <span>{tr("Tanpa lokasi", "No location")}</span>
+                      <span className="text-[11px] opacity-80">({summary.no_location})</span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </section>
+
+          {/* ── VIEW SWITCHER TABS ── */}
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] pb-2">
+            <div className="flex items-center gap-1 rounded-2xl bg-[var(--surface-tint)] p-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("items")}
+                className={cn(
+                  "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition",
+                  activeTab === "items"
+                    ? "bg-[var(--card)] text-[var(--text)] shadow-sm"
+                    : "text-[var(--muted)] hover:text-[var(--text)]"
+                )}
+              >
+                <Package className="h-4 w-4" />
+                <span>{tr("Senarai Barang", "Item List")}</span>
+                <span className="rounded-full bg-[var(--surface-tint-strong)] px-2 py-0.5 text-[10px] font-semibold">
+                  {filteredItems.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("locations")}
+                className={cn(
+                  "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition",
+                  activeTab === "locations"
+                    ? "bg-[var(--card)] text-[var(--text)] shadow-sm"
+                    : "text-[var(--muted)] hover:text-[var(--text)]"
+                )}
+              >
+                <FolderTree className="h-4 w-4" />
+                <span>{tr("Lokasi & Bekas", "Locations & Boxes")}</span>
+                <span className="rounded-full bg-[var(--surface-tint-strong)] px-2 py-0.5 text-[10px] font-semibold">
+                  {locations.length + totalBoxesCount}
+                </span>
+              </button>
+            </div>
+
+            {/* Quick reset active filter badge */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition"
+              >
+                <X className="h-3.5 w-3.5" />
+                {tr("Set Semula", "Reset Filters")}
+              </button>
+            )}
+          </div>
+
+          {/* ══════════════════════════════════════════════════════════
+              TAB 1: ITEMS LIST
+             ══════════════════════════════════════════════════════════ */}
+          {activeTab === "items" && (
+            <div className="space-y-4">
+              {/* Search & Filters */}
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder={tr("Cari nama, kategori, jenama, no. siri...", "Search name, category, brand, serial...")}
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] py-2.5 pl-10 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
+                    aria-label={tr("Cari barang", "Search items")}
+                  />
+                  {search && (
+                    <button
+                      type="button"
+                      onClick={() => setSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)]"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-xs font-semibold text-[var(--text)] outline-none transition focus:border-[var(--accent)]"
+                    aria-label={tr("Tapis status", "Filter status")}
+                  >
+                    <option value="">{tr("Semua Status", "All Status")}</option>
+                    {STATUS_OPTIONS.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {isBm ? STATUS_CONFIG[s.value]?.labelBm || s.label : s.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  {categories.length > 0 && (
+                    <select
+                      value={categoryFilter}
+                      onChange={(e) => setCategoryFilter(e.target.value)}
+                      className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-xs font-semibold text-[var(--text)] outline-none transition focus:border-[var(--accent)]"
+                      aria-label={tr("Tapis kategori", "Filter category")}
+                    >
+                      <option value="">{tr("Semua Kategori", "All Categories")}</option>
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+
+              {/* Category Filter Chips Carousel */}
+              {categories.length > 0 && !categoryFilter && (
+                <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                  <span className="shrink-0 text-[11px] font-semibold text-[var(--muted)]">
+                    {tr("Kategori:", "Category:")}
+                  </span>
+                  {categories.slice(0, 8).map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setCategoryFilter(cat)}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)]"
+                    >
+                      <Tag className="h-3 w-3 opacity-60" />
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Items List */}
+              {loading && items.length === 0 ? (
+                <div className="space-y-3 py-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className="flex animate-pulse items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4"
+                    >
+                      <div className="h-14 w-14 rounded-xl bg-[var(--surface-tint-strong)]" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-1/3 rounded bg-[var(--surface-tint-strong)]" />
+                        <div className="h-3 w-1/2 rounded bg-[var(--surface-tint-strong)]" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 px-4 py-16 text-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--muted)]">
+                    <Package className="h-8 w-8" />
+                  </div>
+                  <h3 className="mt-4 text-base font-bold text-[var(--text)]">
+                    {hasActiveFilters
+                      ? tr("Tiada barang dijumpai", "No items matched your filter")
+                      : tr("Belum ada barang direkodkan", "No items recorded yet")}
+                  </h3>
+                  <p className="mt-1 max-w-sm text-xs text-[var(--muted)]">
+                    {hasActiveFilters
+                      ? tr(
+                          "Cuba ubah kata carian atau batalkan penapis status / kategori.",
+                          "Try adjusting your search terms or clearing status/category filters."
+                        )
+                      : tr(
+                          "Mula rekod perabot, peralatan, gajet, dan stok anda supaya mudah dicari bila-bila masa.",
+                          "Start keeping track of your tools, furniture, gadgets and household items."
+                        )}
+                  </p>
+                  {hasActiveFilters ? (
+                    <button
+                      type="button"
+                      onClick={clearAllFilters}
+                      className="mt-5 inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-2 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)]"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      {tr("Padam Carian & Penapis", "Clear Filters")}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={openCreate}
+                      className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:opacity-90 active:scale-95"
+                    >
+                      <Plus className="h-4 w-4" />
+                      {tr("Tambah Barang Pertama", "Add First Item")}
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-2">
+                  {filteredItems.map((item) => {
+                    const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.available
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => router.push(`/${sessionId}/inventory/${item.id}`)}
+                        className="group relative flex cursor-pointer items-center gap-3.5 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3.5 transition-all duration-150 hover:border-[var(--accent)]/40 hover:bg-[var(--card-active)] hover:shadow-md active:scale-[0.99]"
+                      >
+                        {/* Thumbnail */}
+                        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--surface-tint)] border border-[var(--border)]">
+                          {item.has_image ? (
+                            <img
+                              src={`/api/inventory/items/${item.id}/image`}
+                              alt={item.name}
+                              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-white/[0.04] to-transparent text-[var(--muted)]">
+                              <Package className="h-6 w-6 opacity-70" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Content */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <h4 className="truncate text-sm font-black text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+                              {item.name}
+                            </h4>
+                            <span
+                              className={cn(
+                                "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-tight",
+                                cfg.badge
+                              )}
+                            >
+                              {isBm ? cfg.labelBm : item.status_label || cfg.labelEn}
+                            </span>
+                          </div>
+
+                          {/* Brand / Model / Category */}
+                          <p className="mt-0.5 truncate text-[11px] font-medium text-[var(--muted)]">
+                            {[item.brand, item.category].filter(Boolean).join(" · ") || tr("Am", "General")}
+                          </p>
+
+                          {/* Location & Quantity pills */}
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-[var(--surface-tint-strong)] px-2 py-0.5 font-bold text-[var(--text)]">
+                              {item.quantity} {item.unit}
+                            </span>
+
+                            {item.location_path ? (
+                              <span className="inline-flex max-w-[170px] items-center gap-1 truncate rounded-md bg-[var(--surface-tint)] px-1.5 py-0.5 text-[10px] text-[var(--muted)]">
+                                <MapPin className="h-3 w-3 shrink-0 text-emerald-400" />
+                                <span className="truncate">{item.location_path}</span>
+                              </span>
+                            ) : null}
+
+                            {item.container_name ? (
+                              <span className="inline-flex items-center gap-1 rounded-md bg-[var(--surface-tint)] px-1.5 py-0.5 text-[10px] text-[var(--muted)]">
+                                <Boxes className="h-3 w-3 shrink-0 text-sky-400" />
+                                <span>{item.container_name}</span>
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {/* Quick action buttons */}
+                        <div
+                          className="flex shrink-0 items-center gap-0.5 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            onClick={(e) => openEdit(item, e)}
+                            aria-label={tr("Edit barang", "Edit item")}
+                            className="rounded-lg p-1.5 text-[var(--muted)] hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] transition"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => deleteItem(item, e)}
+                            aria-label={tr("Padam barang", "Delete item")}
+                            className="rounded-lg p-1.5 text-rose-400/80 hover:bg-rose-500/10 hover:text-rose-400 transition"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              TAB 2: LOCATIONS & CONTAINERS MANAGEMENT
+             ══════════════════════════════════════════════════════════ */}
+          {activeTab === "locations" && (
+            <div className="space-y-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--text)]">
+                    {tr("Hierarki Lokasi & Kotak Storan", "Location & Storage Hierarchy")}
+                  </h3>
+                  <p className="text-xs text-[var(--muted)]">
+                    {tr(
+                      "Susun barang mengikut bilik, rak, dan kotak supaya mudah dikesan.",
+                      "Organize items by rooms, shelves, and containers for easy retrieval."
+                    )}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs font-bold text-[var(--text)] shadow-sm hover:border-[var(--accent)] hover:bg-[var(--card-active)] transition"
+                  >
+                    <FolderPlus className="h-3.5 w-3.5 text-emerald-400" />
+                    {tr("Tambah Lokasi", "Add Location")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEditingCont(null); setDefaultContLocId(""); setShowContModal(true) }}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs font-bold text-[var(--text)] shadow-sm hover:border-[var(--accent)] hover:bg-[var(--card-active)] transition"
+                  >
+                    <BoxSelect className="h-3.5 w-3.5 text-sky-400" />
+                    {tr("Tambah Bekas", "Add Box")}
+                  </button>
+                </div>
+              </div>
+
+              {locations.length === 0 && containers.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 px-4 py-14 text-center">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--muted)]">
+                    <MapPin className="h-6 w-6" />
+                  </div>
+                  <h4 className="mt-3 text-sm font-bold text-[var(--text)]">
+                    {tr("Belum ada lokasi atau kotak dicipta", "No locations or boxes yet")}
+                  </h4>
+                  <p className="mt-1 max-w-sm text-xs text-[var(--muted)]">
+                    {tr(
+                      "Cipta lokasi induk (cth: Bilik Stor, Ruang Tamu) dan anak lokasi (cth: Rak A, Laci 2).",
+                      "Create primary locations (e.g. Storeroom, Living Room) and sub-locations (e.g. Shelf 1, Drawer 2)."
+                    )}
+                  </p>
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 py-2 text-xs font-bold text-white shadow-sm"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      {tr("Cipta Lokasi", "Create Location")}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {locationTree.map(({ loc, depth }) => {
+                    const conts = containers.filter((c) => c.location_id === loc.id)
+                    return (
+                      <div
+                        key={loc.id}
+                        className={cn(
+                          "relative rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3.5 transition hover:border-[var(--accent)]/30 hover:shadow-sm",
+                          depth > 0 && "before:absolute before:-left-3 before:top-1/2 before:h-4 before:w-3 before:-translate-y-1/2 before:rounded-bl-lg before:border-b before:border-l before:border-[var(--border)]"
+                        )}
+                        style={{ marginLeft: depth ? `${depth * 18}px` : "0px" }}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-tint)] text-emerald-400">
+                              <MapPin className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-[var(--text)]">{loc.name}</span>
+                                {depth > 0 && (
+                                  <span className="rounded bg-[var(--surface-tint)] px-1.5 py-0.5 text-[9px] font-semibold text-[var(--muted)]">
+                                    {tr("Sub-lokasi", "Sub-location")}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[11px] font-medium text-[var(--muted)]">
+                                {loc.item_types} {tr("jenis", "types")} · {loc.item_units} {tr("unit barang", "units")}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Action icons for location */}
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingLoc(null)
+                                setDefaultParentLocId(String(loc.id))
+                                setShowLocModal(true)
+                              }}
+                              title={tr("Tambah sub-lokasi", "Add sub-location")}
+                              className="rounded-lg p-1.5 text-xs text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)] transition"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingCont(null)
+                                setDefaultContLocId(String(loc.id))
+                                setShowContModal(true)
+                              }}
+                              title={tr("Tambah bekas dalam lokasi ini", "Add container here")}
+                              className="rounded-lg p-1.5 text-xs text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)] transition"
+                            >
+                              <Boxes className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setEditingLoc(loc); setShowLocModal(true) }}
+                              title={tr("Edit lokasi", "Edit location")}
+                              className="rounded-lg p-1.5 text-xs text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)] transition"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Containers / Boxes in this Location */}
+                        {conts.length > 0 && (
+                          <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-[var(--border)]/60 pt-2.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] mr-1">
+                              {tr("Bekas:", "Boxes:")}
+                            </span>
+                            {conts.map((c) => (
+                              <div
+                                key={c.id}
+                                className="group/box inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-1 text-xs font-medium text-[var(--text)] transition hover:border-sky-500/40"
+                              >
+                                <Boxes className="h-3 w-3 text-sky-400" />
+                                <span>{c.name}</span>
+                                <span className="rounded-full bg-[var(--surface-tint-strong)] px-1.5 py-0.2 text-[10px] font-bold text-[var(--muted)]">
+                                  {c.item_types}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => { setEditingCont(c); setShowContModal(true) }}
+                                  className="ml-0.5 opacity-60 hover:opacity-100"
+                                >
+                                  <Pencil className="h-2.5 w-2.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </DesktopPageBody>
 
+      {/* ── MODALS ── */}
       {showForm && (
         <ItemForm
           item={editing}
@@ -371,6 +914,7 @@ export default function InventoryPage() {
         <LocationModal
           locations={locations}
           editing={editingLoc}
+          defaultParentId={defaultParentLocId}
           onClose={() => setShowLocModal(false)}
           onSaved={() => { setShowLocModal(false); load() }}
           authHeaders={authHeaders}
@@ -382,6 +926,7 @@ export default function InventoryPage() {
           locations={locations}
           containers={containers}
           editing={editingCont}
+          defaultLocId={defaultContLocId}
           onClose={() => setShowContModal(false)}
           onSaved={() => { setShowContModal(false); load() }}
           authHeaders={authHeaders}
@@ -393,10 +938,16 @@ export default function InventoryPage() {
   )
 }
 
-// ── add/edit form modal ──────────────────────────────────────────────────────
+// ── ADD / EDIT ITEM SHEET FORM ───────────────────────────────────────────────
 
 function ItemForm({
-  item, locations, containers, onClose, onSaved, authHeaders, tr,
+  item,
+  locations,
+  containers,
+  onClose,
+  onSaved,
+  authHeaders,
+  tr,
 }: {
   item: InvItem | null
   locations: InvLocation[]
@@ -427,7 +978,6 @@ function ItemForm({
   const showAlertRef = useRef(showAlert)
   useEffect(() => { showAlertRef.current = showAlert }, [showAlert])
 
-  // edit mode: fetch detail for ids + extra fields
   useEffect(() => {
     if (!item) return
     ;(async () => {
@@ -463,7 +1013,8 @@ function ItemForm({
         name: name.trim(),
         category: category.trim() || null,
         quantity: Math.max(0, parseInt(quantity || "1", 10) || 1),
-        unit, status,
+        unit: unit.trim() || "unit",
+        status,
         brand: brand.trim() || null,
         model: model.trim() || null,
         serial_number: serial.trim() || null,
@@ -483,12 +1034,12 @@ function ItemForm({
         const p = await res.json().catch(() => null)
         throw new Error(p?.detail || "Failed")
       }
-      // upload image if picked
       if (imageFile) {
         const saved = await res.json()
+        const targetId = item ? item.id : saved.id
         const fd = new FormData()
         fd.append("file", imageFile)
-        await fetch(`/api/inventory/items/${saved.id}/image`, {
+        await fetch(`/api/inventory/items/${targetId}/image`, {
           method: "POST",
           headers: authHeaders(),
           credentials: "include",
@@ -497,7 +1048,11 @@ function ItemForm({
       }
       onSaved()
     } catch (err) {
-      showAlertRef.current(tr("Ralat", "Error"), err instanceof Error ? err.message : tr("Gagal simpan.", "Failed to save."), "error")
+      showAlertRef.current(
+        tr("Ralat", "Error"),
+        err instanceof Error ? err.message : tr("Gagal simpan.", "Failed to save."),
+        "error"
+      )
     } finally {
       setSaving(false)
     }
@@ -505,12 +1060,13 @@ function ItemForm({
 
   const swipe = useSwipeDownToClose(onClose)
 
-  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
-  const labelCls = "mb-1 block text-xs font-medium text-[var(--muted)]"
+  const inputCls =
+    "w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:bg-[var(--card)] focus:ring-2 focus:ring-[var(--accent)]/20"
+  const labelCls = "mb-1.5 block text-xs font-semibold text-[var(--text)]"
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center"
+      className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-black/50 backdrop-blur-sm p-0 sm:items-center"
       onClick={onClose}
       onTouchMove={(e) => e.preventDefault()}
     >
@@ -518,10 +1074,10 @@ function ItemForm({
         onClick={(e) => e.stopPropagation()}
         data-swipe-sheet
         {...swipe}
-        className="app-sheet-panel app-sheet-panel--lg w-full max-h-[88dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[30rem]"
+        className="app-sheet-panel app-sheet-panel--lg w-full max-h-[90dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[32rem] sm:rounded-3xl"
       >
         <AppSheetHeader
-          title={tr(item ? "Edit Barang" : "Tambah Barang", item ? "Edit Item" : "Add Item")}
+          title={tr(item ? "Edit Barang" : "Tambah Barang Baru", item ? "Edit Item" : "Add New Item")}
           eyebrow={tr("Barang Saya", "My Inventory")}
           onClose={onClose}
           action={
@@ -529,127 +1085,292 @@ function ItemForm({
               type="submit"
               form="inventory-item-form"
               disabled={saving || !name.trim()}
-              className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+              className="px-2 py-1 text-base font-bold text-[var(--accent)] transition hover:opacity-80 disabled:opacity-50"
             >
-              {saving ? (tr("Menyimpan…", "Saving…")) : (tr("Simpan", "Save"))}
+              {saving ? tr("Menyimpan…", "Saving…") : tr("Simpan", "Save")}
             </button>
           }
         />
-        <form id="inventory-item-form" onSubmit={submit} className="space-y-3 px-4 pb-4 pt-1 sm:px-6 sm:pb-6 sm:pt-0">
-          {/* image */}
-          <div className="flex items-center gap-3">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--surface-tint)]">
+        <form id="inventory-item-form" onSubmit={submit} className="space-y-4 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
+          {/* Image preview & upload */}
+          <div className="flex items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+            <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
               {imagePreview ? (
-                <img src={imagePreview} alt="" className="h-16 w-16 object-cover" />
+                <img src={imagePreview} alt="" className="h-full w-full object-cover" />
               ) : (
-                <Package className="h-6 w-6 text-[var(--muted)]" />
+                <ImageIcon className="h-6 w-6 text-[var(--muted)]" />
               )}
             </div>
-            <div>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={pickImage} className="hidden" aria-label={tr("Gambar barang", "Item image")} />
-              <button type="button" onClick={() => fileInputRef.current?.click()} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--surface-tint)]">
-                {tr("Pilih gambar", "Pick image")}
-              </button>
-              {imageFile && (
-                <button type="button" onClick={() => { setImageFile(null); setImagePreview(item?.has_image ? `/api/inventory/items/${item.id}/image` : null) }} className="ml-2 text-xs text-rose-500">
-                  {tr("Buang", "Remove")}
+            <div className="flex-1">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={pickImage}
+                className="hidden"
+                aria-label={tr("Gambar barang", "Item image")}
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] transition hover:border-[var(--accent)] active:scale-95"
+                >
+                  {imagePreview ? tr("Tukar Gambar", "Change Image") : tr("Muat Naik Gambar", "Upload Image")}
                 </button>
-              )}
+                {imageFile && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImageFile(null)
+                      setImagePreview(item?.has_image ? `/api/inventory/items/${item.id}/image` : null)
+                    }}
+                    className="text-xs font-medium text-rose-400 hover:underline"
+                  >
+                    {tr("Padam", "Remove")}
+                  </button>
+                )}
+              </div>
+              <p className="mt-1 text-[11px] text-[var(--muted)]">
+                {tr("Format JPG, PNG atau WebP.", "JPG, PNG or WebP format.")}
+              </p>
             </div>
           </div>
+
           <div>
-            <label className={labelCls} htmlFor="inv-name">{tr("Nama barang *", "Item name *")}</label>
-            <input id="inv-name" required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} maxLength={190} />
+            <label className={labelCls} htmlFor="inv-name">
+              {tr("Nama Barang *", "Item Name *")}
+            </label>
+            <input
+              id="inv-name"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputCls}
+              placeholder={tr("Cth: Bor Cordless Makita, Kipas Berdiri", "e.g. Cordless Drill, Stand Fan")}
+              maxLength={190}
+            />
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls} htmlFor="inv-qty">{tr("Kuantiti *", "Quantity *")}</label>
-              <input id="inv-qty" type="number" min={0} value={quantity} onChange={(e) => setQuantity(e.target.value)} className={inputCls} />
+              <label className={labelCls} htmlFor="inv-qty">
+                {tr("Kuantiti *", "Quantity *")}
+              </label>
+              <input
+                id="inv-qty"
+                type="number"
+                min={0}
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className={inputCls}
+              />
             </div>
             <div>
-              <label className={labelCls} htmlFor="inv-unit">{tr("Unit", "Unit")}</label>
-              <input id="inv-unit" value={unit} onChange={(e) => setUnit(e.target.value)} className={inputCls} maxLength={20} />
+              <label className={labelCls} htmlFor="inv-unit">
+                {tr("Unit", "Unit")}
+              </label>
+              <input
+                id="inv-unit"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                className={inputCls}
+                placeholder="unit, buah, set, pcs"
+                maxLength={20}
+              />
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls} htmlFor="inv-cat">{tr("Kategori", "Category")}</label>
-              <input id="inv-cat" value={category} onChange={(e) => setCategory(e.target.value)} className={inputCls} maxLength={80} />
+              <label className={labelCls} htmlFor="inv-cat">
+                {tr("Kategori", "Category")}
+              </label>
+              <input
+                id="inv-cat"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className={inputCls}
+                placeholder="Alatan, Elektronik, Perabot"
+                maxLength={80}
+              />
             </div>
             <div>
-              <label className={labelCls} htmlFor="inv-status">{tr("Status", "Status")}</label>
-              <select id="inv-status" value={status} onChange={(e) => setStatus(e.target.value as InvStatus)} className={inputCls}>
-                {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              <label className={labelCls} htmlFor="inv-status">
+                {tr("Status", "Status")}
+              </label>
+              <select
+                id="inv-status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as InvStatus)}
+                className={inputCls}
+              >
+                {STATUS_OPTIONS.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {tr(STATUS_CONFIG[s.value]?.labelBm, s.label)}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls} htmlFor="inv-brand">{tr("Jenama", "Brand")}</label>
-              <input id="inv-brand" value={brand} onChange={(e) => setBrand(e.target.value)} className={inputCls} maxLength={80} />
+              <label className={labelCls} htmlFor="inv-brand">
+                {tr("Jenama", "Brand")}
+              </label>
+              <input
+                id="inv-brand"
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                className={inputCls}
+                placeholder="Sony, Bosch, Ikea..."
+                maxLength={80}
+              />
             </div>
             <div>
-              <label className={labelCls} htmlFor="inv-model">{tr("Model", "Model")}</label>
-              <input id="inv-model" value={model} onChange={(e) => setModel(e.target.value)} className={inputCls} maxLength={80} />
+              <label className={labelCls} htmlFor="inv-model">
+                {tr("Model", "Model")}
+              </label>
+              <input
+                id="inv-model"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                className={inputCls}
+                maxLength={80}
+              />
             </div>
           </div>
+
           <div>
-            <label className={labelCls} htmlFor="inv-serial">{tr("No. siri", "Serial number")}</label>
-            <input id="inv-serial" value={serial} onChange={(e) => setSerial(e.target.value)} className={inputCls} maxLength={120} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls} htmlFor="inv-date">{tr("Tarikh pembelian", "Purchase date")}</label>
-              <input id="inv-date" type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className={inputCls} />
-            </div>
-            <div>
-              <label className={labelCls} htmlFor="inv-price">{tr("Harga (RM)", "Price (RM)")}</label>
-              <input id="inv-price" type="number" min={0} step="0.01" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} className={inputCls} />
-            </div>
-          </div>
-          <div>
-            <label className={labelCls} htmlFor="inv-loc">{tr("Lokasi", "Location")}</label>
-            <select
-              id="inv-loc"
-              value={locationId}
-              onChange={(e) => { setLocationId(e.target.value); setContainerId("") }}
+            <label className={labelCls} htmlFor="inv-serial">
+              {tr("No. Siri", "Serial Number")}
+            </label>
+            <input
+              id="inv-serial"
+              value={serial}
+              onChange={(e) => setSerial(e.target.value)}
               className={inputCls}
-            >
-              <option value="">{tr("— Tiada lokasi —", "— No location —")}</option>
-              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
+              placeholder="SN-123456..."
+              maxLength={120}
+            />
           </div>
-          <div>
-            <label className={labelCls} htmlFor="inv-cont">{tr("Bekas/Kotak", "Box/Container")}</label>
-            <select id="inv-cont" value={containerId} onChange={(e) => setContainerId(e.target.value)} className={inputCls} disabled={!locationId}>
-              <option value="">{tr("— Tiada bekas —", "— No box —")}</option>
-              {filteredContainers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <p className="mt-1 text-[11px] text-[var(--muted)]">{tr("Bekas ditapis mengikut lokasi.", "Boxes are filtered by location.")}</p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls} htmlFor="inv-date">
+                {tr("Tarikh Pembelian", "Purchase Date")}
+              </label>
+              <input
+                id="inv-date"
+                type="date"
+                value={purchaseDate}
+                onChange={(e) => setPurchaseDate(e.target.value)}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="inv-price">
+                {tr("Harga (RM)", "Price (RM)")}
+              </label>
+              <input
+                id="inv-price"
+                type="number"
+                min={0}
+                step="0.01"
+                value={purchasePrice}
+                onChange={(e) => setPurchasePrice(e.target.value)}
+                className={inputCls}
+                placeholder="0.00"
+              />
+            </div>
           </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className={labelCls} htmlFor="inv-loc">
+                {tr("Lokasi", "Location")}
+              </label>
+              <select
+                id="inv-loc"
+                value={locationId}
+                onChange={(e) => {
+                  setLocationId(e.target.value)
+                  setContainerId("")
+                }}
+                className={inputCls}
+              >
+                <option value="">{tr("— Tiada lokasi —", "— No location —")}</option>
+                {locations.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={labelCls} htmlFor="inv-cont">
+                {tr("Bekas / Kotak", "Box / Container")}
+              </label>
+              <select
+                id="inv-cont"
+                value={containerId}
+                onChange={(e) => setContainerId(e.target.value)}
+                className={inputCls}
+                disabled={!locationId}
+              >
+                <option value="">{tr("— Tiada bekas —", "— No box —")}</option>
+                {filteredContainers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div>
-            <label className={labelCls} htmlFor="inv-notes">{tr("Nota", "Notes")}</label>
-            <textarea id="inv-notes" value={notes} onChange={(e) => setNotes(e.target.value)} className={inputCls} rows={2} />
+            <label className={labelCls} htmlFor="inv-notes">
+              {tr("Catatan / Nota Tambahan", "Notes / Remarks")}
+            </label>
+            <textarea
+              id="inv-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className={inputCls}
+              rows={2}
+              placeholder={tr("Simpan resit, keadaan barang, pautan manual dsb...", "Receipt details, condition, link...")}
+            />
           </div>
         </form>
       </div>
     </div>,
-    document.body,
+    document.body
   )
 }
 
-// ── create location modal ────────────────────────────────────────────────────
+// ── LOCATION MODAL ───────────────────────────────────────────────────────────
 
-function LocationModal({ locations, editing, onClose, onSaved, authHeaders, tr }: {
+function LocationModal({
+  locations,
+  editing,
+  defaultParentId,
+  onClose,
+  onSaved,
+  authHeaders,
+  tr,
+}: {
   locations: InvLocation[]
   editing: InvLocation | null
+  defaultParentId?: string
   onClose: () => void
   onSaved: () => void
   authHeaders: () => HeadersInit
   tr: (bm: string, en: string) => string
 }) {
   const [name, setName] = useState(editing?.name || "")
-  const [parentId, setParentId] = useState(editing?.parent_id ? String(editing.parent_id) : "")
+  const [parentId, setParentId] = useState(editing?.parent_id ? String(editing.parent_id) : defaultParentId || "")
   const [saving, setSaving] = useState(false)
   const { showAlert } = usePageAlert("BM")
   const showAlertRef = useRef(showAlert)
@@ -673,60 +1394,111 @@ function LocationModal({ locations, editing, onClose, onSaved, authHeaders, tr }
       }
       onSaved()
     } catch (err) {
-      showAlertRef.current(tr("Ralat", "Error"), err instanceof Error ? err.message : tr("Gagal simpan.", "Failed to save."), "error")
+      showAlertRef.current(
+        tr("Ralat", "Error"),
+        err instanceof Error ? err.message : tr("Gagal simpan.", "Failed to save."),
+        "error"
+      )
     } finally {
       setSaving(false)
     }
   }
 
-  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+  const inputCls =
+    "w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:bg-[var(--card)] focus:ring-2 focus:ring-[var(--accent)]/20"
 
   return createPortal(
-    <div className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center" onClick={onClose} onTouchMove={(e) => e.preventDefault()}>
-      <div onClick={(e) => e.stopPropagation()} data-swipe-sheet {...swipe} className="app-sheet-panel app-sheet-panel--sm w-full max-h-[82dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-w-[24rem]">
+    <div
+      className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-black/50 backdrop-blur-sm p-0 sm:items-center"
+      onClick={onClose}
+      onTouchMove={(e) => e.preventDefault()}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        data-swipe-sheet
+        {...swipe}
+        className="app-sheet-panel app-sheet-panel--sm w-full max-h-[85dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-w-[26rem] sm:rounded-3xl"
+      >
         <AppSheetHeader
-          title={tr(editing ? "Edit Lokasi" : "Tambah Lokasi", editing ? "Edit Location" : "Add Location")}
+          title={tr(editing ? "Edit Lokasi" : "Tambah Lokasi Baru", editing ? "Edit Location" : "Add New Location")}
           eyebrow={tr("Barang Saya", "My Inventory")}
           onClose={onClose}
           action={
-            <button type="submit" form="inventory-loc-form" disabled={saving || !name.trim()} className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60">
+            <button
+              type="submit"
+              form="inventory-loc-form"
+              disabled={saving || !name.trim()}
+              className="px-2 py-1 text-base font-bold text-[var(--accent)] transition hover:opacity-80 disabled:opacity-50"
+            >
               {saving ? tr("Menyimpan…", "Saving…") : tr("Simpan", "Save")}
             </button>
           }
         />
-        <form id="inventory-loc-form" onSubmit={submit} className="space-y-3 px-4 pb-4 pt-1 sm:px-6 sm:pb-6 sm:pt-0">
+        <form id="inventory-loc-form" onSubmit={submit} className="space-y-4 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
           <div>
-            <label className="mb-1 block text-xs font-medium text-[var(--muted)]" htmlFor="loc-name">{tr("Nama lokasi *", "Location name *")}</label>
-            <input id="loc-name" required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} maxLength={190} />
+            <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="loc-name">
+              {tr("Nama Lokasi *", "Location Name *")}
+            </label>
+            <input
+              id="loc-name"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputCls}
+              placeholder={tr("Cth: Stor Utama, Dapur, Ruang Tamu, Rak 1", "e.g. Storeroom, Kitchen, Shelf 1")}
+              maxLength={190}
+            />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-[var(--muted)]" htmlFor="loc-parent">{tr("Lokasi induk (pilihan)", "Parent location (optional)")}</label>
+            <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="loc-parent">
+              {tr("Lokasi Induk (Pilihan)", "Parent Location (Optional)")}
+            </label>
             <select id="loc-parent" value={parentId} onChange={(e) => setParentId(e.target.value)} className={inputCls}>
-              <option value="">{tr("— Tiada induk —", "— No parent —")}</option>
-              {locations.filter((l) => !editing || l.id !== editing.id).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              <option value="">{tr("— Tiada induk (Lokasi Utama) —", "— No parent (Main Location) —")}</option>
+              {locations
+                .filter((l) => !editing || l.id !== editing.id)
+                .map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
             </select>
-            <p className="mt-1 text-[11px] text-[var(--muted)]">{tr("Contoh: Stor sebagai induk, Rak sebagai anak.", "Example: Room as parent, Shelf as child.")}</p>
+            <p className="mt-1 text-[11px] text-[var(--muted)]">
+              {tr("Contoh: Pilih 'Bilik Stor' sebagai induk untuk 'Rak A'.", "Example: Select 'Storeroom' as parent for 'Shelf A'.")}
+            </p>
           </div>
         </form>
       </div>
     </div>,
-    document.body,
+    document.body
   )
 }
 
-// ── create box/container modal ───────────────────────────────────────────────
+// ── CONTAINER MODAL ──────────────────────────────────────────────────────────
 
-function ContainerModal({ locations, containers, editing, onClose, onSaved, authHeaders, tr }: {
+function ContainerModal({
+  locations,
+  containers,
+  editing,
+  defaultLocId,
+  onClose,
+  onSaved,
+  authHeaders,
+  tr,
+}: {
   locations: InvLocation[]
   containers: InvContainer[]
   editing: InvContainer | null
+  defaultLocId?: string
   onClose: () => void
   onSaved: () => void
   authHeaders: () => HeadersInit
   tr: (bm: string, en: string) => string
 }) {
   const [name, setName] = useState(editing?.name || "")
-  const [locationId, setLocationId] = useState(editing?.location_id ? String(editing.location_id) : "")
+  const [locationId, setLocationId] = useState(
+    editing?.location_id ? String(editing.location_id) : defaultLocId || ""
+  )
   const [saving, setSaving] = useState(false)
   const { showAlert } = usePageAlert("BM")
   const showAlertRef = useRef(showAlert)
@@ -750,42 +1522,80 @@ function ContainerModal({ locations, containers, editing, onClose, onSaved, auth
       }
       onSaved()
     } catch (err) {
-      showAlertRef.current(tr("Ralat", "Error"), err instanceof Error ? err.message : tr("Gagal simpan.", "Failed to save."), "error")
+      showAlertRef.current(
+        tr("Ralat", "Error"),
+        err instanceof Error ? err.message : tr("Gagal simpan.", "Failed to save."),
+        "error"
+      )
     } finally {
       setSaving(false)
     }
   }
 
-  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+  const inputCls =
+    "w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:bg-[var(--card)] focus:ring-2 focus:ring-[var(--accent)]/20"
 
   return createPortal(
-    <div className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center" onClick={onClose} onTouchMove={(e) => e.preventDefault()}>
-      <div onClick={(e) => e.stopPropagation()} data-swipe-sheet {...swipe} className="app-sheet-panel app-sheet-panel--sm w-full max-h-[82dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-w-[24rem]">
+    <div
+      className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-black/50 backdrop-blur-sm p-0 sm:items-center"
+      onClick={onClose}
+      onTouchMove={(e) => e.preventDefault()}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        data-swipe-sheet
+        {...swipe}
+        className="app-sheet-panel app-sheet-panel--sm w-full max-h-[85dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-w-[26rem] sm:rounded-3xl"
+      >
         <AppSheetHeader
-          title={tr(editing ? "Edit Bekas" : "Tambah Bekas", editing ? "Edit Box" : "Add Box")}
+          title={tr(editing ? "Edit Bekas" : "Tambah Bekas / Kotak", editing ? "Edit Box" : "Add Box / Container")}
           eyebrow={tr("Barang Saya", "My Inventory")}
           onClose={onClose}
           action={
-            <button type="submit" form="inventory-cont-form" disabled={saving || !name.trim()} className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60">
+            <button
+              type="submit"
+              form="inventory-cont-form"
+              disabled={saving || !name.trim()}
+              className="px-2 py-1 text-base font-bold text-[var(--accent)] transition hover:opacity-80 disabled:opacity-50"
+            >
               {saving ? tr("Menyimpan…", "Saving…") : tr("Simpan", "Save")}
             </button>
           }
         />
-        <form id="inventory-cont-form" onSubmit={submit} className="space-y-3 px-4 pb-4 pt-1 sm:px-6 sm:pb-6 sm:pt-0">
+        <form id="inventory-cont-form" onSubmit={submit} className="space-y-4 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
           <div>
-            <label className="mb-1 block text-xs font-medium text-[var(--muted)]" htmlFor="cont-name">{tr("Nama bekas *", "Box name *")}</label>
-            <input id="cont-name" required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} maxLength={190} />
+            <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="cont-name">
+              {tr("Nama Bekas / Kotak *", "Box / Container Name *")}
+            </label>
+            <input
+              id="cont-name"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={inputCls}
+              placeholder={tr("Cth: Kotak Plastik Merah, Toolbox A, Tupperware 5L", "e.g. Red Storage Box, Tool Box 1")}
+              maxLength={190}
+            />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-[var(--muted)]" htmlFor="cont-loc">{tr("Lokasi", "Location")}</label>
+            <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="cont-loc">
+              {tr("Lokasi Penyimpanan", "Storage Location")}
+            </label>
             <select id="cont-loc" value={locationId} onChange={(e) => setLocationId(e.target.value)} className={inputCls}>
               <option value="">{tr("— Tiada lokasi —", "— No location —")}</option>
-              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              {locations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
             </select>
+            <p className="mt-1 text-[11px] text-[var(--muted)]">
+              {tr("Bekas akan dikaitkan dengan lokasi ini.", "Box will be associated with this location.")}
+            </p>
           </div>
         </form>
       </div>
     </div>,
-    document.body,
+    document.body
   )
 }

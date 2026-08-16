@@ -1164,6 +1164,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               icon: CalendarDays,
             },
             {
+              name: lang === "BM" ? "Barang Saya" : "My Inventory",
+              subtitle:
+                lang === "BM"
+                  ? "Jejak barang, lokasi dan bekas anda"
+                  : "Track your items, locations and boxes",
+              href: `/${sessionId}/inventory`,
+              icon: Package,
+            },
+            {
               name: "Split Bill",
               subtitle:
                 lang === "BM"
