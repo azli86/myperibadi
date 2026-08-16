@@ -131,6 +131,25 @@ async def _match_items(db: AsyncSession, *, user_id: str, name: str, limit: int 
     scored.sort(key=lambda x: -x[1])
     return [r for r, _ in scored[:limit]], False
 
+async def _split_trailing_place(db: AsyncSession, *, user_id: str, text: str):
+    """If `text` ends with an existing location or box name, return (loc, cont) for the
+    longest such suffix and shorten nothing here (caller strips by matched name length).
+    Example: `kabel hdmi ruang tamu` ends with location `ruang tamu` -> loc."""
+    tl = text.lower()
+    loc_rows = await queries.list_locations(db, user_id=user_id)
+    cont_rows = await queries.list_containers(db, user_id=user_id)
+    best_loc, best_cont = None, None
+    best_len = -1
+    for r in loc_rows:
+        n = r.name.lower().strip()
+        if n and tl.endswith(n) and len(n) > best_len:
+            best_loc, best_len = r, len(n)
+    for r in cont_rows:
+        n = r.name.lower().strip()
+        if n and tl.endswith(n) and len(n) > best_len:
+            best_cont, best_len = r, len(n)
+    return best_loc, best_cont
+
 async def _match_location(db: AsyncSession, *, user_id: str, name: str) -> Optional[models.InventoryLocation]:
     rows = await queries.list_locations(db, user_id=user_id)
     name_l = name.lower().strip()
@@ -215,8 +234,12 @@ def parse_inventory_intent(text: str) -> dict[str, Any]:
         elif any(kw in body for kw in ("rosak", "damaged", "broken", "hilang", "missing", "lost", "dipinjam", "pinjam", "loaned", "borrowed", "dibuang", "buang", "disposed", "trashed", "habis", "used")):
             # `stuff <item> rosak|damaged|...` == `<item> <status>`
             t, tl = body, body
+        elif " " in body.strip():
+            # `stuff <item> [<location/box>]` (multiple words) → create item
+            # location/box resolved at handler time when it matches an existing one
+            t, tl = "tambah barang " + body.strip(), "tambah barang " + body.strip()
         else:
-            # unknown `stuff` → search (safest default)
+            # `stuff <single word>` → search
             t, tl = "cari " + body, "cari " + body
         tl = " ".join(tl.split())
 
@@ -469,8 +492,23 @@ async def handle_inventory_message(
             location = await _match_location(db, user_id=user_id, name=entities["location_name"])
             if location is None:
                 container = await _match_container(db, user_id=user_id, name=entities["location_name"])
+        else:
+            # `stuff <item> <location/box>` — no "dalam/dekat" separator.
+            # Split a trailing location/box name (longest match wins) off the item name.
+            stripped = " ".join(name.split())
+            loc, cont = await _split_trailing_place(db, user_id=user_id, text=stripped)
+            if loc is not None or cont is not None:
+                location, container = loc, cont
+                trailing = loc.name if loc is not None else cont.name
+                name = stripped[:len(stripped) - len(trailing)].strip()
         if current_user is None:
             current_user = (await db.execute(select(models.User).where(models.User.id == user_id))).scalar_one()
+        # A box always lives in a location — inherit its location so consistency holds.
+        if container is not None and location is None:
+            loc_row = (await db.execute(select(models.InventoryLocation)
+                        .where(models.InventoryLocation.id == container.location_id))).first()
+            if loc_row and loc_row[0]:
+                location = loc_row[0]
         payload = ItemCreate(
             name=name, quantity=qty,
             location_id=location.id if location else None,
