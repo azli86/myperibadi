@@ -16,6 +16,9 @@ import {
   Image as ImageIcon,
   FolderPlus,
   BoxSelect,
+  ChevronRight,
+  LayoutGrid,
+  List as ListIcon,
 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
 import { createPortal } from "react-dom"
@@ -25,7 +28,7 @@ import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
 import { usePageAlert } from "@/hooks/usePageAlert"
-import { DesktopPageBody, DesktopPageHeader, MobileIconButton, MobilePageHeader } from "@/components/layout/PageHeader"
+import { DesktopPageAction, DesktopPageBody, DesktopPageHeader, MobileIconButton, MobilePageHeader } from "@/components/layout/PageHeader"
 
 type InvStatus = "available" | "loaned" | "missing" | "damaged" | "disposed" | "used_up"
 
@@ -72,49 +75,49 @@ const STATUS_CONFIG: Record<
   { badge: string; pillActive: string; pillInactive: string; dot: string; labelBm: string; labelEn: string }
 > = {
   available: {
-    badge: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-    pillActive: "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 ring-1 ring-emerald-500/30",
-    pillInactive: "bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)]",
+    badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+    pillActive: "bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-sm",
+    pillInactive: "border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10",
     dot: "bg-emerald-500",
     labelBm: "Ada",
     labelEn: "Available",
   },
   loaned: {
-    badge: "bg-sky-500/10 text-sky-400 border-sky-500/20",
-    pillActive: "bg-sky-500/20 text-sky-400 border-sky-500/40 ring-1 ring-sky-500/30",
-    pillInactive: "bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)]",
+    badge: "bg-sky-500/15 text-sky-400 border-sky-500/30",
+    pillActive: "bg-sky-500/20 text-sky-400 border-sky-500/50 shadow-sm",
+    pillInactive: "border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10",
     dot: "bg-sky-400",
     labelBm: "Dipinjam",
     labelEn: "Loaned",
   },
   missing: {
-    badge: "bg-rose-500/10 text-rose-400 border-rose-500/20",
-    pillActive: "bg-rose-500/20 text-rose-400 border-rose-500/40 ring-1 ring-rose-500/30",
-    pillInactive: "bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)]",
+    badge: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+    pillActive: "bg-rose-500/20 text-rose-400 border-rose-500/50 shadow-sm",
+    pillInactive: "border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10",
     dot: "bg-rose-500",
     labelBm: "Hilang",
     labelEn: "Missing",
   },
   damaged: {
-    badge: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-    pillActive: "bg-amber-500/20 text-amber-400 border-amber-500/40 ring-1 ring-amber-500/30",
-    pillInactive: "bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)]",
+    badge: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+    pillActive: "bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-sm",
+    pillInactive: "border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10",
     dot: "bg-amber-400",
     labelBm: "Rosak",
     labelEn: "Damaged",
   },
   disposed: {
-    badge: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
-    pillActive: "bg-zinc-500/20 text-zinc-300 border-zinc-500/40 ring-1 ring-zinc-500/30",
-    pillInactive: "bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)]",
+    badge: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30",
+    pillActive: "bg-zinc-500/20 text-zinc-300 border-zinc-500/50 shadow-sm",
+    pillInactive: "border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10",
     dot: "bg-zinc-400",
     labelBm: "Dilupus",
     labelEn: "Disposed",
   },
   used_up: {
-    badge: "bg-zinc-500/10 text-zinc-400 border-zinc-500/20",
-    pillActive: "bg-zinc-500/20 text-zinc-300 border-zinc-500/40 ring-1 ring-zinc-500/30",
-    pillInactive: "bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)]",
+    badge: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30",
+    pillActive: "bg-zinc-500/20 text-zinc-300 border-zinc-500/50 shadow-sm",
+    pillInactive: "border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10",
     dot: "bg-zinc-400",
     labelBm: "Habis",
     labelEn: "Used Up",
@@ -128,6 +131,22 @@ const STATUS_OPTIONS: { value: InvStatus; label: string }[] = [
   { value: "damaged", label: "Damaged" },
   { value: "disposed", label: "Disposed" },
   { value: "used_up", label: "Used Up" },
+]
+
+const CATEGORY_OPTIONS = [
+  "Electronics",
+  "Clothing",
+  "Documents",
+  "Tools",
+  "Furniture",
+  "Kitchen",
+  "Personal Care",
+  "Toys",
+  "Books",
+  "Sports",
+  "Medicines",
+  "Accessories",
+  "Other",
 ]
 
 export default function InventoryPage() {
@@ -164,6 +183,7 @@ export default function InventoryPage() {
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<"items" | "locations">("items")
+  const [displayMode, setDisplayMode] = useState<"gallery" | "list">("gallery")
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("")
   const [categoryFilter, setCategoryFilter] = useState<string>("")
@@ -268,7 +288,6 @@ export default function InventoryPage() {
   }, [locations])
 
   const totalBoxesCount = useMemo(() => containers.length, [containers])
-
   const hasActiveFilters = Boolean(search || statusFilter || categoryFilter || locationFilter)
 
   const clearAllFilters = useCallback(() => {
@@ -277,6 +296,138 @@ export default function InventoryPage() {
     setCategoryFilter("")
     setLocationFilter("")
   }, [])
+
+  // ── RENDER PHOTO GALLERY CARD ──────────────────────────────────────────────
+  const renderGalleryCard = (item: InvItem) => {
+    const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.available
+    const subtitle = [item.brand, item.category].filter(Boolean).join(" · ")
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => router.push(`/${sessionId}/inventory/${item.id}`)}
+        className="group relative flex flex-col overflow-hidden rounded-[1.35rem] sm:rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] text-left transition hover:border-[var(--accent)]/40 hover:shadow-lg active:scale-[0.98]"
+      >
+        {/* Photo Canvas */}
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-neutral-900/60 border-b border-[var(--border)]/50">
+          {item.has_image ? (
+            <img
+              src={`/api/inventory/items/${item.id}/image`}
+              alt={item.name}
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-900 via-[#181818] to-[#121212] text-neutral-500">
+              <Package className="h-10 w-10 sm:h-12 sm:w-12 opacity-40 transition-transform duration-300 group-hover:scale-110" />
+            </div>
+          )}
+
+          {/* Floating Quantity Tag (Top-Left) */}
+          <span className="absolute left-2.5 top-2.5 inline-flex items-center rounded-lg bg-black/60 backdrop-blur-md px-2 py-0.5 text-[10px] font-black text-white shadow">
+            {item.quantity} {item.unit}
+          </span>
+
+          {/* Floating Status Badge (Top-Right) */}
+          <span
+            className={cn(
+              "absolute right-2.5 top-2.5 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-black tracking-tight backdrop-blur-md shadow",
+              cfg.badge
+            )}
+          >
+            <span className={cn("h-1.5 w-1.5 rounded-full", cfg.dot)} />
+            <span>{isBm ? cfg.labelBm : item.status_label || cfg.labelEn}</span>
+          </span>
+        </div>
+
+        {/* Card Body Details */}
+        <div className="flex flex-1 flex-col justify-between p-3 sm:p-3.5">
+          <div>
+            <h4 className="truncate text-xs sm:text-sm font-black text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+              {item.name}
+            </h4>
+            <p className="mt-0.5 truncate text-[10px] sm:text-[11px] font-semibold text-[var(--muted)]">
+              {subtitle || "—"}
+            </p>
+          </div>
+
+          {/* Location & Box Tag */}
+          <div className="mt-2 flex items-center gap-1 truncate text-[10px] text-[var(--muted)]">
+            <MapPin className="h-3 w-3 shrink-0 text-emerald-400" />
+            <span className="truncate">
+              {item.location_path || tr("Tiada lokasi", "No location")}
+              {item.container_name ? ` · ${item.container_name}` : ""}
+            </span>
+          </div>
+        </div>
+      </button>
+    )
+  }
+
+  // ── RENDER COMPACT LIST ROW ────────────────────────────────────────────────
+  const renderListRow = (item: InvItem) => {
+    const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.available
+    const subtitle = [item.brand, item.category].filter(Boolean).join(" · ")
+    return (
+      <div
+        key={item.id}
+        onClick={() => router.push(`/${sessionId}/inventory/${item.id}`)}
+        className="group relative flex cursor-pointer items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 transition active:scale-[0.98] hover:border-[var(--accent)]/30 hover:bg-[var(--card-active)] shadow-sm"
+      >
+        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]">
+          {item.has_image ? (
+            <img
+              src={`/api/inventory/items/${item.id}/image`}
+              alt={item.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <Package className="h-6 w-6 text-[var(--muted)] opacity-70" />
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-1.5">
+            <p className="truncate text-xs font-black text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+              {item.name}
+            </p>
+            <span className={cn("shrink-0 rounded-full border px-2 py-0.2 text-[9px] font-bold tracking-tight", cfg.badge)}>
+              {isBm ? cfg.labelBm : item.status_label || cfg.labelEn}
+            </span>
+          </div>
+
+          {subtitle && (
+            <p className="truncate text-[11px] font-medium text-[var(--muted)]">
+              {subtitle}
+            </p>
+          )}
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px]">
+            <span className="inline-flex items-center rounded-md bg-[var(--surface-tint-strong)] px-1.5 py-0.5 font-bold text-[var(--text)]">
+              {item.quantity} {item.unit}
+            </span>
+
+            {item.location_path ? (
+              <span className="inline-flex max-w-[140px] items-center gap-1 truncate rounded-md bg-[var(--surface-tint)] px-1.5 py-0.5 text-[var(--muted)]">
+                <MapPin className="h-2.5 w-2.5 shrink-0 text-emerald-400" />
+                <span className="truncate">{item.location_path}</span>
+              </span>
+            ) : null}
+
+            {item.container_name ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-[var(--surface-tint)] px-1.5 py-0.5 text-[var(--muted)]">
+                <Boxes className="h-2.5 w-2.5 shrink-0 text-sky-400" />
+                <span>{item.container_name}</span>
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="shrink-0 pl-1 text-[var(--muted)] opacity-60">
+          <ChevronRight className="h-4 w-4" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>
@@ -292,102 +443,85 @@ export default function InventoryPage() {
           }
         />
       </div>
-      <DesktopPageHeader
-        title={tr("Barang Saya", "My Inventory")}
-        actions={
-          <button
-            onClick={openCreate}
-            className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white shadow-sm transition hover:opacity-90 active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-            {tr("Tambah Barang", "Add Item")}
-          </button>
-        }
-        className="hidden md:block"
-      />
 
-      <DesktopPageBody className="px-2 pb-28 md:px-4 md:pb-16 lg:max-w-7xl">
-        <div className="mx-auto w-full max-w-5xl space-y-5">
-          {/* ── HERO OVERVIEW CARD ── */}
-          <section className="relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-gradient-to-br from-[#1c1c1c] via-[#171717] to-[#121212] p-5 text-white shadow-lg sm:p-6">
-            {/* Ambient background glows */}
-            <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-[var(--accent)]/10 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-10 left-1/4 h-36 w-36 rounded-full bg-blue-500/10 blur-2xl" />
+      <div className="hidden md:block">
+        <DesktopPageHeader
+          title={tr("Barang Saya", "My Inventory")}
+          homeHref={`/${sessionId}`}
+          actions={
+            <DesktopPageAction onClick={openCreate}>
+              <Plus size={16} />
+              {tr("Tambah Barang", "Add Item")}
+            </DesktopPageAction>
+          }
+        />
+      </div>
 
-            <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+      {/* ── MOBILE VIEW ── */}
+      <div className="md:hidden px-1 pb-24 pt-1 space-y-4">
+        {/* Mobile Hero Card */}
+        <section className="relative overflow-hidden rounded-[1.85rem] border border-[var(--border)] bg-[#171717] p-4 text-white shadow-xl">
+          <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-[var(--accent)]/15 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-10 left-6 h-36 w-36 rounded-full bg-sky-500/10 blur-3xl" />
+
+          <div className="relative z-10 space-y-4">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-[var(--accent)]">
-                    <Package className="h-4 w-4" />
-                  </div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
-                    {tr("Ringkasan Inventori", "Inventory Overview")}
-                  </span>
-                </div>
-                <div className="mt-2 flex items-baseline gap-3">
-                  <span className="text-3xl font-black tracking-tight text-white sm:text-4xl">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400">
+                  {tr("Jumlah Keseluruhan", "Total Inventory")}
+                </p>
+                <div className="mt-1 flex items-baseline gap-2">
+                  <span className="text-3xl font-black tracking-tight text-white">
                     {summary ? summary.total_units : 0}
                   </span>
-                  <span className="text-sm font-medium text-neutral-400">
-                    {tr("Jumlah Unit Keseluruhan", "Total Units")} ({summary ? summary.total_types : 0} {tr("jenis barang", "types")})
+                  <span className="text-xs font-semibold text-neutral-400">
+                    {tr("unit", "units")} · {summary ? summary.total_types : 0} {tr("jenis", "types")}
                   </span>
                 </div>
-                <p className="mt-1 text-xs text-neutral-400">
-                  {tr(
-                    `${locations.length} lokasi berdaftar & ${containers.length} bekas/kotak penyimpanan`,
-                    `${locations.length} registered locations & ${containers.length} storage boxes`
-                  )}
+                <p className="mt-0.5 text-[11px] text-neutral-400">
+                  {locations.length} {tr("lokasi", "locations")} · {containers.length} {tr("bekas/kotak", "boxes")}
                 </p>
               </div>
 
-              {/* Quick Actions in Hero */}
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={openCreate}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 py-2 text-xs font-bold text-white shadow-md transition hover:brightness-110 active:scale-95"
-                >
-                  <Plus className="h-4 w-4" />
-                  {tr("Tambah Barang", "Add Item")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white/90 backdrop-blur transition hover:bg-white/10 active:scale-95"
-                >
-                  <MapPin className="h-3.5 w-3.5 text-neutral-300" />
-                  {tr("Lokasi", "Location")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setEditingCont(null); setDefaultContLocId(""); setShowContModal(true) }}
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white/90 backdrop-blur transition hover:bg-white/10 active:scale-95"
-                >
-                  <Boxes className="h-3.5 w-3.5 text-neutral-300" />
-                  {tr("Bekas", "Box")}
-                </button>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-white shadow-inner">
+                <Package className="h-5 w-5 text-emerald-400" />
               </div>
             </div>
 
-            {/* Status Breakdown Bar & Interactive Filter Chips */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={openCreate}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--accent)] px-3 py-2.5 text-xs font-bold text-white shadow-md transition active:scale-[0.98]"
+              >
+                <Plus className="h-4 w-4" />
+                <span>{tr("Tambah Barang", "Add Item")}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 text-xs font-bold text-white backdrop-blur transition active:scale-[0.98]"
+              >
+                <FolderPlus className="h-4 w-4 text-emerald-400" />
+                <span>{tr("Tambah Lokasi", "Add Location")}</span>
+              </button>
+            </div>
+
             {summary && (
-              <div className="relative z-10 mt-5 border-t border-white/10 pt-4">
-                <p className="mb-2.5 text-[11px] font-medium text-neutral-400">
-                  {tr("Tapis pantas mengikut status:", "Quick filter by status:")}
-                </p>
-                <div className="flex flex-wrap gap-2">
+              <div className="border-t border-white/10 pt-3">
+                <div className="no-scrollbar -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-0.5">
                   <button
                     type="button"
                     onClick={() => setStatusFilter("")}
                     className={cn(
-                      "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition",
+                      "inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold transition active:scale-95",
                       statusFilter === ""
-                        ? "bg-white text-black font-semibold shadow-sm"
-                        : "bg-white/5 text-neutral-300 hover:bg-white/10"
+                        ? "bg-white text-black shadow-sm"
+                        : "border border-white/10 bg-white/5 text-neutral-300"
                     )}
                   >
                     <span>{tr("Semua", "All")}</span>
-                    <span className="text-[11px] opacity-75">({summary.total_types})</span>
+                    <span className="opacity-75">({summary.total_types})</span>
                   </button>
 
                   {(
@@ -406,499 +540,595 @@ export default function InventoryPage() {
                         type="button"
                         onClick={() => setStatusFilter(isSelected ? "" : st.key)}
                         className={cn(
-                          "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition",
-                          isSelected
-                            ? cfg.pillActive
-                            : "border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10"
+                          "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold transition active:scale-95",
+                          isSelected ? cfg.pillActive : cfg.pillInactive
                         )}
                       >
                         <span className={cn("h-2 w-2 rounded-full", cfg.dot)} />
                         <span>{st.label}</span>
-                        <span className="text-[11px] opacity-75 font-semibold">({st.count})</span>
+                        <span className="opacity-80">({st.count})</span>
                       </button>
                     )
                   })}
-
-                  {summary.no_location > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveTab("items")
-                        setLocationFilter(locationFilter === "none" ? "" : "none")
-                      }}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition",
-                        locationFilter === "none"
-                          ? "border-amber-500/40 bg-amber-500/20 text-amber-300"
-                          : "border-white/10 bg-white/5 text-neutral-400 hover:bg-white/10"
-                      )}
-                    >
-                      <MapPin className="h-3 w-3" />
-                      <span>{tr("Tanpa lokasi", "No location")}</span>
-                      <span className="text-[11px] opacity-80">({summary.no_location})</span>
-                    </button>
-                  )}
                 </div>
               </div>
-            )}
-          </section>
-
-          {/* ── VIEW SWITCHER TABS ── */}
-          <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] pb-2">
-            <div className="flex items-center gap-1 rounded-2xl bg-[var(--surface-tint)] p-1">
-              <button
-                type="button"
-                onClick={() => setActiveTab("items")}
-                className={cn(
-                  "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition",
-                  activeTab === "items"
-                    ? "bg-[var(--card)] text-[var(--text)] shadow-sm"
-                    : "text-[var(--muted)] hover:text-[var(--text)]"
-                )}
-              >
-                <Package className="h-4 w-4" />
-                <span>{tr("Senarai Barang", "Item List")}</span>
-                <span className="rounded-full bg-[var(--surface-tint-strong)] px-2 py-0.5 text-[10px] font-semibold">
-                  {filteredItems.length}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("locations")}
-                className={cn(
-                  "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition",
-                  activeTab === "locations"
-                    ? "bg-[var(--card)] text-[var(--text)] shadow-sm"
-                    : "text-[var(--muted)] hover:text-[var(--text)]"
-                )}
-              >
-                <FolderTree className="h-4 w-4" />
-                <span>{tr("Lokasi & Bekas", "Locations & Boxes")}</span>
-                <span className="rounded-full bg-[var(--surface-tint-strong)] px-2 py-0.5 text-[10px] font-semibold">
-                  {locations.length + totalBoxesCount}
-                </span>
-              </button>
-            </div>
-
-            {/* Quick reset active filter badge */}
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={clearAllFilters}
-                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-rose-400 hover:bg-rose-500/10 transition"
-              >
-                <X className="h-3.5 w-3.5" />
-                {tr("Set Semula", "Reset Filters")}
-              </button>
             )}
           </div>
+        </section>
 
-          {/* ══════════════════════════════════════════════════════════
-              TAB 1: ITEMS LIST
-             ══════════════════════════════════════════════════════════ */}
-          {activeTab === "items" && (
-            <div className="space-y-4">
-              {/* Search & Filters */}
-              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-                <div className="relative flex-1">
-                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={tr("Cari nama, kategori, jenama, no. siri...", "Search name, category, brand, serial...")}
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] py-2.5 pl-10 pr-9 text-sm text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20"
-                    aria-label={tr("Cari barang", "Search items")}
-                  />
-                  {search && (
-                    <button
-                      type="button"
-                      onClick={() => setSearch("")}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)]"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-xs font-semibold text-[var(--text)] outline-none transition focus:border-[var(--accent)]"
-                    aria-label={tr("Tapis status", "Filter status")}
-                  >
-                    <option value="">{tr("Semua Status", "All Status")}</option>
-                    {STATUS_OPTIONS.map((s) => (
-                      <option key={s.value} value={s.value}>
-                        {isBm ? STATUS_CONFIG[s.value]?.labelBm || s.label : s.label}
-                      </option>
-                    ))}
-                  </select>
-
-                  {categories.length > 0 && (
-                    <select
-                      value={categoryFilter}
-                      onChange={(e) => setCategoryFilter(e.target.value)}
-                      className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-xs font-semibold text-[var(--text)] outline-none transition focus:border-[var(--accent)]"
-                      aria-label={tr("Tapis kategori", "Filter category")}
-                    >
-                      <option value="">{tr("Semua Kategori", "All Categories")}</option>
-                      {categories.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              </div>
-
-              {/* Category Filter Chips Carousel */}
-              {categories.length > 0 && !categoryFilter && (
-                <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-                  <span className="shrink-0 text-[11px] font-semibold text-[var(--muted)]">
-                    {tr("Kategori:", "Category:")}
-                  </span>
-                  {categories.slice(0, 8).map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setCategoryFilter(cat)}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2.5 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)]"
-                    >
-                      <Tag className="h-3 w-3 opacity-60" />
-                      {cat}
-                    </button>
-                  ))}
-                </div>
+        {/* Mobile View Switcher */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="grid flex-1 grid-cols-2 gap-1 rounded-2xl bg-[var(--surface-tint)] p-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab("items")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition active:scale-[0.98]",
+                activeTab === "items"
+                  ? "bg-[var(--card)] text-[var(--text)] shadow-sm"
+                  : "text-[var(--muted)] hover:text-[var(--text)]"
               )}
+            >
+              <Package className="h-3.5 w-3.5" />
+              <span>{tr("Barang", "Items")}</span>
+              <span className="rounded-full bg-[var(--surface-tint-strong)] px-1.5 py-0.2 text-[10px] font-bold">
+                {filteredItems.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("locations")}
+              className={cn(
+                "flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition active:scale-[0.98]",
+                activeTab === "locations"
+                  ? "bg-[var(--card)] text-[var(--text)] shadow-sm"
+                  : "text-[var(--muted)] hover:text-[var(--text)]"
+              )}
+            >
+              <FolderTree className="h-3.5 w-3.5" />
+              <span>{tr("Lokasi & Kotak", "Locations")}</span>
+              <span className="rounded-full bg-[var(--surface-tint-strong)] px-1.5 py-0.2 text-[10px] font-bold">
+                {locations.length + totalBoxesCount}
+              </span>
+            </button>
+          </div>
 
-              {/* Items List */}
-              {loading && items.length === 0 ? (
-                <div className="space-y-3 py-4">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div
-                      key={i}
-                      className="flex animate-pulse items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4"
-                    >
-                      <div className="h-14 w-14 rounded-xl bg-[var(--surface-tint-strong)]" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 w-1/3 rounded bg-[var(--surface-tint-strong)]" />
-                        <div className="h-3 w-1/2 rounded bg-[var(--surface-tint-strong)]" />
+          {activeTab === "items" && (
+            <div className="flex items-center rounded-2xl bg-[var(--surface-tint)] p-1">
+              <button
+                type="button"
+                onClick={() => setDisplayMode("gallery")}
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-xl transition",
+                  displayMode === "gallery" ? "bg-[var(--card)] text-[var(--accent)] shadow-sm" : "text-[var(--muted)]"
+                )}
+                title={tr("Paparan Galeri", "Gallery View")}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setDisplayMode("list")}
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-xl transition",
+                  displayMode === "list" ? "bg-[var(--card)] text-[var(--accent)] shadow-sm" : "text-[var(--muted)]"
+                )}
+                title={tr("Paparan Senarai", "List View")}
+              >
+                <ListIcon className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Tab 1: Items List (Mobile) */}
+        {activeTab === "items" && (
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={tr("Cari nama, jenama, no. siri...", "Search name, brand, serial...")}
+                className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] py-2.5 pl-10 pr-9 text-xs font-medium text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)]"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-[var(--muted)] hover:text-[var(--text)]"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {categories.length > 0 && (
+              <div className="no-scrollbar -mx-2 flex items-center gap-1.5 overflow-x-auto px-2 pb-0.5">
+                <button
+                  type="button"
+                  onClick={() => setCategoryFilter("")}
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold transition active:scale-95",
+                    categoryFilter === ""
+                      ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
+                      : "border border-[var(--border)] bg-[var(--card)] text-[var(--muted)]"
+                  )}
+                >
+                  <span>{tr("Semua Kategori", "All Categories")}</span>
+                </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setCategoryFilter(categoryFilter === cat ? "" : cat)}
+                    className={cn(
+                      "inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold transition active:scale-95",
+                      categoryFilter === cat
+                        ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
+                        : "border border-[var(--border)] bg-[var(--card)] text-[var(--muted)]"
+                    )}
+                  >
+                    <Tag className="h-3 w-3 opacity-60" />
+                    <span>{cat}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {hasActiveFilters && (
+              <div className="flex items-center justify-between px-1 text-[11px]">
+                <span className="text-[var(--muted)]">
+                  {tr("Menunjukkan", "Showing")} {filteredItems.length} {tr("hasil", "results")}
+                </span>
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="inline-flex items-center gap-1 font-bold text-rose-400 hover:underline"
+                >
+                  <X className="h-3 w-3" />
+                  {tr("Padam Penapis", "Reset")}
+                </button>
+              </div>
+            )}
+
+            {loading && items.length === 0 ? (
+              <div className="grid grid-cols-2 gap-2.5 py-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="aspect-[4/3] animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
+                ))}
+              </div>
+            ) : filteredItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 px-4 py-12 text-center">
+                <Package className="h-7 w-7 text-[var(--muted)]" />
+                <p className="mt-2 text-xs font-bold text-[var(--text)]">
+                  {tr("Tiada barang dijumpai", "No items found")}
+                </p>
+              </div>
+            ) : displayMode === "gallery" ? (
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                {filteredItems.map(renderGalleryCard)}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredItems.map(renderListRow)}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: Locations (Mobile) */}
+        {activeTab === "locations" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <div>
+                <h3 className="text-xs font-bold text-[var(--text)]">{tr("Hierarki Lokasi", "Locations Hierarchy")}</h3>
+                <p className="text-[11px] text-[var(--muted)]">{locations.length} {tr("lokasi", "locations")}</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
+                  className="inline-flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-bold text-[var(--text)] shadow-sm active:scale-95"
+                >
+                  <FolderPlus className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>{tr("Lokasi", "Location")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setEditingCont(null); setDefaultContLocId(""); setShowContModal(true) }}
+                  className="inline-flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-bold text-[var(--text)] shadow-sm active:scale-95"
+                >
+                  <BoxSelect className="h-3.5 w-3.5 text-sky-400" />
+                  <span>{tr("Bekas", "Box")}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {locationTree.map(({ loc, depth }) => {
+                const conts = containers.filter((c) => c.location_id === loc.id)
+                return (
+                  <div
+                    key={loc.id}
+                    className="relative rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm"
+                    style={{ marginLeft: depth ? `${depth * 14}px` : "0px" }}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-tint)] text-emerald-400">
+                          <MapPin className="h-3.5 w-3.5" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-xs text-[var(--text)]">{loc.name}</span>
+                          <p className="text-[10px] text-[var(--muted)]">
+                            {loc.item_types} {tr("jenis", "types")} · {loc.item_units} {tr("unit", "units")}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => { setEditingLoc(null); setDefaultParentLocId(String(loc.id)); setShowLocModal(true) }}
+                          className="rounded-lg p-1.5 text-[var(--muted)]"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setEditingCont(null); setDefaultContLocId(String(loc.id)); setShowContModal(true) }}
+                          className="rounded-lg p-1.5 text-[var(--muted)]"
+                        >
+                          <Boxes className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setEditingLoc(loc); setShowLocModal(true) }}
+                          className="rounded-lg p-1.5 text-[var(--muted)]"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : filteredItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 px-4 py-16 text-center">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--muted)]">
-                    <Package className="h-8 w-8" />
-                  </div>
-                  <h3 className="mt-4 text-base font-bold text-[var(--text)]">
-                    {hasActiveFilters
-                      ? tr("Tiada barang dijumpai", "No items matched your filter")
-                      : tr("Belum ada barang direkodkan", "No items recorded yet")}
-                  </h3>
-                  <p className="mt-1 max-w-sm text-xs text-[var(--muted)]">
-                    {hasActiveFilters
-                      ? tr(
-                          "Cuba ubah kata carian atau batalkan penapis status / kategori.",
-                          "Try adjusting your search terms or clearing status/category filters."
-                        )
-                      : tr(
-                          "Mula rekod perabot, peralatan, gajet, dan stok anda supaya mudah dicari bila-bila masa.",
-                          "Start keeping track of your tools, furniture, gadgets and household items."
-                        )}
-                  </p>
-                  {hasActiveFilters ? (
-                    <button
-                      type="button"
-                      onClick={clearAllFilters}
-                      className="mt-5 inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-2 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)]"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                      {tr("Padam Carian & Penapis", "Clear Filters")}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={openCreate}
-                      className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[var(--accent)] px-4 py-2.5 text-xs font-bold text-white shadow-md transition hover:opacity-90 active:scale-95"
-                    >
-                      <Plus className="h-4 w-4" />
-                      {tr("Tambah Barang Pertama", "Add First Item")}
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-2">
-                  {filteredItems.map((item) => {
-                    const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.available
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => router.push(`/${sessionId}/inventory/${item.id}`)}
-                        className="group relative flex cursor-pointer items-center gap-3.5 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3.5 transition-all duration-150 hover:border-[var(--accent)]/40 hover:bg-[var(--card-active)] hover:shadow-md active:scale-[0.99]"
-                      >
-                        {/* Thumbnail */}
-                        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--surface-tint)] border border-[var(--border)]">
-                          {item.has_image ? (
-                            <img
-                              src={`/api/inventory/items/${item.id}/image`}
-                              alt={item.name}
-                              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-white/[0.04] to-transparent text-[var(--muted)]">
-                              <Package className="h-6 w-6 opacity-70" />
-                            </div>
-                          )}
-                        </div>
 
-                        {/* Content */}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <h4 className="truncate text-sm font-black text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
-                              {item.name}
-                            </h4>
-                            <span
-                              className={cn(
-                                "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-tight",
-                                cfg.badge
-                              )}
-                            >
-                              {isBm ? cfg.labelBm : item.status_label || cfg.labelEn}
-                            </span>
-                          </div>
-
-                          {/* Brand / Model / Category */}
-                          <p className="mt-0.5 truncate text-[11px] font-medium text-[var(--muted)]">
-                            {[item.brand, item.category].filter(Boolean).join(" · ") || tr("Am", "General")}
-                          </p>
-
-                          {/* Location & Quantity pills */}
-                          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-                            <span className="inline-flex items-center gap-1 rounded-md bg-[var(--surface-tint-strong)] px-2 py-0.5 font-bold text-[var(--text)]">
-                              {item.quantity} {item.unit}
-                            </span>
-
-                            {item.location_path ? (
-                              <span className="inline-flex max-w-[170px] items-center gap-1 truncate rounded-md bg-[var(--surface-tint)] px-1.5 py-0.5 text-[10px] text-[var(--muted)]">
-                                <MapPin className="h-3 w-3 shrink-0 text-emerald-400" />
-                                <span className="truncate">{item.location_path}</span>
-                              </span>
-                            ) : null}
-
-                            {item.container_name ? (
-                              <span className="inline-flex items-center gap-1 rounded-md bg-[var(--surface-tint)] px-1.5 py-0.5 text-[10px] text-[var(--muted)]">
-                                <Boxes className="h-3 w-3 shrink-0 text-sky-400" />
-                                <span>{item.container_name}</span>
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-
-                        {/* Quick action buttons */}
-                        <div
-                          className="flex shrink-0 items-center gap-0.5 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 transition"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                    {conts.length > 0 && (
+                      <div className="mt-2.5 flex flex-wrap items-center gap-1 border-t border-[var(--border)]/60 pt-2">
+                        {conts.map((c) => (
                           <button
+                            key={c.id}
                             type="button"
-                            onClick={(e) => openEdit(item, e)}
-                            aria-label={tr("Edit barang", "Edit item")}
-                            className="rounded-lg p-1.5 text-[var(--muted)] hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] transition"
+                            onClick={() => { setEditingCont(c); setShowContModal(true) }}
+                            className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[10px] font-medium text-[var(--text)] active:scale-95"
                           >
-                            <Pencil className="h-3.5 w-3.5" />
+                            <Boxes className="h-3 w-3 text-sky-400" />
+                            <span>{c.name}</span>
+                            <span className="rounded bg-[var(--surface-tint-strong)] px-1 text-[9px] font-bold text-[var(--muted)]">
+                              {c.item_types}
+                            </span>
                           </button>
-                          <button
-                            type="button"
-                            onClick={(e) => deleteItem(item, e)}
-                            aria-label={tr("Padam barang", "Delete item")}
-                            className="rounded-lg p-1.5 text-rose-400/80 hover:bg-rose-500/10 hover:text-rose-400 transition"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
+                        ))}
                       </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── DESKTOP VIEW (FULL WIDTH PORTAL PAGE BODY) ── */}
+      <div className="hidden md:block">
+        <DesktopPageBody className="space-y-5">
+          {/* Desktop Hero */}
+          <section className="relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[#171717] p-6 text-white shadow-xl">
+            <div className="pointer-events-none absolute -right-12 -top-12 h-56 w-56 rounded-full bg-[var(--accent)]/15 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-12 left-10 h-48 w-48 rounded-full bg-sky-500/10 blur-3xl" />
+
+            <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-neutral-400">
+                  {tr("Pengurusan Inventori & Barang", "Inventory & Storage Management")}
+                </p>
+                <div className="mt-1.5 flex items-baseline gap-3">
+                  <span className="text-3xl font-black text-white lg:text-4xl">
+                    {summary ? summary.total_units : 0}
+                  </span>
+                  <span className="text-sm font-semibold text-neutral-300">
+                    {tr("Jumlah Unit Keseluruhan", "Total Units Tracked")} · {summary ? summary.total_types : 0} {tr("Jenis Barang", "Item Types")}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-neutral-400">
+                  {locations.length} {tr("lokasi penyimpanan", "locations")} · {containers.length} {tr("bekas/kotak", "boxes")}
+                </p>
+              </div>
+
+              {/* Status Chips */}
+              {summary && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStatusFilter("")}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition hover:opacity-90 active:scale-95",
+                      statusFilter === "" ? "bg-white text-black shadow-md" : "border border-white/10 bg-white/5 text-neutral-300"
+                    )}
+                  >
+                    <span>{tr("Semua", "All")}</span>
+                    <span>({summary.total_types})</span>
+                  </button>
+
+                  {(
+                    [
+                      { key: "available", label: tr("Ada", "Available"), count: summary.available },
+                      { key: "loaned", label: tr("Dipinjam", "Loaned"), count: summary.loaned },
+                      { key: "missing", label: tr("Hilang", "Missing"), count: summary.missing },
+                      { key: "damaged", label: tr("Rosak", "Damaged"), count: summary.damaged },
+                    ] as const
+                  ).map((st) => {
+                    const isSelected = statusFilter === st.key
+                    const cfg = STATUS_CONFIG[st.key as InvStatus]
+                    return (
+                      <button
+                        key={st.key}
+                        type="button"
+                        onClick={() => setStatusFilter(isSelected ? "" : st.key)}
+                        className={cn(
+                          "inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-xs font-bold transition hover:opacity-90 active:scale-95",
+                          isSelected ? cfg.pillActive : cfg.pillInactive
+                        )}
+                      >
+                        <span className={cn("h-2 w-2 rounded-full", cfg.dot)} />
+                        <span>{st.label}</span>
+                        <span>({st.count})</span>
+                      </button>
                     )
                   })}
                 </div>
               )}
             </div>
-          )}
+          </section>
 
-          {/* ══════════════════════════════════════════════════════════
-              TAB 2: LOCATIONS & CONTAINERS MANAGEMENT
-             ══════════════════════════════════════════════════════════ */}
-          {activeTab === "locations" && (
-            <div className="space-y-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-[var(--text)]">
-                    {tr("Hierarki Lokasi & Kotak Storan", "Location & Storage Hierarchy")}
-                  </h3>
-                  <p className="text-xs text-[var(--muted)]">
-                    {tr(
-                      "Susun barang mengikut bilik, rak, dan kotak supaya mudah dikesan.",
-                      "Organize items by rooms, shelves, and containers for easy retrieval."
+          {/* Desktop Search & Tabs Toolbar */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <div className="grid grid-cols-2 gap-1 rounded-2xl bg-[var(--surface-tint)] p-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("items")}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition active:scale-[0.98]",
+                    activeTab === "items"
+                      ? "bg-[var(--card)] text-[var(--text)] shadow-sm"
+                      : "text-[var(--muted)] hover:text-[var(--text)]"
+                  )}
+                >
+                  <Package className="h-4 w-4" />
+                  <span>{tr("Senarai Barang", "Items List")}</span>
+                  <span className="rounded-full bg-[var(--surface-tint-strong)] px-2 py-0.5 text-[10px] font-bold">
+                    {filteredItems.length}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("locations")}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition active:scale-[0.98]",
+                    activeTab === "locations"
+                      ? "bg-[var(--card)] text-[var(--text)] shadow-sm"
+                      : "text-[var(--muted)] hover:text-[var(--text)]"
+                  )}
+                >
+                  <FolderTree className="h-4 w-4" />
+                  <span>{tr("Lokasi & Bekas", "Locations & Boxes")}</span>
+                  <span className="rounded-full bg-[var(--surface-tint-strong)] px-2 py-0.5 text-[10px] font-bold">
+                    {locations.length + totalBoxesCount}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Display Mode Toggle */}
+              {activeTab === "items" && (
+                <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--card)] p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setDisplayMode("gallery")}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition",
+                      displayMode === "gallery" ? "bg-[var(--surface-tint-strong)] text-[var(--text)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--text)]"
                     )}
-                  </p>
+                    title={tr("Paparan Galeri Foto", "Photo Gallery View")}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                    <span>{tr("Galeri", "Gallery")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDisplayMode("list")}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition",
+                      displayMode === "list" ? "bg-[var(--surface-tint-strong)] text-[var(--text)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--text)]"
+                    )}
+                    title={tr("Paparan Senarai", "List View")}
+                  >
+                    <ListIcon className="h-3.5 w-3.5" />
+                    <span>{tr("Senarai", "List")}</span>
+                  </button>
                 </div>
+              )}
 
-                <div className="flex items-center gap-2">
+              {/* Search Bar */}
+              <div className="relative w-64">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={tr("Cari barang...", "Search items...")}
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] py-2 pl-9 pr-8 text-xs font-medium text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)]"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-[var(--muted)] hover:text-[var(--text)]"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {activeTab === "locations" && (
+                <>
                   <button
                     type="button"
                     onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs font-bold text-[var(--text)] shadow-sm hover:border-[var(--accent)] hover:bg-[var(--card-active)] transition"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint)]"
                   >
-                    <FolderPlus className="h-3.5 w-3.5 text-emerald-400" />
-                    {tr("Tambah Lokasi", "Add Location")}
+                    <FolderPlus className="h-4 w-4 text-emerald-400" />
+                    <span>{tr("Tambah Lokasi", "Add Location")}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => { setEditingCont(null); setDefaultContLocId(""); setShowContModal(true) }}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs font-bold text-[var(--text)] shadow-sm hover:border-[var(--accent)] hover:bg-[var(--card-active)] transition"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint)]"
                   >
-                    <BoxSelect className="h-3.5 w-3.5 text-sky-400" />
-                    {tr("Tambah Bekas", "Add Box")}
+                    <BoxSelect className="h-4 w-4 text-sky-400" />
+                    <span>{tr("Tambah Bekas", "Add Box")}</span>
                   </button>
-                </div>
-              </div>
+                </>
+              )}
+            </div>
+          </div>
 
-              {locations.length === 0 && containers.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 px-4 py-14 text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--muted)]">
-                    <MapPin className="h-6 w-6" />
-                  </div>
-                  <h4 className="mt-3 text-sm font-bold text-[var(--text)]">
-                    {tr("Belum ada lokasi atau kotak dicipta", "No locations or boxes yet")}
-                  </h4>
-                  <p className="mt-1 max-w-sm text-xs text-[var(--muted)]">
-                    {tr(
-                      "Cipta lokasi induk (cth: Bilik Stor, Ruang Tamu) dan anak lokasi (cth: Rak A, Laci 2).",
-                      "Create primary locations (e.g. Storeroom, Living Room) and sub-locations (e.g. Shelf 1, Drawer 2)."
+          {/* Desktop Categories Toolbar */}
+          {categories.length > 0 && activeTab === "items" && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCategoryFilter("")}
+                className={cn(
+                  "rounded-full px-3.5 py-1.5 text-xs font-bold transition",
+                  categoryFilter === ""
+                    ? "bg-[var(--text)] text-[var(--bg)]"
+                    : "border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
+                )}
+              >
+                {tr("Semua Kategori", "All")} ({items.length})
+              </button>
+              {categories.map((cat) => {
+                const count = items.filter((i) => i.category === cat).length
+                const isCatSelected = categoryFilter === cat
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setCategoryFilter(isCatSelected ? "" : cat)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition",
+                      isCatSelected
+                        ? "bg-[var(--text)] text-[var(--bg)]"
+                        : "border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
                     )}
-                  </p>
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 py-2 text-xs font-bold text-white shadow-sm"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      {tr("Cipta Lokasi", "Create Location")}
-                    </button>
-                  </div>
+                  >
+                    <Tag className="h-3 w-3 opacity-60" />
+                    <span>{cat}</span>
+                    <span className="opacity-70">({count})</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Desktop Items (Photo Gallery / List) */}
+          {activeTab === "items" && (
+            <div>
+              {loading && items.length === 0 ? (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                    <div key={i} className="aspect-[4/3] animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
+                  ))}
+                </div>
+              ) : filteredItems.length === 0 ? (
+                <div className="rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 p-12 text-center text-sm text-[var(--muted)]">
+                  {tr("Tiada barang dijumpai.", "No items found.")}
+                </div>
+              ) : displayMode === "gallery" ? (
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5">
+                  {filteredItems.map(renderGalleryCard)}
                 </div>
               ) : (
-                <div className="space-y-2.5">
-                  {locationTree.map(({ loc, depth }) => {
-                    const conts = containers.filter((c) => c.location_id === loc.id)
-                    return (
-                      <div
-                        key={loc.id}
-                        className={cn(
-                          "relative rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3.5 transition hover:border-[var(--accent)]/30 hover:shadow-sm",
-                          depth > 0 && "before:absolute before:-left-3 before:top-1/2 before:h-4 before:w-3 before:-translate-y-1/2 before:rounded-bl-lg before:border-b before:border-l before:border-[var(--border)]"
-                        )}
-                        style={{ marginLeft: depth ? `${depth * 18}px` : "0px" }}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-tint)] text-emerald-400">
-                              <MapPin className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-sm text-[var(--text)]">{loc.name}</span>
-                                {depth > 0 && (
-                                  <span className="rounded bg-[var(--surface-tint)] px-1.5 py-0.5 text-[9px] font-semibold text-[var(--muted)]">
-                                    {tr("Sub-lokasi", "Sub-location")}
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-[11px] font-medium text-[var(--muted)]">
-                                {loc.item_types} {tr("jenis", "types")} · {loc.item_units} {tr("unit barang", "units")}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Action icons for location */}
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingLoc(null)
-                                setDefaultParentLocId(String(loc.id))
-                                setShowLocModal(true)
-                              }}
-                              title={tr("Tambah sub-lokasi", "Add sub-location")}
-                              className="rounded-lg p-1.5 text-xs text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)] transition"
-                            >
-                              <Plus className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingCont(null)
-                                setDefaultContLocId(String(loc.id))
-                                setShowContModal(true)
-                              }}
-                              title={tr("Tambah bekas dalam lokasi ini", "Add container here")}
-                              className="rounded-lg p-1.5 text-xs text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)] transition"
-                            >
-                              <Boxes className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => { setEditingLoc(loc); setShowLocModal(true) }}
-                              title={tr("Edit lokasi", "Edit location")}
-                              className="rounded-lg p-1.5 text-xs text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)] transition"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Containers / Boxes in this Location */}
-                        {conts.length > 0 && (
-                          <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-[var(--border)]/60 pt-2.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] mr-1">
-                              {tr("Bekas:", "Boxes:")}
-                            </span>
-                            {conts.map((c) => (
-                              <div
-                                key={c.id}
-                                className="group/box inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-1 text-xs font-medium text-[var(--text)] transition hover:border-sky-500/40"
-                              >
-                                <Boxes className="h-3 w-3 text-sky-400" />
-                                <span>{c.name}</span>
-                                <span className="rounded-full bg-[var(--surface-tint-strong)] px-1.5 py-0.2 text-[10px] font-bold text-[var(--muted)]">
-                                  {c.item_types}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => { setEditingCont(c); setShowContModal(true) }}
-                                  className="ml-0.5 opacity-60 hover:opacity-100"
-                                >
-                                  <Pencil className="h-2.5 w-2.5" />
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                <div className="space-y-2">
+                  {filteredItems.map(renderListRow)}
                 </div>
               )}
             </div>
           )}
-        </div>
-      </DesktopPageBody>
 
-      {/* ── MODALS ── */}
+          {/* Desktop Locations Grid */}
+          {activeTab === "locations" && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {locationTree.map(({ loc, depth }) => {
+                const conts = containers.filter((c) => c.location_id === loc.id)
+                return (
+                  <div
+                    key={loc.id}
+                    className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-emerald-400">
+                          <MapPin className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-black text-[var(--text)]">{loc.name}</h4>
+                          <span className="text-xs text-[var(--muted)]">
+                            {loc.item_types} {tr("jenis", "types")} · {loc.item_units} {tr("unit", "units")}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => { setEditingLoc(loc); setShowLocModal(true) }}
+                          className="rounded-lg p-1.5 text-[var(--muted)] hover:text-[var(--text)]"
+                          title={tr("Edit", "Edit")}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {conts.length > 0 && (
+                      <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-[var(--border)]/60 pt-2.5">
+                        {conts.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => { setEditingCont(c); setShowContModal(true) }}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-1 text-xs font-semibold text-[var(--text)] transition hover:border-[var(--accent)]"
+                          >
+                            <Boxes className="h-3.5 w-3.5 text-sky-400" />
+                            <span>{c.name}</span>
+                            <span className="rounded bg-[var(--surface-tint-strong)] px-1.5 text-[10px] font-bold text-[var(--muted)]">
+                              {c.item_types}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </DesktopPageBody>
+      </div>
+
+      {/* ── MODAL SHEETS ── */}
       {showForm && (
         <ItemForm
           item={editing}
@@ -1092,7 +1322,6 @@ function ItemForm({
           }
         />
         <form id="inventory-item-form" onSubmit={submit} className="space-y-4 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
-          {/* Image preview & upload */}
           <div className="flex items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3">
             <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
               {imagePreview ? (
@@ -1186,14 +1415,15 @@ function ItemForm({
               <label className={labelCls} htmlFor="inv-cat">
                 {tr("Kategori", "Category")}
               </label>
-              <input
+              <select
                 id="inv-cat"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className={inputCls}
-                placeholder="Alatan, Elektronik, Perabot"
-                maxLength={80}
-              />
+              >
+                <option value="">{tr("— Pilih kategori —", "— Select category —")}</option>
+                {CATEGORY_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
             <div>
               <label className={labelCls} htmlFor="inv-status">
