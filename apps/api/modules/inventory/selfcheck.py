@@ -92,6 +92,10 @@ async def run() -> None:
                 assert "Padam" in r
                 assert "dipadam" in await handle_inventory_message(db, user_id=user.id, text="sah", channel=ch)
                 assert await handle_inventory_message(db, user_id=user.id, text="makan 15", channel=ch) is None, "non-inventory passthrough"
+            # create location / container
+            assert "Stor *" in await handle_inventory_message(db, user_id=user.id, text="tambah stor Ruang Tamu", channel="whatsapp")
+            assert "Kotak *" in await handle_inventory_message(db, user_id=user.id, text="tambah kotak Kotak A dalam ruang tamu", channel="whatsapp")
+            assert "tidak dijumpai" in await handle_inventory_message(db, user_id=user.id, text="tambah kotak Z dalam tempat x", channel="whatsapp")
             print("SELF-CHECK PASS")
         finally:
             for t in TABLES:

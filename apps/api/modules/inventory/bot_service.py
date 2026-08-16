@@ -197,6 +197,17 @@ def parse_inventory_intent(text: str) -> dict[str, Any]:
     if m:
         return {"intent": "inventory_delete_item", "confidence": 0.9, "entities": {"item_name": m.group(1).strip()}}
 
+    # create location / container: "tambah stor ruang tamu", "tambah lokasi dapur",
+    # "tambah kotak kabel dalam stor", "tambah stor baru bilik bawah"
+    m = re.search(r"^(?:tambah|buat|cipta)\s+(stor|kotak|bekas|rak|lokasi)\s+(.+?)(?:\s+(?:dalam|dekat|di|dalam|pada)\s+(.+))?$", tl)
+    if m:
+        kind = m.group(1)
+        name = m.group(2).strip()
+        parent = (m.group(3) or "").strip()
+        if kind in {"stor", "lokasi", "rak"}:
+            return {"intent": "inventory_create_location", "confidence": 0.92, "entities": {"location_name": name, "parent_name": parent or None}}
+        return {"intent": "inventory_create_container", "confidence": 0.92, "entities": {"container_name": name, "location_name": parent or None}}
+
     m = re.search(r"(?:pindah|letak|pindahkan)\s+(.+?)\s+(?:ke|dalam|dekat)\s+(.+)$", tl)
     if m:
         return {"intent": "inventory_move_item", "confidence": 0.9, "entities": {"item_name": m.group(1).strip(), "destination": m.group(2).strip()}}
@@ -356,6 +367,8 @@ def _help_text() -> str:
         "📦 *Barang Saya*\n\n"
         "Anda boleh cuba:\n"
         "• tambah barang kabel HDMI 2\n"
+        "• tambah stor Ruang Tamu\n"
+        "• tambah kotak Kabel dalam stor\n"
         "• cari kabel HDMI\n"
         "• kabel HDMI dekat mana\n"
         "• barang dalam Kotak Elektronik A\n"
@@ -435,6 +448,38 @@ async def handle_inventory_message(
         item = await service.create_item(db, current_user=current_user, payload=payload, source_channel=channel)
         loc_txt = await _fmt_location(db, user_id=user_id, item=item)
         return f"✅ *{item.name}* direkodkan\nKuantiti: {_fmt_qty(item)}\nLokasi: {loc_txt}"
+
+    if intent == "inventory_create_location":
+        name = entities["location_name"]
+        parent = None
+        if entities.get("parent_name"):
+            parent = await _match_location(db, user_id=user_id, name=entities["parent_name"])
+            if parent is None:
+                return (f"Stor induk *{entities['parent_name']}* tidak dijumpai.\n"
+                        "Cipta stor induk dahulu, contoh: tambah stor Ruang Tamu")
+        if current_user is None:
+            current_user = (await db.execute(select(models.User).where(models.User.id == user_id))).scalar_one()
+        loc = await service.create_location(db, current_user=current_user, payload=LocationCreate(
+            name=name, parent_id=parent.id if parent else None,
+        ))
+        extra = f"\nStor induk: *{parent.name}*" if parent else ""
+        return f"✅ Stor *{loc.name}* direkodkan{extra}\nSekarang boleh: tambah barang X dalam {loc.name}"
+
+    if intent == "inventory_create_container":
+        name = entities["container_name"]
+        location = None
+        if entities.get("location_name"):
+            location = await _match_location(db, user_id=user_id, name=entities["location_name"])
+            if location is None:
+                return (f"Stor *{entities['location_name']}* tidak dijumpai.\n"
+                        "Cipta stor dahulu, contoh: tambah stor Ruang Tamu")
+        if current_user is None:
+            current_user = (await db.execute(select(models.User).where(models.User.id == user_id))).scalar_one()
+        ctn = await service.create_container(db, current_user=current_user, payload=ContainerCreate(
+            name=name, location_id=location.id if location else None,
+        ))
+        extra = f" dalam *{location.name}*" if location else ""
+        return f"✅ Kotak *{ctn.name}* direkodkan{extra}\nSekarang boleh: tambah barang X dalam {ctn.name}"
 
     if intent == "inventory_search_item":
         items, _ = await _match_items(db, user_id=user_id, name=entities["item_name"])
