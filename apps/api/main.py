@@ -13615,6 +13615,9 @@ app.include_router(create_split_bills_router(get_current_user=get_current_user))
 from modules.bnpl import create_bnpl_router
 app.include_router(create_bnpl_router(get_current_user=get_current_user))
 
+from modules.inventory import create_inventory_router
+app.include_router(create_inventory_router(get_current_user=get_current_user))
+
 from modules.places import create_places_router
 app.include_router(
     create_places_router(

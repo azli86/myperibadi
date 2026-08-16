@@ -1354,3 +1354,112 @@ class SplitBillPayment(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
     split: Mapped["SplitBill"] = relationship(back_populates="payments")
+
+# ─── Barang Saya (Personal Inventory) ────────────────────────────────────────
+
+class InventoryLocation(Base):
+    __tablename__ = "inventory_locations"
+    __table_args__ = (
+        Index("ix_inventory_locations_user_parent", "user_id", "parent_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(190), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    parent_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("inventory_locations.id"), nullable=True)
+    icon: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    color: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class InventoryContainer(Base):
+    __tablename__ = "inventory_containers"
+    __table_args__ = (
+        UniqueConstraint("user_id", "code", name="uq_inventory_container_user_code"),
+        Index("ix_inventory_containers_user_location", "user_id", "location_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(190), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    location_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("inventory_locations.id"), nullable=True, index=True)
+    code: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)  # reserved for future QR
+    image_object_key: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class InventoryItem(Base):
+    __tablename__ = "inventory_items"
+    __table_args__ = (
+        Index("ix_inventory_items_user_updated", "user_id", "updated_at"),
+        Index("ix_inventory_items_user_status", "user_id", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(190), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    category: Mapped[Optional[str]] = mapped_column(String(80), nullable=True, index=True)
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    unit: Mapped[str] = mapped_column(String(20), nullable=False, default="unit")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="available", index=True)
+    brand: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    model: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    serial_number: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    purchase_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    purchase_price: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    image_object_key: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    location_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("inventory_locations.id"), nullable=True, index=True)
+    container_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("inventory_containers.id"), nullable=True, index=True)
+    transaction_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("transactions.id", ondelete="SET NULL"), nullable=True, index=True)
+    warranty_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("warranty_devices.id", ondelete="SET NULL"), nullable=True, index=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class InventoryMovement(Base):
+    __tablename__ = "inventory_movements"
+    __table_args__ = (
+        Index("ix_inventory_movements_item_created", "inventory_item_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    inventory_item_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("inventory_items.id", ondelete="CASCADE"), nullable=False)
+    movement_type: Mapped[str] = mapped_column(String(30), nullable=False)  # created|moved|quantity_changed|status_changed
+    from_location_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    from_container_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    to_location_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    to_container_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    quantity_before: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    quantity_after: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    status_before: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    status_after: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    source_channel: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    moved_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+class InventoryConversationState(Base):
+    """Barang Saya conversation state for bot channels (whatsapp/telegram/chat)."""
+    __tablename__ = "inventory_conversation_states"
+    __table_args__ = (
+        UniqueConstraint("user_id", "channel", name="uq_inventory_state_user_channel"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    channel: Mapped[str] = mapped_column(String(20), nullable=False)  # whatsapp|telegram|chat
+    active_intent: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    pending_action: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    draft_data: Mapped[str] = mapped_column(Text, nullable=False, default="{}")  # JSON
+    candidate_ids: Mapped[Optional[str]] = mapped_column(Text, nullable=True)    # JSON list
+    confirmation_token_hash: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

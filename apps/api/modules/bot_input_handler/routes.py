@@ -353,6 +353,21 @@ async def process_bot_input_route(
     if split_intercept:
         return {"reply": whatsapp_service.format_corporate_bot_reply(split_intercept)}
 
+    # ---- Barang Saya (Personal Inventory) commands — intercepted before txn handling. ----
+    if text and not has_location:
+        from modules.inventory.bot_service import handle_inventory_message
+        try:
+            inventory_reply = await handle_inventory_message(
+                db, user_id=user_id, text=text, channel=source_channel,
+            )
+        except Exception as exc:
+            print(f"[inventory] error user={user_id} channel={source_channel}: {type(exc).__name__}")
+            inventory_reply = (
+                "Maaf, Barang Saya tidak dapat diakses buat masa ini. Tiada perubahan dilakukan. Cuba lagi sebentar."
+            )
+        if inventory_reply:
+            return {"reply": inventory_reply}
+
     # 1. Process Text (Transaction / Command / Bot)
     # If media is replying to an existing transaction, caption must not create a new transaction.
     txn_context = None

@@ -698,6 +698,16 @@ function getMobileHeaderMeta(
     };
   }
 
+  if (pathname === `${base}/inventory` || pathname.startsWith(`${base}/inventory/`)) {
+    return {
+      title: "Barang Saya",
+      subtitle: "Rekod barang & lokasi simpanan",
+      eyebrow: "Peribadi",
+      icon: Package,
+      backHref: null,
+    };
+  }
+
   if (pathname === `${base}/warranty` || pathname.startsWith(`${base}/warranty/`)) {
     return {
       title: "Waranti Saya",
@@ -948,6 +958,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { name: "Loan", href: `/${sessionId}/loan`, icon: CreditCard },
     { name: lang === "BM" ? "Kenderaan" : "My Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
     { name: lang === "BM" ? "Waranti Saya" : "My Warranty", href: `/${sessionId}/warranty`, icon: Shield },
+    { name: lang === "BM" ? "Barang Saya" : "My Inventory", href: `/${sessionId}/inventory`, icon: Package },
     { name: lang === "BM" ? "Acara Saya" : "My Events", href: `/${sessionId}/event`, icon: CalendarDays },
     { name: "Split Bill", href: `/${sessionId}/split-bills`, icon: Users },
     { name: "BNPL", href: `/${sessionId}/bnpl`, icon: CreditCard },
@@ -977,6 +988,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const desktopPersonalNavigation = [
     { name: lang === "BM" ? "Kenderaan" : "My Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
     { name: lang === "BM" ? "Waranti Saya" : "My Warranty", href: `/${sessionId}/warranty`, icon: Shield },
+    { name: lang === "BM" ? "Barang Saya" : "My Inventory", href: `/${sessionId}/inventory`, icon: Package },
     { name: lang === "BM" ? "Acara Saya" : "My Events", href: `/${sessionId}/event`, icon: CalendarDays },
     { name: "Split Bill", href: `/${sessionId}/split-bills`, icon: Users },
     { name: "BNPL", href: `/${sessionId}/bnpl`, icon: CreditCard },
