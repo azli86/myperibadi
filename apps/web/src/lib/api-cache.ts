@@ -43,7 +43,10 @@ export function readApiCache<T>(url: string, token: string | null | undefined, t
     if (!raw) return null
     const parsed = JSON.parse(raw) as CacheEnvelope<T>
     if (!parsed || typeof parsed.savedAt !== "number") return null
-    if (Date.now() - parsed.savedAt > ttlMs) return null
+    if (Date.now() - parsed.savedAt > ttlMs) {
+      storage.removeItem(cacheKey(url, token))
+      return null
+    }
     return parsed.data
   } catch {
     return null
@@ -53,11 +56,17 @@ export function readApiCache<T>(url: string, token: string | null | undefined, t
 export function writeApiCache<T>(url: string, token: string | null | undefined, data: T) {
   const storage = getStorage()
   if (!storage) return
+  const key = cacheKey(url, token)
+  const value = JSON.stringify({ savedAt: Date.now(), data } satisfies CacheEnvelope<T>)
   try {
-    const envelope: CacheEnvelope<T> = { savedAt: Date.now(), data }
-    storage.setItem(cacheKey(url, token), JSON.stringify(envelope))
+    storage.setItem(key, value)
   } catch {
-    // Cache is best-effort only.
+    // Cache is disposable: clear it rather than starving auth/account storage.
+    for (let i = storage.length - 1; i >= 0; i--) {
+      const storedKey = storage.key(i)
+      if (storedKey?.startsWith(`${CACHE_PREFIX}:`)) storage.removeItem(storedKey)
+    }
+    try { storage.setItem(key, value) } catch { /* best-effort cache */ }
   }
 }
 

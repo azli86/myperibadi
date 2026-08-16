@@ -101,7 +101,7 @@ export default function LoanDetailPage() {
   const { resolvedTheme } = useTheme()
   const isLight = resolvedTheme === "light"
   const isBM = lang === "BM"
-  const tr = (bm: string, en: string) => (isBM ? bm : en)
+  const tr = useCallback((bm: string, en: string) => (isBM ? bm : en), [isBM])
   const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
   const showAlertRef = useRef(showAlert)
 

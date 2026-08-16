@@ -21,8 +21,10 @@ import {
   Trash2,
   RefreshCw,
   ChevronRight,
+  Camera,
 } from "lucide-react"
 import { useLang } from "@/lib/lang"
+import { UserAvatar } from "@/components/ui/UserAvatar"
 import { getAccessToken, setAuthTokens, logoutAuthSession } from "@/lib/auth-session"
 import { MobilePageHeader, DesktopPageBody, DesktopPageHeader } from "@/components/layout/PageHeader"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
@@ -37,6 +39,7 @@ type Profile = {
   email: string
   bot_personality: string
   has_password?: boolean
+  avatar_url?: string | null
 }
 
 type TokenResponse = {
@@ -77,6 +80,7 @@ export default function AccountPage() {
   const [confirmText, setConfirmText] = useState("")
   const [dangerBusy, setDangerBusy] = useState(false)
   const [dangerError, setDangerError] = useState("")
+  const [avatarUploading, setAvatarUploading] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [stats, setStats] = useState<{
     transaction_count: number
@@ -106,6 +110,7 @@ export default function AccountPage() {
           name: data.name || "",
           email: data.email || "",
           bot_personality: data.bot_personality || "",
+          avatar_url: data.avatar_url || null,
         }
         setProfile(normalized)
         setName(normalized.name)
@@ -172,6 +177,7 @@ export default function AccountPage() {
         name: updated.name || "",
         email: updated.email || "",
         bot_personality: updated.bot_personality || "",
+        avatar_url: updated.avatar_url || null,
       }
       setProfile(normalized)
       setName(normalized.name)
@@ -189,6 +195,47 @@ export default function AccountPage() {
       showAlert(tr("Kemaskini Gagal", "Update Failed"), finalMessage, "error")
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !profile) return
+    if (file.size > 2_097_152) {
+      setError(tr("Imej terlalu besar. Maksimum 2 MB.", "Image too large. Maximum 2 MB."))
+      return
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError(tr("Hanya PNG, JPG atau WEBP dibenarkan.", "Only PNG, JPG or WEBP allowed."))
+      return
+    }
+    setAvatarUploading(true)
+    setError("")
+    try {
+      const token = getAccessToken()
+      const form = new FormData()
+      form.append("file", file)
+      const res = await fetch("/api/users/me/avatar", {
+        method: "POST",
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      })
+      if (!res.ok) {
+        const apiErr = await res.json().catch(() => ({}))
+        throw new Error(apiErr?.detail || "Upload failed")
+      }
+      const data = await res.json()
+      setProfile((prev) => (prev ? { ...prev, avatar_url: data.avatar_url } : prev))
+      setMessage(tr("Gambar profil berjaya dikemaskini.", "Profile picture updated."))
+      showAlert(tr("Berjaya", "Success"), tr("Gambar profil berjaya dikemaskini.", "Profile picture updated."), "success")
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : tr("Gagal muat naik gambar.", "Upload failed.")
+      setError(msg)
+      showAlert(tr("Muat Naik Gagal", "Upload Failed"), msg, "error")
+    } finally {
+      setAvatarUploading(false)
+      e.target.value = ""
     }
   }
 
@@ -471,6 +518,40 @@ export default function AccountPage() {
         </div>
         <div className="p-6">
           <form onSubmit={handleSave} className="space-y-5">
+            {/* Avatar upload */}
+            <div className="flex items-center gap-4">
+              <UserAvatar name={name} size={72} src={profile?.avatar_url} />
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="avatar-upload"
+                  className={cn(
+                    "inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-3.5 py-2 text-xs font-bold text-[var(--text)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface-tint)] active:scale-[0.98]",
+                    avatarUploading && "pointer-events-none opacity-60",
+                  )}
+                >
+                  {avatarUploading ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Camera size={14} />
+                  )}
+                  {avatarUploading
+                    ? tr("Memuat naik...", "Uploading...")
+                    : tr("Tukar Gambar Profil", "Change Profile Picture")}
+                </label>
+                <input
+                  id="avatar-upload"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                  disabled={avatarUploading}
+                />
+                <p className="text-[0.625rem] font-medium text-[var(--muted)]">
+                  {tr("PNG, JPG atau WEBP. Maksimum 2 MB.", "PNG, JPG or WEBP. Maximum 2 MB.")}
+                </p>
+              </div>
+            </div>
+
             <TextField
               label={t.fullName}
               value={name}
@@ -815,6 +896,28 @@ export default function AccountPage() {
               {/* ── Profile sheet ── */}
               {activeMobileSheet === "profile" && (
                 <form onSubmit={handleSave} className="space-y-5 pb-2">
+                  {/* Avatar upload (mobile) */}
+                  <div className="flex items-center gap-4">
+                    <UserAvatar name={name} size={64} src={profile?.avatar_url} />
+                    <label
+                      htmlFor="avatar-upload-mobile"
+                      className={cn(
+                        "inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-3.5 py-2 text-xs font-bold text-[var(--text)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface-tint)] active:scale-[0.98]",
+                        avatarUploading && "pointer-events-none opacity-60",
+                      )}
+                    >
+                      {avatarUploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+                      {avatarUploading ? tr("Memuat naik...", "Uploading...") : tr("Tukar Gambar", "Change Picture")}
+                    </label>
+                    <input
+                      id="avatar-upload-mobile"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handleAvatarUpload}
+                      disabled={avatarUploading}
+                    />
+                  </div>
                   <TextField
                     label={t.fullName}
                     value={name}

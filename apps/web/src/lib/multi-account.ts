@@ -42,7 +42,17 @@ export function getAccounts(): AccountProfile[] {
 function saveAccounts(accounts: AccountProfile[]) {
   const s = store()
   if (!s) return
-  s.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts))
+  const value = JSON.stringify(accounts)
+  try {
+    s.setItem(ACCOUNTS_STORAGE_KEY, value)
+  } catch (error) {
+    // API responses are disposable; free their quota before saving account credentials.
+    for (let i = s.length - 1; i >= 0; i--) {
+      const key = s.key(i)
+      if (key?.startsWith("budget-by-digitalport:api:")) s.removeItem(key)
+    }
+    s.setItem(ACCOUNTS_STORAGE_KEY, value)
+  }
 }
 
 export function getActiveEmail(): string | null {

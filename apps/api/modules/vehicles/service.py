@@ -461,9 +461,7 @@ async def update_vehicle(
     if "current_odometer" in data and payload.current_odometer is not None:
         if payload.current_odometer < 0:
             raise HTTPException(status_code=400, detail="Odometer cannot be negative.")
-        current = float(vehicle.current_odometer) if vehicle.current_odometer is not None else None
-        if current is not None and payload.current_odometer < current - 0.05:
-            raise HTTPException(status_code=400, detail="New odometer cannot be lower than the latest reading.")
+        # Profile edit is the correction path: allow fixing an accidentally high reading.
         await _maybe_bump_odometer(
             db,
             vehicle,
@@ -472,6 +470,7 @@ async def update_vehicle(
             source="manual",
             source_id=None,
         )
+        vehicle.current_odometer = payload.current_odometer
     vehicle.updated_at = datetime.utcnow()
     await db.commit()
     await db.refresh(vehicle)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import secrets
 from datetime import datetime, timedelta
 from typing import Any, Awaitable, Callable
@@ -27,6 +28,9 @@ async def register_route(
     hash_email_verify_token: Callable[[str], str],
 ) -> dict[str, str]:
     normalized_email = normalize_email(user_in.email)
+    # ponytail: registration toggle; flip REGISTRATION_ENABLED=true in .env to reopen account creation.
+    if os.getenv("REGISTRATION_ENABLED", "true").strip().lower() not in {"1", "true", "yes", "on"}:
+        raise HTTPException(status_code=403, detail="Pendaftaran akaun baru tidak dibuka buat masa ini.")
     await enforce_auth_rate_limit("register", request, identity=normalized_email)
     await validate_turnstile_token(user_in.turnstile_token)
     if is_disposable_email(normalized_email):

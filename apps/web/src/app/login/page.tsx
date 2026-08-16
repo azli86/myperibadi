@@ -290,13 +290,6 @@ export default function LoginPage() {
               )}
             </button>
 
-            <Link 
-              href="/register" 
-              className="block w-full py-4 mt-4 bg-[var(--auth-secondary-button-bg)] text-[var(--auth-secondary-button-text)] rounded-full font-bold text-lg text-center hover:bg-[var(--auth-secondary-button-hover)] active:scale-[0.98] transition-all"
-            >
-              {lang === "BM" ? "Daftar akaun" : "Create account"}
-            </Link>
-
             <button
               type="button"
               onClick={() => setShowLoginForm(true)}

@@ -137,7 +137,7 @@ async def handle_telegram_loanx_command_route(
         selected_wallet = _match_wallet_by_hint(wallets, wallet_hint) if wallet_hint else None
         if not selected_wallet:
             selected_wallet = await _select_transaction_wallet(db, current_user, None)
-        await _ensure_wallet_can_cover_expense(db, current_user, selected_wallet, pay_amount)
+        await _ensure_wallet_can_cover_expense(db, wallet=selected_wallet, current_user=current_user, amount=pay_amount)
 
         household_id = await _ensure_current_user_household(db, current_user)
         category_id = await _get_loan_payment_category_id(db, current_user.id, household_id)

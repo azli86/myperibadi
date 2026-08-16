@@ -17,6 +17,13 @@ type Step = 1 | 2 | 3
 
 export default function RegisterPage() {
   const router = useRouter()
+  // ponytail: registration closed at UI level only; remove redirect to reopen. API stays open for Google sign-in account creation.
+  React.useEffect(() => { router.replace("/login") }, [router])
+  return null
+}
+
+function RegisterForm() {
+  const router = useRouter()
   const { lang, setLang } = useLang()
   const { theme, resolvedTheme } = useTheme()
   

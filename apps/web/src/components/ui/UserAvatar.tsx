@@ -7,6 +7,7 @@ type UserAvatarProps = {
   size?: number
   className?: string
   active?: boolean
+  src?: string | null
 }
 
 /**
@@ -18,8 +19,35 @@ export function UserAvatar({
   size = 32,
   className,
   active = false,
+  src,
 }: UserAvatarProps) {
   const uid = `ua-${size}-${(name || "u").replace(/\W/g, "").slice(0, 12)}`
+
+  if (src) {
+    return (
+      <span
+        className={cn(
+          "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full",
+          "shadow-sm ring-1 ring-black/10 bg-[var(--surface-tint)]",
+          active && "ring-2 ring-[var(--text)]/30",
+          className,
+        )}
+        style={{ width: size, height: size }}
+        title={name || undefined}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt={name || ""}
+          width={size}
+          height={size}
+          className="block h-full w-full object-cover"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+        />
+      </span>
+    )
+  }
 
   return (
     <span

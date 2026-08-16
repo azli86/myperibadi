@@ -53,6 +53,7 @@ import { DashboardVehicleHeroRow } from "@/components/dashboard/DashboardVehicle
 import { DashboardBnplHeroRow } from "@/components/dashboard/DashboardBnplHeroRow"
 import { CatPlayground } from "@/components/dashboard/CatPlayground"
 import { WeatherClockMini } from "@/components/layout/SidebarWeatherClock"
+import { UserAvatar } from "@/components/ui/UserAvatar"
 import Onboarding from "@/components/onboarding/Onboarding"
 import { ChartContainer } from "@/components/ui/chart"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
@@ -211,6 +212,7 @@ type DashboardStats = {
 type DashboardUserProfile = {
   name?: string | null
   email?: string | null
+  avatar_url?: string | null
   show_hero_amounts?: boolean | null
   cycle_start_day?: number | null
   cycle_mode?: "day" | "category" | string | null
@@ -407,6 +409,7 @@ export default function Dashboard() {
   const [wallets, setWallets] = useState<DashboardWallet[]>([])
   const [budgetItems, setBudgetItems] = useState<DashboardBudgetItem[]>([])
   const [userName, setUserName] = useState("User")
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [onboardingPending, setOnboardingPending] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
   const [addForm, setAddForm] = useState({
@@ -512,6 +515,7 @@ export default function Dashboard() {
     setShowHeroAmounts((prev) => {
       const nextValue = !prev
       void persistHeroAmountPreference(nextValue)
+      window.dispatchEvent(new CustomEvent("budget-hero-amounts", { detail: { show: nextValue } }))
       return nextValue
     })
   }
@@ -520,6 +524,7 @@ export default function Dashboard() {
     const applyUserProfile = (me: DashboardUserProfile | null) => {
       if (!me) return
       setUserName(me?.name || me?.email?.split("@")?.[0] || "User")
+      setAvatarUrl(me?.avatar_url || null)
       if (typeof me?.show_hero_amounts === "boolean") {
         setShowHeroAmounts(me.show_hero_amounts)
       }
@@ -2080,9 +2085,12 @@ export default function Dashboard() {
               <WeatherClockMini
                 lang={lang}
                 title={
-                  <h2 className="mt-0.5 min-w-0 truncate text-2xl font-black leading-tight text-[var(--text)]">
-                    {displayName}
-                  </h2>
+                  <div className="mt-0.5 flex min-w-0 items-center gap-2.5">
+                    <UserAvatar name={displayName} size={34} src={avatarUrl} />
+                    <h2 className="min-w-0 truncate text-2xl font-black leading-tight text-[var(--text)]">
+                      {displayName}
+                    </h2>
+                  </div>
                 }
               />
               <div className="flex shrink-0 items-center gap-2.5">
@@ -2403,9 +2411,12 @@ export default function Dashboard() {
             <WeatherClockMini
               lang={lang}
               title={
-                <h1 className="mt-0.5 min-w-0 truncate text-lg font-black tracking-tight text-[var(--text)]">
-                  {displayName}
-                </h1>
+                <div className="mt-0.5 flex min-w-0 items-center gap-2.5">
+                  <UserAvatar name={displayName} size={30} src={avatarUrl} />
+                  <h1 className="min-w-0 truncate text-lg font-black tracking-tight text-[var(--text)]">
+                    {displayName}
+                  </h1>
+                </div>
               }
             />
 
@@ -3180,7 +3191,13 @@ export default function Dashboard() {
 
                       <Link
                         href={`/${sessionId}/wallet-settings`}
-                        onClick={requestWalletDeckClose}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          requestWalletDeckClose()
+                          window.setTimeout(() => {
+                            window.location.href = `/${sessionId}/wallet-settings`
+                          }, 0)
+                        }}
                         className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm font-bold text-[var(--text)] transition active:scale-[0.99]"
                       >
                         <Wallet size={15} strokeWidth={2.4} />

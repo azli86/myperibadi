@@ -56,6 +56,7 @@ class UserResponse(UserBase):
     email_verified: Optional[bool] = None
     verification_email_sent_at: Optional[datetime] = None
     verification_email_resend_count: int = 0
+    avatar_url: Optional[str] = None
 
     class Config:
         from_attributes = True

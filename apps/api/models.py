@@ -51,6 +51,7 @@ class User(Base):
     def email_verified(self) -> bool:
         return self.email_verified_at is not None
     language: Mapped[str] = mapped_column(String(5), default="BM") # 'EN' or 'BM'
+    avatar_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # profile picture stored in R2 (public CDN URL)
     onboarding_done: Mapped[bool] = mapped_column(Boolean, default=True)  # False => new user sees onboarding intro after first login
     category_language: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)  # 'bm' | 'en' | 'manual' (auto-seeded category set)
     theme_mode: Mapped[str] = mapped_column(String(12), default="system") # dark / light / system

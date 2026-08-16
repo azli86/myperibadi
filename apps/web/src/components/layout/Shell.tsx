@@ -174,6 +174,8 @@ type ShellUser = {
   verification_email_sent_at?: string;
   verification_email_resend_count?: number;
   created_at?: string;
+  avatar_url?: string | null;
+  show_hero_amounts?: boolean | null;
 };
 
 type ShellCategory = {
@@ -1514,6 +1516,19 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   );
   const [pinStatusReady, setPinStatusReady] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
+
+  // Keep sidebar amount-visibility in sync with the dashboard eye toggle (no refresh needed).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ show: boolean }>).detail;
+      if (typeof detail?.show === "boolean") {
+        setUser((u) => (u ? { ...u, show_hero_amounts: detail.show } : u));
+      }
+    };
+    window.addEventListener("budget-hero-amounts", handler);
+    return () => window.removeEventListener("budget-hero-amounts", handler);
+  }, []);
 
   // Always start at top on route change. Bottom nav uses scroll:false and
   // router.back() would otherwise restore the previous mid-page scroll.
@@ -3190,7 +3205,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-tint)]",
                 )}
               >
-                <UserAvatar name={displayName} size={30} />
+                <UserAvatar name={displayName} size={30} src={user?.avatar_url} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[0.75rem] font-bold leading-tight text-[var(--text)]">{displayName}</p>
                   <p className="mt-0.5 truncate text-[0.56rem] font-medium text-[var(--muted)]">
@@ -3213,7 +3228,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   >
                     <div className="border-b border-[var(--border)] px-3.5 py-3">
                       <div className="flex items-center gap-2.5">
-                        <UserAvatar name={displayName} size={36} />
+                        <UserAvatar name={displayName} size={36} src={user?.avatar_url} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-bold text-[var(--text)]">{displayName}</p>
                           <p className="mt-0.5 truncate text-[0.62rem] font-medium text-[var(--muted)]">
@@ -3655,8 +3670,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       </p>
                     </div>
                     <p className="mt-3 truncate text-[1.7rem] font-bold leading-none tracking-tight text-white tabular-nums">
-                      <span className="balance-hero-label mr-1 text-[0.42em] font-medium align-top text-[#c5d0e0]">RM</span>
-                      {stats.balance.toLocaleString("en-MY", { minimumFractionDigits: 2 })}
+                      {user?.show_hero_amounts !== false ? (
+                        <>
+                          <span className="balance-hero-label mr-1 text-[0.42em] font-medium align-top text-[#c5d0e0]">RM</span>
+                          {stats.balance.toLocaleString("en-MY", { minimumFractionDigits: 2 })}
+                        </>
+                      ) : "RM ••••••"}
                     </p>
                   </div>
                   <span
@@ -3686,7 +3705,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       <Link
                         key={cell.key}
                         href={`/${sessionId}/transactions?date=${cell.key}`}
-                        title={`${cell.count} ${lang === "EN" ? "transactions" : "transaksi"} · RM ${cell.amount.toFixed(2)}`}
+                        title={`${cell.count} ${lang === "EN" ? "transactions" : "transaksi"}${user?.show_hero_amounts !== false ? ` · RM ${cell.amount.toFixed(2)}` : ""}`}
                         className={cn("mx-auto flex h-8 w-8 items-center justify-center rounded-full transition", cell.count ? "bg-amber-400 text-slate-950 shadow-sm hover:bg-amber-300" : "bg-[#232323] text-white hover:bg-[#303030]")} 
                       >
                         <span className="block text-[0.62rem] font-bold">{cell.day}</span>
@@ -3782,7 +3801,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         "flex w-full items-center gap-2.5 rounded-xl bg-[var(--surface-tint)] px-3 py-2 text-left transition-all active:scale-[0.98]", 
                       )}
                     >
-                      <UserAvatar name={displayName || activeEmail} size={32} />
+                      <UserAvatar name={displayName || activeEmail} size={32} src={user?.avatar_url} />
                       <div className="min-w-0 flex-1">
                         <span className={cn("block truncate text-xs font-black leading-tight", mobileSheetTitleClass)}>
                           {displayName}
@@ -4023,26 +4042,33 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     </span>
                   </button>
 
-                  <section className="grid grid-cols-2 gap-3">
+                  <section className="grid grid-cols-3 gap-2">
                     {[
-                      { name: "Help", href: `/${sessionId}/help`, icon: HelpCircle },
-                      { name: "Setting", href: `/${sessionId}/settings`, icon: Settings },
+                      { name: lang === "BM" ? "Bantuan" : "Help", href: `/${sessionId}/help`, icon: HelpCircle },
+                      { name: lang === "BM" ? "Tetapan" : "Settings", href: `/${sessionId}/settings`, icon: Settings },
                     ].map((item) => (
                       <button
                         key={item.href}
                         type="button"
                         onClick={() => requestMobileMenuCloseThen(() => router.push(item.href))}
-                        className={cn(
-                          "flex items-center gap-3 rounded-2xl p-4 text-left transition active:scale-[0.98]",
-                          "bg-[var(--card)] text-[var(--text)]",
-                        )}
+                        className="flex min-w-0 flex-col items-center gap-2 rounded-2xl bg-[var(--card)] p-3 text-center text-[var(--text)] transition active:scale-[0.98]"
                       >
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)]">
-                          <item.icon size={24} strokeWidth={1.85} />
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)]">
+                          <item.icon size={21} strokeWidth={1.85} />
                         </span>
-                        <span className="text-sm font-bold">{item.name}</span>
+                        <span className="truncate text-xs font-bold">{item.name}</span>
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => requestMobileMenuCloseThen(() => setShowAddAccountModal(true))}
+                      className="flex min-w-0 flex-col items-center gap-2 rounded-2xl bg-[var(--card)] p-3 text-center text-[var(--text)] transition active:scale-[0.98]"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)]">
+                        <UserPlus size={21} strokeWidth={1.85} />
+                      </span>
+                      <span className="truncate text-xs font-bold">{lang === "BM" ? "Tambah Akaun" : "Add Account"}</span>
+                    </button>
                   </section>
                 </div>
               </div>

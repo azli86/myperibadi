@@ -871,6 +871,7 @@ async def ensure_database_schema():
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token_expires TIMESTAMP NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_email_resend_count INTEGER NOT NULL DEFAULT 0"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_reason VARCHAR(20) NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NULL"))
         elif conn.dialect.name in {"mysql", "mariadb"}:
             index_exists = await conn.execute(
                 text(
@@ -894,6 +895,7 @@ async def ensure_database_schema():
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verify_token_expires TIMESTAMP NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS verification_email_resend_count INTEGER NOT NULL DEFAULT 0"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_reason VARCHAR(20) NULL"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NULL"))
         if conn.dialect.name != "postgresql":
             print(f"INFO:  PostgreSQL-only schema patch block skipped for {conn.dialect.name}.")
         else:
@@ -1286,6 +1288,41 @@ async def start_inactivity_deactivation_task():
             except Exception as e:
                 print(f"[inactivity] Error: {e}")
     asyncio.create_task(_inactivity_loop())
+
+@app.on_event("startup")
+async def start_expired_token_cleanup_task():
+    """Background task: clear expired reset/verify/email-change tokens daily.
+    ponytail: piggybacks on the inactivity loop pattern; move to pg_cron if loops multiply."""
+    async def _token_cleanup_loop():
+        while True:
+            await asyncio.sleep(24 * 3600)  # daily
+            try:
+                async with database.SessionLocal() as db:
+                    now = datetime.utcnow()
+                    r = await db.execute(
+                        sa_delete(models.User).where(
+                            models.User.reset_token.is_not(None),
+                            models.User.reset_token_expires < now,
+                        ).values(reset_token=None, reset_token_expires=None)
+                    )
+                    r2 = await db.execute(
+                        sa_delete(models.User).where(
+                            models.User.email_verify_token.is_not(None),
+                            models.User.email_verify_token_expires < now,
+                        ).values(email_verify_token=None, email_verify_token_expires=None)
+                    )
+                    r3 = await db.execute(
+                        sa_delete(models.User).where(
+                            models.User.email_change_token.is_not(None),
+                            models.User.email_change_token_expires < now,
+                        ).values(email_change_token=None, email_change_token_expires=None)
+                    )
+                    if r.rowcount or r2.rowcount or r3.rowcount:
+                        print(f"[token-cleanup] cleared {r.rowcount} reset, {r2.rowcount} verify, {r3.rowcount} email-change")
+                    await db.commit()
+            except Exception as e:
+                print(f"[token-cleanup] Error: {e}")
+    asyncio.create_task(_token_cleanup_loop())
 
 
 app.add_middleware(
@@ -2241,6 +2278,10 @@ async def _handle_google_login(
         )
     )
     user = result.scalars().first()
+
+    # ponytail: registration toggle; flip REGISTRATION_ENABLED=true in .env to reopen account creation.
+    if user is None and os.getenv("REGISTRATION_ENABLED", "true").strip().lower() not in {"1", "true", "yes", "on"}:
+        raise HTTPException(status_code=403, detail="Pendaftaran akaun baru tidak dibuka buat masa ini.")
 
     if user:
         if not user.firebase_uid:
@@ -10504,6 +10545,38 @@ async def upload_category_icon(
         if not url:
             raise storage_service.StorageError("R2_CDN_DOMAIN tidak dikonfigurasi.")
         return {"url": url}
+    except storage_service.StorageValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except storage_service.StorageError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+@app.post("/users/me/avatar")
+async def upload_user_avatar(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    payload = await file.read(2_097_153)
+    if len(payload) > 2_097_152:
+        raise HTTPException(status_code=413, detail="Imej terlalu besar. Maksimum 2 MB.")
+    try:
+        mime_type, extension = storage_service.validate_receipt_file(file.filename, file.content_type, payload)
+        if mime_type == "application/pdf":
+            raise storage_service.StorageValidationError("Hanya PNG, JPG atau WEBP dibenarkan.")
+        object_key = storage_service.build_avatar_object_key(current_user.id, extension)
+        await asyncio.to_thread(storage_service.upload_receipt_object, object_key, payload, mime_type, filename=file.filename)
+        url = storage_service.public_cdn_url(object_key)
+        if not url:
+            raise storage_service.StorageError("R2_CDN_DOMAIN tidak dikonfigurasi.")
+        old_key = current_user.avatar_url
+        current_user.avatar_url = url
+        await db.commit()
+        if old_key and old_key.startswith("http") and "/avatars/" in old_key:
+            try:
+                await asyncio.to_thread(storage_service.delete_receipt_object, old_key.split("/avatars/")[-1])
+            except Exception:
+                pass
+        return {"avatar_url": url}
     except storage_service.StorageValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except storage_service.StorageError as exc:
