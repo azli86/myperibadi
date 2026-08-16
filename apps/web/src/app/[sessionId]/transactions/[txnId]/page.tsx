@@ -9,6 +9,7 @@ import {
   Download,
   Edit3,
   Loader2,
+  Package,
   Trash2,
   Undo2,
   Users,
@@ -321,6 +322,8 @@ export default function TransactionDetailPage() {
     currency?: string | null
   } | null>(null)
   const [splitLoaded, setSplitLoaded] = useState(false)
+  const [invAdded, setInvAdded] = useState(false)
+  const [invAdding, setInvAdding] = useState(false)
   const [receiptDownloading, setReceiptDownloading] = useState(false)
   const [editForm, setEditForm] = useState<{
     description: string
@@ -769,6 +772,29 @@ export default function TransactionDetailPage() {
       )
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const addTxnToInventory = async () => {
+    if (!txn || invAdding) return
+    setInvAdding(true)
+    try {
+      const token = getAccessToken()
+      const res = await fetch("/api/inventory/items", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({
+          name: txn.vendor_or_source,
+          quantity: 1,
+          purchase_date: txn.txn_date,
+          purchase_price: Number(txn.amount),
+          transaction_id: txn.id,
+        }),
+      })
+      if (res.ok) setInvAdded(true)
+    } finally {
+      setInvAdding(false)
     }
   }
 
@@ -1626,6 +1652,46 @@ export default function TransactionDetailPage() {
                 <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
               </Link>
             )
+          ) : null}
+
+          {/* Barang Saya: offer to record this purchase as an item (expense, non-transfer, user opt-in) */}
+          {txn && txn.type === "expense" && !isWalletTransfer && !txn.is_debt_movement && !txn.is_refund && !invAdded ? (
+            <button
+              type="button"
+              onClick={addTxnToInventory}
+              disabled={invAdding}
+              className="mt-3 flex w-full items-center gap-3 rounded-[16px] border border-dashed border-[var(--border)] bg-[var(--card)] p-3.5 text-left transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30 disabled:opacity-50"
+            >
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600">
+                {invAdding ? <Loader2 size={18} className="animate-spin" /> : <Package size={18} />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+                  {lang === "BM" ? "Barang Saya" : "My Inventory"}
+                </span>
+                <span className="mt-0.5 block text-sm font-bold text-[var(--text)]">
+                  {lang === "BM" ? "Tambah ke Barang Saya" : "Add to My Inventory"}
+                </span>
+                <span className="mt-0.5 block text-xs font-semibold text-[var(--muted)]">
+                  {lang === "BM" ? "Rekod pembelian ini sebagai barang" : "Record this purchase as an item"}
+                </span>
+              </span>
+              <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
+            </button>
+          ) : invAdded ? (
+            <div className="mt-3 flex items-center gap-3 rounded-[16px] border border-emerald-500/20 bg-emerald-500/5 p-3.5">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600">
+                <Package size={18} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold text-[var(--text)]">
+                  {lang === "BM" ? "Ditambah ke Barang Saya" : "Added to My Inventory"}
+                </span>
+              </span>
+              <Link href={`/${sessionId}/inventory`} className="shrink-0 text-xs font-bold text-[var(--accent)] hover:underline">
+                {lang === "BM" ? "Lihat" : "View"}
+              </Link>
+            </div>
           ) : null}
 
           <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">

@@ -285,6 +285,72 @@ async def _fmt_location(db: AsyncSession, *, user_id: str, item: models.Inventor
         return f"{path} → {cont}"
     return path or cont or "Tiada lokasi direkodkan"
 
+# ── image+caption create ─────────────────────────────────────────────────
+
+async def create_item_with_media(
+    db: AsyncSession, *, user_id: str, channel: str, entities: dict[str, Any],
+    media_payload: bytes | None, media_object_key: str | None,
+    media_mime_type: str | None, media_file_name: str | None,
+) -> str:
+    """Create an inventory item from image+caption flow. Uploads photo via storage_service."""
+    import storage_service
+    name = entities.get("item_name") or ""
+    if not name:
+        return "Sila nyatakan nama barang bersama gambar, contoh: `tambah barang kabel HDMI 2`"
+    qty = int(entities.get("quantity") or 1)
+    location = None
+    container = None
+    if entities.get("location_name"):
+        location = await _match_location(db, user_id=user_id, name=entities["location_name"])
+        if location is None:
+            container = await _match_container(db, user_id=user_id, name=entities["location_name"])
+    user = (await db.execute(select(models.User).where(models.User.id == user_id))).scalar_one()
+    payload = ItemCreate(
+        name=name, quantity=qty,
+        location_id=location.id if location else None,
+        container_id=container.id if container else None,
+    )
+    item = await service.create_item(db, current_user=user, payload=payload, source_channel=channel)
+    # attach image
+    object_key = None
+    try:
+        if media_payload:
+            mime_type, extension = storage_service.validate_receipt_file(media_file_name, media_mime_type, media_payload)
+            if not mime_type.startswith("image/"):
+                raise ValueError("not image")
+            from uuid import uuid4
+            safe = "".join(ch if ch.isalnum() else "_" for ch in (media_file_name or "item")[:60]) or "item"
+            object_key = f"inventory/{user_id}/{item.id}/{uuid4().hex}-{safe}{extension}"
+            storage_service.upload_receipt_object(object_key, media_payload, mime_type, filename=media_file_name)
+        elif media_object_key:
+            object_key = media_object_key  # already in R2
+    except Exception:
+        object_key = None  # item saved without image rather than failing whole flow
+    if object_key:
+        item.image_object_key = object_key
+        await db.commit()
+        await db.refresh(item)
+    loc_txt = await _fmt_location(db, user_id=user_id, item=item)
+    photo_note = "\n📷 Gambar dilampirkan" if object_key else ""
+    return f"✅ *{item.name}* direkodkan\nKuantiti: {_fmt_qty(item)}\nLokasi: {loc_txt}{photo_note}"
+
+# ── post-transaction suggestion (WhatsApp/Telegram offer) ───────────────
+
+async def build_txn_suggestion(db: AsyncSession, *, user_id: str, txn: models.Transaction) -> str | None:
+    """Offer to record a purchase txn as an item. Returns suggestion text or None.
+    Only for plain expenses (not transfer/refund/debt/subscription/loan)."""
+    if txn.type != "expense":
+        return None
+    if getattr(txn, "is_wallet_transfer", False) or getattr(txn, "subscription_id", None):
+        return None
+    vendor = (txn.vendor_or_source or "").strip()
+    if not vendor:
+        return None
+    return (
+        "\n\n📦 Mahu tambah pembelian ini ke *Barang Saya*?\n"
+        "Balas: tambah barang " + vendor[:60]
+    )
+
 def _help_text() -> str:
     return (
         "📦 *Barang Saya*\n\n"

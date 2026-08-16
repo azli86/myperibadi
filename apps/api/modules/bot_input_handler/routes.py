@@ -368,6 +368,24 @@ async def process_bot_input_route(
         if inventory_reply:
             return {"reply": inventory_reply}
 
+    # ---- Barang Saya: image + caption "tambah barang <name> [N]" → item with photo ----
+    if has_media and text and not has_location and (media_mime_type or "").startswith("image/"):
+        from modules.inventory.bot_service import parse_inventory_intent
+        parsed_img = parse_inventory_intent(text)
+        if parsed_img["intent"] == "inventory_create_item":
+            from modules.inventory.bot_service import create_item_with_media
+            try:
+                img_reply = await create_item_with_media(
+                    db, user_id=user_id, channel=source_channel,
+                    entities=parsed_img["entities"],
+                    media_payload=media_payload, media_object_key=media_object_key,
+                    media_mime_type=media_mime_type, media_file_name=media_file_name,
+                )
+                return {"reply": img_reply}
+            except Exception as exc:
+                print(f"[inventory][img] error user={user_id}: {type(exc).__name__}")
+                return {"reply": "Maaf, gagal menyimpan barang bersama gambar. Tiada perubahan dilakukan."}
+
     # 1. Process Text (Transaction / Command / Bot)
     # If media is replying to an existing transaction, caption must not create a new transaction.
     txn_context = None
@@ -394,6 +412,16 @@ async def process_bot_input_route(
         # Keep the transaction confirmation together with the later receipt-upload reply.
         if txt_reply:
             replies.append(txt_reply)
+            # Barang Saya: offer to record a fresh purchase txn as an item (text channel only,
+            # media flow has its own caption path). Suggestion is text-only, user opts in by replying.
+            if txn_context is not None and not has_media:
+                try:
+                    from modules.inventory.bot_service import build_txn_suggestion
+                    sug = await build_txn_suggestion(db, user_id=user_id, txn=txn_context)
+                    if sug:
+                        replies.append(sug)
+                except Exception:
+                    pass
 
     # For OCR scans awaiting a category keyword, show the scanned details first
     # so the user can verify what was read before typing the keyword.

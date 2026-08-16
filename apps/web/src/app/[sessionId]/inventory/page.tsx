@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Boxes, MapPin, Package, Plus, Search, X, Loader2, Trash2, Pencil, ArrowRightLeft } from "lucide-react"
 import { useParams } from "next/navigation"
+import Link from "next/link"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
@@ -256,25 +257,27 @@ export default function InventoryPage() {
             <ul className="space-y-2">
               {items.map((item) => (
                 <li key={item.id} className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-tint)]">
-                    {item.has_image ? (
-                      <img src={`/api/inventory/items/${item.id}/image`} alt="" className="h-10 w-10 rounded-lg object-cover" />
-                    ) : (
-                      <Package className="h-5 w-5 text-[var(--muted)]" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate font-medium">{item.name}</span>
-                      <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", STATUS_BADGE[item.status])}>{item.status_label}</span>
+                  <Link href={`/${sessionId}/inventory/${item.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-tint)]">
+                      {item.has_image ? (
+                        <img src={`/api/inventory/items/${item.id}/image`} alt="" className="h-10 w-10 rounded-lg object-cover" />
+                      ) : (
+                        <Package className="h-5 w-5 text-[var(--muted)]" />
+                      )}
                     </div>
-                    <div className="truncate text-xs text-[var(--muted)]">
-                      {item.quantity} {item.unit}
-                      {item.category ? ` · ${item.category}` : ""}
-                      {item.location_path ? ` · ${item.location_path}` : ""}
-                      {item.container_name ? ` → ${item.container_name}` : ""}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="truncate font-medium">{item.name}</span>
+                        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", STATUS_BADGE[item.status])}>{item.status_label}</span>
+                      </div>
+                      <div className="truncate text-xs text-[var(--muted)]">
+                        {item.quantity} {item.unit}
+                        {item.category ? ` · ${item.category}` : ""}
+                        {item.location_path ? ` · ${item.location_path}` : ""}
+                        {item.container_name ? ` → ${item.container_name}` : ""}
+                      </div>
                     </div>
-                  </div>
+                  </Link>
                   <div className="flex shrink-0 gap-1">
                     <button onClick={() => openEdit(item)} aria-label={tr("Edit", "Edit")} className="rounded-lg p-2 hover:bg-[var(--surface-tint)]">
                       <Pencil className="h-4 w-4" />
@@ -361,15 +364,23 @@ function ItemForm({
   const [quantity, setQuantity] = useState(String(item?.quantity ?? 1))
   const [unit, setUnit] = useState(item?.unit || "unit")
   const [status, setStatus] = useState<InvStatus>(item?.status || "available")
-  const [locationId, setLocationId] = useState<string>(item?.location_path ? "" : "") // resolved below
+  const [brand, setBrand] = useState(item?.brand || "")
+  const [model, setModel] = useState("")
+  const [serial, setSerial] = useState("")
+  const [purchaseDate, setPurchaseDate] = useState("")
+  const [purchasePrice, setPurchasePrice] = useState("")
+  const [locationId, setLocationId] = useState<string>("")
   const [containerId, setContainerId] = useState<string>("")
   const [notes, setNotes] = useState(item?.notes || "")
   const [saving, setSaving] = useState(false)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { showAlert } = usePageAlert("BM")
   const showAlertRef = useRef(showAlert)
   useEffect(() => { showAlertRef.current = showAlert }, [showAlert])
 
-  // find current location id by matching path is unreliable; fetch detail for edit mode
+  // edit mode: fetch detail for ids + extra fields
   useEffect(() => {
     if (!item) return
     ;(async () => {
@@ -378,9 +389,21 @@ function ItemForm({
         const d = await res.json()
         setLocationId(d.location_id ? String(d.location_id) : "")
         setContainerId(d.container_id ? String(d.container_id) : "")
+        setBrand(d.brand || "")
+        setModel(d.model || "")
+        setSerial(d.serial_number || "")
+        setPurchaseDate(d.purchase_date || "")
+        setPurchasePrice(d.purchase_price != null ? String(d.purchase_price) : "")
+        setImagePreview(item.has_image ? `/api/inventory/items/${item.id}/image` : null)
       }
     })()
   }, [item, authHeaders])
+
+  const pickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] || null
+    setImageFile(f)
+    setImagePreview(f ? URL.createObjectURL(f) : null)
+  }
 
   const filteredContainers = containers.filter((c) => !locationId || String(c.location_id) === locationId)
 
@@ -394,6 +417,11 @@ function ItemForm({
         category: category.trim() || null,
         quantity: Math.max(0, parseInt(quantity || "1", 10) || 1),
         unit, status,
+        brand: brand.trim() || null,
+        model: model.trim() || null,
+        serial_number: serial.trim() || null,
+        purchase_date: purchaseDate || null,
+        purchase_price: purchasePrice ? parseFloat(purchasePrice) : null,
         location_id: locationId ? parseInt(locationId, 10) : null,
         container_id: containerId ? parseInt(containerId, 10) : null,
         notes: notes.trim() || null,
@@ -407,6 +435,18 @@ function ItemForm({
       if (!res.ok) {
         const p = await res.json().catch(() => null)
         throw new Error(p?.detail || "Failed")
+      }
+      // upload image if picked
+      if (imageFile) {
+        const saved = await res.json()
+        const fd = new FormData()
+        fd.append("file", imageFile)
+        await fetch(`/api/inventory/items/${saved.id}/image`, {
+          method: "POST",
+          headers: authHeaders(),
+          credentials: "include",
+          body: fd,
+        })
       }
       onSaved()
     } catch (err) {
@@ -427,6 +467,27 @@ function ItemForm({
           <button type="button" onClick={onClose} aria-label={tr("Tutup", "Close")} className="rounded-lg p-2 hover:bg-[var(--surface-tint)]"><X className="h-4 w-4" /></button>
         </div>
         <div className="space-y-3">
+          {/* image */}
+          <div className="flex items-center gap-3">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[var(--surface-tint)]">
+              {imagePreview ? (
+                <img src={imagePreview} alt="" className="h-16 w-16 object-cover" />
+              ) : (
+                <Package className="h-6 w-6 text-[var(--muted)]" />
+              )}
+            </div>
+            <div>
+              <input ref={fileInputRef} type="file" accept="image/*" onChange={pickImage} className="hidden" aria-label={tr("Gambar barang", "Item image")} />
+              <button type="button" onClick={() => fileInputRef.current?.click()} className="rounded-lg border border-[var(--border)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--surface-tint)]">
+                {tr("Pilih gambar", "Pick image")}
+              </button>
+              {imageFile && (
+                <button type="button" onClick={() => { setImageFile(null); setImagePreview(item?.has_image ? `/api/inventory/items/${item.id}/image` : null) }} className="ml-2 text-xs text-rose-500">
+                  {tr("Buang", "Remove")}
+                </button>
+              )}
+            </div>
+          </div>
           <div>
             <label className={labelCls} htmlFor="inv-name">{tr("Nama barang *", "Item name *")}</label>
             <input id="inv-name" required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} maxLength={190} />
@@ -451,6 +512,30 @@ function ItemForm({
               <select id="inv-status" value={status} onChange={(e) => setStatus(e.target.value as InvStatus)} className={inputCls}>
                 {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.bm}</option>)}
               </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls} htmlFor="inv-brand">{tr("Jenama", "Brand")}</label>
+              <input id="inv-brand" value={brand} onChange={(e) => setBrand(e.target.value)} className={inputCls} maxLength={80} />
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="inv-model">{tr("Model", "Model")}</label>
+              <input id="inv-model" value={model} onChange={(e) => setModel(e.target.value)} className={inputCls} maxLength={80} />
+            </div>
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="inv-serial">{tr("No. siri", "Serial number")}</label>
+            <input id="inv-serial" value={serial} onChange={(e) => setSerial(e.target.value)} className={inputCls} maxLength={120} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls} htmlFor="inv-date">{tr("Tarikh pembelian", "Purchase date")}</label>
+              <input id="inv-date" type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="inv-price">{tr("Harga (RM)", "Price (RM)")}</label>
+              <input id="inv-price" type="number" min={0} step="0.01" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} className={inputCls} />
             </div>
           </div>
           <div>

@@ -173,7 +173,7 @@ def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRoute
         safe_stem = "".join(ch if ch.isalnum() else "_" for ch in (file.filename or "item")[:60]) or "item"
         object_key = f"inventory/{current_user.id}/{item_id}/{uuid4().hex}-{safe_stem}{extension}"
         try:
-            storage_service.upload(object_key, payload, mime_type, filename=file.filename)
+            storage_service.upload_receipt_object(object_key, payload, mime_type, filename=file.filename)
         except Exception as exc:
             raise HTTPException(status_code=502, detail="Upload failed.") from exc
         row.image_object_key = object_key
@@ -190,7 +190,7 @@ def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRoute
         if not row.image_object_key:
             raise HTTPException(status_code=404, detail="Gambar tidak dijumpai.")
         try:
-            payload, content_type = storage_service.download(row.image_object_key)
+            payload, content_type = storage_service.download_receipt_object(row.image_object_key)
         except Exception as exc:
             raise HTTPException(status_code=404, detail="File not found.") from exc
         return Response(content=payload, media_type=content_type or "image/jpeg",
