@@ -98,6 +98,10 @@ export default function InventoryPage() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<InvItem | null>(null)
   const [saving, setSaving] = useState(false)
+  const [showLocModal, setShowLocModal] = useState(false)
+  const [showContModal, setShowContModal] = useState(false)
+  const [editingLoc, setEditingLoc] = useState<InvLocation | null>(null)
+  const [editingCont, setEditingCont] = useState<InvContainer | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -299,12 +303,28 @@ export default function InventoryPage() {
 
           {/* locations & containers */}
           <section className="mt-8">
-            <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-[var(--muted)]">
-              <MapPin className="h-4 w-4" /> {tr("Lokasi & Bekas", "Locations & Boxes")}
-            </h2>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--muted)]">
+                <MapPin className="h-4 w-4" /> {tr("Lokasi & Bekas", "Locations & Boxes")}
+              </h2>
+              <div className="flex shrink-0 gap-1.5">
+                <button
+                  onClick={() => { setEditingLoc(null); setShowLocModal(true) }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium hover:bg-[var(--surface-tint)]"
+                >
+                  <Plus className="h-3.5 w-3.5" /> {tr("Lokasi", "Location")}
+                </button>
+                <button
+                  onClick={() => { setEditingCont(null); setShowContModal(true) }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border)] px-2.5 py-1.5 text-xs font-medium hover:bg-[var(--surface-tint)]"
+                >
+                  <Plus className="h-3.5 w-3.5" /> {tr("Bekas", "Box")}
+                </button>
+              </div>
+            </div>
             {locations.length === 0 && containers.length === 0 ? (
               <p className="rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-[var(--muted)]">
-                {tr("Cipta lokasi melalui borang barang atau bot: `tambah barang kabel HDMI dalam Stor`.", "Create locations via the item form or bot: `tambah barang kabel HDMI dalam Stor`.")}
+                {tr("Cipta lokasi melalui borang barang atau butang di atas.", "Create locations via the item form or the buttons above.")}
               </p>
             ) : (
               <div className="space-y-2">
@@ -343,6 +363,27 @@ export default function InventoryPage() {
           containers={containers}
           onClose={() => setShowForm(false)}
           onSaved={() => { setShowForm(false); load() }}
+          authHeaders={authHeaders}
+          tr={tr}
+        />
+      )}
+      {showLocModal && (
+        <LocationModal
+          locations={locations}
+          editing={editingLoc}
+          onClose={() => setShowLocModal(false)}
+          onSaved={() => { setShowLocModal(false); load() }}
+          authHeaders={authHeaders}
+          tr={tr}
+        />
+      )}
+      {showContModal && (
+        <ContainerModal
+          locations={locations}
+          containers={containers}
+          editing={editingCont}
+          onClose={() => setShowContModal(false)}
+          onSaved={() => { setShowContModal(false); load() }}
           authHeaders={authHeaders}
           tr={tr}
         />
@@ -589,6 +630,158 @@ function ItemForm({
           <div>
             <label className={labelCls} htmlFor="inv-notes">{tr("Nota", "Notes")}</label>
             <textarea id="inv-notes" value={notes} onChange={(e) => setNotes(e.target.value)} className={inputCls} rows={2} />
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+// ── create location modal ────────────────────────────────────────────────────
+
+function LocationModal({ locations, editing, onClose, onSaved, authHeaders, tr }: {
+  locations: InvLocation[]
+  editing: InvLocation | null
+  onClose: () => void
+  onSaved: () => void
+  authHeaders: () => HeadersInit
+  tr: (bm: string, en: string) => string
+}) {
+  const [name, setName] = useState(editing?.name || "")
+  const [parentId, setParentId] = useState(editing?.parent_id ? String(editing.parent_id) : "")
+  const [saving, setSaving] = useState(false)
+  const { showAlert } = usePageAlert("BM")
+  const showAlertRef = useRef(showAlert)
+  useEffect(() => { showAlertRef.current = showAlert }, [showAlert])
+  const swipe = useSwipeDownToClose(onClose)
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim() || saving) return
+    setSaving(true)
+    try {
+      const res = await fetch(editing ? `/api/inventory/locations/${editing.id}` : "/api/inventory/locations", {
+        method: editing ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        credentials: "include",
+        body: JSON.stringify({ name: name.trim(), parent_id: parentId ? parseInt(parentId, 10) : null }),
+      })
+      if (!res.ok) {
+        const p = await res.json().catch(() => null)
+        throw new Error(p?.detail || "Failed")
+      }
+      onSaved()
+    } catch (err) {
+      showAlertRef.current(tr("Ralat", "Error"), err instanceof Error ? err.message : tr("Gagal simpan.", "Failed to save."), "error")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+
+  return createPortal(
+    <div className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center" onClick={onClose} onTouchMove={(e) => e.preventDefault()}>
+      <div onClick={(e) => e.stopPropagation()} data-swipe-sheet {...swipe} className="app-sheet-panel app-sheet-panel--sm w-full max-h-[82dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-w-[24rem]">
+        <AppSheetHeader
+          title={tr(editing ? "Edit Lokasi" : "Tambah Lokasi", editing ? "Edit Location" : "Add Location")}
+          eyebrow={tr("Barang Saya", "My Inventory")}
+          onClose={onClose}
+          action={
+            <button type="submit" form="inventory-loc-form" disabled={saving || !name.trim()} className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60">
+              {saving ? tr("Menyimpan…", "Saving…") : tr("Simpan", "Save")}
+            </button>
+          }
+        />
+        <form id="inventory-loc-form" onSubmit={submit} className="space-y-3 px-4 pb-4 pt-1 sm:px-6 sm:pb-6 sm:pt-0">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--muted)]" htmlFor="loc-name">{tr("Nama lokasi *", "Location name *")}</label>
+            <input id="loc-name" required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} maxLength={190} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--muted)]" htmlFor="loc-parent">{tr("Lokasi induk (pilihan)", "Parent location (optional)")}</label>
+            <select id="loc-parent" value={parentId} onChange={(e) => setParentId(e.target.value)} className={inputCls}>
+              <option value="">{tr("— Tiada induk —", "— No parent —")}</option>
+              {locations.filter((l) => !editing || l.id !== editing.id).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+            <p className="mt-1 text-[11px] text-[var(--muted)]">{tr("Contoh: Stor sebagai induk, Rak sebagai anak.", "Example: Room as parent, Shelf as child.")}</p>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+// ── create box/container modal ───────────────────────────────────────────────
+
+function ContainerModal({ locations, containers, editing, onClose, onSaved, authHeaders, tr }: {
+  locations: InvLocation[]
+  containers: InvContainer[]
+  editing: InvContainer | null
+  onClose: () => void
+  onSaved: () => void
+  authHeaders: () => HeadersInit
+  tr: (bm: string, en: string) => string
+}) {
+  const [name, setName] = useState(editing?.name || "")
+  const [locationId, setLocationId] = useState(editing?.location_id ? String(editing.location_id) : "")
+  const [saving, setSaving] = useState(false)
+  const { showAlert } = usePageAlert("BM")
+  const showAlertRef = useRef(showAlert)
+  useEffect(() => { showAlertRef.current = showAlert }, [showAlert])
+  const swipe = useSwipeDownToClose(onClose)
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim() || saving) return
+    setSaving(true)
+    try {
+      const res = await fetch(editing ? `/api/inventory/containers/${editing.id}` : "/api/inventory/containers", {
+        method: editing ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        credentials: "include",
+        body: JSON.stringify({ name: name.trim(), location_id: locationId ? parseInt(locationId, 10) : null }),
+      })
+      if (!res.ok) {
+        const p = await res.json().catch(() => null)
+        throw new Error(p?.detail || "Failed")
+      }
+      onSaved()
+    } catch (err) {
+      showAlertRef.current(tr("Ralat", "Error"), err instanceof Error ? err.message : tr("Gagal simpan.", "Failed to save."), "error")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+
+  return createPortal(
+    <div className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center" onClick={onClose} onTouchMove={(e) => e.preventDefault()}>
+      <div onClick={(e) => e.stopPropagation()} data-swipe-sheet {...swipe} className="app-sheet-panel app-sheet-panel--sm w-full max-h-[82dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-w-[24rem]">
+        <AppSheetHeader
+          title={tr(editing ? "Edit Bekas" : "Tambah Bekas", editing ? "Edit Box" : "Add Box")}
+          eyebrow={tr("Barang Saya", "My Inventory")}
+          onClose={onClose}
+          action={
+            <button type="submit" form="inventory-cont-form" disabled={saving || !name.trim()} className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60">
+              {saving ? tr("Menyimpan…", "Saving…") : tr("Simpan", "Save")}
+            </button>
+          }
+        />
+        <form id="inventory-cont-form" onSubmit={submit} className="space-y-3 px-4 pb-4 pt-1 sm:px-6 sm:pb-6 sm:pt-0">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--muted)]" htmlFor="cont-name">{tr("Nama bekas *", "Box name *")}</label>
+            <input id="cont-name" required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} maxLength={190} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-[var(--muted)]" htmlFor="cont-loc">{tr("Lokasi", "Location")}</label>
+            <select id="cont-loc" value={locationId} onChange={(e) => setLocationId(e.target.value)} className={inputCls}>
+              <option value="">{tr("— Tiada lokasi —", "— No location —")}</option>
+              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
           </div>
         </form>
       </div>
