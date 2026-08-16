@@ -32,8 +32,9 @@ async def run() -> None:
             # intent parse
             for s in ("barang", "ringkasan barang", "tambah barang kabel HDMI 2", "cari kabel",
                       "kabel HDMI dekat mana", "barang dalam Kotak Elektronik A",
-                      "pindah kabel HDMI ke Laci Meja", "kabel HDMI rosak",
-                      "bateri AA tinggal 2", "guna satu bateri AA", "padam barang kabel HDMI"):
+                      "pindah kabel HDMI ke Laci Meja",
+                      "bateri AA tinggal 2", "guna satu bateri AA", "padam barang kabel HDMI",
+                      "stuff kabel HDMI 2", "stuff cari kabel", "stuff kabel rosak"):
                 assert parse_inventory_intent(s)["intent"] != "unknown", s
             # locations + container
             l1 = await service.create_location(db, current_user=user, payload=LocationCreate(name="Rumah"))

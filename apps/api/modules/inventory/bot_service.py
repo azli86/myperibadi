@@ -207,43 +207,26 @@ def parse_inventory_intent(text: str) -> dict[str, Any]:
 
     # English `stuff` alias → map to internal command vocabulary. This keeps
     # inventory trigger distinct so it never collides with other BM commands.
+    # `stuff` only supports ADD and FIND item here; everything else is done in web.
     stuff = re.match(r"^stuff\s+(.+)$", tl)
     if stuff:
         body = stuff.group(1)
         if body in {"", "help", "bantuan"}:
             t, tl = "stuff help", "stuff help"
-        elif re.match(r"^(stor|kotak|bekas|rak|lokasi)\s+", body):
-            t, tl = "tambah " + body, "tambah " + body
-        elif re.match(r"^(barang|item)\s+", body):
-            # `stuff barang kabel` / `stuff item kabel` == `tambah barang kabel`
-            noun = re.sub(r"^(barang|item)\s+", "", body)
-            t, tl = "tambah barang " + noun, "tambah barang " + noun
-        elif re.match(r"^(senarai|list|ringkasan)\b", body):
-            t, tl = "ringkasan barang", "ringkasan barang"
-        elif body in {"summary", "ringkasan"}:
-            t, tl = "ringkasan barang", "ringkasan barang"
-        elif re.match(r"^(cari|search)\s+", body):
-            noun = re.sub(r"^(cari|search)\s+", "", body)
+        elif re.match(r"^(cari|search|find|item)\s+", body):
+            # `stuff cari X` / `stuff item X` → search item
+            noun = re.sub(r"^(cari|search|find|item)\s+", "", body)
             t, tl = "cari " + noun, "cari " + noun
-        elif re.match(r"^(padam|delete|buang)\s+", body):
-            verb = re.match(r"^(padam|delete|buang)", body).group(1)
-            noun = re.sub(r"^(padam|delete|buang)\s+", "", body)
-            t, tl = verb + " " + noun, verb + " " + noun
-        elif body == "all":
-            t, tl = "ringkasan barang", "ringkasan barang"
-        elif any(kw in body for kw in ("rosak", "damaged", "broken", "hilang", "missing", "lost", "dipinjam", "pinjam", "loaned", "borrowed", "dibuang", "buang", "disposed", "trashed", "habis", "used")):
-            # `stuff <item> rosak|damaged|...` == `<item> <status>`
-            t, tl = body, body
         elif " " in body.strip():
-            # `stuff <item> [<location/box>]` (multiple words) → create item
+            # `stuff <item> [<location/box>]` (multiple words) → add item
             # location/box resolved at handler time when it matches an existing one
             t, tl = "tambah barang " + body.strip(), "tambah barang " + body.strip()
         else:
-            # `stuff <single word>` → search
+            # `stuff <single word>` → find item
             t, tl = "cari " + body, "cari " + body
         tl = " ".join(tl.split())
 
-    if tl in {"barang", "barang help", "inventory", "inventory help", "barang?"}:
+    if tl in {"barang", "barang help", "inventory", "inventory help", "barang?", "stuff help"}:
         return {"intent": "inventory_help", "confidence": 1.0, "entities": {}}
 
     if re.search(r"ringkasan barang|berapa barang", tl):
@@ -271,12 +254,6 @@ def parse_inventory_intent(text: str) -> dict[str, Any]:
     m = re.search(r"^(?:apa ada|senarai barang|barang)\s+(?:dalam|dekat|di)\s+(.+)$", tl)
     if m:
         return {"intent": "inventory_list_location", "confidence": 0.9, "entities": {"place_name": m.group(1).strip()}}
-
-    # status: "<item> rosak/hilang/dipinjam/dah habis"
-    for kw, status in STATUS_KEYWORDS.items():
-        m = re.search(rf"^(.+?)\s+{re.escape(kw)}\b", tl)
-        if m and m.group(1).strip() not in {"barang"}:
-            return {"intent": "inventory_update_status", "confidence": 0.85, "entities": {"item_name": m.group(1).strip(), "status": status}}
 
     # location question: "kabel hdmi dekat mana" / "mana aku letak charger"
     m = re.search(r"^(.+?)\s+dekat mana\??$", tl)
@@ -421,14 +398,11 @@ async def build_txn_suggestion(db: AsyncSession, *, user_id: str, txn: models.Tr
 def _help_text() -> str:
     return (
         "📦 *Barang Saya*\n\n"
-        "Guna awalan *stuff* supaya tidak bertembung dengan arahan lain.\n\n"
-        "• stuff barang kabel HDMI 2\n"
-        "• stuff stor Ruang Tamu\n"
-        "• stuff kotak Kabel dalam stor\n"
-        "• stuff cari kabel HDMI\n"
-        "• stuff kabel HDMI dekat mana\n"
-        "• stuff kabel HDMI rosak\n"
-        "• stuff ringkasan"
+        "Guna awalan *stuff* supaya tidak bertembung dengan arahan lain.\n"
+        "Bot sokong *tambah* dan *cari* barang sahaja — fungsi lain buat dalam app/web.\n\n"
+        "• Tambah: stuff kabel HDMI 2 (nama lokasi/bekas juga boleh, contoh: stuff kabel HDMI ruang tamu)\n"
+        "• Cari: stuff cari kabel\n"
+        "• Cari: stuff kabel"
     )
 
 def _fallback_text() -> str:
