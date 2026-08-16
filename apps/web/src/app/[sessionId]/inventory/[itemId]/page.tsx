@@ -1,8 +1,11 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ArrowRightLeft, ChevronRight, Loader2, Package, Pencil, Plus, Trash2, X } from "lucide-react"
+import { ArrowRightLeft, ChevronRight, Loader2, Package, Pencil, Plus, Trash2 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
+import { createPortal } from "react-dom"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
+import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
@@ -405,19 +408,40 @@ function MoveSheet({ item, locations, containers, onClose, onSaved, authHeaders,
     }
   }
 
-  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+  const swipe = useSwipeDownToClose(onClose)
+  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" role="dialog" aria-modal="true" aria-label={tr("Pindahkan Barang", "Move Item")}>
-      <form onSubmit={submit} className="w-full max-w-md rounded-t-2xl bg-[var(--card)] p-4 sm:rounded-2xl">
-        <div className="mb-1 flex items-center justify-between">
-          <h2 className="text-base font-semibold">{tr("Pindahkan", "Move")} · {item.name}</h2>
-          <button type="button" onClick={onClose} aria-label={tr("Tutup", "Close")} className="rounded-lg p-2 hover:bg-[var(--surface-tint)]"><X className="h-4 w-4" /></button>
-        </div>
-        <p className="mb-3 text-xs text-[var(--muted)]">
-          {tr("Sekarang", "Current")}: {item.location_path || tr("tiada lokasi", "no location")} · {item.quantity} {item.unit}
-        </p>
-        <div className="space-y-3">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center"
+      onClick={onClose}
+      onTouchMove={(e) => e.preventDefault()}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        data-swipe-sheet
+        {...swipe}
+        className="app-sheet-panel app-sheet-panel--lg w-full max-h-[88dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[30rem]"
+      >
+        <AppSheetHeader
+          title={tr("Pindahkan", "Move")}
+          subtitle={`${tr("Barang", "Item")}: ${item.name}`}
+          onClose={onClose}
+          action={
+            <button
+              type="submit"
+              form="inventory-move-form"
+              disabled={saving}
+              className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+            >
+              {saving ? (tr("Menpindah…", "Moving…")) : (tr("Pindah", "Move"))}
+            </button>
+          }
+        />
+        <form id="inventory-move-form" onSubmit={submit} className="space-y-3 px-4 pb-4 pt-1 sm:px-6 sm:pb-6 sm:pt-0">
+          <p className="text-xs text-[var(--muted)]">
+            {tr("Sekarang", "Current")}: {item.location_path || tr("tiada lokasi", "no location")} · {item.quantity} {item.unit}
+          </p>
           <div>
             <label className="mb-1 block text-xs font-medium text-[var(--muted)]" htmlFor="mv-loc">{tr("Lokasi baharu", "New location")}</label>
             <select id="mv-loc" value={locationId} onChange={(e) => { setLocationId(e.target.value); setContainerId("") }} className={inputCls}>
@@ -440,16 +464,10 @@ function MoveSheet({ item, locations, containers, onClose, onSaved, authHeaders,
             <label className="mb-1 block text-xs font-medium text-[var(--muted)]" htmlFor="mv-notes">{tr("Nota (pilihan)", "Notes (optional)")}</label>
             <input id="mv-notes" value={notes} onChange={(e) => setNotes(e.target.value)} className={inputCls} maxLength={500} />
           </div>
-        </div>
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium hover:bg-[var(--surface-tint)]">{tr("Batal", "Cancel")}</button>
-          <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {tr("Pindah", "Move")}
-          </button>
-        </div>
-      </form>
-    </div>
+        </form>
+      </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -520,17 +538,38 @@ function EditSheet({ item, locations, containers, onClose, onSaved, authHeaders,
     }
   }
 
-  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+  const swipe = useSwipeDownToClose(onClose)
+  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
   const labelCls = "mb-1 block text-xs font-medium text-[var(--muted)]"
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" role="dialog" aria-modal="true" aria-label={tr("Edit Barang", "Edit Item")}>
-      <form onSubmit={submit} className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-[var(--card)] p-4 sm:rounded-2xl">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-semibold">{tr("Edit Barang", "Edit Item")}</h2>
-          <button type="button" onClick={onClose} aria-label={tr("Tutup", "Close")} className="rounded-lg p-2 hover:bg-[var(--surface-tint)]"><X className="h-4 w-4" /></button>
-        </div>
-        <div className="space-y-3">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center"
+      onClick={onClose}
+      onTouchMove={(e) => e.preventDefault()}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        data-swipe-sheet
+        {...swipe}
+        className="app-sheet-panel app-sheet-panel--lg w-full max-h-[88dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[30rem]"
+      >
+        <AppSheetHeader
+          title={tr("Edit Barang", "Edit Item")}
+          eyebrow={tr("Barang Saya", "My Inventory")}
+          onClose={onClose}
+          action={
+            <button
+              type="submit"
+              form="inventory-edit-form"
+              disabled={saving || !name.trim()}
+              className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+            >
+              {saving ? (tr("Menyimpan…", "Saving…")) : (tr("Simpan", "Save"))}
+            </button>
+          }
+        />
+        <form id="inventory-edit-form" onSubmit={submit} className="space-y-3 px-4 pb-4 pt-1 sm:px-6 sm:pb-6 sm:pt-0">
           <div>
             <label className={labelCls} htmlFor="ed-name">{tr("Nama barang *", "Item name *")}</label>
             <input id="ed-name" required value={name} onChange={(e) => setName(e.target.value)} className={inputCls} maxLength={190} />
@@ -599,15 +638,9 @@ function EditSheet({ item, locations, containers, onClose, onSaved, authHeaders,
             <label className={labelCls} htmlFor="ed-notes">{tr("Nota", "Notes")}</label>
             <textarea id="ed-notes" value={notes} onChange={(e) => setNotes(e.target.value)} className={inputCls} rows={2} />
           </div>
-        </div>
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium hover:bg-[var(--surface-tint)]">{tr("Batal", "Cancel")}</button>
-          <button type="submit" disabled={saving || !name.trim()} className="inline-flex items-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
-            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-            {tr("Simpan", "Save")}
-          </button>
-        </div>
-      </form>
-    </div>
+        </form>
+      </div>
+    </div>,
+    document.body,
   )
 }
