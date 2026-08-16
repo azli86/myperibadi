@@ -1589,7 +1589,17 @@ async function startSock(userId, pairingPhone = null, options = {}) {
 
             let targetTxnRef = queuedPayload.target_txn_ref || extractTxnReference(queuedPayload.text);
             const shouldSkipCaptionWebhook = Boolean(jobContext.mediaDescriptor && queuedPayload.is_reply_message);
-            if (!shouldSkipCaptionWebhook && (queuedPayload.text || queuedPayload.latitude != null)) {
+            // Barang Saya: media message with an inventory caption (`stuff ...` /
+            // `tambah barang ...`) must send text + photo in ONE webhook call so the
+            // photo is attached to the item. Otherwise the text-only call creates the
+            // item without an image and the later media-only call is OCR'd as a receipt.
+            const isInventoryCaption = Boolean(
+              jobContext.mediaDescriptor
+              && queuedPayload.text
+              && /^\s*(stuff|tambah\s+barang|tambah\s+stor)\b/i.test(queuedPayload.text)
+            );
+            const skipTextCall = shouldSkipCaptionWebhook || isInventoryCaption;
+            if (!skipTextCall && (queuedPayload.text || queuedPayload.latitude != null)) {
               const textRes = await postToWebhook(userId, phone, queuedPayload);
               await handleWebhookResponse({
                 userId,
@@ -1621,7 +1631,7 @@ async function startSock(userId, pairingPhone = null, options = {}) {
               jobContext,
               targetTxnRef,
               fallbackMessageId: jobContext.messageId,
-              includeContextText: false,
+              includeContextText: isInventoryCaption,
             });
           };
 
