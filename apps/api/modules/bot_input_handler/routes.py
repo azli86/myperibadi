@@ -17,6 +17,29 @@ import receipt_ocr_service
 import storage_service
 
 
+# Remember recently-processed inventory images (hash -> unix ts) so an echoed/second
+# delivery of the same photo doesn't get OCR'd as a receipt and error out.
+_INVENTORY_IMG_SEEN: dict[str, float] = {}
+_INVENTORY_IMG_TTL = 90.0
+
+
+def _mark_inventory_img_seen(payload: bytes | None, object_key: str | None):
+    key = object_key or (__import__("hashlib").sha256(payload or b"").hexdigest())
+    if key:
+        _INVENTORY_IMG_SEEN[key] = __import__("time").time()
+
+
+def _inventory_img_seen(payload: bytes | None, object_key: str | None) -> bool:
+    key = object_key or (__import__("hashlib").sha256(payload or b"").hexdigest())
+    if not key:
+        return False
+    now = __import__("time").time()
+    if key in _INVENTORY_IMG_SEEN and now - _INVENTORY_IMG_SEEN[key] < _INVENTORY_IMG_TTL:
+        return True
+    _INVENTORY_IMG_SEEN.pop(key, None)
+    return False
+
+
 async def process_bot_input_route(
     db: AsyncSession,
     *,
@@ -164,20 +187,27 @@ async def process_bot_input_route(
     # `tambah barang ...`), so skip OCR/receipt handling entirely and let the
     # image hook below attach the photo to the item.
     from modules.inventory.bot_service import parse_inventory_intent as _parse_inv
+    _inv_intent = _parse_inv(text) if (text or "").strip() else None
     _inv_img = bool(
         has_media
         and (text or "").strip()
         and not has_location
         and (media_mime_type or "").startswith("image/")
-        and _parse_inv(text)["intent"] == "inventory_create_item"
+        and _inv_intent is not None
+        and _inv_intent.get("intent") != "unknown"
     )
 
     if has_media:
         user_res = await db.execute(select(models.User).where(models.User.id == user_id))
         user = user_res.scalar_one_or_none()
         is_en = getattr(user, "language", "BM") == "EN" if user else False
+        # Echo/second delivery of the same image already processed as inventory → stay silent.
+        if not _inv_img and not (text or "").strip() and _inventory_img_seen(media_payload, media_object_key):
+            return {"reply": None}
         if _inv_img:
-            # Inventory item + photo: skip receipt OCR entirely.
+            # Inventory item + photo: skip receipt OCR entirely and remember the
+            # image so an echoed/second delivery doesn't get OCR'd as a receipt.
+            _mark_inventory_img_seen(media_payload, media_object_key)
             receipt_user_note = (text or "").strip() or None
         elif is_reply_message and not normalized_target_txn_ref:
             return {
@@ -187,9 +217,12 @@ async def process_bot_input_route(
                     else "Upload lampiran gagal. Mesej yang direply tiada rujukan transaksi yang sah. Sila reply mesej transaksi yang ada TXN."
                 )
             }
-        if not normalized_target_txn_ref and not _inv_img:
+        if not normalized_target_txn_ref and not _inv_img and not _inventory_img_seen(media_payload, media_object_key):
             try:
                 ocr_payload = media_payload
+                if not ocr_payload and media_object_key:
+                    ocr_payload, stored_mime = await asyncio.to_thread(storage_service.download_receipt_object, media_object_key)
+                    media_mime_type = media_mime_type or stored_mime
                 if not ocr_payload and media_object_key:
                     ocr_payload, stored_mime = await asyncio.to_thread(storage_service.download_receipt_object, media_object_key)
                     media_mime_type = media_mime_type or stored_mime
@@ -402,6 +435,21 @@ async def process_bot_input_route(
             except Exception as exc:
                 print(f"[inventory][img] error user={user_id}: {type(exc).__name__}")
                 return {"reply": "Maaf, gagal menyimpan barang bersama gambar. Tiada perubahan dilakukan."}
+
+    # ---- Barang Saya: image + non-create caption (e.g. `stuff kabel`) → run text command ----
+    if _inv_img and (text or "").strip():
+        from modules.inventory.bot_service import parse_inventory_intent
+        if parse_inventory_intent(text)["intent"] != "inventory_create_item":
+            from modules.inventory.bot_service import handle_inventory_message
+            try:
+                inv_reply = await handle_inventory_message(
+                    db, user_id=user_id, text=text, channel=source_channel,
+                )
+            except Exception as exc:
+                print(f"[inventory] error user={user_id} channel={source_channel}: {type(exc).__name__}")
+                inv_reply = "Maaf, Barang Saya tidak dapat diakses buat masa ini. Cuba lagi sebentar."
+            if inv_reply:
+                return {"reply": inv_reply}
 
     # 1. Process Text (Transaction / Command / Bot)
     # If media is replying to an existing transaction, caption must not create a new transaction.
