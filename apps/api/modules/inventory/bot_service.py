@@ -34,14 +34,11 @@ CANCEL_WORDS = {"batal", "cancel", "0", "tak"}
 NEXT_WORDS = {"seterusnya", "next", "lagi"}
 
 STATUS_KEYWORDS = {
-    "rosak": "damaged",
-    "hilang": "missing",
-    "dipinjam": "loaned",
-    "pinjam": "loaned",
-    "dibuang": "disposed",
-    "buang": "disposed",
-    "habis": "used_up",
-    "dah habis": "used_up",
+    "rosak": "damaged", "damaged": "damaged", "broken": "damaged",
+    "hilang": "missing", "missing": "missing", "lost": "missing",
+    "dipinjam": "loaned", "pinjam": "loaned", "loaned": "loaned", "borrowed": "loaned",
+    "dibuang": "disposed", "buang": "disposed", "disposed": "disposed", "trashed": "disposed",
+    "habis": "used_up", "dah habis": "used_up", "used up": "used_up", "used_up": "used_up",
 }
 
 def _now() -> datetime:
@@ -183,9 +180,45 @@ def _extract_quantity(text: str) -> tuple[Optional[int], str]:
     return None, text
 
 def parse_inventory_intent(text: str) -> dict[str, Any]:
-    """Regex NLU. Returns {'intent':..., 'entities': {...}, 'confidence': float}."""
+    """Regex NLU. Returns {'intent':..., 'entities': {...}, 'confidence': float}.
+    Accepts English `stuff` prefix as alias, e.g. `stuff stor Ruang Tamu` == `tambah stor Ruang Tamu`.
+    """
     t = " ".join((text or "").split())
     tl = t.lower()
+
+    # English `stuff` alias → map to internal command vocabulary. This keeps
+    # inventory trigger distinct so it never collides with other BM commands.
+    stuff = re.match(r"^stuff\s+(.+)$", tl)
+    if stuff:
+        body = stuff.group(1)
+        if body in {"", "help", "bantuan"}:
+            t, tl = "stuff help", "stuff help"
+        elif re.match(r"^(stor|kotak|bekas|rak|lokasi)\s+", body):
+            t, tl = "tambah " + body, "tambah " + body
+        elif re.match(r"^(barang|item)\s+", body):
+            # `stuff barang kabel` / `stuff item kabel` == `tambah barang kabel`
+            noun = re.sub(r"^(barang|item)\s+", "", body)
+            t, tl = "tambah barang " + noun, "tambah barang " + noun
+        elif re.match(r"^(senarai|list|ringkasan)\b", body):
+            t, tl = "ringkasan barang", "ringkasan barang"
+        elif body in {"summary", "ringkasan"}:
+            t, tl = "ringkasan barang", "ringkasan barang"
+        elif re.match(r"^(cari|search)\s+", body):
+            noun = re.sub(r"^(cari|search)\s+", "", body)
+            t, tl = "cari " + noun, "cari " + noun
+        elif re.match(r"^(padam|delete|buang)\s+", body):
+            verb = re.match(r"^(padam|delete|buang)", body).group(1)
+            noun = re.sub(r"^(padam|delete|buang)\s+", "", body)
+            t, tl = verb + " " + noun, verb + " " + noun
+        elif body == "all":
+            t, tl = "ringkasan barang", "ringkasan barang"
+        elif any(kw in body for kw in ("rosak", "damaged", "broken", "hilang", "missing", "lost", "dipinjam", "pinjam", "loaned", "borrowed", "dibuang", "buang", "disposed", "trashed", "habis", "used")):
+            # `stuff <item> rosak|damaged|...` == `<item> <status>`
+            t, tl = body, body
+        else:
+            # unknown `stuff` → search (safest default)
+            t, tl = "cari " + body, "cari " + body
+        tl = " ".join(tl.split())
 
     if tl in {"barang", "barang help", "inventory", "inventory help", "barang?"}:
         return {"intent": "inventory_help", "confidence": 1.0, "entities": {}}
@@ -365,16 +398,14 @@ async def build_txn_suggestion(db: AsyncSession, *, user_id: str, txn: models.Tr
 def _help_text() -> str:
     return (
         "📦 *Barang Saya*\n\n"
-        "Anda boleh cuba:\n"
-        "• tambah barang kabel HDMI 2\n"
-        "• tambah stor Ruang Tamu\n"
-        "• tambah kotak Kabel dalam stor\n"
-        "• cari kabel HDMI\n"
-        "• kabel HDMI dekat mana\n"
-        "• barang dalam Kotak Elektronik A\n"
-        "• pindah kabel HDMI ke Kotak Elektronik B\n"
-        "• kabel HDMI rosak\n"
-        "• ringkasan barang"
+        "Guna awalan *stuff* supaya tidak bertembung dengan arahan lain.\n\n"
+        "• stuff barang kabel HDMI 2\n"
+        "• stuff stor Ruang Tamu\n"
+        "• stuff kotak Kabel dalam stor\n"
+        "• stuff cari kabel HDMI\n"
+        "• stuff kabel HDMI dekat mana\n"
+        "• stuff kabel HDMI rosak\n"
+        "• stuff ringkasan"
     )
 
 def _fallback_text() -> str:
