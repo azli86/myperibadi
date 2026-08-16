@@ -60,13 +60,13 @@ const STATUS_BADGE: Record<InvStatus, string> = {
   used_up: "bg-[var(--surface-tint)] text-[var(--muted)]",
 }
 
-const STATUS_OPTIONS: { value: InvStatus; bm: string }[] = [
-  { value: "available", bm: "Ada" },
-  { value: "loaned", bm: "Dipinjam" },
-  { value: "missing", bm: "Hilang" },
-  { value: "damaged", bm: "Rosak" },
-  { value: "disposed", bm: "Dibuang" },
-  { value: "used_up", bm: "Sudah Habis" },
+const STATUS_OPTIONS: { value: InvStatus; label: string }[] = [
+  { value: "available", label: "Available" },
+  { value: "loaned", label: "Loaned" },
+  { value: "missing", label: "Missing" },
+  { value: "damaged", label: "Damaged" },
+  { value: "disposed", label: "Disposed" },
+  { value: "used_up", label: "Used Up" },
 ]
 
 export default function InventoryPage() {
@@ -239,7 +239,7 @@ export default function InventoryPage() {
             >
               <option value="">{tr("Semua status", "All status")}</option>
               {STATUS_OPTIONS.map((s) => (
-                <option key={s.value} value={s.value}>{s.bm}</option>
+                <option key={s.value} value={s.value}>{s.label}</option>
               ))}
             </select>
           </div>
@@ -579,7 +579,7 @@ function ItemForm({
             <div>
               <label className={labelCls} htmlFor="inv-status">{tr("Status", "Status")}</label>
               <select id="inv-status" value={status} onChange={(e) => setStatus(e.target.value as InvStatus)} className={inputCls}>
-                {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.bm}</option>)}
+                {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
             </div>
           </div>

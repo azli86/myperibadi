@@ -55,20 +55,20 @@ type Movement = {
   moved_at?: string | null
 }
 
-const STATUS_OPTIONS: { value: InvStatus; bm: string }[] = [
-  { value: "available", bm: "Ada" },
-  { value: "loaned", bm: "Dipinjam" },
-  { value: "missing", bm: "Hilang" },
-  { value: "damaged", bm: "Rosak" },
-  { value: "disposed", bm: "Dibuang" },
-  { value: "used_up", bm: "Sudah Habis" },
+const STATUS_OPTIONS: { value: InvStatus; label: string }[] = [
+  { value: "available", label: "Available" },
+  { value: "loaned", label: "Loaned" },
+  { value: "missing", label: "Missing" },
+  { value: "damaged", label: "Damaged" },
+  { value: "disposed", label: "Disposed" },
+  { value: "used_up", label: "Used Up" },
 ]
 
 const MOVEMENT_LABEL: Record<string, string> = {
-  created: "Dicipta",
-  moved: "Dipindah",
-  quantity_changed: "Kuantiti berubah",
-  status_changed: "Status berubah",
+  created: "Created",
+  moved: "Moved",
+  quantity_changed: "Quantity changed",
+  status_changed: "Status changed",
 }
 
 function fmtDate(value?: string | null) {
@@ -148,7 +148,7 @@ export default function InventoryItemDetailPage() {
 
   const changeStatus = useCallback(async (status: InvStatus) => {
     if (status === "disposed" || status === "used_up") {
-      const label = STATUS_OPTIONS.find((s) => s.value === status)?.bm || status
+      const label = STATUS_OPTIONS.find((s) => s.value === status)?.label || status
       showConfirm(
         tr(`Tetapkan sebagai ${label}?`, `Set as ${label}?`),
         tr("Perubahan status direkodkan kekal.", "Status change is recorded permanently."),
@@ -278,7 +278,7 @@ export default function InventoryItemDetailPage() {
                       : "border-[var(--border)] hover:bg-[var(--surface-tint)]",
                   )}
                 >
-                  {s.bm}
+                  {s.label}
                 </button>
               ))}
             </div>
@@ -600,7 +600,7 @@ function EditSheet({ item, locations, containers, onClose, onSaved, authHeaders,
             <div>
               <label className={labelCls} htmlFor="ed-status">{tr("Status", "Status")}</label>
               <select id="ed-status" value={status} onChange={(e) => setStatus(e.target.value as InvStatus)} className={inputCls}>
-                {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.bm}</option>)}
+                {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
             </div>
           </div>

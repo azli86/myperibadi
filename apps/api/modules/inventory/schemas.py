@@ -11,12 +11,12 @@ MovementType = Literal["created", "moved", "quantity_changed", "status_changed"]
 SourceChannel = Literal["web", "whatsapp", "telegram", "chat", "system"]
 
 STATUS_LABELS_BM = {
-    "available": "Ada",
-    "loaned": "Dipinjam",
-    "missing": "Hilang",
-    "damaged": "Rosak",
-    "disposed": "Dibuang",
-    "used_up": "Sudah Habis",
+    "available": "Available",
+    "loaned": "Loaned",
+    "missing": "Missing",
+    "damaged": "Damaged",
+    "disposed": "Disposed",
+    "used_up": "Used Up",
 }
 
 class ItemCreate(BaseModel):
