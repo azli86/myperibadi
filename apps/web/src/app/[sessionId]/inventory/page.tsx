@@ -49,10 +49,10 @@ type InvContainer = {
 }
 
 const STATUS_BADGE: Record<InvStatus, string> = {
-  available: "bg-emerald-500/12 text-emerald-600",
-  loaned: "bg-sky-500/12 text-sky-600",
-  missing: "bg-rose-500/12 text-rose-600",
-  damaged: "bg-amber-500/12 text-amber-600",
+  available: "bg-[var(--accent)]/15 text-[var(--accent)]",
+  loaned: "bg-[var(--info-bg)] text-[var(--info)]",
+  missing: "bg-rose-500/10 text-rose-500",
+  damaged: "bg-[var(--warning-bg)] text-[var(--warning)]",
   disposed: "bg-[var(--surface-tint)] text-[var(--muted)]",
   used_up: "bg-[var(--surface-tint)] text-[var(--muted)]",
 }
@@ -201,7 +201,7 @@ export default function InventoryPage() {
           {summary && (
             <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
               {statCards.map((s) => (
-                <div key={s.label} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-center">
+                <div key={s.label} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 text-center">
                   <div className="text-xl font-bold">{s.value}</div>
                   <div className="text-[11px] text-[var(--muted)]">{s.label}</div>
                 </div>
@@ -217,14 +217,14 @@ export default function InventoryPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={tr("Cari nama, kategori, jenama...", "Search name, category, brand...")}
-                className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] py-2.5 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] py-2.5 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
                 aria-label={tr("Cari barang", "Search items")}
               />
             </div>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm"
+              className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-sm"
               aria-label={tr("Tapis status", "Filter status")}
             >
               <option value="">{tr("Semua status", "All status")}</option>
@@ -256,7 +256,7 @@ export default function InventoryPage() {
           ) : (
             <ul className="space-y-2">
               {items.map((item) => (
-                <li key={item.id} className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3">
+                <li key={item.id} className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
                   <Link href={`/${sessionId}/inventory/${item.id}`} className="flex min-w-0 flex-1 items-center gap-3">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-tint)]">
                       {item.has_image ? (
@@ -305,7 +305,7 @@ export default function InventoryPage() {
                 {locationTree.map(({ loc, depth }) => {
                   const conts = containers.filter((c) => c.location_id === loc.id)
                   return (
-                    <div key={loc.id} className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3" style={{ marginLeft: depth * 16 }}>
+                    <div key={loc.id} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3" style={{ marginLeft: depth * 16 }}>
                       <div className="flex items-center justify-between">
                         <span className="font-medium">{loc.name}</span>
                         <span className="text-xs text-[var(--muted)]">
@@ -456,12 +456,12 @@ function ItemForm({
     }
   }
 
-  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
   const labelCls = "mb-1 block text-xs font-medium text-[var(--muted)]"
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" role="dialog" aria-modal="true" aria-label={tr(item ? "Edit Barang" : "Tambah Barang", item ? "Edit Item" : "Add Item")}>
-      <form onSubmit={submit} className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-[var(--surface)] p-4 sm:rounded-2xl">
+      <form onSubmit={submit} className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-[var(--card)] p-4 sm:rounded-2xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-base font-semibold">{tr(item ? "Edit Barang" : "Tambah Barang", item ? "Edit Item" : "Add Item")}</h2>
           <button type="button" onClick={onClose} aria-label={tr("Tutup", "Close")} className="rounded-lg p-2 hover:bg-[var(--surface-tint)]"><X className="h-4 w-4" /></button>

@@ -202,12 +202,25 @@ export default function InventoryItemDetailPage() {
 
   return (
     <>
-      <MobilePageHeader title={item.name} fallbackHref={`/${sessionId}/inventory`} />
-      <DesktopPageHeader title={item.name} backHref={`/${sessionId}/inventory`} />
-      <DesktopPageBody>
+      <div className="sticky top-0 z-50 bg-[var(--page-bg)] pb-2 pt-1 md:hidden">
+        <MobilePageHeader
+          title={item.name}
+          fallbackHref={`/${sessionId}/inventory`}
+          backPreferHistory
+        />
+      </div>
+      <DesktopPageHeader
+        title={item.name}
+        breadcrumbs={[{ label: tr("Barang Saya", "My Inventory"), href: `/${sessionId}/inventory` }]}
+        homeHref={`/${sessionId}`}
+        backHref={`/${sessionId}/inventory`}
+        backPreferHistory
+        className="hidden md:block"
+      />
+      <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
         <div className="mx-auto w-full max-w-3xl space-y-4 px-4 pb-24">
           {/* header card */}
-          <div className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] overflow-hidden">
               {item.has_image ? (
                 <img src={`/api/inventory/items/${item.id}/image`} alt={item.name} className="h-16 w-16 object-cover" />
@@ -230,7 +243,7 @@ export default function InventoryItemDetailPage() {
           </div>
 
           {/* quantity stepper */}
-          <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
+          <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3">
             <span className="text-sm font-medium">{tr("Kuantiti", "Quantity")}</span>
             <div className="flex items-center gap-3">
               <button onClick={() => changeQty("subtract", 1)} disabled={item.quantity <= 0} aria-label={tr("Kurang", "Subtract")} className="h-9 w-9 rounded-lg border border-[var(--border)] text-lg font-bold disabled:opacity-40">−</button>
@@ -240,7 +253,7 @@ export default function InventoryItemDetailPage() {
           </div>
 
           {/* status picker */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3">
             <span className="mb-2 block text-sm font-medium">{tr("Status", "Status")}</span>
             <div className="flex flex-wrap gap-2">
               {STATUS_OPTIONS.map((s) => (
@@ -261,7 +274,7 @@ export default function InventoryItemDetailPage() {
           </div>
 
           {/* details */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
             <h2 className="mb-2 text-sm font-semibold text-[var(--muted)]">{tr("Butiran", "Details")}</h2>
             <dl className="space-y-1.5 text-sm">
               {rows.map((r) => (
@@ -274,7 +287,7 @@ export default function InventoryItemDetailPage() {
           </div>
 
           {/* movement history */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
             <h2 className="mb-2 text-sm font-semibold text-[var(--muted)]">{tr("Sejarah Pergerakan", "Movement History")}</h2>
             {movements.length === 0 ? (
               <p className="text-sm text-[var(--muted)]">{tr("Tiada sejarah.", "No history.")}</p>
@@ -392,11 +405,11 @@ function MoveSheet({ item, locations, containers, onClose, onSaved, authHeaders,
     }
   }
 
-  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" role="dialog" aria-modal="true" aria-label={tr("Pindahkan Barang", "Move Item")}>
-      <form onSubmit={submit} className="w-full max-w-md rounded-t-2xl bg-[var(--surface)] p-4 sm:rounded-2xl">
+      <form onSubmit={submit} className="w-full max-w-md rounded-t-2xl bg-[var(--card)] p-4 sm:rounded-2xl">
         <div className="mb-1 flex items-center justify-between">
           <h2 className="text-base font-semibold">{tr("Pindahkan", "Move")} · {item.name}</h2>
           <button type="button" onClick={onClose} aria-label={tr("Tutup", "Close")} className="rounded-lg p-2 hover:bg-[var(--surface-tint)]"><X className="h-4 w-4" /></button>
@@ -507,12 +520,12 @@ function EditSheet({ item, locations, containers, onClose, onSaved, authHeaders,
     }
   }
 
-  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
+  const inputCls = "w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--accent)]"
   const labelCls = "mb-1 block text-xs font-medium text-[var(--muted)]"
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" role="dialog" aria-modal="true" aria-label={tr("Edit Barang", "Edit Item")}>
-      <form onSubmit={submit} className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-[var(--surface)] p-4 sm:rounded-2xl">
+      <form onSubmit={submit} className="max-h-[88vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-[var(--card)] p-4 sm:rounded-2xl">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-base font-semibold">{tr("Edit Barang", "Edit Item")}</h2>
           <button type="button" onClick={onClose} aria-label={tr("Tutup", "Close")} className="rounded-lg p-2 hover:bg-[var(--surface-tint)]"><X className="h-4 w-4" /></button>
