@@ -101,8 +101,16 @@ export default function InventoryItemDetailPage() {
   const [showMove, setShowMove] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
 
+  // Refs so `load` stays stable (no infinite refetch → no 429 rate-limit loop)
+  const showAlertRef = useRef(showAlert)
+  const trRef = useRef(tr)
+  useEffect(() => { showAlertRef.current = showAlert }, [showAlert])
+  useEffect(() => { trRef.current = tr }, [tr])
+
   const load = useCallback(async () => {
     setLoading(true)
+    const t = trRef.current
+    const alert = showAlertRef.current
     try {
       const [iRes, mRes, lRes, cRes] = await Promise.all([
         fetch(`/api/inventory/items/${itemId}`, { headers: authHeaders(), credentials: "include", cache: "no-store" }),
@@ -110,17 +118,17 @@ export default function InventoryItemDetailPage() {
         fetch("/api/inventory/locations", { headers: authHeaders(), credentials: "include", cache: "no-store" }),
         fetch("/api/inventory/containers", { headers: authHeaders(), credentials: "include", cache: "no-store" }),
       ])
-      if (!iRes.ok) throw new Error(tr("Barang tidak dijumpai.", "Item not found."))
+      if (!iRes.ok) throw new Error(t("Barang tidak dijumpai.", "Item not found."))
       setItem(await iRes.json())
       if (mRes.ok) setMovements(await mRes.json())
       if (lRes.ok) setLocations(await lRes.json())
       if (cRes.ok) setContainers(await cRes.json())
     } catch (err) {
-      showAlert(tr("Ralat", "Error"), err instanceof Error ? err.message : tr("Gagal muat.", "Failed to load."), "error")
+      alert(t("Ralat", "Error"), err instanceof Error ? err.message : t("Gagal muat.", "Failed to load."), "error")
     } finally {
       setLoading(false)
     }
-  }, [authHeaders, itemId, showAlert, tr])
+  }, [authHeaders, itemId])
 
   useEffect(() => { load() }, [load])
 

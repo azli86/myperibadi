@@ -125,7 +125,7 @@ export default function InventoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [authHeaders, search, statusFilter, tr])
+  }, [authHeaders, search, statusFilter])
 
   useEffect(() => {
     const t = setTimeout(load, search ? 300 : 0)
