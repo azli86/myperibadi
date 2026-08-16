@@ -159,11 +159,27 @@ async def process_bot_input_route(
 
     ocr_forced_kind = None
     receipt_user_note = None
+
+    # Barang Saya image flow: caption is an inventory add command (`stuff ...` /
+    # `tambah barang ...`), so skip OCR/receipt handling entirely and let the
+    # image hook below attach the photo to the item.
+    from modules.inventory.bot_service import parse_inventory_intent as _parse_inv
+    _inv_img = bool(
+        has_media
+        and (text or "").strip()
+        and not has_location
+        and (media_mime_type or "").startswith("image/")
+        and _parse_inv(text)["intent"] == "inventory_create_item"
+    )
+
     if has_media:
         user_res = await db.execute(select(models.User).where(models.User.id == user_id))
         user = user_res.scalar_one_or_none()
         is_en = getattr(user, "language", "BM") == "EN" if user else False
-        if is_reply_message and not normalized_target_txn_ref:
+        if _inv_img:
+            # Inventory item + photo: skip receipt OCR entirely.
+            receipt_user_note = (text or "").strip() or None
+        elif is_reply_message and not normalized_target_txn_ref:
             return {
                 "reply": (
                     "Receipt upload failed. The replied message has no valid transaction reference. Please reply to a saved transaction message with TXN."
@@ -171,7 +187,7 @@ async def process_bot_input_route(
                     else "Upload lampiran gagal. Mesej yang direply tiada rujukan transaksi yang sah. Sila reply mesej transaksi yang ada TXN."
                 )
             }
-        if not normalized_target_txn_ref:
+        if not normalized_target_txn_ref and not _inv_img:
             try:
                 ocr_payload = media_payload
                 if not ocr_payload and media_object_key:
@@ -354,7 +370,8 @@ async def process_bot_input_route(
         return {"reply": whatsapp_service.format_corporate_bot_reply(split_intercept)}
 
     # ---- Barang Saya (Personal Inventory) commands — intercepted before txn handling. ----
-    if text and not has_location:
+    # Skip text handling when there's an image: the image+caption hook below attaches the photo.
+    if text and not has_location and not has_media:
         from modules.inventory.bot_service import handle_inventory_message
         try:
             inventory_reply = await handle_inventory_message(

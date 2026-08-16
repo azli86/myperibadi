@@ -331,6 +331,31 @@ async def _fmt_location(db: AsyncSession, *, user_id: str, item: models.Inventor
 
 # ── image+caption create ─────────────────────────────────────────────────
 
+async def _resolve_item_place(db, *, user_id, name, location_name):
+    """Resolve location/box for an item being created. Returns (name, location, container).
+    When `location_name` is absent, splits a trailing existing location/box name off `name`
+    (longest match wins), e.g. `kabel hdmi ruang tamu` -> item `kabel hdmi` at `ruang tamu`."""
+    location = None
+    container = None
+    stripped = " ".join(name.split())
+    if location_name:
+        location = await _match_location(db, user_id=user_id, name=location_name)
+        if location is None:
+            container = await _match_container(db, user_id=user_id, name=location_name)
+        return stripped, location, container
+    loc, cont = await _split_trailing_place(db, user_id=user_id, text=stripped)
+    if loc is not None or cont is not None:
+        location, container = loc, cont
+        trailing = loc.name if loc is not None else cont.name
+        stripped = stripped[:len(stripped) - len(trailing)].strip()
+    # A box always lives in a location — inherit its location so consistency holds.
+    if container is not None and location is None:
+        loc_row = (await db.execute(select(models.InventoryLocation)
+                    .where(models.InventoryLocation.id == container.location_id))).first()
+        if loc_row and loc_row[0]:
+            location = loc_row[0]
+    return stripped, location, container
+
 async def create_item_with_media(
     db: AsyncSession, *, user_id: str, channel: str, entities: dict[str, Any],
     media_payload: bytes | None, media_object_key: str | None,
@@ -342,12 +367,10 @@ async def create_item_with_media(
     if not name:
         return "Sila nyatakan nama barang bersama gambar, contoh: `tambah barang kabel HDMI 2`"
     qty = int(entities.get("quantity") or 1)
-    location = None
-    container = None
-    if entities.get("location_name"):
-        location = await _match_location(db, user_id=user_id, name=entities["location_name"])
-        if location is None:
-            container = await _match_container(db, user_id=user_id, name=entities["location_name"])
+    name, location, container = await _resolve_item_place(
+        db, user_id=user_id, name=name,
+        location_name=entities.get("location_name"),
+    )
     user = (await db.execute(select(models.User).where(models.User.id == user_id))).scalar_one()
     payload = ItemCreate(
         name=name, quantity=qty,
@@ -460,29 +483,12 @@ async def handle_inventory_message(
     if intent == "inventory_create_item":
         name = entities["item_name"]
         qty = int(entities.get("quantity") or 1)
-        location = None
-        container = None
-        if entities.get("location_name"):
-            location = await _match_location(db, user_id=user_id, name=entities["location_name"])
-            if location is None:
-                container = await _match_container(db, user_id=user_id, name=entities["location_name"])
-        else:
-            # `stuff <item> <location/box>` — no "dalam/dekat" separator.
-            # Split a trailing location/box name (longest match wins) off the item name.
-            stripped = " ".join(name.split())
-            loc, cont = await _split_trailing_place(db, user_id=user_id, text=stripped)
-            if loc is not None or cont is not None:
-                location, container = loc, cont
-                trailing = loc.name if loc is not None else cont.name
-                name = stripped[:len(stripped) - len(trailing)].strip()
+        name, location, container = await _resolve_item_place(
+            db, user_id=user_id, name=name,
+            location_name=entities.get("location_name"),
+        )
         if current_user is None:
             current_user = (await db.execute(select(models.User).where(models.User.id == user_id))).scalar_one()
-        # A box always lives in a location — inherit its location so consistency holds.
-        if container is not None and location is None:
-            loc_row = (await db.execute(select(models.InventoryLocation)
-                        .where(models.InventoryLocation.id == container.location_id))).first()
-            if loc_row and loc_row[0]:
-                location = loc_row[0]
         payload = ItemCreate(
             name=name, quantity=qty,
             location_id=location.id if location else None,
