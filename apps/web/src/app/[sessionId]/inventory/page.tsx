@@ -369,7 +369,7 @@ export default function InventoryPage() {
         key={item.id}
         type="button"
         onClick={() => router.push(`/${sessionId}/inventory/${item.id}`)}
-        className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] text-left shadow-sm transition-all duration-200 hover:shadow-xl hover:border-[var(--text)]/20 active:scale-[0.97]"
+        className="group relative flex flex-col overflow-hidden rounded-[var(--m3-shape-md)] border border-[var(--border)] bg-[var(--card)] text-left shadow-[var(--m3-elevation-1)] transition-all duration-200 hover:shadow-[var(--m3-elevation-3)] hover:border-[var(--text)]/20 active:scale-[0.97]"
       >
         {/* Photo Canvas */}
         <div className="relative aspect-[4/3] w-full overflow-hidden">
@@ -446,7 +446,7 @@ export default function InventoryPage() {
         key={item.id}
         type="button"
         onClick={() => router.push(`/${sessionId}/inventory/${item.id}`)}
-        className="group relative flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] text-left shadow-sm transition-all duration-200 active:scale-[0.95]"
+        className="group relative flex flex-col overflow-hidden rounded-[var(--m3-shape-md)] border border-[var(--border)] bg-[var(--card)] text-left shadow-[var(--m3-elevation-1)] transition-all duration-200 active:scale-[0.95]"
       >
         {/* Photo Container */}
         <div className="relative aspect-square w-full overflow-hidden">
