@@ -616,7 +616,7 @@ export default function InventoryPage() {
                 <button
                   type="button"
                   onClick={() => openCreate()}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3 py-2 text-xs font-bold text-white shadow-sm transition active:scale-95"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-3 py-2 text-xs font-bold text-[var(--bg)] shadow-sm transition active:scale-95"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>{tr("Tambah", "Add")}</span>
@@ -1297,7 +1297,7 @@ export default function InventoryPage() {
                         openCreate()
                       }
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:opacity-90 active:scale-95"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-3.5 py-2 text-xs font-bold text-[var(--bg)] shadow-sm transition hover:opacity-90 active:scale-95"
                   >
                     <Plus className="h-4 w-4" />
                     <span>{tr("Tambah Barang", "Add Item")}</span>
