@@ -138,10 +138,10 @@ const CATEGORY_OPTIONS = [
 ]
 
 const RESOLUTION_OPTIONS = [
-  { value: "repaired", bm: "Dibaiki", en: "Repaired", badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
-  { value: "replaced", bm: "Diganti", en: "Replaced", badge: "bg-sky-500/15 text-sky-400 border-sky-500/30" },
-  { value: "rejected", bm: "Tuntutan ditolak", en: "Claim rejected", badge: "bg-rose-500/15 text-rose-400 border-rose-500/30" },
-  { value: "other", bm: "Lain-lain", en: "Other", badge: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30" },
+  { value: "repaired", bm: "Dibaiki", en: "Repaired", badge: "bg-[var(--surface-tint-strong)] text-[var(--text)] border-[var(--border)] font-bold" },
+  { value: "replaced", bm: "Diganti", en: "Replaced", badge: "bg-[var(--surface-tint)] text-[var(--text)] border-[var(--border)] font-bold" },
+  { value: "rejected", bm: "Tuntutan ditolak", en: "Claim rejected", badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]" },
+  { value: "other", bm: "Lain-lain", en: "Other", badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]" },
 ] as const
 
 const STATUS_CONFIG: Record<
@@ -149,28 +149,28 @@ const STATUS_CONFIG: Record<
   { badge: string; dot: string; labelBm: string; labelEn: string; bgGradient: string }
 > = {
   active: {
-    badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+    badge: "bg-[var(--surface-tint-strong)] text-[var(--text)] border-[var(--border)] font-bold",
     dot: "bg-emerald-500",
     labelBm: "Aktif",
     labelEn: "Active",
-    bgGradient: "from-emerald-500/10 to-transparent",
+    bgGradient: "from-white/5 to-transparent",
   },
   expiring_soon: {
-    badge: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
     dot: "bg-amber-400",
     labelBm: "Hampir Tamat",
     labelEn: "Expiring Soon",
-    bgGradient: "from-amber-500/10 to-transparent",
+    bgGradient: "from-white/5 to-transparent",
   },
   expired: {
-    badge: "bg-rose-500/15 text-rose-400 border-rose-500/30",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
     dot: "bg-rose-500",
     labelBm: "Tamat",
     labelEn: "Expired",
-    bgGradient: "from-rose-500/10 to-transparent",
+    bgGradient: "from-white/5 to-transparent",
   },
   unknown: {
-    badge: "bg-zinc-500/15 text-zinc-300 border-zinc-500/30",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
     dot: "bg-zinc-400",
     labelBm: "Tiada Tarikh",
     labelEn: "No Date",
@@ -750,10 +750,10 @@ export default function WarrantyDetailPage() {
           </div>
         ) : (
           <>
-            {/* ── HERO SHOWCASE CARD ── */}
+            {/* ── HERO SHOWCASE CARD (MONOCHROME) ── */}
             <section className="relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[var(--card)] p-5 text-[var(--text)] shadow-sm sm:p-6">
-              <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-[var(--accent)]/10 blur-3xl" />
-              <div className="pointer-events-none absolute -bottom-16 left-10 h-44 w-44 rounded-full bg-emerald-500/10 blur-3xl" />
+              <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-neutral-500/10 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-16 left-10 h-44 w-44 rounded-full bg-neutral-400/5 blur-3xl" />
 
               <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-start gap-4">
@@ -771,7 +771,7 @@ export default function WarrantyDetailPage() {
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-[var(--muted)]">
-                        <Shield className="h-10 w-10 opacity-60 text-emerald-500 dark:text-emerald-400" />
+                        <Shield className="h-10 w-10 opacity-60 text-[var(--text)]" />
                       </div>
                     )}
                   </div>
@@ -959,14 +959,14 @@ export default function WarrantyDetailPage() {
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
               <div className="flex items-center justify-between">
                 <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
-                  <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                  <ShieldCheck className="h-4 w-4 text-[var(--text)]" />
                   {tr("Rekod Tuntutan & Servis", "Service & Claims History")}
                 </h2>
 
                 <button
                   type="button"
                   onClick={openAddClaim}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-95"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-3 py-1.5 text-xs font-bold text-[var(--bg)] shadow-sm transition active:scale-95"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>{tr("Tambah Tuntutan", "Add Claim")}</span>

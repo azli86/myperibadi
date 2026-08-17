@@ -12,8 +12,6 @@ import {
   Trash2,
   MapPin,
   Boxes,
-  Tag,
-  FileText,
   ShieldCheck,
   Receipt,
   History,
@@ -84,44 +82,44 @@ const STATUS_CONFIG: Record<
   { badge: string; dot: string; labelBm: string; labelEn: string; bgSoft: string }
 > = {
   available: {
-    badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+    badge: "bg-[var(--surface-tint-strong)] text-[var(--text)] border-[var(--border)] font-bold",
     dot: "bg-emerald-500",
-    bgSoft: "bg-emerald-500/5",
+    bgSoft: "bg-[var(--surface-tint)]",
     labelBm: "Ada",
     labelEn: "Available",
   },
   loaned: {
-    badge: "bg-sky-500/10 text-sky-400 border-sky-500/30",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
     dot: "bg-sky-400",
-    bgSoft: "bg-sky-500/5",
+    bgSoft: "bg-[var(--surface-tint)]",
     labelBm: "Dipinjam",
     labelEn: "Loaned",
   },
   missing: {
-    badge: "bg-rose-500/10 text-rose-400 border-rose-500/30",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
     dot: "bg-rose-500",
-    bgSoft: "bg-rose-500/5",
+    bgSoft: "bg-[var(--surface-tint)]",
     labelBm: "Hilang",
     labelEn: "Missing",
   },
   damaged: {
-    badge: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
     dot: "bg-amber-400",
-    bgSoft: "bg-amber-500/5",
+    bgSoft: "bg-[var(--surface-tint)]",
     labelBm: "Rosak",
     labelEn: "Damaged",
   },
   disposed: {
-    badge: "bg-zinc-500/10 text-zinc-400 border-zinc-500/30",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
     dot: "bg-zinc-400",
-    bgSoft: "bg-zinc-500/5",
+    bgSoft: "bg-[var(--surface-tint)]",
     labelBm: "Dilupus",
     labelEn: "Disposed",
   },
   used_up: {
-    badge: "bg-zinc-500/10 text-zinc-400 border-zinc-500/30",
-    dot: "bg-zinc-400",
-    bgSoft: "bg-zinc-500/5",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
+    dot: "bg-zinc-500",
+    bgSoft: "bg-[var(--surface-tint)]",
     labelBm: "Habis",
     labelEn: "Used Up",
   },
@@ -164,18 +162,6 @@ function fmtDate(value?: string | null) {
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
-      })
-}
-
-function fmtDateOnly(value?: string | null) {
-  if (!value) return "—"
-  const d = new Date(`${value}T00:00:00`)
-  return Number.isNaN(d.getTime())
-    ? value
-    : d.toLocaleDateString("en-MY", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
       })
 }
 
@@ -386,7 +372,7 @@ export default function InventoryItemDetailPage() {
               aria-label={tr("Pindahkan barang", "Move item")}
               className="sm:px-2.5"
             >
-              <ArrowRightLeft size={16} className="text-sky-400" />
+              <ArrowRightLeft size={16} className="text-[var(--text)]" />
             </DesktopPageAction>
             <DesktopPageAction
               onClick={() => setShowEdit(true)}
@@ -409,10 +395,10 @@ export default function InventoryItemDetailPage() {
       />
 
       <DesktopPageBody className="space-y-5">
-        {/* ── HERO SHOWCASE CARD ── */}
+        {/* ── HERO SHOWCASE CARD (MONOCHROME) ── */}
         <section className="relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[var(--card)] p-5 text-[var(--text)] shadow-sm sm:p-6">
-          <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-[var(--accent)]/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-16 left-10 h-44 w-44 rounded-full bg-sky-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-neutral-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-16 left-10 h-44 w-44 rounded-full bg-neutral-400/5 blur-3xl" />
 
           <div className="relative z-10 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-4">
@@ -458,8 +444,6 @@ export default function InventoryItemDetailPage() {
                   <span className="font-semibold text-[var(--text)]">
                     {item.quantity} {item.unit}
                   </span>
-                  {item.brand && <span>· {item.brand}</span>}
-                  {item.model && <span>({item.model})</span>}
                 </p>
 
                 {/* Storage Location & Box Breadcrumbs */}
@@ -592,95 +576,6 @@ export default function InventoryItemDetailPage() {
                   )
                 })}
               </div>
-            </div>
-          </div>
-
-          {/* ── DETAILS & SPECIFICATIONS ── */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
-            <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
-              <Tag className="h-4 w-4 text-[var(--accent)]" />
-              {tr("Spesifikasi & Maklumat Terperinci", "Item Details & Specifications")}
-            </h2>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {/* Category */}
-              <div className="rounded-xl bg-[var(--surface-tint)] p-3">
-                <span className="block text-[11px] font-semibold text-[var(--muted)]">
-                  {tr("Kategori", "Category")}
-                </span>
-                <span className="mt-1 block font-bold text-sm text-[var(--text)]">
-                  {item.category || "—"}
-                </span>
-              </div>
-
-              {/* Brand & Model */}
-              <div className="rounded-xl bg-[var(--surface-tint)] p-3">
-                <span className="block text-[11px] font-semibold text-[var(--muted)]">
-                  {tr("Jenama & Model", "Brand & Model")}
-                </span>
-                <span className="mt-1 block font-bold text-sm text-[var(--text)] truncate">
-                  {[item.brand, item.model].filter(Boolean).join(" · ") || "—"}
-                </span>
-              </div>
-
-              {/* Serial Number */}
-              <div className="rounded-xl bg-[var(--surface-tint)] p-3">
-                <span className="block text-[11px] font-semibold text-[var(--muted)]">
-                  {tr("No. Siri", "Serial Number")}
-                </span>
-                <span className="mt-1 block font-bold text-sm text-[var(--text)] font-mono truncate">
-                  {item.serial_number || "—"}
-                </span>
-              </div>
-
-              {/* Purchase Date */}
-              <div className="rounded-xl bg-[var(--surface-tint)] p-3">
-                <span className="block text-[11px] font-semibold text-[var(--muted)]">
-                  {tr("Tarikh Pembelian", "Purchase Date")}
-                </span>
-                <span className="mt-1 block font-bold text-sm text-[var(--text)]">
-                  {fmtDateOnly(item.purchase_date)}
-                </span>
-              </div>
-
-              {/* Purchase Price */}
-              <div className="rounded-xl bg-[var(--surface-tint)] p-3">
-                <span className="block text-[11px] font-semibold text-[var(--muted)]">
-                  {tr("Harga Pembelian", "Purchase Price")}
-                </span>
-                <span className="mt-1 block font-bold text-sm text-[var(--text)]">
-                  {item.purchase_price != null ? `RM ${Number(item.purchase_price).toFixed(2)}` : "—"}
-                </span>
-              </div>
-
-              {/* Storage Box */}
-              <div className="rounded-xl bg-[var(--surface-tint)] p-3">
-                <span className="block text-[11px] font-semibold text-[var(--muted)]">
-                  {tr("Bekas / Kotak", "Container / Box")}
-                </span>
-                <span className="mt-1 block font-bold text-sm text-[var(--text)] truncate">
-                  {item.container_name || tr("Tiada bekas", "No box")}
-                </span>
-              </div>
-            </div>
-
-            {/* Notes Section */}
-            {item.notes && (
-              <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-3.5">
-                <span className="flex items-center gap-1.5 text-xs font-bold text-[var(--text)]">
-                  <FileText className="h-3.5 w-3.5 text-[var(--accent)]" />
-                  {tr("Nota & Catatan", "Notes & Remarks")}
-                </span>
-                <p className="mt-1.5 whitespace-pre-wrap text-xs text-[var(--muted)] leading-relaxed">
-                  {item.notes}
-                </p>
-              </div>
-            )}
-
-            {/* Audit info */}
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-3 text-[11px] text-[var(--muted)]">
-              <span>{tr("Ditambah", "Added")}: {fmtDate(item.created_at)}</span>
-              <span>{tr("Dikemas kini", "Last updated")}: {fmtDate(item.updated_at)}</span>
             </div>
           </div>
 
@@ -1020,11 +915,6 @@ function EditSheet({
   const [quantity, setQuantity] = useState(String(item.quantity))
   const [unit, setUnit] = useState(item.unit)
   const [status, setStatus] = useState<InvStatus>(item.status)
-  const [brand, setBrand] = useState(item.brand || "")
-  const [model, setModel] = useState(item.model || "")
-  const [serial, setSerial] = useState(item.serial_number || "")
-  const [purchaseDate, setPurchaseDate] = useState(item.purchase_date || "")
-  const [purchasePrice, setPurchasePrice] = useState(item.purchase_price != null ? String(item.purchase_price) : "")
   const [notes, setNotes] = useState(item.notes || "")
   const [locationId, setLocationId] = useState(item.location_id ? String(item.location_id) : "")
   const [containerId, setContainerId] = useState(item.container_id ? String(item.container_id) : "")
@@ -1062,11 +952,6 @@ function EditSheet({
           quantity: Math.max(0, parseInt(quantity || "1", 10) || 1),
           unit: unit.trim() || "unit",
           status,
-          brand: brand.trim() || null,
-          model: model.trim() || null,
-          serial_number: serial.trim() || null,
-          purchase_date: purchaseDate || null,
-          purchase_price: purchasePrice ? parseFloat(purchasePrice) : null,
           notes: notes.trim() || null,
           location_id: locationId ? parseInt(locationId, 10) : null,
           container_id: containerId ? parseInt(containerId, 10) : null,
@@ -1246,75 +1131,6 @@ function EditSheet({
                   </option>
                 ))}
               </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls} htmlFor="ed-brand">
-                {tr("Jenama", "Brand")}
-              </label>
-              <input
-                id="ed-brand"
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                className={inputCls}
-                maxLength={80}
-              />
-            </div>
-            <div>
-              <label className={labelCls} htmlFor="ed-model">
-                {tr("Model", "Model")}
-              </label>
-              <input
-                id="ed-model"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                className={inputCls}
-                maxLength={80}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className={labelCls} htmlFor="ed-serial">
-              {tr("No. Siri", "Serial Number")}
-            </label>
-            <input
-              id="ed-serial"
-              value={serial}
-              onChange={(e) => setSerial(e.target.value)}
-              className={inputCls}
-              maxLength={120}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls} htmlFor="ed-date">
-                {tr("Tarikh Pembelian", "Purchase Date")}
-              </label>
-              <input
-                id="ed-date"
-                type="date"
-                value={purchaseDate}
-                onChange={(e) => setPurchaseDate(e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls} htmlFor="ed-price">
-                {tr("Harga (RM)", "Price (RM)")}
-              </label>
-              <input
-                id="ed-price"
-                type="number"
-                min={0}
-                step="0.01"
-                value={purchasePrice}
-                onChange={(e) => setPurchasePrice(e.target.value)}
-                className={inputCls}
-              />
             </div>
           </div>
 

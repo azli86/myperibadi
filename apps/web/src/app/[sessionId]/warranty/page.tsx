@@ -85,33 +85,33 @@ const STATUS_CONFIG: Record<
   { badge: string; pillActive: string; pillInactive: string; dot: string; labelBm: string; labelEn: string }
 > = {
   active: {
-    badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30",
-    pillActive: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/50 shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
+    badge: "bg-[var(--surface-tint-strong)] text-[var(--text)] border-[var(--border)] font-bold",
+    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
     dot: "bg-emerald-500",
     labelBm: "Aktif",
     labelEn: "Active",
   },
   expiring_soon: {
-    badge: "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30",
-    pillActive: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/50 shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
+    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
     dot: "bg-amber-400",
     labelBm: "Hampir Tamat",
     labelEn: "Expiring Soon",
   },
   expired: {
-    badge: "bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/30",
-    pillActive: "bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/50 shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
+    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
     dot: "bg-rose-500",
     labelBm: "Tamat",
     labelEn: "Expired",
   },
   unknown: {
-    badge: "bg-zinc-500/15 text-zinc-600 dark:text-zinc-300 border-zinc-500/30",
-    pillActive: "bg-zinc-500/20 text-zinc-700 dark:text-zinc-300 border-zinc-500/50 shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
+    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
     dot: "bg-zinc-400",
     labelBm: "Tiada Tarikh",
     labelEn: "No Date",
@@ -293,10 +293,10 @@ export default function WarrantyListPage() {
   )
 
   const remainingPillClass = (status: WarrantyStatus) => {
-    if (status === "expired") return "bg-rose-500/15 text-rose-400 border-rose-500/30"
-    if (status === "expiring_soon") return "bg-amber-500/15 text-amber-400 border-amber-500/30"
-    if (status === "active") return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-    return "bg-white/10 text-neutral-300 border-white/10"
+    if (status === "expired") return "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]"
+    if (status === "expiring_soon") return "bg-[var(--surface-tint)] text-[var(--text)] border-[var(--border)]"
+    if (status === "active") return "bg-[var(--surface-tint-strong)] text-[var(--text)] border-[var(--border)]"
+    return "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]"
   }
 
   // ── RENDER PHOTO GALLERY CARD ──────────────────────────────────────────────
@@ -357,7 +357,7 @@ export default function WarrantyListPage() {
 
           <div className="flex items-center justify-between gap-1 pt-1 text-[11px]">
             <span className="flex items-center gap-1 font-semibold text-[var(--muted)]">
-              <Calendar className="h-3 w-3 shrink-0 text-amber-400" />
+              <Calendar className="h-3 w-3 shrink-0 text-[var(--muted)]" />
               <span>{formatDateShort(d.warranty_expiry_date, dateLocale)}</span>
             </span>
 
@@ -474,10 +474,10 @@ export default function WarrantyListPage() {
 
       {/* ── MOBILE VIEW ── */}
       <div className="md:hidden px-1 pb-24 pt-1 space-y-4">
-        {/* Mobile Hero Card */}
+        {/* Mobile Hero Card (Monochrome) */}
         <section className="relative overflow-hidden rounded-[1.85rem] border border-[var(--border)] bg-[var(--card)] p-4 text-[var(--text)] shadow-sm">
-          <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-[var(--accent)]/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-10 left-6 h-36 w-36 rounded-full bg-emerald-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-neutral-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-10 left-6 h-36 w-36 rounded-full bg-neutral-400/5 blur-3xl" />
 
           <div className="relative z-10 space-y-4">
             <div className="flex items-start justify-between gap-3">
@@ -499,7 +499,7 @@ export default function WarrantyListPage() {
               </div>
 
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] shadow-sm">
-                <ShieldCheck className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
+                <ShieldCheck className="h-5 w-5 text-[var(--text)]" />
               </div>
             </div>
 
@@ -507,7 +507,7 @@ export default function WarrantyListPage() {
               <button
                 type="button"
                 onClick={() => router.push(`/${sessionId}/warranty/add`)}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--accent)] px-3 py-2.5 text-xs font-bold text-white shadow-sm transition active:scale-[0.98]"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--text)] px-3 py-2.5 text-xs font-bold text-[var(--bg)] shadow-sm transition active:scale-[0.98]"
               >
                 <Plus className="h-4 w-4" />
                 <span>{tr("Tambah Peranti", "Add Device")}</span>
@@ -517,7 +517,7 @@ export default function WarrantyListPage() {
                 onClick={openSearchPopup}
                 className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2.5 text-xs font-bold text-[var(--text)] transition active:scale-[0.98] hover:bg-[var(--card-active)]"
               >
-                <Search className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
+                <Search className="h-4 w-4 text-[var(--text)]" />
                 <span>{tr("Semak Cepat", "Quick Search")}</span>
               </button>
             </div>

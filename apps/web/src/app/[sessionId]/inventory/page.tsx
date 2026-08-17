@@ -81,50 +81,50 @@ const STATUS_CONFIG: Record<
   { badge: string; pillActive: string; pillInactive: string; dot: string; labelBm: string; labelEn: string }
 > = {
   available: {
-    badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30",
-    pillActive: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/50 shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
+    badge: "bg-[var(--surface-tint-strong)] text-[var(--text)] border-[var(--border)] font-bold",
+    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
     dot: "bg-emerald-500",
     labelBm: "Ada",
     labelEn: "Available",
   },
   loaned: {
-    badge: "bg-sky-500/15 text-sky-600 dark:text-sky-300 border-sky-500/30",
-    pillActive: "bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-500/50 shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
+    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
     dot: "bg-sky-400",
     labelBm: "Dipinjam",
     labelEn: "Loaned",
   },
   missing: {
-    badge: "bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/30",
-    pillActive: "bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-500/50 shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
+    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
     dot: "bg-rose-500",
     labelBm: "Hilang",
     labelEn: "Missing",
   },
   damaged: {
-    badge: "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30",
-    pillActive: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/50 shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
+    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
     dot: "bg-amber-400",
     labelBm: "Rosak",
     labelEn: "Damaged",
   },
   disposed: {
-    badge: "bg-zinc-500/15 text-zinc-600 dark:text-zinc-300 border-zinc-500/30",
-    pillActive: "bg-zinc-500/20 text-zinc-700 dark:text-zinc-300 border-zinc-500/50 shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
+    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
     dot: "bg-zinc-400",
     labelBm: "Dilupus",
     labelEn: "Disposed",
   },
   used_up: {
-    badge: "bg-zinc-500/15 text-zinc-600 dark:text-zinc-300 border-zinc-500/30",
-    pillActive: "bg-zinc-500/20 text-zinc-700 dark:text-zinc-300 border-zinc-500/50 shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--card-active)]",
-    dot: "bg-zinc-400",
+    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
+    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
+    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
+    dot: "bg-zinc-500",
     labelBm: "Habis",
     labelEn: "Used Up",
   },
@@ -361,7 +361,7 @@ export default function InventoryPage() {
     setSelectedFolder({ type: "all" })
   }, [])
 
-  // ── RENDER PHOTO GALLERY CARD ──────────────────────────────────────────────
+  // ── RENDER PHOTO GALLERY CARD (REDESIGNED) ─────────────────────────────────
   const renderGalleryCard = (item: InvItem) => {
     const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.available
     return (
@@ -369,62 +369,54 @@ export default function InventoryPage() {
         key={item.id}
         type="button"
         onClick={() => router.push(`/${sessionId}/inventory/${item.id}`)}
-        className="group relative flex flex-col overflow-hidden rounded-[1.35rem] sm:rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] text-left transition hover:border-[var(--accent)]/40 hover:shadow-lg active:scale-[0.98]"
+        className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] text-left shadow-sm transition-all duration-200 hover:shadow-xl hover:border-[var(--text)]/20 active:scale-[0.97]"
       >
         {/* Photo Canvas */}
-        <div className="relative aspect-[4/3] w-full overflow-hidden bg-neutral-900/60 border-b border-[var(--border)]/50">
+        <div className="relative aspect-[4/3] w-full overflow-hidden">
           {item.has_image ? (
             <img
               src={`/api/inventory/items/${item.id}/image`}
               alt={item.name}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-900 via-[#181818] to-[#121212] text-neutral-500">
-              <Package className="h-10 w-10 sm:h-12 sm:w-12 opacity-40 transition-transform duration-300 group-hover:scale-110" />
+            <div className="flex h-full w-full items-center justify-center bg-[var(--surface-tint)]">
+              <Package className="h-10 w-10 sm:h-12 sm:w-12 text-[var(--muted)] opacity-30 transition-all duration-300 group-hover:opacity-50 group-hover:scale-110" />
             </div>
           )}
 
-          {/* Floating Quantity Tag (Top-Left) */}
-          <span className="absolute left-2.5 top-2.5 inline-flex items-center rounded-lg bg-black/60 backdrop-blur-md px-2 py-0.5 text-[10px] font-black text-white shadow">
-            {item.quantity} {item.unit}
+          {/* Bottom gradient overlay */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/40 to-transparent" />
+
+          {/* Floating Status Dot (Top-Right) */}
+          <span className="absolute right-2.5 top-2.5 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/50 backdrop-blur-lg px-2 py-0.5 text-[9px] font-black text-white shadow-md">
+            <span className={cn("h-1.5 w-1.5 rounded-full ring-1 ring-white/20", cfg.dot)} />
+            <span>{isBm ? cfg.labelBm : item.status_label || cfg.labelEn}</span>
           </span>
 
-          {/* Floating Status Badge (Top-Right) */}
-          <span
-            className={cn(
-              "absolute right-2.5 top-2.5 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-black tracking-tight backdrop-blur-md shadow",
-              cfg.badge
-            )}
-          >
-            <span className={cn("h-1.5 w-1.5 rounded-full", cfg.dot)} />
-            <span>{isBm ? cfg.labelBm : item.status_label || cfg.labelEn}</span>
+          {/* Floating Quantity (Bottom-Left, over gradient) */}
+          <span className="absolute bottom-2 left-2.5 inline-flex items-center gap-1 rounded-md bg-black/50 backdrop-blur-md px-1.5 py-0.5 text-[10px] font-black text-white/90 shadow">
+            {item.quantity} {item.unit}
           </span>
         </div>
 
         {/* Card Body Details */}
-        <div className="flex flex-1 flex-col justify-between gap-1.5 p-3 sm:p-3.5">
-          <h4 className="truncate text-sm sm:text-base font-black text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+        <div className="flex flex-1 flex-col gap-1.5 p-3 sm:p-3.5">
+          <h4 className="truncate text-[13px] sm:text-sm font-extrabold leading-snug text-[var(--text)] transition-colors group-hover:text-[var(--text)]">
             {item.name}
           </h4>
 
-          {/* Location & Box Tag - High Visibility Badges */}
-          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+          {/* Location & Box Tags */}
+          <div className="flex flex-wrap items-center gap-1">
             {item.location_path ? (
-              <span className="inline-flex max-w-[140px] items-center gap-1 truncate rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-400">
-                <MapPin className="h-3 w-3 shrink-0 text-emerald-400" />
+              <span className="inline-flex max-w-[140px] items-center gap-1 truncate rounded-md bg-[var(--surface-tint)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--muted)]">
+                <MapPin className="h-2.5 w-2.5 shrink-0" />
                 <span className="truncate">{item.location_path}</span>
               </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-lg bg-[var(--surface-tint)] px-2 py-0.5 text-[11px] font-medium text-[var(--muted)]">
-                <MapPin className="h-3 w-3 shrink-0 opacity-50" />
-                <span>{tr("Tiada lokasi", "No location")}</span>
-              </span>
-            )}
-
+            ) : null}
             {item.container_name && (
-              <span className="inline-flex max-w-[140px] items-center gap-1.5 truncate rounded-lg border border-sky-500/40 bg-sky-500/20 px-2 py-0.5 text-[11px] font-black text-sky-200 shadow-sm ring-1 ring-sky-400/20">
-                <Boxes className="h-3.5 w-3.5 shrink-0 text-sky-400" />
+              <span className="inline-flex max-w-[120px] items-center gap-1 truncate rounded-md bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--text)]">
+                <Boxes className="h-2.5 w-2.5 shrink-0" />
                 <span className="truncate">{item.container_name}</span>
               </span>
             )}
@@ -434,7 +426,7 @@ export default function InventoryPage() {
     )
   }
 
-  // ── RENDER COMPACT 3-COL MOBILE GALLERY CARD ──────────────────────────────
+  // ── RENDER COMPACT 3-COL MOBILE GALLERY CARD (REDESIGNED) ──────────────────
   const renderMobile3ColCard = (item: InvItem) => {
     const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.available
     return (
@@ -442,53 +434,55 @@ export default function InventoryPage() {
         key={item.id}
         type="button"
         onClick={() => router.push(`/${sessionId}/inventory/${item.id}`)}
-        className="group relative flex flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1.5 text-left transition active:scale-95 shadow-sm hover:border-[var(--accent)]/40"
+        className="group relative flex flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] text-left shadow-sm transition-all duration-200 active:scale-[0.95]"
       >
         {/* Photo Container */}
-        <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[var(--surface-tint)]">
+        <div className="relative aspect-square w-full overflow-hidden">
           {item.has_image ? (
             <img
               src={`/api/inventory/items/${item.id}/image`}
               alt={item.name}
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform duration-400 group-hover:scale-105"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-neutral-900/30 via-neutral-800/10 to-transparent text-[var(--muted)]">
-              <Package className="h-6 w-6 opacity-40" />
+            <div className="flex h-full w-full items-center justify-center bg-[var(--surface-tint)]">
+              <Package className="h-6 w-6 text-[var(--muted)] opacity-25" />
             </div>
           )}
 
-          {/* Floating Quantity Tag (Top-Left) */}
-          <span className="absolute left-1.5 top-1.5 inline-flex items-center rounded-md bg-black/65 backdrop-blur-md px-1.5 py-0.5 text-[9px] font-black text-white shadow">
-            {item.quantity} {item.unit}
-          </span>
+          {/* Bottom fade */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-black/30 to-transparent" />
 
-          {/* Floating Status Dot (Top-Right) */}
+          {/* Status Dot (Top-Right) */}
           <span
-            className={cn("absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full ring-2 ring-black/30 shadow", cfg.dot)}
+            className={cn("absolute right-1.5 top-1.5 h-2 w-2 rounded-full ring-[1.5px] ring-black/20 shadow-sm", cfg.dot)}
             title={isBm ? cfg.labelBm : item.status_label || cfg.labelEn}
           />
+
+          {/* Quantity (Bottom-Left, over gradient) */}
+          <span className="absolute bottom-1 left-1.5 rounded bg-black/50 backdrop-blur px-1 py-px text-[8px] font-black text-white/90">
+            {item.quantity}{item.unit !== "unit" ? ` ${item.unit}` : ""}
+          </span>
         </div>
 
         {/* Card Body */}
-        <div className="flex flex-1 flex-col justify-between pt-1.5 px-0.5">
-          <h4 className="line-clamp-2 text-[11px] font-bold leading-snug text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+        <div className="flex flex-1 flex-col gap-0.5 px-1.5 pb-1.5 pt-1.5">
+          <h4 className="line-clamp-2 text-[10.5px] font-bold leading-tight text-[var(--text)]">
             {item.name}
           </h4>
 
-          {/* Compact Location / Box Tag */}
           {(item.container_name || item.location_path) && (
-            <div className="mt-1 flex items-center gap-0.5 truncate text-[9.5px] font-bold text-sky-600 dark:text-sky-400">
+            <div className="mt-auto flex items-center gap-0.5 truncate pt-0.5">
               {item.container_name ? (
-                <>
-                  <Boxes className="h-3 w-3 shrink-0" />
+                <span className="inline-flex items-center gap-0.5 truncate rounded bg-[var(--surface-tint-strong)] px-1 py-px text-[8px] font-bold text-[var(--text)]">
+                  <Boxes className="h-2 w-2 shrink-0" />
                   <span className="truncate">{item.container_name}</span>
-                </>
+                </span>
               ) : (
-                <>
-                  <MapPin className="h-3 w-3 shrink-0 text-emerald-500 dark:text-emerald-400" />
+                <span className="inline-flex items-center gap-0.5 truncate text-[8px] font-medium text-[var(--muted)]">
+                  <MapPin className="h-2 w-2 shrink-0" />
                   <span className="truncate">{item.location_path}</span>
-                </>
+                </span>
               )}
             </div>
           )}
@@ -503,9 +497,10 @@ export default function InventoryPage() {
       <div
         key={item.id}
         onClick={() => router.push(`/${sessionId}/inventory/${item.id}`)}
-        className="group relative flex cursor-pointer items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 transition active:scale-[0.98] hover:border-[var(--accent)]/30 hover:bg-[var(--card-active)] shadow-sm"
+        className="group relative flex cursor-pointer items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-2.5 transition-all duration-200 active:scale-[0.98] hover:border-[var(--text)]/20 hover:shadow-md"
       >
-        <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]">
+        {/* Image Thumbnail */}
+        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[var(--surface-tint)]">
           {item.has_image ? (
             <img
               src={`/api/inventory/items/${item.id}/image`}
@@ -513,50 +508,46 @@ export default function InventoryPage() {
               className="h-full w-full object-cover"
             />
           ) : (
-            <Package className="h-6 w-6 text-[var(--muted)] opacity-70" />
+            <Package className="h-5 w-5 text-[var(--muted)] opacity-40" />
           )}
+          {/* Status dot overlay */}
+          <span className={cn("absolute right-0.5 top-0.5 h-2 w-2 rounded-full ring-[1.5px] ring-[var(--card)]", cfg.dot)} />
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-1.5">
-            <p className="truncate text-xs font-black text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+          <div className="flex items-center justify-between gap-2">
+            <p className="truncate text-xs font-bold text-[var(--text)]">
               {item.name}
             </p>
-            <span className={cn("shrink-0 rounded-full border px-2 py-0.2 text-[9px] font-bold tracking-tight", cfg.badge)}>
-              {isBm ? cfg.labelBm : item.status_label || cfg.labelEn}
+            <span className="shrink-0 rounded bg-[var(--surface-tint)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--muted)]">
+              {item.quantity} {item.unit}
             </span>
           </div>
 
           {subtitle && (
-            <p className="truncate text-[11px] font-medium text-[var(--muted)]">
+            <p className="truncate text-[10px] font-medium text-[var(--muted)]">
               {subtitle}
             </p>
           )}
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[10px]">
-            <span className="inline-flex items-center rounded-md bg-[var(--surface-tint-strong)] px-1.5 py-0.5 font-bold text-[var(--text)]">
-              {item.quantity} {item.unit}
-            </span>
-
+          <div className="mt-1 flex flex-wrap items-center gap-1 text-[9px]">
             {item.location_path ? (
-              <span className="inline-flex max-w-[140px] items-center gap-1 truncate rounded-md bg-[var(--surface-tint)] px-1.5 py-0.5 text-[var(--muted)]">
-                <MapPin className="h-2.5 w-2.5 shrink-0 text-emerald-400" />
+              <span className="inline-flex max-w-[140px] items-center gap-0.5 truncate text-[var(--muted)]">
+                <MapPin className="h-2 w-2 shrink-0" />
                 <span className="truncate">{item.location_path}</span>
               </span>
             ) : null}
 
             {item.container_name ? (
-              <span className="inline-flex items-center gap-1 rounded-md bg-[var(--surface-tint)] px-1.5 py-0.5 text-[var(--muted)]">
-                <Boxes className="h-2.5 w-2.5 shrink-0 text-sky-400" />
+              <span className="inline-flex items-center gap-0.5 rounded bg-[var(--surface-tint-strong)] px-1 py-px font-bold text-[var(--text)]">
+                <Boxes className="h-2 w-2 shrink-0" />
                 <span>{item.container_name}</span>
               </span>
             ) : null}
           </div>
         </div>
 
-        <div className="shrink-0 pl-1 text-[var(--muted)] opacity-60">
-          <ChevronRight className="h-4 w-4" />
-        </div>
+        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--muted)] opacity-40 transition-opacity group-hover:opacity-80" />
       </div>
     )
   }
@@ -591,98 +582,98 @@ export default function InventoryPage() {
 
       {/* ── MOBILE VIEW ── */}
       <div className="md:hidden px-1 pb-24 pt-1 space-y-4">
-        {/* Mobile Hero Card */}
-        <section className="relative overflow-hidden rounded-[1.85rem] border border-[var(--border)] bg-[var(--card)] p-4 text-[var(--text)] shadow-sm">
-          <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-[var(--accent)]/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-10 left-6 h-36 w-36 rounded-full bg-sky-500/10 blur-3xl" />
-
-          <div className="relative z-10 space-y-4">
-            <div className="flex items-start justify-between gap-3">
+        {/* ── HERO STATS STRIP (REDESIGNED) ── */}
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+          <div className="space-y-4">
+            {/* Top Row: Title + Actions */}
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                  {tr("Jumlah Keseluruhan", "Total Inventory")}
-                </p>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-3xl font-black tracking-tight text-[var(--text)]">
-                    {summary ? summary.total_units : 0}
-                  </span>
-                  <span className="text-xs font-semibold text-[var(--muted)]">
-                    {tr("unit", "units")} · {summary ? summary.total_types : 0} {tr("jenis", "types")}
-                  </span>
+                <span className="text-2xl font-black tracking-tight text-[var(--text)]">
+                  {summary ? summary.total_units : "—"}
+                </span>
+                <span className="ml-1.5 text-xs font-semibold text-[var(--muted)]">
+                  {tr("unit", "units")} · {summary ? summary.total_types : 0} {tr("jenis", "types")}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => openCreate()}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-3 py-2 text-xs font-bold text-[var(--bg)] shadow-sm transition active:scale-95"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>{tr("Tambah", "Add")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
+                  className="inline-flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-2 text-[var(--text)] transition active:scale-95"
+                  title={tr("Tambah Lokasi", "Add Location")}
+                >
+                  <FolderPlus className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Stats Grid - 4 compact stat tiles */}
+            <div className="grid grid-cols-4 gap-1.5">
+              {([
+                { label: tr("Ada", "Avail"), count: summary?.available ?? 0, dot: "bg-emerald-500" },
+                { label: tr("Pinjam", "Loaned"), count: summary?.loaned ?? 0, dot: "bg-sky-400" },
+                { label: tr("Hilang", "Missing"), count: summary?.missing ?? 0, dot: "bg-rose-500" },
+                { label: tr("Rosak", "Damaged"), count: summary?.damaged ?? 0, dot: "bg-amber-400" },
+              ] as const).map((st) => (
+                <div key={st.label} className="flex flex-col items-center gap-0.5 rounded-xl bg-[var(--surface-tint)] py-2 px-1">
+                  <div className="flex items-center gap-1">
+                    <span className={cn("h-1.5 w-1.5 rounded-full", st.dot)} />
+                    <span className="text-base font-black text-[var(--text)]">{st.count}</span>
+                  </div>
+                  <span className="text-[9px] font-semibold text-[var(--muted)] uppercase tracking-wider">{st.label}</span>
                 </div>
-                <p className="mt-0.5 text-[11px] text-[var(--muted)]">
-                  {locations.length} {tr("lokasi", "locations")} · {containers.length} {tr("bekas/kotak", "boxes")}
-                </p>
-              </div>
-
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] shadow-sm">
-                <Package className="h-5 w-5 text-emerald-500 dark:text-emerald-400" />
-              </div>
+              ))}
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => openCreate()}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[var(--accent)] px-3 py-2.5 text-xs font-bold text-white shadow-sm transition active:scale-[0.98]"
-              >
-                <Plus className="h-4 w-4" />
-                <span>{tr("Tambah Barang", "Add Item")}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2.5 text-xs font-bold text-[var(--text)] transition active:scale-[0.98] hover:bg-[var(--card-active)]"
-              >
-                <FolderPlus className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
-                <span>{tr("Tambah Lokasi", "Add Location")}</span>
-              </button>
-            </div>
-
+            {/* Status Filter Chips */}
             {summary && (
-              <div className="border-t border-[var(--border)]/60 pt-3">
-                <div className="no-scrollbar -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setStatusFilter("")}
-                    className={cn(
-                      "inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold transition active:scale-95",
-                      statusFilter === ""
-                        ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
-                        : "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]"
-                    )}
-                  >
-                    <span>{tr("Semua", "All")}</span>
-                    <span className="opacity-75">({summary.total_types})</span>
-                  </button>
+              <div className="no-scrollbar -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-0.5">
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("")}
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold transition active:scale-95",
+                    statusFilter === ""
+                      ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
+                      : "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]"
+                  )}
+                >
+                  <span>{tr("Semua", "All")}</span>
+                  <span className="opacity-75">({summary.total_types})</span>
+                </button>
 
-                  {(
-                    [
-                      { key: "available", label: tr("Ada", "Available"), count: summary.available },
-                      { key: "loaned", label: tr("Dipinjam", "Loaned"), count: summary.loaned },
-                      { key: "missing", label: tr("Hilang", "Missing"), count: summary.missing },
-                      { key: "damaged", label: tr("Rosak", "Damaged"), count: summary.damaged },
-                    ] as const
-                  ).map((st) => {
-                    const isSelected = statusFilter === st.key
-                    const cfg = STATUS_CONFIG[st.key as InvStatus]
-                    return (
-                      <button
-                        key={st.key}
-                        type="button"
-                        onClick={() => setStatusFilter(isSelected ? "" : st.key)}
-                        className={cn(
-                          "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold transition active:scale-95",
-                          isSelected ? cfg.pillActive : cfg.pillInactive
-                        )}
-                      >
-                        <span className={cn("h-2 w-2 rounded-full", cfg.dot)} />
-                        <span>{st.label}</span>
-                        <span className="opacity-80">({st.count})</span>
-                      </button>
-                    )
-                  })}
-                </div>
+                {([
+                  { key: "available", label: tr("Ada", "Available"), count: summary.available },
+                  { key: "loaned", label: tr("Dipinjam", "Loaned"), count: summary.loaned },
+                  { key: "missing", label: tr("Hilang", "Missing"), count: summary.missing },
+                  { key: "damaged", label: tr("Rosak", "Damaged"), count: summary.damaged },
+                ] as const).map((st) => {
+                  const isSelected = statusFilter === st.key
+                  const cfg = STATUS_CONFIG[st.key as InvStatus]
+                  return (
+                    <button
+                      key={st.key}
+                      type="button"
+                      onClick={() => setStatusFilter(isSelected ? "" : st.key)}
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold transition active:scale-95",
+                        isSelected ? cfg.pillActive : cfg.pillInactive
+                      )}
+                    >
+                      <span className={cn("h-2 w-2 rounded-full", cfg.dot)} />
+                      <span>{st.label}</span>
+                      <span className="opacity-80">({st.count})</span>
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -732,7 +723,7 @@ export default function InventoryPage() {
                 onClick={() => setDisplayMode("gallery")}
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-xl transition",
-                  displayMode === "gallery" ? "bg-[var(--card)] text-[var(--accent)] shadow-sm" : "text-[var(--muted)]"
+                  displayMode === "gallery" ? "bg-[var(--card)] text-[var(--text)] shadow-sm" : "text-[var(--muted)]"
                 )}
                 title={tr("Paparan Galeri", "Gallery View")}
               >
@@ -743,7 +734,7 @@ export default function InventoryPage() {
                 onClick={() => setDisplayMode("list")}
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-xl transition",
-                  displayMode === "list" ? "bg-[var(--card)] text-[var(--accent)] shadow-sm" : "text-[var(--muted)]"
+                  displayMode === "list" ? "bg-[var(--card)] text-[var(--text)] shadow-sm" : "text-[var(--muted)]"
                 )}
                 title={tr("Paparan Senarai", "List View")}
               >
@@ -762,7 +753,7 @@ export default function InventoryPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={tr("Cari nama, jenama, no. siri...", "Search name, brand, serial...")}
-                className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] py-2.5 pl-10 pr-9 text-xs font-medium text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)]"
+                className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] py-2.5 pl-10 pr-9 text-xs font-medium text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--text)]"
               />
               {search && (
                 <button
@@ -816,7 +807,7 @@ export default function InventoryPage() {
                 <button
                   type="button"
                   onClick={clearAllFilters}
-                  className="inline-flex items-center gap-1 font-bold text-rose-400 hover:underline"
+                  className="inline-flex items-center gap-1 font-bold text-[var(--text)] hover:underline"
                 >
                   <X className="h-3 w-3" />
                   {tr("Padam Penapis", "Reset")}
@@ -863,7 +854,7 @@ export default function InventoryPage() {
                   onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
                   className="inline-flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-bold text-[var(--text)] shadow-sm active:scale-95"
                 >
-                  <FolderPlus className="h-3.5 w-3.5 text-emerald-400" />
+                  <FolderPlus className="h-3.5 w-3.5 text-[var(--text)]" />
                   <span>{tr("Lokasi", "Location")}</span>
                 </button>
                 <button
@@ -871,7 +862,7 @@ export default function InventoryPage() {
                   onClick={() => { setEditingCont(null); setDefaultContLocId(""); setShowContModal(true) }}
                   className="inline-flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-bold text-[var(--text)] shadow-sm active:scale-95"
                 >
-                  <BoxSelect className="h-3.5 w-3.5 text-sky-400" />
+                  <BoxSelect className="h-3.5 w-3.5 text-[var(--text)]" />
                   <span>{tr("Bekas", "Box")}</span>
                 </button>
               </div>
@@ -883,7 +874,7 @@ export default function InventoryPage() {
                 return (
                   <div
                     key={loc.id}
-                    className="relative rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm transition hover:border-[var(--accent)]/30"
+                    className="relative rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm transition hover:border-[var(--text)]/30"
                     style={{ marginLeft: depth ? `${depth * 14}px` : "0px" }}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -892,11 +883,11 @@ export default function InventoryPage() {
                         onClick={() => setSelectedLocationForView(loc)}
                         className="flex flex-1 cursor-pointer items-center gap-2.5 active:opacity-75"
                       >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-emerald-400">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]">
                           <MapPin className="h-4 w-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <span className="font-bold text-xs text-[var(--text)] group-hover:text-[var(--accent)]">{loc.name}</span>
+                          <span className="font-bold text-xs text-[var(--text)] group-hover:text-[var(--text)]">{loc.name}</span>
                           <p className="text-[10px] text-[var(--muted)]">
                             {loc.item_types} {tr("jenis", "types")} · {loc.item_units} {tr("unit", "units")}
                           </p>
@@ -934,8 +925,8 @@ export default function InventoryPage() {
                     {conts.length > 0 && (
                       <div className="mt-3 border-t border-[var(--border)]/60 pt-2.5">
                         <div className="mb-2 flex items-center justify-between">
-                          <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-sky-400">
-                            <Boxes className="h-3.5 w-3.5" />
+                          <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[var(--text)]">
+                            <Boxes className="h-3.5 w-3.5 text-[var(--muted)]" />
                             {tr("Bekas / Kotak", "Boxes & Containers")} ({conts.length})
                           </span>
                         </div>
@@ -945,17 +936,17 @@ export default function InventoryPage() {
                               key={c.id}
                               type="button"
                               onClick={() => setSelectedContainerForView(c)}
-                              className="group relative flex flex-col items-start justify-between rounded-2xl border border-sky-500/35 bg-sky-500/5 dark:bg-[#151a21] p-2.5 text-left shadow-sm transition hover:border-sky-400 hover:bg-sky-500/10 active:scale-[0.96]"
+                              className="group relative flex flex-col items-start justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2.5 text-left shadow-sm transition hover:border-[var(--text)]/40 hover:bg-[var(--surface-tint-strong)] active:scale-[0.96]"
                             >
                               <div className="flex w-full items-center justify-between gap-1">
-                                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-500/20 text-sky-600 dark:text-sky-400 ring-1 ring-sky-400/30">
+                                <div className="flex h-6 w-6 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--text)]">
                                   <Boxes className="h-3.5 w-3.5" />
                                 </div>
-                                <span className="rounded-full bg-sky-400/15 border border-sky-400/30 px-1.5 py-0.2 text-[9px] font-black text-sky-700 dark:text-sky-300">
+                                <span className="rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.2 text-[9px] font-black text-[var(--text)]">
                                   {c.item_types} {tr("jenis", "types")}
                                 </span>
                               </div>
-                              <span className="mt-2 line-clamp-1 w-full text-xs font-black text-[var(--text)] group-hover:text-sky-500 dark:group-hover:text-sky-300 transition-colors">
+                              <span className="mt-2 line-clamp-1 w-full text-xs font-black text-[var(--text)] transition-colors">
                                 {c.name}
                               </span>
                               <span className="mt-0.5 text-[9px] font-semibold text-[var(--muted)]">
@@ -983,7 +974,7 @@ export default function InventoryPage() {
             <aside className="sticky top-20 flex flex-col rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
               <div className="flex items-center justify-between border-b border-[var(--border)]/60 pb-3 mb-3">
                 <div className="flex items-center gap-2">
-                  <FolderTree className="h-4 w-4 text-[var(--accent)]" />
+                  <FolderTree className="h-4 w-4 text-[var(--text)]" />
                   <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text)]">
                     {tr("Struktur Folder", "Folder Tree")}
                   </h3>
@@ -995,7 +986,7 @@ export default function InventoryPage() {
                     className="rounded-lg p-1 text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)] transition"
                     title={tr("Tambah Lokasi", "Add Location")}
                   >
-                    <FolderPlus className="h-3.5 w-3.5 text-emerald-500" />
+                    <FolderPlus className="h-3.5 w-3.5 text-[var(--text)]" />
                   </button>
                   <button
                     type="button"
@@ -1003,7 +994,7 @@ export default function InventoryPage() {
                     className="rounded-lg p-1 text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)] transition"
                     title={tr("Tambah Bekas / Kotak", "Add Container")}
                   >
-                    <Boxes className="h-3.5 w-3.5 text-sky-500" />
+                    <Boxes className="h-3.5 w-3.5 text-[var(--text)]" />
                   </button>
                 </div>
               </div>
@@ -1071,7 +1062,7 @@ export default function InventoryPage() {
                           ) : (
                             <span className="w-3.5" />
                           )}
-                          <Folder className={cn("h-4 w-4 shrink-0", isSelected ? "" : "text-amber-500")} />
+                          <Folder className={cn("h-4 w-4 shrink-0", isSelected ? "" : "text-[var(--text)]")} />
                           <span className="truncate">{loc.name}</span>
                         </div>
 
@@ -1118,7 +1109,7 @@ export default function InventoryPage() {
                                 )}
                               >
                                 <div className="flex items-center gap-1.5 min-w-0">
-                                  <Folder className={cn("h-3.5 w-3.5 shrink-0", isSubSelected ? "" : "text-amber-400")} />
+                                  <Folder className={cn("h-3.5 w-3.5 shrink-0", isSubSelected ? "" : "text-[var(--text)]")} />
                                   <span className="truncate">{subLoc.name}</span>
                                 </div>
                                 <span className={cn(
@@ -1144,20 +1135,20 @@ export default function InventoryPage() {
                                 className={cn(
                                   "group flex cursor-pointer items-center justify-between rounded-lg px-2 py-1 text-[11px] font-bold transition",
                                   isContSelected
-                                    ? "bg-sky-500 text-white shadow-sm"
-                                    : "text-[var(--text)] hover:bg-sky-500/10 hover:text-sky-600 dark:hover:text-sky-300"
+                                    ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
+                                    : "text-[var(--text)] hover:bg-[var(--surface-tint)]"
                                 )}
                               >
                                 <div className="flex items-center gap-1.5 min-w-0">
-                                  <Boxes className={cn("h-3.5 w-3.5 shrink-0", isContSelected ? "text-white" : "text-sky-500 dark:text-sky-400")} />
+                                  <Boxes className={cn("h-3.5 w-3.5 shrink-0", isContSelected ? "text-[var(--bg)]" : "text-[var(--muted)]")} />
                                   <span className="truncate">{cont.name}</span>
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <span className={cn(
                                     "rounded-full px-1.5 text-[9px] font-black",
                                     isContSelected
-                                      ? "bg-white/20 text-white"
-                                      : "bg-sky-500/15 text-sky-600 dark:text-sky-300"
+                                      ? "bg-[var(--bg)] text-[var(--text)]"
+                                      : "bg-[var(--surface-tint-strong)] text-[var(--muted)]"
                                   )}>
                                     {contStats.types}
                                   </span>
@@ -1219,11 +1210,11 @@ export default function InventoryPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     {selectedFolder.type === "container" ? (
-                      <Boxes className="h-5 w-5 text-sky-500" />
+                      <Boxes className="h-5 w-5 text-[var(--text)]" />
                     ) : selectedFolder.type === "location" ? (
-                      <Folder className="h-5 w-5 text-amber-500" />
+                      <Folder className="h-5 w-5 text-[var(--text)]" />
                     ) : (
-                      <FolderTree className="h-5 w-5 text-[var(--accent)]" />
+                      <FolderTree className="h-5 w-5 text-[var(--text)]" />
                     )}
                     <h2 className="text-base font-black text-[var(--text)]">
                       {selectedFolder.type === "all"
@@ -1252,7 +1243,7 @@ export default function InventoryPage() {
                         openCreate()
                       }
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 py-2 text-xs font-bold text-white shadow-sm transition hover:opacity-90 active:scale-95"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-3.5 py-2 text-xs font-bold text-[var(--bg)] shadow-sm transition hover:opacity-90 active:scale-95"
                   >
                     <Plus className="h-4 w-4" />
                     <span>{tr("Tambah Barang", "Add Item")}</span>
