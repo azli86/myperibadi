@@ -108,6 +108,22 @@ async def search_items(
             | func.lower(func.coalesce(models.InventoryItem.model, "")).like(like)
             | func.lower(func.coalesce(models.InventoryItem.serial_number, "")).like(like)
             | func.lower(func.coalesce(models.InventoryItem.notes, "")).like(like)
+            | func.lower(func.coalesce(models.InventoryLocation.name, "")).like(like)
+            | func.lower(func.coalesce(models.InventoryContainer.name, "")).like(like)
+        )
+        stmt = stmt.outerjoin(
+            models.InventoryLocation,
+            models.InventoryItem.location_id == models.InventoryLocation.id,
+        ).outerjoin(
+            models.InventoryContainer,
+            models.InventoryItem.container_id == models.InventoryContainer.id,
+        )
+        count_stmt = count_stmt.outerjoin(
+            models.InventoryLocation,
+            models.InventoryItem.location_id == models.InventoryLocation.id,
+        ).outerjoin(
+            models.InventoryContainer,
+            models.InventoryItem.container_id == models.InventoryContainer.id,
         )
         stmt = stmt.where(cond)
         count_stmt = count_stmt.where(cond)
