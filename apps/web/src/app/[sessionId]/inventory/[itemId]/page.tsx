@@ -445,20 +445,6 @@ export default function InventoryItemDetailPage() {
                     {item.quantity} {item.unit}
                   </span>
                 </p>
-
-                {/* Storage Location & Box Breadcrumbs */}
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 font-bold text-emerald-600 dark:text-emerald-300">
-                    <MapPin className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" />
-                    <span>{item.location_path || tr("Tiada lokasi", "No location")}</span>
-                  </span>
-                  {item.container_name && (
-                    <span className="inline-flex items-center gap-1.5 rounded-xl border border-sky-500/40 bg-sky-500/15 px-2.5 py-1 font-black text-sky-700 dark:text-sky-200 shadow-sm ring-1 ring-sky-400/20">
-                      <Boxes className="h-3.5 w-3.5 text-sky-500 dark:text-sky-400" />
-                      <span>{item.container_name}</span>
-                    </span>
-                  )}
-                </div>
               </div>
             </div>
           </div>
@@ -489,6 +475,56 @@ export default function InventoryItemDetailPage() {
               </div>
             )}
           </section>
+
+          {/* ── STORAGE LOCATION & BOX CARD ── */}
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+                <MapPin className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
+                {tr("Lokasi Penyimpanan", "Storage Location")}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowMove(true)}
+                className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-1 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)]"
+              >
+                <ArrowRightLeft size={13} className="text-sky-500 dark:text-sky-400" />
+                {tr("Pindah", "Move")}
+              </button>
+            </div>
+
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* Location */}
+              <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">
+                  <MapPin className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <span className="block text-[11px] font-semibold text-emerald-700/80 dark:text-emerald-200/70">
+                    {tr("Lokasi / Stor", "Location / Store")}
+                  </span>
+                  <span className="block truncate text-base font-black text-emerald-800 dark:text-emerald-200">
+                    {item.location_path || tr("Tiada lokasi", "No location")}
+                  </span>
+                </div>
+              </div>
+
+              {/* Container / Box */}
+              <div className="flex items-center gap-3 rounded-xl border border-sky-500/40 bg-sky-500/10 p-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-300">
+                  <Boxes className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <span className="block text-[11px] font-semibold text-sky-700/80 dark:text-sky-200/70">
+                    {tr("Bekas / Kotak", "Box / Container")}
+                  </span>
+                  <span className="block truncate text-base font-black text-sky-800 dark:text-sky-200">
+                    {item.container_name || tr("Tiada bekas", "No box")}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* ── QUICK CONTROLS: QUANTITY STEPPER & STATUS SELECTOR ── */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
