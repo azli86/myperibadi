@@ -381,7 +381,12 @@ export default function InventoryPage() {
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-[var(--surface-tint)]">
-              <Package className="h-10 w-10 sm:h-12 sm:w-12 text-[var(--muted)] opacity-30 transition-all duration-300 group-hover:opacity-50 group-hover:scale-110" />
+              <Package className="h-12 w-12 sm:h-14 sm:w-14 text-[var(--muted)] opacity-40 transition-all duration-300 group-hover:opacity-60 group-hover:scale-110" />
+              {item.category?.trim() && (
+                <span className="absolute left-2.5 top-2.5 rounded-md border border-[var(--border)] bg-black/40 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white/80 backdrop-blur">
+                  {item.category.trim()}
+                </span>
+              )}
             </div>
           )}
 
@@ -406,18 +411,24 @@ export default function InventoryPage() {
             {item.name}
           </h4>
 
-          {/* Location & Box Tags */}
-          <div className="flex flex-wrap items-center gap-1">
+          {/* Location & Box Tags — emphasized storage place */}
+          <div className="mt-auto space-y-1">
             {item.location_path ? (
-              <span className="inline-flex max-w-[140px] items-center gap-1 truncate rounded-md bg-[var(--surface-tint)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--muted)]">
-                <MapPin className="h-2.5 w-2.5 shrink-0" />
+              <span className="flex items-center gap-1.5 truncate rounded-lg bg-[var(--surface-tint)] px-2 py-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                <MapPin className="h-3 w-3 shrink-0" />
                 <span className="truncate">{item.location_path}</span>
               </span>
             ) : null}
             {item.container_name && (
-              <span className="inline-flex max-w-[120px] items-center gap-1 truncate rounded-md bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--text)]">
-                <Boxes className="h-2.5 w-2.5 shrink-0" />
+              <span className="flex items-center gap-1.5 truncate rounded-lg bg-[var(--surface-tint-strong)] px-2 py-1.5 text-[11px] font-bold text-[var(--text)]">
+                <Boxes className="h-3 w-3 shrink-0 text-[var(--accent)]" />
                 <span className="truncate">{item.container_name}</span>
+              </span>
+            )}
+            {!item.location_path && !item.container_name && (
+              <span className="flex items-center gap-1.5 truncate rounded-lg bg-[var(--surface-tint)] px-2 py-1.5 text-[11px] font-semibold italic text-[var(--muted)]">
+                <MapPin className="h-3 w-3 shrink-0" />
+                {tr("Tiada lokasi", "No location")}
               </span>
             )}
           </div>
@@ -426,9 +437,10 @@ export default function InventoryPage() {
     )
   }
 
-  // ── RENDER COMPACT 3-COL MOBILE GALLERY CARD (REDESIGNED) ──────────────────
+  // ── RENDER COMPACT 3-COL MOBILE GALLERY CARD ────────────────────────────────
   const renderMobile3ColCard = (item: InvItem) => {
     const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.available
+    const category = item.category?.trim()
     return (
       <button
         key={item.id}
@@ -446,12 +458,17 @@ export default function InventoryPage() {
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-[var(--surface-tint)]">
-              <Package className="h-6 w-6 text-[var(--muted)] opacity-25" />
+              <Package className="h-8 w-8 text-[var(--muted)] opacity-30" />
+              {category && (
+                <span className="absolute left-1.5 top-1.5 rounded-md border border-[var(--border)] bg-black/40 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-white/80 backdrop-blur">
+                  {category}
+                </span>
+              )}
             </div>
           )}
 
           {/* Bottom fade */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-black/30 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/50 to-transparent" />
 
           {/* Status Dot (Top-Right) */}
           <span
@@ -466,21 +483,21 @@ export default function InventoryPage() {
         </div>
 
         {/* Card Body */}
-        <div className="flex flex-1 flex-col gap-0.5 px-1.5 pb-1.5 pt-1.5">
+        <div className="flex flex-1 flex-col gap-1 px-1.5 pb-1.5 pt-1.5">
           <h4 className="line-clamp-2 text-[10.5px] font-bold leading-tight text-[var(--text)]">
             {item.name}
           </h4>
 
           {(item.container_name || item.location_path) && (
-            <div className="mt-auto flex items-center gap-0.5 truncate pt-0.5">
+            <div className="mt-auto truncate pt-0.5">
               {item.container_name ? (
-                <span className="inline-flex items-center gap-0.5 truncate rounded bg-[var(--surface-tint-strong)] px-1 py-px text-[8px] font-bold text-[var(--text)]">
-                  <Boxes className="h-2 w-2 shrink-0" />
+                <span className="inline-flex w-full items-center gap-1 truncate rounded-md bg-[var(--surface-tint-strong)] px-1.5 py-1 text-[9px] font-bold text-[var(--text)]">
+                  <Boxes className="h-3 w-3 shrink-0 text-[var(--accent)]" />
                   <span className="truncate">{item.container_name}</span>
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-0.5 truncate text-[8px] font-medium text-[var(--muted)]">
-                  <MapPin className="h-2 w-2 shrink-0" />
+                <span className="inline-flex w-full items-center gap-1 truncate rounded-md bg-[var(--surface-tint)] px-1.5 py-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                  <MapPin className="h-3 w-3 shrink-0" />
                   <span className="truncate">{item.location_path}</span>
                 </span>
               )}
@@ -633,6 +650,43 @@ export default function InventoryPage() {
               ))}
             </div>
 
+            {/* Storage Place Quick Stats */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveTab("locations")}
+                className="flex flex-1 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 transition active:scale-[0.98]"
+              >
+                <MapPin className="h-4 w-4 shrink-0 text-emerald-500" />
+                <div className="min-w-0 flex-1 text-left">
+                  <span className="block text-sm font-black text-[var(--text)]">{locations.length}</span>
+                  <span className="block truncate text-[9px] font-semibold text-[var(--muted)]">{tr("Lokasi", "Locations")}</span>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("locations")}
+                className="flex flex-1 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 transition active:scale-[0.98]"
+              >
+                <Boxes className="h-4 w-4 shrink-0 text-sky-400" />
+                <div className="min-w-0 flex-1 text-left">
+                  <span className="block text-sm font-black text-[var(--text)]">{totalBoxesCount}</span>
+                  <span className="block truncate text-[9px] font-semibold text-[var(--muted)]">{tr("Bekas", "Boxes")}</span>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("missing")}
+                className="flex flex-1 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 transition active:scale-[0.98]"
+              >
+                <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", STATUS_CONFIG.missing.dot)} />
+                <div className="min-w-0 flex-1 text-left">
+                  <span className="block text-sm font-black text-[var(--text)]">{summary?.missing ?? 0}</span>
+                  <span className="block truncate text-[9px] font-semibold text-[var(--muted)]">{tr("Hilang", "Missing")}</span>
+                </div>
+              </button>
+            </div>
+
             {/* Status Filter Chips */}
             {summary && (
               <div className="no-scrollbar -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-0.5">
@@ -752,7 +806,7 @@ export default function InventoryPage() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={tr("Cari nama, jenama, no. siri...", "Search name, brand, serial...")}
+                placeholder={tr("Cari barang atau lokasi...", "Search item or location...")}
                 className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] py-2.5 pl-10 pr-9 text-xs font-medium text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--text)]"
               />
               {search && (
