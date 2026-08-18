@@ -1120,7 +1120,7 @@ const currentCycleKeyStr = useMemo(
  <button
  type="button"
  aria-label="Close filters"
- className="absolute inset-0 bg-black/45"
+ className="absolute inset-0 bg-[var(--overlay)]"
  />
  <div
  data-swipe-sheet
@@ -2220,7 +2220,7 @@ const currentCycleKeyStr = useMemo(
 
  {mobileDetailId !== null && (
    <div className="fixed inset-0 z-[500]">
-     <button type="button" aria-label={lang === "EN" ? "Close transaction details" : "Tutup butiran transaksi"} onClick={closeMobileDetail} className="absolute inset-0 bg-black/45" />
+     <button type="button" aria-label={lang === "EN" ? "Close transaction details" : "Tutup butiran transaksi"} onClick={closeMobileDetail} className="absolute inset-0 bg-[var(--overlay)]" />
      <section className="absolute bottom-0 right-0 top-0 h-[100dvh] w-full overflow-hidden bg-[var(--page-bg)] md:w-[min(420px,80vw)] md:border-l md:border-[var(--border)] md:shadow-2xl">
        <iframe
          title={lang === "EN" ? "Transaction details" : "Butiran transaksi"}

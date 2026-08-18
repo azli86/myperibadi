@@ -1245,7 +1245,7 @@ export default function HelpPage() {
       {/* ── MOBILE BURGER TOPICS SHEET (MONOCHROME) ── */}
       {showMobileMenu && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-black/50 p-0 sm:items-center"
+          className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-[var(--overlay)] p-0 sm:items-center"
           onClick={() => setShowMobileMenu(false)}
           onTouchMove={(e) => e.preventDefault()}
         >

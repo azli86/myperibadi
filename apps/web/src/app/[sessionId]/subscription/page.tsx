@@ -851,7 +851,7 @@ export default function SubscriptionPage() {
 
       {detailId !== null && (
         <div className="fixed inset-0 z-[500]">
-          <button type="button" aria-label={tr("Tutup butiran", "Close details")} onClick={closeDetail} className="absolute inset-0 bg-black/45" />
+          <button type="button" aria-label={tr("Tutup butiran", "Close details")} onClick={closeDetail} className="absolute inset-0 bg-[var(--overlay)]" />
           <section className="absolute bottom-0 right-0 top-0 h-[100dvh] w-full overflow-hidden bg-[var(--page-bg)] md:w-[min(420px,80vw)] md:border-l md:border-[var(--border)] md:shadow-2xl">
             <iframe onLoad={armDetailHistory} title={tr("Butiran langganan", "Subscription details")} src={`/${sessionId}/subscription/${detailId}`} className="block h-[100dvh] w-full border-0" />
             <button type="button" aria-label={tr("Kembali", "Back")} onClick={closeDetail} className="absolute left-0 top-0 z-[600] h-16 w-16 bg-transparent md:hidden" />

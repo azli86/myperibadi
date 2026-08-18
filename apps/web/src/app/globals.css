@@ -239,7 +239,7 @@ html[data-theme="light"] {
   --info-bg: rgba(59, 138, 246, 0.12);
   --sheet-bg: #ffffff;
   --accent-bg: rgba(23, 23, 23, 0.06);
-  --overlay: rgba(0, 0, 0, 0.42);
+  --overlay: rgba(0, 0, 0, 0.32);
   --input-bg: #f4f4f4;
   --input-border: #dadada;
   --input-focus: #a3a3a3;
@@ -625,8 +625,9 @@ div:has(> [data-swipe-sheet]),
 div:has(> [data-modern-alert]),
 div:has(> [data-radix-dialog-content]),
 div:has(> [data-portal-modal]) {
-  /* dim only — no blur behind sheet cards */
-  background-color: rgba(0, 0, 0, 0.55) !important;
+  /* dim only (no blur) — follows the theme scrim token: dark stays deep,
+     light gets a softer scrim so white sheets don't look harsh */
+  background-color: var(--overlay, rgba(0, 0, 0, 0.55)) !important;
 }
 
 /*

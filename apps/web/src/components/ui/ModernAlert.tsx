@@ -97,7 +97,7 @@ export function ModernAlert({
             </div>
           </div>
         ) : (
-          <div className="fixed inset-0 z-[520] flex touch-none items-end justify-center overflow-hidden bg-black/50 p-0 sm:items-center">
+          <div className="fixed inset-0 z-[520] flex touch-none items-end justify-center overflow-hidden bg-[var(--overlay)] p-0 sm:items-center">
             <div
               onClick={onClose}
               onTouchMove={(event) => event.preventDefault()}
