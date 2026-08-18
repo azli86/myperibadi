@@ -815,7 +815,7 @@ function MoveSheet({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-black/50 backdrop-blur-sm p-0 sm:items-center"
+      className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-black/50 p-0 sm:items-center"
       onClick={onClose}
       onTouchMove={(e) => e.preventDefault()}
     >
@@ -1026,7 +1026,7 @@ function EditSheet({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-black/50 backdrop-blur-sm p-0 sm:items-center"
+      className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-black/50 p-0 sm:items-center"
       onClick={onClose}
       onTouchMove={(e) => e.preventDefault()}
     >

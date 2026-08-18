@@ -862,7 +862,7 @@ export default function WarrantyListPage() {
       {/* ── SEARCH POPUP MODAL ── */}
       {mounted && showSearchPopup
         ? createPortal(
-            <div className="fixed inset-0 z-[80] flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-black/50 backdrop-blur-sm p-0 md:items-center md:p-4">
+            <div className="fixed inset-0 z-[80] flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-black/50 p-0 md:items-center md:p-4">
               <button
                 type="button"
                 className="absolute inset-0"

@@ -625,8 +625,7 @@ div:has(> [data-swipe-sheet]),
 div:has(> [data-modern-alert]),
 div:has(> [data-radix-dialog-content]),
 div:has(> [data-portal-modal]) {
-  backdrop-filter: blur(8px) !important;
-  -webkit-backdrop-filter: blur(8px) !important;
+  /* dim only — no blur behind sheet cards */
   background-color: rgba(0, 0, 0, 0.55) !important;
 }
 

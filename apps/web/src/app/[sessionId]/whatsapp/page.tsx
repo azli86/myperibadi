@@ -1408,7 +1408,7 @@ export default function WhatsAppPage() {
 
       {showPrivacyPopup && (
         <div className="fixed inset-0 z-[530] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPrivacyPopup(false)} />
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowPrivacyPopup(false)} />
           <div
             onClick={(e) => e.stopPropagation()}
             className={cn(

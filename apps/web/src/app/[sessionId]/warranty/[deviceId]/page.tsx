@@ -1082,7 +1082,7 @@ export default function WarrantyDetailPage() {
       {mounted && showEditSheet && form ? (
         createPortal(
           <div
-            className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-black/50 backdrop-blur-sm p-0 sm:items-center"
+            className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-black/50 p-0 sm:items-center"
             onClick={closeEditSheet}
             onTouchMove={(e) => e.preventDefault()}
           >
@@ -1335,7 +1335,7 @@ export default function WarrantyDetailPage() {
       {mounted && showClaimSheet ? (
         createPortal(
           <div
-            className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-black/50 backdrop-blur-sm p-0 sm:items-center"
+            className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-black/50 p-0 sm:items-center"
             onClick={closeClaimSheet}
             onTouchMove={(e) => e.preventDefault()}
           >
