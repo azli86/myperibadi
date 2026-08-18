@@ -329,7 +329,7 @@ export default function CategoriesPage() {
   // UI-only drag reorder + custom-named groups (persisted to backend)
   type Group = { id: string; name: string; members: number[] }
   const [groups, setGroups] = useState<Group[]>([])
-  const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(new Set())
+  const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(() => new Set())
   const toggleGroupCollapsed = (id: string) => {
     setCollapsedGroupIds((prev) => {
       const next = new Set(prev)
@@ -1347,7 +1347,7 @@ export default function CategoriesPage() {
   const renderGroupCard = (g: Group) => {
     const members = orderedMembers(g).map((m) => catById.get(m)).filter((cc): cc is Category => !!cc)
     const isDropTarget = dropTargetId === `g:${g.id}`
-    const collapsed = collapsedGroupIds.has(g.id)
+    const collapsed = !collapsedGroupIds.has(g.id)
     return (
       <div
         key={g.id}
