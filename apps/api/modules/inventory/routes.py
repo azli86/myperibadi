@@ -17,7 +17,7 @@ from modules.inventory.schemas import (
     ItemUpdate, LocationCreate, LocationUpdate,
 )
 
-def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRouter:
+def create_inventory_router(*, get_current_user: Callable[..., Any], publish_realtime: Callable[..., None]) -> APIRouter:
     router = APIRouter(prefix="/inventory", tags=["inventory"])
 
     # ── items ────────────────────────────────────────────────────────────────
@@ -78,6 +78,7 @@ def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRoute
     ):
         row = await service.create_item(db, current_user=current_user, payload=payload)
         path = await queries.location_full_path(db, location_id=row.location_id, user_id=current_user.id)
+        publish_realtime(current_user.id, "changed", "inventory")
         return service.serialize_item(row, location_path=path)
 
     @router.get("/items/{item_id}")
@@ -103,6 +104,7 @@ def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRoute
     ):
         row = await service.update_item(db, current_user=current_user, item_id=item_id, payload=payload)
         path = await queries.location_full_path(db, location_id=row.location_id, user_id=current_user.id)
+        publish_realtime(current_user.id, "changed", "inventory")
         return service.serialize_item(row, location_path=path)
 
     @router.delete("/items/{item_id}")
@@ -112,6 +114,7 @@ def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRoute
         current_user: models.User = Depends(get_current_user),
     ):
         await service.delete_item(db, current_user=current_user, item_id=item_id)
+        publish_realtime(current_user.id, "changed", "inventory")
         return {"detail": "Item dipadam."}
 
     @router.post("/items/{item_id}/move")
@@ -123,6 +126,7 @@ def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRoute
     ):
         row = await service.move_item(db, current_user=current_user, item_id=item_id, payload=payload)
         path = await queries.location_full_path(db, location_id=row.location_id, user_id=current_user.id)
+        publish_realtime(current_user.id, "changed", "inventory")
         return service.serialize_item(row, location_path=path)
 
     @router.post("/items/{item_id}/quantity")
@@ -133,6 +137,7 @@ def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRoute
         current_user: models.User = Depends(get_current_user),
     ):
         row = await service.change_quantity(db, current_user=current_user, item_id=item_id, payload=payload)
+        publish_realtime(current_user.id, "changed", "inventory")
         return service.serialize_item(row)
 
     @router.post("/items/{item_id}/status")
@@ -143,6 +148,7 @@ def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRoute
         current_user: models.User = Depends(get_current_user),
     ):
         row = await service.change_status(db, current_user=current_user, item_id=item_id, payload=payload)
+        publish_realtime(current_user.id, "changed", "inventory")
         return service.serialize_item(row)
 
     @router.get("/items/{item_id}/movements")
@@ -178,6 +184,7 @@ def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRoute
             raise HTTPException(status_code=502, detail="Upload failed.") from exc
         row.image_object_key = object_key
         await db.commit()
+        publish_realtime(current_user.id, "changed", "inventory")
         return service.serialize_item(row)
 
     @router.get("/items/{item_id}/image")
@@ -245,6 +252,7 @@ def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRoute
         current_user: models.User = Depends(get_current_user),
     ):
         row = await service.create_location(db, current_user=current_user, payload=payload)
+        publish_realtime(current_user.id, "changed", "inventory")
         return service.serialize_location(row)
 
     @router.patch("/locations/{location_id}")
@@ -255,6 +263,7 @@ def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRoute
         current_user: models.User = Depends(get_current_user),
     ):
         row = await service.update_location(db, current_user=current_user, location_id=location_id, payload=payload)
+        publish_realtime(current_user.id, "changed", "inventory")
         return service.serialize_location(row)
 
     @router.delete("/locations/{location_id}")
@@ -264,6 +273,7 @@ def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRoute
         current_user: models.User = Depends(get_current_user),
     ):
         await service.delete_location(db, current_user=current_user, location_id=location_id)
+        publish_realtime(current_user.id, "changed", "inventory")
         return {"detail": "Lokasi dipadam."}
 
     @router.get("/locations/{location_id}/items")
@@ -318,6 +328,7 @@ def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRoute
         current_user: models.User = Depends(get_current_user),
     ):
         row = await service.create_container(db, current_user=current_user, payload=payload)
+        publish_realtime(current_user.id, "changed", "inventory")
         return service.serialize_container(row)
 
     @router.patch("/containers/{container_id}")
@@ -328,6 +339,7 @@ def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRoute
         current_user: models.User = Depends(get_current_user),
     ):
         row = await service.update_container(db, current_user=current_user, container_id=container_id, payload=payload)
+        publish_realtime(current_user.id, "changed", "inventory")
         return service.serialize_container(row)
 
     @router.delete("/containers/{container_id}")
@@ -337,6 +349,7 @@ def create_inventory_router(*, get_current_user: Callable[..., Any]) -> APIRoute
         current_user: models.User = Depends(get_current_user),
     ):
         await service.delete_container(db, current_user=current_user, container_id=container_id)
+        publish_realtime(current_user.id, "changed", "inventory")
         return {"detail": "Bekas dipadam."}
 
     @router.get("/containers/{container_id}/items")

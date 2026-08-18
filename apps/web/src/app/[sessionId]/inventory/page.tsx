@@ -28,6 +28,7 @@ import { useParams, useRouter } from "next/navigation"
 import { createPortal } from "react-dom"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
+import { onDataChanged, shouldRefetchFor } from "@/hooks/useRealtime"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
@@ -230,6 +231,12 @@ export default function InventoryPage() {
     const t = setTimeout(load, search ? 280 : 0)
     return () => clearTimeout(t)
   }, [load, search])
+
+  useEffect(() => {
+    return onDataChanged(({ resource }) => {
+      if (shouldRefetchFor(resource, "inventory")) void load()
+    })
+  }, [load])
 
   const openCreate = useCallback((locId?: string, contId?: string) => {
     setEditing(null)
