@@ -239,7 +239,7 @@ html[data-theme="light"] {
   --info-bg: rgba(59, 138, 246, 0.12);
   --sheet-bg: #ffffff;
   --accent-bg: rgba(23, 23, 23, 0.06);
-  --overlay: rgba(0, 0, 0, 0.32);
+  --overlay: rgba(242, 242, 242, 0.78);
   --input-bg: #f4f4f4;
   --input-border: #dadada;
   --input-focus: #a3a3a3;
