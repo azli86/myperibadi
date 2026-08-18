@@ -329,6 +329,15 @@ export default function CategoriesPage() {
   // UI-only drag reorder + custom-named groups (persisted to backend)
   type Group = { id: string; name: string; members: number[] }
   const [groups, setGroups] = useState<Group[]>([])
+  const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(new Set())
+  const toggleGroupCollapsed = (id: string) => {
+    setCollapsedGroupIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
   const [order, setOrder] = useState<number[] | null>(null)
   const [dragId, setDragId] = useState<number | null>(null)
   const [dropTargetId, setDropTargetId] = useState<string | null>(null)
@@ -1338,6 +1347,7 @@ export default function CategoriesPage() {
   const renderGroupCard = (g: Group) => {
     const members = orderedMembers(g).map((m) => catById.get(m)).filter((cc): cc is Category => !!cc)
     const isDropTarget = dropTargetId === `g:${g.id}`
+    const collapsed = collapsedGroupIds.has(g.id)
     return (
       <div
         key={g.id}
@@ -1361,7 +1371,19 @@ export default function CategoriesPage() {
           isDropTarget && "border-[var(--accent2)] ring-2 ring-[var(--accent2)]/30",
         )}
       >
-        <div className="flex items-center gap-2 px-1 py-1">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => toggleGroupCollapsed(g.id)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              toggleGroupCollapsed(g.id)
+            }
+          }}
+          aria-expanded={!collapsed}
+          className="flex cursor-pointer items-center gap-2 px-1 py-1"
+        >
           <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--text)]">
             <FolderTree size={15} />
           </div>
@@ -1371,10 +1393,17 @@ export default function CategoriesPage() {
               {members.length} {lang === "EN" ? "categories" : "kategori"}
             </p>
           </div>
+          <ChevronRight
+            size={16}
+            className={cn(
+              "shrink-0 text-[var(--muted)] transition-transform duration-200",
+              collapsed ? "rotate-90" : "",
+            )}
+          />
           <span className="flex shrink-0 items-center gap-0.5">
             <button
               type="button"
-              onClick={() => openRenameGroup(g)}
+              onClick={(e) => { e.stopPropagation(); openRenameGroup(g) }}
               aria-label={lang === "EN" ? "Rename group" : "Tukar nama kumpulan"}
               className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
             >
@@ -1382,7 +1411,7 @@ export default function CategoriesPage() {
             </button>
             <button
               type="button"
-              onClick={() => moveGroup(g.id, -1)}
+              onClick={(e) => { e.stopPropagation(); moveGroup(g.id, -1) }}
               aria-label={lang === "EN" ? "Move group up" : "Naik"}
               className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
             >
@@ -1390,7 +1419,7 @@ export default function CategoriesPage() {
             </button>
             <button
               type="button"
-              onClick={() => moveGroup(g.id, 1)}
+              onClick={(e) => { e.stopPropagation(); moveGroup(g.id, 1) }}
               aria-label={lang === "EN" ? "Move group down" : "Turun"}
               className="flex h-6 w-6 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
             >
@@ -1398,7 +1427,8 @@ export default function CategoriesPage() {
             </button>
             <button
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation()
                 if (window.confirm(lang === "EN" ? `Delete group "${g.name}"?` : `Padam kumpulan "${g.name}"?`)) {
                   setGroups((prev) => prev.filter((x) => x.id !== g.id))
                 }
@@ -1410,7 +1440,7 @@ export default function CategoriesPage() {
             </button>
           </span>
         </div>
-        {members.length > 0 ? (
+        {!collapsed && (members.length > 0 ? (
           <div className="mt-1 space-y-1.5">
             {members.map((c) => renderMemberCard(g, c.id, c))}
           </div>
@@ -1418,7 +1448,7 @@ export default function CategoriesPage() {
           <p className="mt-1 rounded-xl border border-dashed border-[var(--border)] px-3 py-3 text-center text-[0.6rem] font-semibold text-[var(--muted)]">
             {lang === "EN" ? "Drag categories here" : "Seret kategori ke sini"}
           </p>
-        )}
+        ))}
       </div>
     )
   }
