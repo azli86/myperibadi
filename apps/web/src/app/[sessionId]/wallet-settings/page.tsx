@@ -22,7 +22,7 @@ import {
   Landmark,
   Smartphone,
   CreditCard,
-  PiggyBank,
+  Coins,
   Eye,
 } from "lucide-react"
 import { useLang } from "@/lib/lang"
@@ -112,7 +112,7 @@ function walletTypeLabel(type: WalletKind, isBm: boolean) {
 }
 
 function walletTypeIcon(type: string) {
-  if (type === "saving") return PiggyBank
+  if (type === "saving") return Coins
   if (type === "bank" || type === "bank_digital") return Landmark
   if (type === "ewallet") return Smartphone
   if (type === "credit_card") return CreditCard

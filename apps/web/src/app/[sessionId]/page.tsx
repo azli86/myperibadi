@@ -28,7 +28,8 @@ import {
   Receipt,
   Award,
   MinusCircle,
-  HeartHandshake
+  HeartHandshake,
+  Coins
 } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
@@ -3147,7 +3148,8 @@ export default function Dashboard() {
                     />
 
                     <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-1">
-                      {heroWallets.map((wallet, index) => {
+                      {(() => {
+                        const renderWalletRow = (wallet: (typeof heroWallets)[number], index: number) => {
                         const accent = getDashboardWalletAccent(wallet)
                         const walletLabel =
                           wallet.label || wallet.name || (lang === "BM" ? "Dompet" : "Wallet")
@@ -3199,7 +3201,28 @@ export default function Dashboard() {
                             </div>
                           </div>
                         )
-                      })}
+                        }
+
+                        const savingWallets = heroWallets.filter((wallet) => wallet.is_saving)
+                        const regularWallets = heroWallets.filter((wallet) => !wallet.is_saving)
+                        return (
+                          <>
+                            {regularWallets.map((wallet, index) => renderWalletRow(wallet, index))}
+                            {savingWallets.length > 0 ? (
+                              <div className="pt-2">
+                                <div className="flex items-center gap-2 px-1 pb-1">
+                                  <Coins size={14} className="text-[var(--muted)]" />
+                                  <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                                    {lang === "BM" ? "Simpanan" : "Saving"}
+                                  </p>
+                                  <div className="h-px flex-1 bg-[var(--border)]" />
+                                </div>
+                                {savingWallets.map((wallet, index) => renderWalletRow(wallet, index))}
+                              </div>
+                            ) : null}
+                          </>
+                        )
+                      })()}
 
                       <Link
                         href={`/${sessionId}/wallet-settings`}
