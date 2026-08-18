@@ -112,7 +112,7 @@
   --accent: #22c55e;
   --accent2: var(--btn-primary-bg);
   --accent-bg: rgba(255, 255, 255, 0.08);
-  --overlay: rgba(0, 0, 0, 0.72);
+  --overlay: rgba(13, 13, 13, 0.78);
   --input-bg: #1e1e1e;
   --input-border: #2a2a2a;
   --input-focus: #525252;
