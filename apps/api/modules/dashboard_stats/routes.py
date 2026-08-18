@@ -53,15 +53,15 @@ async def get_dashboard_stats_route(
         and not wallet_is_saving
     ]
 
+    # Total balance = sum of ALL transactions (transfers included) on NON-saving
+    # wallets. This equals the sum of the non-saving wallet card balances:
+    #  - transfer between two non-saving wallets is net zero (both legs counted)
+    #  - transfer into a saving wallet reduces the total (money left spendable)
+    #  - anything on a saving wallet is excluded from the total
     cash_balance_txns = [
         txn
         for txn, category_is_internal, category_system_code, wallet_is_saving in txn_rows
-        if not is_wallet_transfer_signature(
-            txn,
-            category_system_code=category_system_code,
-            category_is_internal=category_is_internal,
-        )
-        and not wallet_is_saving
+        if not wallet_is_saving
     ]
 
     balance = sum((float(txn.amount) if txn.type == "income" else -float(txn.amount)) for txn in cash_balance_txns)

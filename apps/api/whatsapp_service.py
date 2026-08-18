@@ -3102,6 +3102,11 @@ def extract_explicit_txn_time(text: str) -> Tuple[Optional[str], str]:
     return formatted, cleaned_text
 
 async def get_user_balance(db: AsyncSession, user_id: str) -> float:
+    # Total balance = all txns (transfers included) on NON-saving wallets.
+    # Matches the web dashboard stats + the sum of non-saving wallet card balances:
+    #  - transfer between two non-saving wallets stays net zero
+    #  - transfer into a saving wallet reduces spendable balance
+    #  - anything on a saving wallet is excluded
     bal_res = await db.execute(
         select(func.sum(
             case(
@@ -3111,13 +3116,9 @@ async def get_user_balance(db: AsyncSession, user_id: str) -> float:
         ))
         .select_from(models.Transaction)
         .outerjoin(models.Category, models.Transaction.category_id == models.Category.id)
+        .outerjoin(models.Wallet, models.Transaction.wallet_id == models.Wallet.id)
         .where(models.Transaction.user_id == user_id)
-        .where(
-            or_(
-                models.Category.system_code.is_(None),
-                models.Category.system_code.notin_((INTERNAL_TRANSFER_CATEGORY_CODE,)),
-            )
-        )
+        .where(or_(models.Wallet.is_saving.is_(None), models.Wallet.is_saving.is_(False)))
     )
     return float(bal_res.scalar() or 0)
 
