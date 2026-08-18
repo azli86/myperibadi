@@ -46,6 +46,7 @@ import { APP_BADGES, deriveEarnedBadgeKeys, type BadgeBudgetItemLike, type Badge
 import { formatCurrencyLabel } from "@/components/ui/MoneyAmount"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
+import { onDataChanged, shouldRefetchFor } from "@/hooks/useRealtime"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 import { MonthlyChecklistSection } from "@/components/dashboard/MonthlyChecklistSection"
 import { VehicleOverdueWidget } from "@/components/dashboard/VehicleOverdueWidget"
@@ -594,8 +595,16 @@ export default function Dashboard() {
     }
   }
 
+  const fetchDataRef = useRef<() => Promise<void>>(async () => {})
+  fetchDataRef.current = fetchData
+
   useEffect(() => {
     fetchData()
+  }, [])
+  useEffect(() => {
+    return onDataChanged(({ resource }) => {
+      if (shouldRefetchFor(resource, "transactions")) void fetchDataRef.current()
+    })
   }, [])
   useEffect(() => {
     const fetchMonthBudgets = async () => {

@@ -79,6 +79,7 @@ import {
 } from "lucide-react";
 import { cn, getTodayDateInTimeZone } from "@/lib/utils";
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose";
+import { useRealtime } from "@/hooks/useRealtime";
 import { useLang } from "@/lib/lang";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import HistoryBackButton from "@/components/navigation/HistoryBackButton";
@@ -871,6 +872,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "";
   const pathSegments = pathname.split("/").filter(Boolean);
   const hideGlobalCalculator = pathname.includes("/chat");
+  useRealtime({ enabled: Boolean(pathSegments[0]) });
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();

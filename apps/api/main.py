@@ -1589,6 +1589,147 @@ async def get_adminportal_admin(current_user: models.User = Depends(get_current_
 
 _REMOVED_BUSINESS_ORDERS_SSE_SUBSCRIBERS: dict[str, set[asyncio.Queue[str]]] = {}
 
+# ── Whole-app realtime (SSE) ─────────────────────────────────────────────
+# Per-user subscriber queues keyed by user_id. publish_realtime() fans a
+# message out to every subscriber of the target user. Household broadcast
+# resolves member ids server-side before publishing.
+_REALTIME_SUBSCRIBERS: dict[str, set[asyncio.Queue[str]]] = {}
+_REALTIME_QUEUE_MAX = 50
+
+
+def _realtime_subscribe(user_id: str) -> asyncio.Queue[str]:
+    q: asyncio.Queue[str] = asyncio.Queue(maxsize=_REALTIME_QUEUE_MAX)
+    _REALTIME_SUBSCRIBERS.setdefault(user_id, set()).add(q)
+    return q
+
+
+def _realtime_unsubscribe(user_id: str, q: asyncio.Queue[str]) -> None:
+    subs = _REALTIME_SUBSCRIBERS.get(user_id)
+    if subs is None:
+        return
+    subs.discard(q)
+    if not subs:
+        _REALTIME_SUBSCRIBERS.pop(user_id, None)
+
+
+def publish_realtime(user_id: str, event: str, resource: str, payload: dict[str, Any] | None = None) -> None:
+    """Broadcast a realtime event to one user's subscribers. Best-effort, never raises."""
+    if not user_id:
+        return
+    subs = _REALTIME_SUBSCRIBERS.get(user_id)
+    if not subs:
+        return
+    msg = json.dumps({"event": event, "resource": resource, "data": payload or {}, "ts": datetime.utcnow().isoformat() + "Z"})
+    for q in list(subs):
+        try:
+            q.put_nowait(msg)
+        except asyncio.QueueFull:
+            pass
+
+
+async def publish_realtime_to_household(
+    db: AsyncSession, actor_user_id: str, event: str, resource: str, payload: dict[str, Any] | None = None
+) -> None:
+    """Broadcast to the actor and all household members that share data with them."""
+    target_ids: set[str] = {actor_user_id}
+    try:
+        # Household ids where the actor is owner or a member.
+        household_ids = list(
+            (
+                await db.execute(
+                    select(models.HouseholdMember.household_id).where(
+                        models.HouseholdMember.user_id == actor_user_id
+                    )
+                )
+            ).scalars().all()
+        )
+        owned_ids = list(
+            (
+                await db.execute(
+                    select(models.Household.id).where(models.Household.owner_user_id == actor_user_id)
+                )
+            ).scalars().all()
+        )
+        all_hids = set(household_ids) | set(owned_ids)
+        if all_hids:
+            member_ids = list(
+                (
+                    await db.execute(
+                        select(models.HouseholdMember.user_id).where(
+                            models.HouseholdMember.household_id.in_(all_hids)
+                        )
+                    )
+                ).scalars().all()
+            )
+            owner_ids = list(
+                (
+                    await db.execute(
+                        select(models.Household.owner_user_id).where(models.Household.id.in_(all_hids))
+                    )
+                ).scalars().all()
+            )
+            for uid in member_ids + owner_ids:
+                if uid:
+                    target_ids.add(str(uid))
+    except Exception:
+        pass
+    for uid in target_ids:
+        publish_realtime(uid, event, resource, payload)
+
+
+async def get_current_user_realtime(
+    request: Request,
+    access_token: str | None = Query(default=None),
+    db: AsyncSession = Depends(database.get_db),
+):
+    header_token = (access_token or "").strip()
+    cookie_token = (request.cookies.get(AUTH_ACCESS_COOKIE_NAME) or "").strip()
+    payload = auth_utils.decode_access_token(header_token) if header_token else None
+    if payload is None and cookie_token:
+        payload = auth_utils.decode_access_token(cookie_token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    email: str | None = payload.get("sub")
+    if not email:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    result = await db.execute(select(models.User).where(models.User.email == email))
+    user = result.scalars().first()
+    if user is None or not user.is_active:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
+
+
+@app.get("/api/events")
+async def realtime_events(
+    request: Request,
+    current_user: models.User = Depends(get_current_user_realtime),
+):
+    async def event_stream():
+        q = _realtime_subscribe(str(current_user.id))
+        yield 'event: ready\ndata: {"ok":true}\n\n'
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    payload = await asyncio.wait_for(q.get(), timeout=20)
+                    yield f"event: {json.loads(payload).get('event', 'update')}\ndata: {payload}\n\n"
+                except asyncio.TimeoutError:
+                    yield 'event: ping\ndata: {}\n\n'
+        finally:
+            _realtime_unsubscribe(str(current_user.id), q)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 async def _removed_business_publish_orders_event(user_id: str, event: str, order_id: int | None = None) -> None:
     pyld = json.dumps({
         "event": event,
@@ -11520,6 +11661,7 @@ async def update_transaction(txn_id: str, txn_in: schemas.TransactionCreate, cur
         ensure_wallet_can_cover_expense=_ensure_wallet_can_cover_expense,
         normalize_transaction_location=_normalize_transaction_location,
         replace_transaction_items=_replace_transaction_items,
+        publish_realtime_to_household=publish_realtime_to_household,
     )
 
 @app.delete("/transactions/{txn_id}")
@@ -11534,6 +11676,7 @@ async def delete_transaction(txn_id: str, current_user: models.User = Depends(ge
         is_wallet_transfer_signature=_is_wallet_transfer_signature,
         is_debt_movement_signature=_is_debt_movement_signature,
         delete_storage_object_safe=_delete_storage_object_safe,
+        publish_realtime_to_household=publish_realtime_to_household,
     )
 
 @app.post("/transactions/{txn_id}/refund")
@@ -11559,6 +11702,7 @@ async def refund_transaction(
         validate_transaction_type=_validate_transaction_type,
         coerce_transaction_date=_coerce_transaction_date,
         current_business_date_fn=current_business_date,
+        publish_realtime_to_household=publish_realtime_to_household,
     )
 
 @app.post("/transactions", response_model=schemas.TransactionResponse)
@@ -11576,6 +11720,7 @@ async def create_transaction(txn_in: schemas.TransactionCreate, current_user: mo
         coerce_transaction_date=_coerce_transaction_date,
         current_business_date_fn=current_business_date,
         replace_transaction_items=_replace_transaction_items,
+        publish_realtime_to_household=publish_realtime_to_household,
     )
 
 def _ensure_worker_running():

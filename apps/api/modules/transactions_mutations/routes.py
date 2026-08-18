@@ -34,6 +34,7 @@ async def update_transaction_route(
     ensure_wallet_can_cover_expense: Callable[..., Awaitable[None]],
     normalize_transaction_location: Callable[..., tuple[float | None, float | None, str | None]],
     replace_transaction_items: Callable[..., Awaitable[None]],
+    publish_realtime_to_household: Callable[..., Awaitable[None]],
 ) -> dict[str, str]:
     existing = await get_user_transaction(txn_id, current_user.id, db)
     household_id = await ensure_current_user_household(db, current_user)
@@ -121,6 +122,10 @@ async def update_transaction_route(
     if txn_in.items is not None:
         await replace_transaction_items(db, existing.id, normalized_items)
     await db.commit()
+    try:
+        await publish_realtime_to_household(db, current_user.id, "changed", "transactions")
+    except Exception:
+        pass
     return {"message": "Transaction updated"}
 
 
@@ -135,6 +140,7 @@ async def delete_transaction_route(
     is_wallet_transfer_signature: Callable[..., bool],
     is_debt_movement_signature: Callable[..., bool],
     delete_storage_object_safe: Callable[[str], Awaitable[None]],
+    publish_realtime_to_household: Callable[..., Awaitable[None]],
 ) -> dict[str, str]:
     existing = await get_user_transaction(txn_id, current_user.id, db)
     household_id = await ensure_current_user_household(db, current_user)
@@ -286,6 +292,10 @@ async def delete_transaction_route(
         await _delete_one_transaction(paired_txn)
 
     await db.commit()
+    try:
+        await publish_realtime_to_household(db, current_user.id, "changed", "transactions")
+    except Exception:
+        pass
 
     if paired_txn:
         return {"message": "Transfer deleted (both outgoing and incoming sides)"}
@@ -308,6 +318,7 @@ async def refund_transaction_route(
     validate_transaction_type: Callable[[str], str],
     coerce_transaction_date: Callable[[str | None, date], date],
     current_business_date_fn: Callable[[], date],
+    publish_realtime_to_household: Callable[..., Awaitable[None]],
 ) -> dict[str, str]:
     """
     Create a refund transaction that reverses the original transaction.
@@ -405,6 +416,10 @@ async def refund_transaction_route(
     db.add(refund_txn)
     await db.commit()
     await db.refresh(refund_txn)
+    try:
+        await publish_realtime_to_household(db, current_user.id, "changed", "transactions")
+    except Exception:
+        pass
 
     return {
         "message": "Refund transaction created",
@@ -427,6 +442,7 @@ async def create_transaction_route(
     coerce_transaction_date: Callable[[str | None, date], date],
     current_business_date_fn: Callable[[], date],
     replace_transaction_items: Callable[..., Awaitable[None]],
+    publish_realtime_to_household: Callable[..., Awaitable[None]],
 ) -> models.Transaction:
     wallet = await select_transaction_wallet(db, current_user, txn_in.wallet_id)
     normalized_items, computed_amount = normalize_transaction_items_payload(txn_in.items)
@@ -560,6 +576,10 @@ async def create_transaction_route(
             except Exception:
                 await db.rollback()
 
+    try:
+        await publish_realtime_to_household(db, current_user.id, "changed", "transactions")
+    except Exception:
+        pass
     return db_txn
 
 
