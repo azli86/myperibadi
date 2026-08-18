@@ -1158,6 +1158,13 @@ async def start_chat_cleanup_task():
                             models.WhatsAppInboundEvent.received_at < inbound_event_cutoff
                         )
                     )
+                    # Retain access_logs for 7 days only (they balloon to ~150MB/5d on 96k rows)
+                    access_log_cutoff = datetime.utcnow() - timedelta(days=7)
+                    await db.execute(
+                        sa_delete(models.AccessLog).where(
+                            models.AccessLog.created_at < access_log_cutoff
+                        )
+                    )
                     await db.commit()
                     print(f"[cleanup] Purged chat messages older than {cutoff.isoformat()}")
             except Exception as e:
