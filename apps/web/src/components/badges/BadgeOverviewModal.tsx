@@ -7,6 +7,7 @@ import { ArrowUpRight, Lock, Trophy, X } from "lucide-react"
 import { buildLiveBadges, type AppBadge, type AppBadgeTone, type BadgeBudgetItemLike, type BadgeTransactionLike } from "@/lib/badges"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
+import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 
 type BadgeOverviewModalProps = {
   open: boolean
@@ -124,6 +125,7 @@ function ProgressRing({ percent, size = 112 }: { percent: number; size?: number 
 }
 
 export default function BadgeOverviewModal({ open, onClose, sessionId, lang }: BadgeOverviewModalProps) {
+  const badgeSwipe = useSwipeDownToClose(onClose)
   const [transactions, setTransactions] = useState<BadgeTransactionLike[]>([])
   const [budgetItems, setBudgetItems] = useState<BadgeBudgetItemLike[]>([])
   const [loading, setLoading] = useState(false)
@@ -196,6 +198,8 @@ export default function BadgeOverviewModal({ open, onClose, sessionId, lang }: B
           onClick={onClose}
         >
           <div
+            data-swipe-sheet
+            {...badgeSwipe}
             className="app-sheet-panel relative flex max-h-[min(92dvh,720px)] w-full max-w-md flex-col overflow-hidden border border-[var(--border)] bg-[var(--card)] text-[var(--text)] shadow-[0_-12px_60px_rgba(0,0,0,0.45)] sm:shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
@@ -207,9 +211,9 @@ export default function BadgeOverviewModal({ open, onClose, sessionId, lang }: B
 
             {/* Body */}
             <div
+              data-swipe-scroll
               className="relative min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-5 pb-3 pt-2 custom-scrollbar"
               onWheel={(event) => event.stopPropagation()}
-              onTouchMove={(event) => event.stopPropagation()}
             >
               {/* Hero */}
               <div className="relative overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface-tint)] p-4">

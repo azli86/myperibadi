@@ -24,6 +24,7 @@ import { Doughnut, Bar } from "react-chartjs-2"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useLang } from "@/lib/lang"
 import { usePageAlert } from "@/hooks/usePageAlert"
+import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useTheme } from "@/components/theme/ThemeProvider"
 import HistoryBackButton from "@/components/navigation/HistoryBackButton"
 import {
@@ -295,6 +296,7 @@ export default function TransactionsPage() {
  const [endDate, setEndDate] = useState("")
  const [showDateFilterPopup, setShowDateFilterPopup] = useState(false)
  const [filtersExpanded, setFiltersExpanded] = useState(false)
+ const filtersSheetSwipe = useSwipeDownToClose(() => setFiltersExpanded(false))
  const [draftStartDate, setDraftStartDate] = useState("")
  const [draftEndDate, setDraftEndDate] = useState("")
  const [calendarViewMonth, setCalendarViewMonth] = useState(() => startOfMonth(new Date()))
@@ -1121,6 +1123,8 @@ const currentCycleKeyStr = useMemo(
  className="absolute inset-0 bg-black/45"
  />
  <div
+ data-swipe-sheet
+ {...filtersSheetSwipe}
  className="app-sheet-panel app-sheet-panel--lg absolute inset-x-0 bottom-0 max-h-[88dvh] w-full overflow-y-auto overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[max(1rem,env(safe-area-inset-bottom))] will-change-transform"
  onClick={(e) => e.stopPropagation()}
  >

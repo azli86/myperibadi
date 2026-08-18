@@ -4,6 +4,7 @@ import React from "react"
 import { createPortal } from "react-dom"
 import { AlertTriangle, Info, CheckCircle2, X, XCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 
 export type AlertType = "info" | "success" | "warning" | "error"
 
@@ -32,6 +33,7 @@ export function ModernAlert({
 }: ModernAlertProps) {
   const [mounted, setMounted] = React.useState(false)
   const isSuccessToast = type === "success" && !isConfirm
+  const alertSwipe = useSwipeDownToClose(onClose)
 
   React.useEffect(() => {
     setMounted(true)
@@ -102,8 +104,9 @@ export function ModernAlert({
               className="absolute inset-0 bg-transparent"
             />
             <div
+              data-swipe-sheet
+              {...alertSwipe}
               onClick={(event) => event.stopPropagation()}
-              onTouchMove={(event) => event.stopPropagation()}
               style={{ transform: "translateZ(0)" }}
               className={cn(
                 "app-sheet-panel relative w-full overflow-hidden border border-[color:var(--border)] bg-[var(--card)] p-5 shadow-2xl will-change-transform sm:max-w-sm sm:p-6",
