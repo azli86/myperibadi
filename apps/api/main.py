@@ -9804,11 +9804,13 @@ async def _select_transaction_wallet(
         return await _get_accessible_wallet(wallet_id, current_user, db)
 
     wallets = await _get_accessible_wallets_for_user(db, current_user)
-    for wallet in wallets:
+    # Never auto-select a saving wallet for regular transactions
+    non_saving = [w for w in wallets if not getattr(w, "is_saving", False)]
+    for wallet in non_saving:
         if getattr(wallet, "is_bot_default", False):
             return wallet
-    if wallets:
-        return wallets[0]
+    if non_saving:
+        return non_saving[0]
     return await ensure_wallet(db, current_user.id)
 
 
@@ -10004,13 +10006,16 @@ def _resolve_wallet_type(requested_type: str, *, current_type: str | None = None
         "credit": "credit_card",
         "credit_kad": "credit_card",
         "kad_kredit": "credit_card",
+        "saving": "saving",
+        "simpanan": "saving",
+        "tabungan": "saving",
         "shared": "shared",
     }
     resolved = aliases.get(normalized)
     if not resolved:
         raise HTTPException(
             status_code=400,
-            detail="Wallet type must be cash, bank, bank_digital, ewallet, or credit_card",
+            detail="Wallet type must be cash, bank, bank_digital, ewallet, saving, or credit_card",
         )
 
     # Legacy shared/household: keep existing shared wallets, block new shared.

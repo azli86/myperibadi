@@ -149,7 +149,9 @@ class Wallet(Base):
     label: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     card_color: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
     image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    type: Mapped[str] = mapped_column(String(20))  # cash / bank / bank_digital / ewallet / credit_card (+ legacy shared)
+    type: Mapped[str] = mapped_column(String(20))  # cash / bank / bank_digital / ewallet / credit_card / saving (+ legacy shared)
+    is_saving: Mapped[bool] = mapped_column(Boolean, default=False)  # saving wallet: transfers only, excluded from total balance
+    show_on_dashboard: Mapped[bool] = mapped_column(Boolean, default=True)  # show saving wallet in dashboard wallet section
     currency: Mapped[str] = mapped_column(String(10), default="MYR")
     status: Mapped[str] = mapped_column(String(20), default="active")
     is_bot_default: Mapped[bool] = mapped_column(Boolean, default=False)

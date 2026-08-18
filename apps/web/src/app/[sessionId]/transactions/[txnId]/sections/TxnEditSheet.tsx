@@ -655,7 +655,7 @@ export default function TxnEditSheet({
                       <span className={rowText}>{langT.walletLabel}</span>
                     </span>
                   </button>
-                  {wallets.map((wallet) => {
+                  {wallets.filter((wallet) => !wallet.is_saving).map((wallet) => {
                     const selected = String(wallet.id) === editForm.wallet_id
                     return (
                       <button

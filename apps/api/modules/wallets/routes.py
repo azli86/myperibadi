@@ -81,6 +81,8 @@ async def create_wallet_route(
         currency=(wallet_in.currency or "MYR").upper(),
         status="active",
         is_bot_default=wallet_in.is_bot_default or False,
+        is_saving=wallet_in.is_saving or False,
+        show_on_dashboard=wallet_in.show_on_dashboard if wallet_in.show_on_dashboard is not None else True,
     )
 
     if db_wallet.is_bot_default:
@@ -154,6 +156,11 @@ async def update_wallet_route(
                 .values(is_bot_default=False)
             )
         wallet.is_bot_default = wallet_in.is_bot_default
+
+    if wallet_in.is_saving is not None:
+        wallet.is_saving = wallet_in.is_saving
+    if wallet_in.show_on_dashboard is not None:
+        wallet.show_on_dashboard = wallet_in.show_on_dashboard
 
     await db.commit()
     await db.refresh(wallet)

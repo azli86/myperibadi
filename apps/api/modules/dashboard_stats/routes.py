@@ -34,30 +34,34 @@ async def get_dashboard_stats_route(
             models.Transaction,
             models.Category.is_internal.label("category_is_internal"),
             models.Category.system_code.label("category_system_code"),
+            models.Wallet.is_saving.label("wallet_is_saving"),
         )
         .outerjoin(models.Category, models.Transaction.category_id == models.Category.id)
+        .outerjoin(models.Wallet, models.Transaction.wallet_id == models.Wallet.id)
         .where(models.Transaction.user_id == user_id)
     )
     txn_rows = res.all()
 
     reporting_txns = [
         txn
-        for txn, category_is_internal, category_system_code in txn_rows
+        for txn, category_is_internal, category_system_code, wallet_is_saving in txn_rows
         if not is_primary_reporting_excluded_signature(
             txn,
             category_system_code=category_system_code,
             category_is_internal=category_is_internal,
         )
+        and not wallet_is_saving
     ]
 
     cash_balance_txns = [
         txn
-        for txn, category_is_internal, category_system_code in txn_rows
+        for txn, category_is_internal, category_system_code, wallet_is_saving in txn_rows
         if not is_wallet_transfer_signature(
             txn,
             category_system_code=category_system_code,
             category_is_internal=category_is_internal,
         )
+        and not wallet_is_saving
     ]
 
     balance = sum((float(txn.amount) if txn.type == "income" else -float(txn.amount)) for txn in cash_balance_txns)

@@ -70,6 +70,9 @@ async def update_transaction_route(
         resolved_wallet = await select_transaction_wallet(db, current_user, None)
     resolved_wallet_id = resolved_wallet.id
 
+    if getattr(resolved_wallet, "is_saving", False):
+        raise HTTPException(status_code=400, detail="Saving wallet hanya boleh digunakan untuk transfer")
+
     if resolved_type == "expense":
         await ensure_wallet_can_cover_expense(
             db,
@@ -445,6 +448,8 @@ async def create_transaction_route(
     publish_realtime_to_household: Callable[..., Awaitable[None]],
 ) -> models.Transaction:
     wallet = await select_transaction_wallet(db, current_user, txn_in.wallet_id)
+    if getattr(wallet, "is_saving", False):
+        raise HTTPException(status_code=400, detail="Saving wallet hanya boleh digunakan untuk transfer")
     normalized_items, computed_amount = normalize_transaction_items_payload(txn_in.items)
     resolved_amount = computed_amount if normalized_items else txn_in.amount
     txn_type = validate_transaction_type(txn_in.type)

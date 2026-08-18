@@ -384,8 +384,10 @@ class WalletBase(BaseModel):
     label: Optional[str] = None
     card_color: Optional[str] = None
     image_url: Optional[str] = None
-    type: str  # cash / bank / bank_digital / ewallet / credit_card
+    type: str  # cash / bank / bank_digital / ewallet / credit_card / saving
     currency: str = "MYR"
+    is_saving: Optional[bool] = False
+    show_on_dashboard: Optional[bool] = True
 
 class WalletCreate(WalletBase):
     is_bot_default: Optional[bool] = False
@@ -399,6 +401,8 @@ class WalletUpdate(BaseModel):
     currency: Optional[str] = None
     status: Optional[str] = None
     is_bot_default: Optional[bool] = None
+    is_saving: Optional[bool] = None
+    show_on_dashboard: Optional[bool] = None
 
 class WalletResponse(WalletBase):
     id: int

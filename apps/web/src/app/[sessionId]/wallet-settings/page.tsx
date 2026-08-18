@@ -22,6 +22,8 @@ import {
   Landmark,
   Smartphone,
   CreditCard,
+  PiggyBank,
+  Eye,
 } from "lucide-react"
 import { useLang } from "@/lib/lang"
 import { usePageAlert } from "@/hooks/usePageAlert"
@@ -41,7 +43,7 @@ import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 
-type WalletKind = "cash" | "bank" | "bank_digital" | "ewallet" | "credit_card" | "shared"
+type WalletKind = "cash" | "bank" | "bank_digital" | "ewallet" | "credit_card" | "saving" | "shared"
 
 type WalletItem = {
   id: number
@@ -53,6 +55,8 @@ type WalletItem = {
   balance: number
   type: WalletKind
   is_bot_default: boolean
+  is_saving?: boolean
+  show_on_dashboard?: boolean
   transaction_count: number
 }
 
@@ -68,6 +72,8 @@ type DraftWallet = {
   type: WalletKind
   currency: string
   is_bot_default: boolean
+  is_saving: boolean
+  show_on_dashboard: boolean
 }
 
 type FilterTab = "all" | WalletKind
@@ -78,6 +84,7 @@ const WALLET_TYPE_OPTIONS: { value: Exclude<WalletKind, "shared">; bm: string; e
   { value: "bank_digital", bm: "Bank Digital", en: "Digital Bank" },
   { value: "ewallet", bm: "E-Wallet", en: "E-Wallet" },
   { value: "credit_card", bm: "Kad Kredit", en: "Credit Card" },
+  { value: "saving", bm: "Saving", en: "Saving" },
 ]
 
 function normalizeWalletType(raw?: string | null): WalletKind {
@@ -93,6 +100,7 @@ function normalizeWalletType(raw?: string | null): WalletKind {
   if (value === "credit_card" || value === "credit" || value === "credit_kad" || value === "kad_kredit") {
     return "credit_card"
   }
+  if (value === "saving" || value === "simpanan" || value === "tabungan") return "saving"
   // legacy personal → bank
   return "bank"
 }
@@ -104,6 +112,7 @@ function walletTypeLabel(type: WalletKind, isBm: boolean) {
 }
 
 function walletTypeIcon(type: string) {
+  if (type === "saving") return PiggyBank
   if (type === "bank" || type === "bank_digital") return Landmark
   if (type === "ewallet") return Smartphone
   if (type === "credit_card") return CreditCard
@@ -118,6 +127,8 @@ const DEFAULT_DRAFT: DraftWallet = {
   type: "cash",
   currency: "RM",
   is_bot_default: false,
+  is_saving: false,
+  show_on_dashboard: true,
 }
 
 function toWalletPayload(wallet: DraftWallet | WalletItem) {
@@ -129,6 +140,8 @@ function toWalletPayload(wallet: DraftWallet | WalletItem) {
     type: wallet.type,
     currency: wallet.currency.trim().toUpperCase(),
     is_bot_default: wallet.is_bot_default,
+    is_saving: Boolean(wallet.is_saving) || wallet.type === "saving",
+    show_on_dashboard: wallet.show_on_dashboard ?? true,
   }
 }
 
@@ -398,7 +411,15 @@ export default function WalletSettingsPage() {
     setCreateWalletStep((prev) => (prev > 1 ? ((prev - 1) as 1 | 2 | 3) : prev))
   }
   function updateActiveWallet(patch: Partial<WalletItem>) {
-    setActiveWallet((prev) => (prev ? { ...prev, ...patch } : prev))
+    setActiveWallet((prev) => {
+      if (!prev) return prev
+      const next = { ...prev, ...patch }
+      if (patch.type !== undefined) {
+        next.is_saving = patch.type === "saving"
+        if (patch.type !== "saving") next.show_on_dashboard = true
+      }
+      return next
+    })
   }
 
   async function saveWallet(wallet: WalletItem) {
@@ -674,6 +695,7 @@ export default function WalletSettingsPage() {
             <p className="truncate text-sm font-black tracking-tight text-[var(--text)]">{walletName}</p>
             <p className="mt-1 truncate text-[0.58rem] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
               {walletType}
+              {wallet.is_saving ? ` · ${tr("Saving", "Saving")}` : ""}
             </p>
           </div>
         </div>
@@ -1006,6 +1028,14 @@ export default function WalletSettingsPage() {
                               )
                             })}
                           </div>
+                          {draft.type === "saving" ? (
+                            <p className="pt-1 text-[0.6875rem] text-[var(--muted)]">
+                              {tr(
+                                "Dompet simpanan tidak termasuk dalam jumlah baki utama. Hanya boleh terima transfer masuk/keluar, dan paparan di dashboard boleh ditogol dalam edit.",
+                                "Saving wallets are excluded from the main balance. They can only receive transfers in/out, and dashboard visibility can be toggled when editing.",
+                              )}
+                            </p>
+                          ) : null}
                         </div>
 
                         {/* Mata wang card */}
@@ -1240,6 +1270,41 @@ export default function WalletSettingsPage() {
                       ) : null}
                     </div>
                   </div>
+
+                  {/* Saving wallet: dashboard visibility toggle */}
+                  {activeWallet.type === "saving" ? (
+                    <>
+                      <div className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+                        <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
+                          {tr("Dompet Simpanan", "Saving Wallet")}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => updateActiveWallet({ show_on_dashboard: !(activeWallet.show_on_dashboard ?? true) })}
+                          className={cn(
+                            "flex w-full items-center justify-between gap-3 rounded-[var(--radius)] border px-4 py-3.5 text-sm font-semibold transition",
+                            (activeWallet.show_on_dashboard ?? true)
+                              ? "border-[var(--accent2)]/30 bg-[var(--accent2)]/10 text-[var(--text)]"
+                              : "border-[var(--border)] bg-[var(--card)] text-[var(--muted)]",
+                          )}
+                        >
+                          <span className="inline-flex items-center gap-2">
+                            <Eye size={14} />
+                            {tr("Tunjuk di Dashboard", "Show on Dashboard")}
+                          </span>
+                          <span className="rounded-full bg-[var(--surface-tint)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em]">
+                            {(activeWallet.show_on_dashboard ?? true) ? tr("Aktif", "On") : tr("Tidak", "Off")}
+                          </span>
+                        </button>
+                        <p className="text-[0.6875rem] text-[var(--muted)]">
+                          {tr(
+                            "Dompet simpanan tidak termasuk dalam jumlah baki utama. Aktifkan untuk papar dalam bahagian dompet di dashboard.",
+                            "Saving wallets are excluded from the main balance total. Enable to show in the dashboard wallet section.",
+                          )}
+                        </p>
+                      </div>
+                    </>
+                  ) : null}
 
                   {/* Mata Wang card */}
                   <div className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">

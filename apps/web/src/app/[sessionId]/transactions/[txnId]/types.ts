@@ -59,6 +59,7 @@ export interface WalletOption {
   label?: string | null
   image_url?: string
   currency?: string | null
+  is_saving?: boolean
 }
 
 export interface LoanOption {

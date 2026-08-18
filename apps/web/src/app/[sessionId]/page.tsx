@@ -199,8 +199,10 @@ type DashboardWallet = {
   image_url?: string | null
   balance: number
   currency: string
-  type?: "cash" | "bank" | "bank_digital" | "ewallet" | "credit_card" | "shared" | "personal" | string | null
+  type?: "cash" | "bank" | "bank_digital" | "ewallet" | "credit_card" | "saving" | "shared" | "personal" | string | null
   is_bot_default?: boolean | null
+  is_saving?: boolean
+  show_on_dashboard?: boolean
 }
 
 type DashboardStats = {
@@ -1475,6 +1477,7 @@ export default function Dashboard() {
     }
 
     return [...wallets]
+      .filter((wallet) => wallet.show_on_dashboard !== false)
       .map((wallet) => ({
         ...wallet,
         balance: Number(wallet.balance || 0),
@@ -2566,7 +2569,7 @@ export default function Dashboard() {
                       className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold text-white ring-1 ring-white/15"
                       style={{ background: "rgba(255,255,255,0.12)" }}
                     >
-                      {wallets.length} {lang === "EN" ? "wallets" : "dompet"}
+                      {heroWallets.length} {lang === "EN" ? "wallets" : "dompet"}
                     </span>
                     <span
                       className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold text-white ring-1 ring-white/15"
