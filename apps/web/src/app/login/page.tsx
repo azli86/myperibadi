@@ -20,7 +20,7 @@ import {
   getLoginRedirectPath,
 } from "@/lib/auth-session"
 import { initFirstAccount, initActiveAccount } from "@/lib/multi-account"
-import { PENDING_SHARED_CHAT_TOKEN_STORAGE_KEY, PENDING_SHARED_TRANSACTION_TOKEN_STORAGE_KEY, SHARED_TRANSACTION_TOKEN_QUERY_KEY, getActiveSharedTransactionTokenStorageKey, getSharedTransactionPinBypassStorageKey } from "@/lib/share-target"
+import { PENDING_SHARED_CHAT_TOKEN_STORAGE_KEY, PENDING_SHARED_TRANSACTION_TOKEN_STORAGE_KEY, SHARED_CHAT_TOKEN_QUERY_KEY, getActiveSharedTransactionTokenStorageKey, getSharedTransactionPinBypassStorageKey } from "@/lib/share-target"
 import { signInWithGoogle } from "@/lib/firebase"
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY
@@ -61,9 +61,14 @@ export default function LoginPage() {
       if (pendingShareToken) {
         window.sessionStorage.setItem(`pin_verified_${session}`, "true")
         window.sessionStorage.setItem(getSharedTransactionPinBypassStorageKey(session), "true")
-        window.sessionStorage.setItem(getActiveSharedTransactionTokenStorageKey(session), pendingShareToken)
+        const chatToken = localStorage.getItem(PENDING_SHARED_CHAT_TOKEN_STORAGE_KEY)
         localStorage.removeItem(PENDING_SHARED_TRANSACTION_TOKEN_STORAGE_KEY)
         localStorage.removeItem(PENDING_SHARED_CHAT_TOKEN_STORAGE_KEY)
+        if (chatToken) {
+          router.replace(`/${session}/chat?${SHARED_CHAT_TOKEN_QUERY_KEY}=${encodeURIComponent(chatToken)}`)
+          return
+        }
+        window.sessionStorage.setItem(getActiveSharedTransactionTokenStorageKey(session), pendingShareToken)
         router.replace(getLoginRedirectPath(session))
         return
       }
@@ -116,9 +121,14 @@ export default function LoginPage() {
           if (session && pendingShareToken) {
             window.sessionStorage.setItem(`pin_verified_${session}`, "true")
             window.sessionStorage.setItem(getSharedTransactionPinBypassStorageKey(session), "true")
-            window.sessionStorage.setItem(getActiveSharedTransactionTokenStorageKey(session), pendingShareToken)
+            const chatToken = localStorage.getItem(PENDING_SHARED_CHAT_TOKEN_STORAGE_KEY)
             localStorage.removeItem(PENDING_SHARED_TRANSACTION_TOKEN_STORAGE_KEY)
             localStorage.removeItem(PENDING_SHARED_CHAT_TOKEN_STORAGE_KEY)
+            if (chatToken) {
+              router.push(`/${session}/chat?${SHARED_CHAT_TOKEN_QUERY_KEY}=${encodeURIComponent(chatToken)}`)
+              return
+            }
+            window.sessionStorage.setItem(getActiveSharedTransactionTokenStorageKey(session), pendingShareToken)
             router.push(getLoginRedirectPath(session))
             return
           }

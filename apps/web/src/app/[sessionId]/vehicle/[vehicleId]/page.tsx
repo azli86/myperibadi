@@ -956,11 +956,12 @@ export default function VehicleDetailPage() {
           )}
         />
       </div>
-      <div className="mx-auto w-full max-w-lg space-y-3 px-3 pb-28 pt-0 md:max-w-6xl md:space-y-4 md:px-6 md:pb-16 lg:max-w-7xl">
-        <div className="md:hidden">
+      <div className="mx-auto w-full space-y-4 px-1 pb-24 pt-0 md:max-w-6xl md:space-y-4 md:px-6 md:pb-16 lg:max-w-7xl">
+        <div className="space-y-5 md:hidden">
           <MobilePageHeader
             title={vehicle.name}
             fallbackHref={`/${sessionId}/vehicle`}
+            backPreferHistory
             action={(
               <button
                 type="button"

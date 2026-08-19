@@ -4,10 +4,8 @@ import React, { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import {
-  AtSign,
   CheckCircle2,
   ChevronDown,
-  Fingerprint,
   Loader2,
   MailCheck,
   PencilLine,
@@ -22,6 +20,11 @@ import {
   RefreshCw,
   ChevronRight,
   Camera,
+  Users,
+  ShieldAlert,
+  KeyRound,
+  Layers,
+  ArrowRight,
 } from "lucide-react"
 import { useLang } from "@/lib/lang"
 import { UserAvatar } from "@/components/ui/UserAvatar"
@@ -53,6 +56,7 @@ export default function AccountPage() {
   const params = useParams()
   const sessionId = (params.sessionId as string) || ""
   const { lang, t } = useLang()
+  const router = useRouter()
 
   const [profile, setProfile] = useState<Profile | null>(null)
   const [name, setName] = useState("")
@@ -74,7 +78,6 @@ export default function AccountPage() {
   const [emailError, setEmailError] = useState("")
   const [showBadgeModal, setShowBadgeModal] = useState(false)
   const { showAlert, alertModal } = usePageAlert(lang)
-  const router = useRouter()
 
   const [dangerAction, setDangerAction] = useState<"reset" | "delete" | null>(null)
   const [dangerPassword, setDangerPassword] = useState("")
@@ -100,7 +103,7 @@ export default function AccountPage() {
   }, [])
 
   const isBm = lang === "BM"
-  const tr = (bm: string, en: string) => isBm ? bm : en
+  const tr = (bm: string, en: string) => (isBm ? bm : en)
 
   useEffect(() => {
     const load = async () => {
@@ -147,15 +150,6 @@ export default function AccountPage() {
         : ["Friendly & casual", "Straight to the point", "Strict budget coach", "Professional concise"],
     [isBm]
   )
-
-  const personalityPreview = useMemo(() => {
-    const custom = normalizePersonalityInput(botPersonality)
-    if (custom) return custom
-    return tr(
-      "Mesra, jelas, dan fokus pada langkah bajet yang praktikal.",
-      "Friendly, clear, and focused on practical budgeting steps."
-    )
-  }, [botPersonality, isBm])
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
@@ -413,627 +407,277 @@ export default function AccountPage() {
   const deleteConfirmWord = tr("PADAM", "DELETE")
   const activeConfirmWord = dangerAction === "delete" ? deleteConfirmWord : resetConfirmWord
 
-  const { requestClose: requestMobileSheetClose, requestCloseThen: requestMobileSheetCloseThen } = useOverlayBackClose({
+  const { requestClose: requestMobileSheetClose } = useOverlayBackClose({
     id: "account-mobile-sheet",
     isOpen: Boolean(activeMobileSheet),
     onClose: () => setActiveMobileSheet(null),
   })
 
-  const mobileSheetMeta = activeMobileSheet ? {
-    profile: { title: tr("Edit Profil", "Edit Profile"), subtitle: tr("Nama & personaliti bot", "Name & bot personality") },
-    email: { title: tr("Tukar E-mel", "Change Email"), subtitle: profile?.email || "-" },
-    danger: { title: tr("Zon Bahaya", "Danger Zone"), subtitle: "" },
-  }[activeMobileSheet] : null
+  const mobileSheetMeta = activeMobileSheet
+    ? {
+        profile: {
+          title: tr("Edit Profil", "Edit Profile"),
+          subtitle: tr("Nama & personaliti bot", "Name & bot personality"),
+        },
+        email: {
+          title: tr("Tukar E-mel", "Change Email"),
+          subtitle: profile?.email || "-",
+        },
+        danger: {
+          title: tr("Zon Bahaya", "Danger Zone"),
+          subtitle: tr("Tindakan kritikal pemadaman atau tetapan semula data", "Critical reset or account deletion actions"),
+        },
+      }[activeMobileSheet]
+    : null
 
   return (
-    <div className="flex flex-col gap-5 pb-20 md:gap-0 md:pb-0">
-      {/* ─── Mobile Header ─── */}
-      <div className="md:hidden">
+    <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
+      {/* ─── Mobile View ─── */}
+      <div className="space-y-5 md:hidden">
         <MobilePageHeader
           title={tr("Akaun Saya", "My Account")}
           fallbackHref={`/${sessionId}/settings`}
           backPreferHistory
         />
-      </div>
 
-      {/* ─── Mobile View (row list, settings-page style) ─── */}
-      <div className="space-y-5 md:hidden">
-        {/* Profile summary card */}
-        <section className="px-1">
-          <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
+        <section className="px-1 space-y-4">
+          {/* Profile Overview Card */}
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
             <button
               type="button"
               onClick={() => setActiveMobileSheet("profile")}
-              className="flex w-full items-center gap-3 px-4 py-4 text-left transition-all active:scale-[0.99]"
+              className="flex w-full items-center gap-3 text-left active:scale-[0.99] transition"
             >
-              <UserCircle2 size={28} className="shrink-0 text-[var(--accent)]" />
+              <div className="relative shrink-0">
+                <UserAvatar name={name || profile?.name} size={52} src={profile?.avatar_url} />
+                <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] border border-[var(--border)] text-[var(--text)]">
+                  <Camera size={10} />
+                </div>
+              </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-base font-semibold text-[var(--text)]">{profile?.name || tr("Muat...", "Loading...")}</p>
-                <p className="truncate text-sm font-medium text-[var(--muted)]">{profile?.email || "-"}</p>
+                <p className="truncate text-sm font-extrabold text-[var(--text)]">
+                  {profile?.name || tr("Memuatkan…", "Loading…")}
+                </p>
+                <p className="truncate text-xs font-medium text-[var(--muted)]">{profile?.email || "—"}</p>
+                <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <Sparkles size={9} />
+                  <span>{normalizePersonalityInput(botPersonality) || tr("Personaliti Standard", "Standard Personality")}</span>
+                </span>
               </div>
               <ChevronRight size={18} className="shrink-0 text-[var(--muted)]" />
             </button>
           </div>
-        </section>
 
-        {/* Account settings rows */}
-        <section className="px-1">
-          <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{tr("Akaun", "Account")}</p>
-          <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
-            {[
-              { key: "profile" as const, icon: PencilLine, label: tr("Edit Profil", "Edit Profile"), value: tr("Nama & personaliti bot", "Name & bot personality") },
-              { key: "email" as const, icon: MailCheck, label: tr("Tukar E-mel", "Change Email"), value: profile?.email || "-" },
-            ].map((item, i) => (
+          {/* Account Settings Menu */}
+          <div className="space-y-1.5">
+            <p className="px-1 text-[0.68rem] font-extrabold uppercase tracking-wider text-[var(--muted)]">
+              {tr("Tetapan Profil & Keselamatan", "Profile & Security")}
+            </p>
+            <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] divide-y divide-[var(--divider)] shadow-sm">
               <button
-                key={item.key}
                 type="button"
-                onClick={() => setActiveMobileSheet(item.key)}
-                className={cn("flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all", i !== 0 && "border-t border-[var(--border)]")}
+                onClick={() => setActiveMobileSheet("profile")}
+                className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-[var(--surface-tint)] active:scale-[0.99]"
               >
-                <item.icon size={20} className="shrink-0 text-[var(--text)]" />
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                  <PencilLine size={16} />
+                </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-[var(--text)]">{item.label}</p>
-                  <p className="mt-0.5 truncate text-xs font-medium text-[var(--muted)]">{item.value}</p>
+                  <p className="text-xs md:text-sm font-bold text-[var(--text)]">{tr("Edit Profil", "Edit Profile")}</p>
+                  <p className="mt-0.5 truncate text-[0.7rem] text-[var(--muted)]">{tr("Nama paparan & gaya komunikasi bot", "Display name & bot tone")}</p>
                 </div>
                 <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
               </button>
-            ))}
-          </div>
-        </section>
 
-        {/* Stored accounts */}
-        <section className="px-1">
-          <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{tr("Akaun", "Accounts")}</p>
-          <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
-            {accounts.map((acct) => {
-              const isActive = acct.email === activeEmail
-              return (
-                <button
-                  key={acct.email}
-                  type="button"
-                  onClick={() => {
-                    if (!isActive) { switchToAccount(acct.email); setActiveEmail(acct.email); window.location.reload() }
-                  }}
-                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all active:scale-[0.99]"
-                >
-                  <UserCircle2 size={22} className="shrink-0 text-[var(--accent)]" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-[var(--text)]">{acct.name || acct.email}</p>
-                    <p className="truncate text-xs font-medium text-[var(--muted)]">{acct.email}</p>
-                  </div>
-                  {isActive && <CheckCircle2 size={18} className="shrink-0 text-emerald-500" />}
-                </button>
-              )
-            })}
-            <Link
-              href={`/${sessionId}/login`}
-              className="flex w-full items-center gap-3 border-t border-[var(--border)] px-4 py-3.5 text-left transition-all active:scale-[0.99]"
-            >
-              <UserCircle2 size={22} className="shrink-0 text-[var(--text)]" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-[var(--text)]">{tr("Tambah Akaun", "Add Account")}</p>
-                <p className="truncate text-xs font-medium text-[var(--muted)]">{tr("Log masuk akaun lain", "Sign in to another account")}</p>
-              </div>
-              <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
-            </Link>
-          </div>
-        </section>
-
-        {/* Danger zone row */}
-        <section className="px-1">
-          <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{tr("Bahaya", "Danger")}</p>
-          <button
-            type="button"
-            onClick={() => setActiveMobileSheet("danger")}
-            className="mt-2 flex w-full items-center gap-3 rounded-2xl border border-red-500/30 bg-[var(--card)] px-4 py-3.5 text-left transition-all active:scale-[0.99]"
-          >
-            <AlertTriangle size={20} className="shrink-0 text-red-500" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-red-600 dark:text-red-400">{tr("Zon Bahaya", "Danger Zone")}</p>
+              <button
+                type="button"
+                onClick={() => setActiveMobileSheet("email")}
+                className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-[var(--surface-tint)] active:scale-[0.99]"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                  <MailCheck size={16} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs md:text-sm font-bold text-[var(--text)]">{tr("Tukar E-mel", "Change Email")}</p>
+                  <p className="mt-0.5 truncate text-[0.7rem] text-[var(--muted)]">{profile?.email || "—"}</p>
+                </div>
+                <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
+              </button>
             </div>
-            <ChevronRight size={16} className="shrink-0 text-red-500/60" />
-          </button>
+          </div>
+
+          {/* Stored Accounts List */}
+          <div className="space-y-1.5">
+            <p className="px-1 text-[0.68rem] font-extrabold uppercase tracking-wider text-[var(--muted)]">
+              {tr("Tukar Akaun / Multi-Account", "Multi-Account Switching")}
+            </p>
+            <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] divide-y divide-[var(--divider)] shadow-sm">
+              {accounts.map((acct) => {
+                const isActive = acct.email === activeEmail
+                return (
+                  <button
+                    key={acct.email}
+                    type="button"
+                    onClick={() => {
+                      if (!isActive) {
+                        switchToAccount(acct.email)
+                        setActiveEmail(acct.email)
+                        window.location.reload()
+                      }
+                    }}
+                    className={cn(
+                      "flex w-full items-center gap-3 px-4 py-3 text-left transition active:scale-[0.99]",
+                      isActive ? "bg-[var(--surface-tint)]" : "hover:bg-[var(--surface-tint)]/60"
+                    )}
+                  >
+                    <UserAvatar name={acct.name || acct.email} size={34} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-[var(--text)]">{acct.name || acct.email}</p>
+                      <p className="truncate text-[0.68rem] text-[var(--muted)]">{acct.email}</p>
+                    </div>
+                    {isActive ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        <CheckCircle2 size={11} />
+                        <span>{tr("Aktif", "Active")}</span>
+                      </span>
+                    ) : (
+                      <ChevronRight size={14} className="shrink-0 text-[var(--muted)]" />
+                    )}
+                  </button>
+                )
+              })}
+              <Link
+                href={`/${sessionId}/login`}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[var(--surface-tint)]/80 active:scale-[0.99]"
+              >
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)]">
+                  <UserCircle2 size={16} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-[var(--text)]">{tr("Tambah / Log Masuk Akaun Lain", "Add Another Account")}</p>
+                  <p className="truncate text-[0.68rem] text-[var(--muted)]">{tr("Log masuk akaun kedua atau perniagaan", "Sign in to a second personal or business account")}</p>
+                </div>
+                <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Danger Zone Row */}
+          <div className="space-y-1.5 pt-2">
+            <p className="px-1 text-[0.68rem] font-extrabold uppercase tracking-wider text-rose-500">
+              {tr("Zon Berbahaya", "Danger Zone")}
+            </p>
+            <button
+              type="button"
+              onClick={() => setActiveMobileSheet("danger")}
+              className="flex w-full items-center gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/5 px-4 py-3.5 text-left transition hover:bg-rose-500/10 active:scale-[0.99]"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                <AlertTriangle size={16} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-rose-600 dark:text-rose-400">{tr("Reset Data atau Padam Akaun", "Reset Data or Delete Account")}</p>
+                <p className="truncate text-[0.68rem] text-[var(--muted)]">{tr("Tindakan pemadaman kekal", "Permanent data wipe actions")}</p>
+              </div>
+              <ChevronRight size={16} className="shrink-0 text-rose-500/60" />
+            </button>
+          </div>
         </section>
       </div>
 
-      <DesktopPageHeader
-        title={tr("Akaun Saya", "My Account")}
-        breadcrumbs={[{ label: tr("Tetapan", "Settings"), href: `/${sessionId}/settings` }]}
-        homeHref={`/${sessionId}`}
-        showBack={false}
-        className="hidden md:block"
-      />
+      {/* ─── Desktop View ─── */}
+      <div className="hidden md:block">
+        <DesktopPageHeader
+          title={tr("Akaun & Keselamatan", "Account & Security")}
+          homeHref={`/${sessionId}`}
+          breadcrumbs={[
+            { label: tr("Tetapan", "Settings"), href: `/${sessionId}/settings` },
+            { label: tr("Akaun", "Account") },
+          ]}
+        />
 
-      <DesktopPageBody className="hidden flex-col gap-5 md:flex md:gap-7">
-      {/* ─── Edit Profile Form ─── */}
-      <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-        <div className="border-b border-[var(--border)] bg-[var(--surface-tint)]/30 px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--text)] text-[var(--bg)]">
-              <PencilLine size={22} />
-            </div>
-            <div>
-              <h3 className="text-base font-black tracking-tight text-[var(--text)]">
-                {tr("Edit Profil", "Edit Profile")}
-              </h3>
-              <p className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                {tr("Nama & personaliti bot", "Name & bot personality")}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="p-6">
-          <form onSubmit={handleSave} className="space-y-5">
-            {/* Avatar upload */}
-            <div className="flex items-center gap-4">
-              <UserAvatar name={name} size={72} src={profile?.avatar_url} />
-              <div className="space-y-1.5">
+        <DesktopPageBody className="space-y-6 pt-6">
+          {/* Hero Profile Overview Bar */}
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="relative shrink-0">
+                  <UserAvatar name={name || profile?.name} size={64} src={profile?.avatar_url} />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl font-black tracking-tight text-[var(--text)]">
+                      {profile?.name || tr("Memuatkan Profil…", "Loading Profile…")}
+                    </h1>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <ShieldCheck size={12} />
+                      <span>{tr("Disahkan", "Verified")}</span>
+                    </span>
+                  </div>
+                  <p className="text-xs font-medium text-[var(--muted)]">{profile?.email || "—"}</p>
+                </div>
+              </div>
+
+              {/* Avatar Uploader Button */}
+              <div className="flex items-center gap-2">
                 <label
-                  htmlFor="avatar-upload"
+                  htmlFor="desktop-avatar-upload"
                   className={cn(
-                    "inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-3.5 py-2 text-xs font-bold text-[var(--text)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface-tint)] active:scale-[0.98]",
-                    avatarUploading && "pointer-events-none opacity-60",
+                    "inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-2 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-[0.98]",
+                    avatarUploading && "pointer-events-none opacity-60"
                   )}
                 >
-                  {avatarUploading ? (
-                    <Loader2 size={14} className="animate-spin" />
-                  ) : (
-                    <Camera size={14} />
-                  )}
-                  {avatarUploading
-                    ? tr("Memuat naik...", "Uploading...")
-                    : tr("Tukar Gambar Profil", "Change Profile Picture")}
+                  {avatarUploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
+                  <span>{avatarUploading ? tr("Memuat naik…", "Uploading…") : tr("Tukar Gambar Profil", "Change Picture")}</span>
                 </label>
                 <input
-                  id="avatar-upload"
+                  id="desktop-avatar-upload"
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   className="hidden"
                   onChange={handleAvatarUpload}
                   disabled={avatarUploading}
                 />
-                <p className="text-[0.625rem] font-medium text-[var(--muted)]">
-                  {tr("PNG, JPG atau WEBP. Maksimum 2 MB.", "PNG, JPG or WEBP. Maximum 2 MB.")}
-                </p>
               </div>
             </div>
+          </div>
 
-            <TextField
-              label={t.fullName}
-              value={name}
-              onChange={setName}
-              placeholder={tr("Nama anda", "Your name")}
-            />
-
-            <div className="space-y-2.5">
-              <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                {tr("Bot Personality", "Bot Personality")}
-              </span>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setPersonalityOpen((open) => !open)}
-                  className="flex w-full items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-left text-sm font-bold text-[var(--text)] outline-none transition-all active:scale-[0.99]"
-                  aria-expanded={personalityOpen}
-                >
-                  <span className="truncate">
-                    {personalityPresets.includes(normalizePersonalityInput(botPersonality))
-                      ? normalizePersonalityInput(botPersonality)
-                      : tr("Pilih personaliti bot", "Choose bot personality")}
-                  </span>
-                  <ChevronDown
-                    size={17}
-                    className={cn("shrink-0 text-[var(--muted)] transition-transform", personalityOpen && "rotate-180")}
-                  />
-                </button>
-                {personalityOpen ? (
-                  <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
-                    {personalityPresets.map((preset) => {
-                      const active = normalizePersonalityInput(botPersonality) === preset
-                      return (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => {
-                            setBotPersonality(preset)
-                            setPersonalityOpen(false)
-                          }}
-                          className={cn(
-                            "flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-bold transition active:scale-[0.99]",
-                            active
-                              ? "bg-[var(--text)] text-[var(--bg)]"
-                              : "bg-[var(--card)] text-[var(--text)] hover:bg-[var(--surface-tint)]"
-                          )}
-                        >
-                          <span>{preset}</span>
-                          {active ? <CheckCircle2 size={16} className="shrink-0" /> : null}
-                        </button>
-                      )
-                    })}
+          {/* 2-Column Responsive Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Column: Edit Profile (7 Cols) */}
+            <div className="lg:col-span-7 space-y-6">
+              {/* Form 1: Edit Profile Info */}
+              <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-5">
+                <div className="flex items-center justify-between border-b border-[var(--divider)] pb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
+                      <PencilLine size={18} />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-extrabold text-[var(--text)]">{tr("Maklumat Profil", "Profile Details")}</h2>
+                      <p className="text-xs text-[var(--muted)]">{tr("Nama paparan & gaya bot", "Display name & bot personality")}</p>
+                    </div>
                   </div>
-                ) : null}
-              </div>
-              <p className="text-[0.7rem] font-medium leading-relaxed text-[var(--muted)]">
-                {tr(
-                  "Pilih nada komunikasi bot. Logic, command, dan flow sistem bajet kekal sama.",
-                  "Choose the bot communication tone. Budget logic, commands, and system flow stay the same."
-                )}
-              </p>
-            </div>
-
-            {message && <SuccessBox>{message}</SuccessBox>}
-            {error && <ErrorBox>{error}</ErrorBox>}
-
-            <button
-              type="submit"
-              disabled={saving || !hasChanges}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[var(--text)] text-[var(--bg)] font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-              {tr("Simpan Perubahan", "Save Changes")}
-            </button>
-          </form>
-        </div>
-      </section>
-
-      {/* ─── Change Email ─── */}
-      <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-        <div className="border-b border-[var(--border)] bg-[var(--surface-tint)]/30 px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--text)] text-[var(--bg)]">
-              <MailCheck size={22} />
-            </div>
-            <div>
-              <h3 className="text-base font-black tracking-tight text-[var(--text)]">
-                {tr("Tukar E-mel", "Change Email")}
-              </h3>
-              <p className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                {profile?.email || "-"}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="p-6">
-          <div className="mb-5 flex gap-3 rounded-2xl bg-[var(--surface-tint)]/30 p-3.5">
-            <ShieldCheck size={16} className="mt-0.5 shrink-0 text-[var(--accent)]" />
-            <p className="text-[0.7rem] font-medium leading-relaxed text-[var(--muted)]">
-              {tr(
-                "Anda perlu sahkan e-mel baru melalui kod verifikasi. Proses ini memerlukan kata laluan semasa.",
-                "You must verify your new email via a verification code. This process requires your current password."
-              )}
-            </p>
-          </div>
-
-          <form onSubmit={handleRequestEmailCode} className="space-y-4">
-            <TextField
-              label={tr("E-mel Baru", "New Email")}
-              value={newEmail}
-              onChange={setNewEmail}
-              placeholder="name@email.com"
-              type="email"
-            />
-            <div>
-              <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                {tr("Kata Laluan Semasa", "Current Password")}
-              </span>
-              <div className="relative mt-1.5">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder={tr("Masukkan kata laluan", "Enter current password")}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 pr-12 text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)]"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--text)] transition-colors"
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={requestingEmailCode || !newEmail.trim() || !currentPassword}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-[var(--border)] font-bold text-sm transition-all hover:border-[var(--text)]/30 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {requestingEmailCode ? <Loader2 size={16} className="animate-spin" /> : <MailCheck size={16} />}
-              {tr("Hantar Kod Verifikasi", "Send Verification Code")}
-            </button>
-          </form>
-
-          {emailStep === "code_sent" && (
-              <form
-                onSubmit={handleConfirmEmailCode}
-                className="mt-4 space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/20 p-4"
-              >
-                <div>
-                  <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                    {tr("Kod Verifikasi (6 digit)", "Verification Code (6 digits)")}
-                  </span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    placeholder="123456"
-                    className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-lg font-black text-[var(--text)] placeholder:text-[var(--muted)]/30 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)] tracking-[0.2em] text-center"
-                  />
                 </div>
-                <button
-                  type="submit"
-                  disabled={confirmingEmail || verificationCode.trim().length !== 6}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[var(--text)] text-[var(--bg)] font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40"
-                >
-                  {confirmingEmail ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                  {tr("Sahkan E-mel Baru", "Verify New Email")}
-                </button>
-              </form>
-            )}
 
-          {emailMessage && <div className="mt-4"><SuccessBox>{emailMessage}</SuccessBox></div>}
-          {emailError && <div className="mt-4"><ErrorBox>{emailError}</ErrorBox></div>}
-        </div>
-      </section>
-
-      {/* ─── Stored Accounts ─── */}
-      <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-        <div className="border-b border-[var(--border)] bg-[var(--surface-tint)]/30 px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--text)] text-[var(--bg)]">
-              <UserCircle2 size={22} />
-            </div>
-            <div>
-              <h3 className="text-base font-black tracking-tight text-[var(--text)]">
-                {tr("Akaun", "Accounts")}
-              </h3>
-              <p className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                {tr("Tukar atau tambah akaun", "Switch or add accounts")}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="p-6">
-          <div className="divide-y divide-[var(--border)] rounded-2xl border border-[var(--border)]">
-            {accounts.map((acct) => {
-              const isActive = acct.email === activeEmail
-              return (
-                <button
-                  key={acct.email}
-                  type="button"
-                  onClick={() => {
-                    if (!isActive) { switchToAccount(acct.email); setActiveEmail(acct.email); window.location.reload() }
-                  }}
-                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all hover:bg-[var(--surface-tint)]/50 active:scale-[0.99]"
-                >
-                  <UserCircle2 size={22} className="shrink-0 text-[var(--accent)]" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-[var(--text)]">{acct.name || acct.email}</p>
-                    <p className="truncate text-xs font-medium text-[var(--muted)]">{acct.email}</p>
-                  </div>
-                  {isActive && <CheckCircle2 size={18} className="shrink-0 text-emerald-500" />}
-                </button>
-              )
-            })}
-            <Link
-              href={`/${sessionId}/login`}
-              className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all hover:bg-[var(--surface-tint)]/50 active:scale-[0.99]"
-            >
-              <UserCircle2 size={22} className="shrink-0 text-[var(--text)]" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-[var(--text)]">{tr("Tambah Akaun", "Add Account")}</p>
-                <p className="truncate text-xs font-medium text-[var(--muted)]">{tr("Log masuk akaun lain", "Sign in to another account")}</p>
-              </div>
-              <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Danger Zone: Reset / Delete Account ─── */}
-      <section className="overflow-hidden rounded-2xl border border-red-500/30 bg-[var(--card)] shadow-sm">
-        <div className="border-b border-red-500/20 bg-red-500/10 px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-500 text-white">
-              <AlertTriangle size={22} />
-            </div>
-            <div>
-              <h3 className="text-base font-black tracking-tight text-[var(--text)]">
-                {tr("Zon Bahaya", "Danger Zone")}
-              </h3>
-              <p className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                {tr("Reset atau padam akaun", "Reset or delete account")}
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="space-y-3 p-6">
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <button
-              type="button"
-              onClick={() => {
-                setDangerError("")
-                setDangerPassword("")
-                setConfirmText("")
-                setDangerAction("reset")
-              }}
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-[var(--border)] px-4 py-3.5 text-sm font-bold text-[var(--text)] transition-all hover:border-[var(--text)]/30 active:scale-[0.98]"
-            >
-              <RefreshCw size={16} />
-              {tr("Reset Akaun", "Reset Account")}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setDangerError("")
-                setDangerPassword("")
-                setConfirmText("")
-                setDangerAction("delete")
-              }}
-              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-red-500/40 bg-red-500/10 px-4 py-3.5 text-sm font-bold text-red-600 dark:text-red-400 transition-all hover:bg-red-500/20 active:scale-[0.98]"
-            >
-              <Trash2 size={16} />
-              {tr("Padam Akaun", "Delete Account")}
-            </button>
-          </div>
-
-          {dangerAction && (
-            <form
-              onSubmit={handleDangerAction}
-              className="space-y-4 rounded-2xl border border-red-500/30 bg-red-500/5 p-4"
-            >
-              <div className="flex gap-3">
-                <AlertTriangle size={16} className="mt-0.5 shrink-0 text-red-500" />
-                <p className="text-[0.7rem] font-medium leading-relaxed text-[var(--muted)]">
-                  {dangerAction === "delete"
-                    ? tr(
-                        "Tindakan ini MEMADAM AKAUN dan SEMUA data secara kekal. Anda tidak akan dapat log masuk semula. Taip PADAM untuk sahkan.",
-                        "This will PERMANENTLY DELETE your account and ALL data. You will not be able to log in again. Type DELETE to confirm."
-                      )
-                    : tr(
-                        "Tindakan ini mengosongkan SEMUA data (transaksi, wallet, bajet, hutang, loan, subskripsi, kenderaan, waranti, tempat). Akaun dan e-mel anda kekal. Taip RESET untuk sahkan.",
-                        "This clears ALL data (transactions, wallets, budgets, debts, loans, subscriptions, vehicles, warranties, places). Your account and email remain. Type RESET to confirm."
-                      )}
-                </p>
-              </div>
-
-              <div>
-                <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                  {tr("Kata Laluan Semasa", "Current Password")}
-                </span>
-                <input
-                  type="password"
-                  value={dangerPassword}
-                  onChange={(e) => setDangerPassword(e.target.value)}
-                  placeholder={tr("Masukkan kata laluan", "Enter current password")}
-                  autoComplete="current-password"
-                  className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)]"
-                />
-                <p className="mt-1.5 text-xs text-[var(--muted)]">
-                  {tr("Akaun Google tidak perlu kata laluan.", "Google sign-in accounts don't need a password.")}
-                </p>
-              </div>
-
-              <div>
-                <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                  {tr("Taip untuk sahkan", "Type to confirm")}
-                </span>
-                <input
-                  type="text"
-                  value={confirmText}
-                  onChange={(e) => setConfirmText(e.target.value)}
-                  placeholder={activeConfirmWord}
-                  className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)]"
-                />
-              </div>
-
-              {dangerError && <ErrorBox>{dangerError}</ErrorBox>}
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDangerAction(null)
-                    setDangerPassword("")
-                    setConfirmText("")
-                    setConfirmOpen(false)
-                  }}
-                  className="flex-1 rounded-2xl border border-[var(--border)] py-3.5 text-sm font-bold text-[var(--muted)] transition hover:border-[var(--text)]/25"
-                >
-                  {tr("Batal", "Cancel")}
-                </button>
-                <button
-                  type="submit"
-                  disabled={
-                    dangerBusy ||
-                    (profile?.has_password && !dangerPassword) ||
-                    confirmText.trim().toUpperCase() !== activeConfirmWord
-                  }
-                  className={cn(
-                    "flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40",
-                    dangerAction === "delete"
-                      ? "bg-red-600 hover:bg-red-500"
-                      : "bg-[var(--text)] text-[var(--bg)] hover:opacity-90"
-                  )}
-                >
-                  {dangerBusy ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : dangerAction === "delete" ? (
-                    <Trash2 size={16} />
-                  ) : (
-                    <RefreshCw size={16} />
-                  )}
-                  {dangerAction === "delete"
-                    ? tr("Padam Akaun Kekal", "Delete Account Permanently")
-                    : tr("Reset Semua Data", "Reset All Data")}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      </section>
-      </DesktopPageBody>
-
-      {/* ─── Mobile Bottom Sheets (settings-page style) ─── */}
-      {activeMobileSheet && mobileSheetMeta && (
-        <div
-          className="fixed inset-0 z-[80] flex items-end bg-transparent md:hidden"
-          onClick={requestMobileSheetClose}
-        >
-          <div
-            className="max-h-[88dvh] w-full overflow-y-auto rounded-t-[36px] border border-[var(--border)] bg-[var(--card)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] touch-pan-y shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <AppSheetHeader title={mobileSheetMeta.title} onClose={requestMobileSheetClose} />
-            <div className="px-5">
-              {mobileSheetMeta.subtitle ? (
-                <p className="mb-4 text-xs font-medium text-[var(--muted)]">{mobileSheetMeta.subtitle}</p>
-              ) : null}
-
-              {/* ── Profile sheet ── */}
-              {activeMobileSheet === "profile" && (
-                <form onSubmit={handleSave} className="space-y-5 pb-2">
-                  {/* Avatar upload (mobile) */}
-                  <div className="flex items-center gap-4">
-                    <UserAvatar name={name} size={64} src={profile?.avatar_url} />
-                    <label
-                      htmlFor="avatar-upload-mobile"
-                      className={cn(
-                        "inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-3.5 py-2 text-xs font-bold text-[var(--text)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface-tint)] active:scale-[0.98]",
-                        avatarUploading && "pointer-events-none opacity-60",
-                      )}
-                    >
-                      {avatarUploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
-                      {avatarUploading ? tr("Memuat naik...", "Uploading...") : tr("Tukar Gambar", "Change Picture")}
-                    </label>
-                    <input
-                      id="avatar-upload-mobile"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      onChange={handleAvatarUpload}
-                      disabled={avatarUploading}
-                    />
-                  </div>
+                <form onSubmit={handleSave} className="space-y-4">
                   <TextField
-                    label={t.fullName}
+                    label={t.fullName || tr("Nama Penuh", "Full Name")}
                     value={name}
                     onChange={setName}
                     placeholder={tr("Nama anda", "Your name")}
                   />
-                  <div className="space-y-2.5">
-                    <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                      {tr("Bot Personality", "Bot Personality")}
+
+                  {/* Personality Picker */}
+                  <div className="space-y-1.5">
+                    <span className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                      {tr("Personaliti Bot", "Bot Personality")}
                     </span>
                     <div className="relative">
                       <button
                         type="button"
                         onClick={() => setPersonalityOpen((open) => !open)}
-                        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-left text-sm font-bold text-[var(--text)] outline-none transition-all active:scale-[0.99]"
-                        aria-expanded={personalityOpen}
+                        className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3.5 py-2.5 text-left text-xs md:text-sm font-semibold text-[var(--text)] outline-none transition focus:border-[var(--input-focus)]"
                       >
                         <span className="truncate">
                           {personalityPresets.includes(normalizePersonalityInput(botPersonality))
@@ -1041,12 +685,13 @@ export default function AccountPage() {
                             : tr("Pilih personaliti bot", "Choose bot personality")}
                         </span>
                         <ChevronDown
-                          size={17}
+                          size={16}
                           className={cn("shrink-0 text-[var(--muted)] transition-transform", personalityOpen && "rotate-180")}
                         />
                       </button>
-                      {personalityOpen ? (
-                        <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
+
+                      {personalityOpen && (
+                        <div className="absolute z-20 mt-1.5 w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-lg divide-y divide-[var(--divider)]">
                           {personalityPresets.map((preset) => {
                             const active = normalizePersonalityInput(botPersonality) === preset
                             return (
@@ -1058,128 +703,459 @@ export default function AccountPage() {
                                   setPersonalityOpen(false)
                                 }}
                                 className={cn(
-                                  "flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-bold transition active:scale-[0.99]",
+                                  "flex w-full items-center justify-between px-3.5 py-2.5 text-left text-xs md:text-sm font-medium transition",
                                   active
-                                    ? "bg-[var(--text)] text-[var(--bg)]"
-                                    : "bg-[var(--card)] text-[var(--text)] hover:bg-[var(--surface-tint)]"
+                                    ? "bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold"
+                                    : "hover:bg-[var(--surface-tint)] text-[var(--text)]"
                                 )}
                               >
                                 <span>{preset}</span>
-                                {active ? <CheckCircle2 size={16} className="shrink-0" /> : null}
+                                {active && <CheckCircle2 size={15} className="shrink-0 text-emerald-500" />}
                               </button>
                             )
                           })}
                         </div>
-                      ) : null}
+                      )}
                     </div>
-                    <p className="text-[0.7rem] font-medium leading-relaxed text-[var(--muted)]">
+                    <p className="text-[0.7rem] text-[var(--muted)] leading-relaxed">
                       {tr(
-                        "Pilih nada komunikasi bot. Logic, command, dan flow sistem bajet kekal sama.",
-                        "Choose the bot communication tone. Budget logic, commands, and system flow stay the same."
+                        "Menentukan nada santai atau formal mesej respon bot. Format logic dan arahan perbelanjaan kekal sama.",
+                        "Sets the conversational tone of bot replies. Calculation logic and commands remain unchanged."
                       )}
                     </p>
                   </div>
+
                   {message && <SuccessBox>{message}</SuccessBox>}
                   {error && <ErrorBox>{error}</ErrorBox>}
+
                   <button
                     type="submit"
                     disabled={saving || !hasChanges}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[var(--text)] text-[var(--bg)] font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] py-3 text-xs md:text-sm font-bold text-[var(--btn-primary-text)] shadow-sm transition active:scale-[0.98] hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
                   >
-                    {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                    {tr("Simpan Perubahan", "Save Changes")}
+                    {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={15} />}
+                    <span>{tr("Simpan Perubahan Profil", "Save Profile Changes")}</span>
+                  </button>
+                </form>
+              </section>
+
+              {/* Form 2: Change Email */}
+              <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-5">
+                <div className="flex items-center justify-between border-b border-[var(--divider)] pb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                      <MailCheck size={18} />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-extrabold text-[var(--text)]">{tr("Tukar Alamat E-mel", "Change Email Address")}</h2>
+                      <p className="text-xs text-[var(--muted)]">{profile?.email || "—"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2.5 rounded-xl bg-[var(--surface-tint)] p-3 text-xs text-[var(--muted)]">
+                  <ShieldCheck size={16} className="shrink-0 text-indigo-500 mt-0.5" />
+                  <p>
+                    {tr(
+                      "Kod pengesahan akan dihantar ke e-mel baharu anda. Pengesahan memerlukan kata laluan semasa.",
+                      "A verification code will be sent to your new email. Requires your current password."
+                    )}
+                  </p>
+                </div>
+
+                <form onSubmit={handleRequestEmailCode} className="space-y-4">
+                  <TextField
+                    label={tr("Alamat E-mel Baharu", "New Email Address")}
+                    value={newEmail}
+                    onChange={setNewEmail}
+                    placeholder="nama@email.com"
+                    type="email"
+                  />
+
+                  <div className="space-y-1.5">
+                    <span className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                      {tr("Kata Laluan Semasa", "Current Password")}
+                    </span>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder={tr("Masukkan kata laluan akaun", "Enter account password")}
+                        className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3.5 py-2.5 pr-10 text-xs md:text-sm text-[var(--text)] placeholder-[var(--input-placeholder)] outline-none focus:border-[var(--input-focus)]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--text)]"
+                      >
+                        {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={requestingEmailCode || !newEmail.trim() || !currentPassword}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] py-2.5 text-xs md:text-sm font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-[0.98] disabled:opacity-40"
+                  >
+                    {requestingEmailCode ? <Loader2 size={15} className="animate-spin" /> : <MailCheck size={15} />}
+                    <span>{tr("Hantar Kod Verifikasi", "Send Verification Code")}</span>
+                  </button>
+                </form>
+
+                {emailStep === "code_sent" && (
+                  <form onSubmit={handleConfirmEmailCode} className="space-y-3 rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-4">
+                    <span className="text-[0.68rem] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                      {tr("Masukkan Kod Verifikasi 6-Digit", "Enter 6-Digit Verification Code")}
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                      placeholder="123456"
+                      className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-2.5 text-center text-lg font-black tracking-[0.25em] text-[var(--text)] outline-none focus:border-[var(--input-focus)]"
+                    />
+                    <button
+                      type="submit"
+                      disabled={confirmingEmail || verificationCode.trim().length !== 6}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] py-2.5 text-xs md:text-sm font-bold text-[var(--btn-primary-text)] transition active:scale-[0.98] disabled:opacity-40"
+                    >
+                      {confirmingEmail ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
+                      <span>{tr("Sahkan & Tukar E-mel", "Verify & Update Email")}</span>
+                    </button>
+                  </form>
+                )}
+
+                {emailMessage && <SuccessBox>{emailMessage}</SuccessBox>}
+                {emailError && <ErrorBox>{emailError}</ErrorBox>}
+              </section>
+            </div>
+
+            {/* Right Column: Multi-Account & Danger Zone (5 Cols) */}
+            <div className="lg:col-span-5 space-y-6">
+              {/* Card 1: Multi-Account Switcher */}
+              <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-[var(--divider)] pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)]">
+                      <Users size={16} />
+                    </div>
+                    <h3 className="text-sm font-extrabold text-[var(--text)]">{tr("Senarai Akaun", "Active Accounts")}</h3>
+                  </div>
+                  <span className="text-[0.68rem] text-[var(--muted)]">{accounts.length} akaun</span>
+                </div>
+
+                <div className="divide-y divide-[var(--divider)] rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] overflow-hidden">
+                  {accounts.map((acct) => {
+                    const isActive = acct.email === activeEmail
+                    return (
+                      <button
+                        key={acct.email}
+                        type="button"
+                        onClick={() => {
+                          if (!isActive) {
+                            switchToAccount(acct.email)
+                            setActiveEmail(acct.email)
+                            window.location.reload()
+                          }
+                        }}
+                        className={cn(
+                          "flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition",
+                          isActive ? "bg-[var(--surface-tint-strong)]" : "hover:bg-[var(--surface-tint-strong)]/60"
+                        )}
+                      >
+                        <UserAvatar name={acct.name || acct.email} size={30} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-bold text-[var(--text)]">{acct.name || acct.email}</p>
+                          <p className="truncate text-[0.68rem] text-[var(--muted)]">{acct.email}</p>
+                        </div>
+                        {isActive && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 size={11} />
+                            <span>{tr("Aktif", "Active")}</span>
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                  <Link
+                    href={`/${sessionId}/login`}
+                    className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition hover:bg-[var(--surface-tint-strong)]"
+                  >
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--surface-tint-strong)] text-[var(--text)]">
+                      <UserCircle2 size={15} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-[var(--text)]">{tr("Tambah Akaun Lain", "Add Account")}</p>
+                      <p className="text-[0.68rem] text-[var(--muted)]">{tr("Log masuk akaun kedua", "Sign in another profile")}</p>
+                    </div>
+                    <ChevronRight size={14} className="shrink-0 text-[var(--muted)]" />
+                  </Link>
+                </div>
+              </section>
+
+              {/* Card 2: Danger Zone */}
+              <section className="rounded-2xl border border-rose-500/30 bg-[var(--card)] p-6 shadow-sm space-y-4">
+                <div className="flex items-center gap-2 border-b border-rose-500/20 pb-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                    <AlertTriangle size={16} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-rose-600 dark:text-rose-400">{tr("Zon Bahaya", "Danger Zone")}</h3>
+                    <p className="text-[0.68rem] text-[var(--muted)]">{tr("Tindakan pemadaman kekal", "Irreversible actions")}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDangerError("")
+                      setDangerPassword("")
+                      setConfirmText("")
+                      setDangerAction("reset")
+                    }}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-2.5 text-xs font-bold text-[var(--text)] hover:bg-[var(--surface-tint-strong)] transition active:scale-[0.98]"
+                  >
+                    <RefreshCw size={14} />
+                    <span>{tr("Reset Semua Data", "Reset All Data")}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDangerError("")
+                      setDangerPassword("")
+                      setConfirmText("")
+                      setDangerAction("delete")
+                    }}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition active:scale-[0.98]"
+                  >
+                    <Trash2 size={14} />
+                    <span>{tr("Padam Akaun Kekal", "Delete Account")}</span>
+                  </button>
+                </div>
+
+                {dangerAction && (
+                  <form onSubmit={handleDangerAction} className="space-y-3 rounded-xl border border-rose-500/30 bg-rose-500/5 p-4">
+                    <p className="text-xs text-[var(--muted)] leading-relaxed">
+                      {dangerAction === "delete"
+                        ? tr("Padam akaun dan semua data secara kekal. Taip PADAM untuk teruskan.", "Permanently deletes account and all data. Type DELETE to proceed.")
+                        : tr("Kosongkan semua data perbelanjaan dan rekod. Taip RESET untuk teruskan.", "Wipes all expense records and data. Type RESET to proceed.")}
+                    </p>
+
+                    <div>
+                      <input
+                        type="password"
+                        value={dangerPassword}
+                        onChange={(e) => setDangerPassword(e.target.value)}
+                        placeholder={tr("Kata laluan semasa", "Current password")}
+                        className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-2 text-xs text-[var(--text)] outline-none focus:border-[var(--input-focus)]"
+                      />
+                    </div>
+
+                    <div>
+                      <input
+                        type="text"
+                        value={confirmText}
+                        onChange={(e) => setConfirmText(e.target.value)}
+                        placeholder={activeConfirmWord}
+                        className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-2 text-xs font-bold uppercase tracking-wider text-[var(--text)] outline-none focus:border-[var(--input-focus)]"
+                      />
+                    </div>
+
+                    {dangerError && <ErrorBox>{dangerError}</ErrorBox>}
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDangerAction(null)
+                          setDangerPassword("")
+                          setConfirmText("")
+                        }}
+                        className="flex-1 rounded-xl border border-[var(--border)] py-2 text-xs font-bold text-[var(--muted)] hover:bg-[var(--surface-tint)]"
+                      >
+                        {tr("Batal", "Cancel")}
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={
+                          dangerBusy ||
+                          (profile?.has_password && !dangerPassword) ||
+                          confirmText.trim().toUpperCase() !== activeConfirmWord
+                        }
+                        className={cn(
+                          "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold text-white transition active:scale-[0.98] disabled:opacity-40",
+                          dangerAction === "delete" ? "bg-rose-600 hover:bg-rose-500" : "bg-[var(--text)] text-[var(--bg)]"
+                        )}
+                      >
+                        {dangerBusy ? <Loader2 size={13} className="animate-spin" /> : null}
+                        <span>{tr("Sahkan", "Confirm")}</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </section>
+            </div>
+          </div>
+        </DesktopPageBody>
+      </div>
+
+      {/* ─── Mobile Bottom Sheets ─── */}
+      {activeMobileSheet && mobileSheetMeta && (
+        <div
+          className="fixed inset-0 z-[80] flex items-end bg-[var(--overlay)] backdrop-blur-xs md:hidden animate-in fade-in"
+          onClick={requestMobileSheetClose}
+        >
+          <div
+            className="app-sheet-panel max-h-[88dvh] w-full overflow-y-auto border-t border-[var(--border)] bg-[var(--card)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <AppSheetHeader title={mobileSheetMeta.title} onClose={requestMobileSheetClose} />
+            <div className="px-4 pt-2">
+              {/* Profile Sheet */}
+              {activeMobileSheet === "profile" && (
+                <form onSubmit={handleSave} className="space-y-4 pb-2">
+                  <div className="flex items-center gap-4 py-1">
+                    <UserAvatar name={name || profile?.name} size={60} src={profile?.avatar_url} />
+                    <label
+                      htmlFor="mobile-avatar-upload"
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-1.5 text-xs font-bold text-[var(--text)]"
+                    >
+                      {avatarUploading ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
+                      <span>{tr("Tukar Gambar", "Change Photo")}</span>
+                    </label>
+                    <input
+                      id="mobile-avatar-upload"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handleAvatarUpload}
+                      disabled={avatarUploading}
+                    />
+                  </div>
+
+                  <TextField
+                    label={t.fullName || tr("Nama Penuh", "Full Name")}
+                    value={name}
+                    onChange={setName}
+                    placeholder={tr("Nama anda", "Your name")}
+                  />
+
+                  <div className="space-y-1.5">
+                    <span className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                      {tr("Personaliti Bot", "Bot Personality")}
+                    </span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {personalityPresets.map((preset) => {
+                        const active = normalizePersonalityInput(botPersonality) === preset
+                        return (
+                          <button
+                            key={preset}
+                            type="button"
+                            onClick={() => setBotPersonality(preset)}
+                            className={cn(
+                              "flex items-center justify-between p-2.5 rounded-xl border text-xs font-semibold text-left transition",
+                              active
+                                ? "border-[var(--text)] bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold"
+                                : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]"
+                            )}
+                          >
+                            <span className="truncate">{preset}</span>
+                            {active && <CheckCircle2 size={13} className="shrink-0 text-emerald-500" />}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {message && <SuccessBox>{message}</SuccessBox>}
+                  {error && <ErrorBox>{error}</ErrorBox>}
+
+                  <button
+                    type="submit"
+                    disabled={saving || !hasChanges}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] py-3 text-xs font-bold text-[var(--btn-primary-text)] shadow-sm transition active:scale-[0.98] disabled:opacity-40"
+                  >
+                    {saving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+                    <span>{tr("Simpan Perubahan", "Save Changes")}</span>
                   </button>
                 </form>
               )}
 
-              {/* ── Email sheet ── */}
+              {/* Email Sheet */}
               {activeMobileSheet === "email" && (
-                <div className="pb-2">
-                  <div className="mb-5 flex gap-3 rounded-2xl bg-[var(--surface-tint)]/30 p-3.5">
-                    <ShieldCheck size={16} className="mt-0.5 shrink-0 text-[var(--accent)]" />
-                    <p className="text-[0.7rem] font-medium leading-relaxed text-[var(--muted)]">
-                      {tr(
-                        "Anda perlu sahkan e-mel baru melalui kod verifikasi. Proses ini memerlukan kata laluan semasa.",
-                        "You must verify your new email via a verification code. This process requires your current password."
-                      )}
-                    </p>
-                  </div>
-                  <form onSubmit={handleRequestEmailCode} className="space-y-4">
+                <div className="space-y-4 pb-2">
+                  <form onSubmit={handleRequestEmailCode} className="space-y-3">
                     <TextField
-                      label={tr("E-mel Baru", "New Email")}
+                      label={tr("E-mel Baharu", "New Email")}
                       value={newEmail}
                       onChange={setNewEmail}
-                      placeholder="name@email.com"
+                      placeholder="nama@email.com"
                       type="email"
                     />
-                    <div>
-                      <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+
+                    <div className="space-y-1">
+                      <span className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
                         {tr("Kata Laluan Semasa", "Current Password")}
                       </span>
-                      <div className="relative mt-1.5">
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          value={currentPassword}
-                          onChange={(e) => setCurrentPassword(e.target.value)}
-                          placeholder={tr("Masukkan kata laluan", "Enter current password")}
-                          className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 pr-12 text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)]"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(v => !v)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--text)] transition-colors"
-                        >
-                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        placeholder={tr("Masukkan kata laluan", "Enter password")}
+                        className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3.5 py-2.5 text-xs text-[var(--text)] outline-none focus:border-[var(--input-focus)]"
+                      />
                     </div>
+
                     <button
                       type="submit"
                       disabled={requestingEmailCode || !newEmail.trim() || !currentPassword}
-                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-[var(--border)] font-bold text-sm transition-all hover:border-[var(--text)]/30 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] py-2.5 text-xs font-bold text-[var(--text)] transition active:scale-[0.98] disabled:opacity-40"
                     >
-                      {requestingEmailCode ? <Loader2 size={16} className="animate-spin" /> : <MailCheck size={16} />}
-                      {tr("Hantar Kod Verifikasi", "Send Verification Code")}
+                      {requestingEmailCode ? <Loader2 size={14} className="animate-spin" /> : <MailCheck size={14} />}
+                      <span>{tr("Hantar Kod Verifikasi", "Send Code")}</span>
                     </button>
                   </form>
+
                   {emailStep === "code_sent" && (
-                    <form
-                      onSubmit={handleConfirmEmailCode}
-                      className="mt-4 space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/20 p-4"
-                    >
-                      <div>
-                        <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                          {tr("Kod Verifikasi (6 digit)", "Verification Code (6 digits)")}
-                        </span>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={6}
-                          value={verificationCode}
-                          onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                          placeholder="123456"
-                          className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-lg font-black text-[var(--text)] placeholder:text-[var(--muted)]/30 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)] tracking-[0.2em] text-center"
-                        />
-                      </div>
+                    <form onSubmit={handleConfirmEmailCode} className="space-y-3 rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3">
+                      <span className="text-[0.68rem] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                        {tr("Kod Verifikasi 6-Digit", "6-Digit Code")}
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="123456"
+                        className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-2 text-center text-lg font-black tracking-[0.25em] text-[var(--text)] outline-none focus:border-[var(--input-focus)]"
+                      />
                       <button
                         type="submit"
                         disabled={confirmingEmail || verificationCode.trim().length !== 6}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-[var(--text)] text-[var(--bg)] font-bold text-sm transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-40"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] py-2.5 text-xs font-bold text-[var(--btn-primary-text)] transition active:scale-[0.98] disabled:opacity-40"
                       >
-                        {confirmingEmail ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                        {tr("Sahkan E-mel Baru", "Verify New Email")}
+                        {confirmingEmail ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                        <span>{tr("Sahkan E-mel", "Verify Email")}</span>
                       </button>
                     </form>
                   )}
-                  {emailMessage && <div className="mt-4"><SuccessBox>{emailMessage}</SuccessBox></div>}
-                  {emailError && <div className="mt-4"><ErrorBox>{emailError}</ErrorBox></div>}
+
+                  {emailMessage && <SuccessBox>{emailMessage}</SuccessBox>}
+                  {emailError && <ErrorBox>{emailError}</ErrorBox>}
                 </div>
               )}
 
-              {/* ── Danger sheet ── */}
+              {/* Danger Sheet */}
               {activeMobileSheet === "danger" && (
-                <div className="pb-2">
-                  <div className="flex flex-col gap-3">
+                <div className="space-y-3 pb-2">
+                  <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => {
@@ -1188,10 +1164,9 @@ export default function AccountPage() {
                         setConfirmText("")
                         setDangerAction("reset")
                       }}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[var(--border)] px-4 py-3.5 text-sm font-bold text-[var(--text)] transition-all hover:border-[var(--text)]/30 active:scale-[0.98]"
+                      className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] py-2.5 text-xs font-bold text-[var(--text)]"
                     >
-                      <RefreshCw size={16} />
-                      {tr("Reset Akaun", "Reset Account")}
+                      {tr("Reset Data", "Reset Data")}
                     </button>
                     <button
                       type="button"
@@ -1201,99 +1176,49 @@ export default function AccountPage() {
                         setConfirmText("")
                         setDangerAction("delete")
                       }}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-red-500/40 bg-red-500/10 px-4 py-3.5 text-sm font-bold text-red-600 dark:text-red-400 transition-all hover:bg-red-500/20 active:scale-[0.98]"
+                      className="flex-1 rounded-xl border border-rose-500/30 bg-rose-500/10 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400"
                     >
-                      <Trash2 size={16} />
                       {tr("Padam Akaun", "Delete Account")}
                     </button>
                   </div>
 
                   {dangerAction && (
-                    <form
-                      onSubmit={handleDangerAction}
-                      className="mt-4 space-y-4 rounded-2xl border border-red-500/30 bg-red-500/5 p-4"
-                    >
-                      <div className="flex gap-3">
-                        <AlertTriangle size={16} className="mt-0.5 shrink-0 text-red-500" />
-                        <p className="text-[0.7rem] font-medium leading-relaxed text-[var(--muted)]">
-                          {dangerAction === "delete"
-                            ? tr(
-                                "Tindakan ini MEMADAM AKAUN dan SEMUA data secara kekal. Anda tidak akan dapat log masuk semula. Taip PADAM untuk sahkan.",
-                                "This will PERMANENTLY DELETE your account and ALL data. You will not be able to log in again. Type DELETE to confirm."
-                              )
-                            : tr(
-                                "Tindakan ini mengosongkan SEMUA data (transaksi, wallet, bajet, hutang, loan, subskripsi, kenderaan, waranti, tempat). Akaun dan e-mel anda kekal. Taip RESET untuk sahkan.",
-                                "This clears ALL data (transactions, wallets, budgets, debts, loans, subscriptions, vehicles, warranties, places). Your account and email remain. Type RESET to confirm."
-                              )}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                          {tr("Kata Laluan Semasa", "Current Password")}
-                        </span>
-                        <input
-                          type="password"
-                          value={dangerPassword}
-                          onChange={(e) => setDangerPassword(e.target.value)}
-                          placeholder={tr("Masukkan kata laluan", "Enter current password")}
-                          autoComplete="current-password"
-                          className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)]"
-                        />
-                        <p className="mt-1.5 text-xs text-[var(--muted)]">
-                          {tr("Akaun Google tidak perlu kata laluan.", "Google sign-in accounts don't need a password.")}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                          {tr("Taip untuk sahkan", "Type to confirm")}
-                        </span>
-                        <input
-                          type="text"
-                          value={confirmText}
-                          onChange={(e) => setConfirmText(e.target.value)}
-                          placeholder={activeConfirmWord}
-                          className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)]"
-                        />
-                      </div>
+                    <form onSubmit={handleDangerAction} className="space-y-3 rounded-xl border border-rose-500/30 bg-rose-500/5 p-3">
+                      <p className="text-[0.7rem] text-[var(--muted)]">
+                        {dangerAction === "delete"
+                          ? tr("Taip PADAM untuk padam akaun secara kekal.", "Type DELETE to delete account.")
+                          : tr("Taip RESET untuk padam semua data.", "Type RESET to reset all data.")}
+                      </p>
+                      <input
+                        type="password"
+                        value={dangerPassword}
+                        onChange={(e) => setDangerPassword(e.target.value)}
+                        placeholder={tr("Kata laluan semasa", "Password")}
+                        className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-2 text-xs text-[var(--text)] outline-none"
+                      />
+                      <input
+                        type="text"
+                        value={confirmText}
+                        onChange={(e) => setConfirmText(e.target.value)}
+                        placeholder={activeConfirmWord}
+                        className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-2 text-xs font-bold uppercase text-[var(--text)] outline-none"
+                      />
                       {dangerError && <ErrorBox>{dangerError}</ErrorBox>}
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDangerAction(null)
-                            setDangerPassword("")
-                            setConfirmText("")
-                          }}
-                          className="flex-1 rounded-2xl border border-[var(--border)] py-3.5 text-sm font-bold text-[var(--muted)] transition hover:border-[var(--text)]/25"
-                        >
-                          {tr("Batal", "Cancel")}
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={
-                            dangerBusy ||
-                            (profile?.has_password && !dangerPassword) ||
-                            confirmText.trim().toUpperCase() !== activeConfirmWord
-                          }
-                          className={cn(
-                            "flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40",
-                            dangerAction === "delete"
-                              ? "bg-red-600 hover:bg-red-500"
-                              : "bg-[var(--text)] text-[var(--bg)] hover:opacity-90"
-                          )}
-                        >
-                          {dangerBusy ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : dangerAction === "delete" ? (
-                            <Trash2 size={16} />
-                          ) : (
-                            <RefreshCw size={16} />
-                          )}
-                          {dangerAction === "delete"
-                            ? tr("Padam Akaun Kekal", "Delete Account Permanently")
-                            : tr("Reset Semua Data", "Reset All Data")}
-                        </button>
-                      </div>
+                      <button
+                        type="submit"
+                        disabled={
+                          dangerBusy ||
+                          (profile?.has_password && !dangerPassword) ||
+                          confirmText.trim().toUpperCase() !== activeConfirmWord
+                        }
+                        className={cn(
+                          "w-full py-2.5 rounded-xl text-xs font-bold text-white transition active:scale-[0.98] disabled:opacity-40",
+                          dangerAction === "delete" ? "bg-rose-600" : "bg-[var(--text)] text-[var(--bg)]"
+                        )}
+                      >
+                        {dangerBusy ? <Loader2 size={13} className="animate-spin inline mr-1" /> : null}
+                        <span>{tr("Sahkan Tindakan", "Confirm Action")}</span>
+                      </button>
                     </form>
                   )}
                 </div>
@@ -1303,95 +1228,87 @@ export default function AccountPage() {
         </div>
       )}
 
+      {/* ─── Confirmation Modal ─── */}
       {confirmOpen && stats && dangerAction && (
         <div className="fixed inset-0 z-[120] flex flex-col bg-[var(--bg)]">
-          {/* Header */}
-          <div className="flex items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-3">
+          <div className="flex items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-3 border-b border-[var(--divider)]">
             <button
               type="button"
               disabled={dangerBusy}
               onClick={() => setConfirmOpen(false)}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-[var(--muted)] transition hover:bg-[var(--surface-tint)]"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold text-[var(--muted)] hover:bg-[var(--surface-tint)]"
             >
               ✕
             </button>
-            <h2 className="text-base font-bold text-[var(--text)]">
-              {dangerAction === "delete"
-                ? tr("Padam Akaun", "Delete Account")
-                : tr("Reset Akaun", "Reset Account")}
+            <h2 className="text-sm font-extrabold text-[var(--text)]">
+              {dangerAction === "delete" ? tr("Pengesahan Padam Akaun", "Delete Account Confirmation") : tr("Pengesahan Reset Akaun", "Reset Account Confirmation")}
             </h2>
-            <div className="w-10" />
+            <div className="w-9" />
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 pb-6">
-            <div className="mx-auto w-full max-w-md">
-              {/* Icon + warning */}
-              <div className="flex flex-col items-center pt-6 pb-6 text-center">
-                <div className={`flex h-16 w-16 items-center justify-center rounded-2xl ${dangerAction === "delete" ? "bg-red-500/15 text-red-500" : "bg-[var(--text)]/10 text-[var(--text)]"}`}>
-                  {dangerAction === "delete" ? <Trash2 size={30} /> : <RefreshCw size={30} />}
+          <div className="flex-1 overflow-y-auto px-5 py-6">
+            <div className="mx-auto w-full max-w-md space-y-6">
+              <div className="flex flex-col items-center text-center">
+                <div
+                  className={cn(
+                    "flex h-14 w-14 items-center justify-center rounded-2xl",
+                    dangerAction === "delete" ? "bg-rose-500/15 text-rose-600 dark:text-rose-400" : "bg-[var(--surface-tint-strong)] text-[var(--text)]"
+                  )}
+                >
+                  {dangerAction === "delete" ? <Trash2 size={26} /> : <RefreshCw size={26} />}
                 </div>
-                <h3 className="mt-4 text-xl font-extrabold text-[var(--text)]">
+                <h3 className="mt-4 text-lg font-black text-[var(--text)]">
                   {dangerAction === "delete"
-                    ? tr("Sahkan Padam Akaun", "Confirm Account Deletion")
-                    : tr("Sahkan Reset Akaun", "Confirm Account Reset")}
+                    ? tr("Padam Akaun & Data Kekal?", "Permanently Delete Account & Data?")
+                    : tr("Reset & Kosongkan Semua Data?", "Reset & Clear All Data?")}
                 </h3>
-                <p className="mt-2 text-sm font-medium leading-relaxed text-[var(--muted)]">
+                <p className="mt-1.5 text-xs text-[var(--muted)] leading-relaxed">
                   {dangerAction === "delete"
-                    ? tr("Tindakan ini kekal dan tidak boleh dibatalkan. Akaun anda dan semua data akan dipadam selama-lamanya.", "This action is permanent and cannot be undone. Your account and all data will be deleted forever.")
-                    : tr("Semua data akan dikosongkan. Akaun dan e-mel anda kekal.", "All data will be cleared. Your account and email remain.")}
+                    ? tr(
+                        "Tindakan ini tidak boleh dibatalkan. Akaun, login, dan semua rekod anda akan dipadam secara mutlak.",
+                        "This action is permanent and cannot be undone. Your account and all records will be deleted completely."
+                      )
+                    : tr(
+                        "Semua rekod transaksi, akaun dompet, dan bajet akan dikosongkan. Profil log masuk e-mel anda kekal.",
+                        "All transaction history, wallets, and budgets will be emptied. Your account profile and email login will remain."
+                      )}
                 </p>
               </div>
 
-              {/* Account summary card */}
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
-                <div className="flex items-center justify-between py-1.5">
-                  <span className="text-xs font-semibold text-[var(--muted)]">{tr("Nama", "Name")}</span>
-                  <span className="text-sm font-bold text-[var(--text)]">{profile?.name || "-"}</span>
-                </div>
-                <div className="flex items-center justify-between py-1.5">
-                  <span className="text-xs font-semibold text-[var(--muted)]">{tr("E-mel", "Email")}</span>
-                  <span className="text-sm font-bold text-[var(--text)]">{profile?.email || "-"}</span>
-                </div>
-                <div className="my-3 border-t border-dashed border-[var(--border)]" />
-                <p className="pb-2 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                  {tr("Data yang akan dibuang", "Data to be removed")}
+              {/* Data Breakdown Cards */}
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3">
+                <p className="text-[0.68rem] font-extrabold uppercase tracking-wider text-[var(--muted)]">
+                  {tr("Ringkasan Data Terjejas", "Summary of Data Affected")}
                 </p>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="rounded-2xl bg-[var(--bg2)] px-4 py-3">
-                    <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Transaksi", "Transactions")}</p>
-                    <p className="text-xl font-extrabold text-[var(--text)]">{stats.transaction_count.toLocaleString()}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl bg-[var(--surface-tint)] p-3">
+                    <p className="text-[0.65rem] font-bold text-[var(--muted)] uppercase">{tr("Transaksi", "Transactions")}</p>
+                    <p className="text-base font-black text-[var(--text)] mt-0.5">{stats.transaction_count.toLocaleString()}</p>
                   </div>
-                  <div className="rounded-2xl bg-[var(--bg2)] px-4 py-3">
-                    <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Wallet", "Wallets")}</p>
-                    <p className="text-xl font-extrabold text-[var(--text)]">{stats.wallet_count.toLocaleString()}</p>
+                  <div className="rounded-xl bg-[var(--surface-tint)] p-3">
+                    <p className="text-[0.65rem] font-bold text-[var(--muted)] uppercase">{tr("Dompet / Wallet", "Wallets")}</p>
+                    <p className="text-base font-black text-[var(--text)] mt-0.5">{stats.wallet_count.toLocaleString()}</p>
                   </div>
-                  <div className="rounded-2xl bg-[var(--bg2)] px-4 py-3">
-                    <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Hutang", "Debts")}</p>
-                    <p className="text-xl font-extrabold text-[var(--text)]">{stats.debt_count.toLocaleString()}</p>
+                  <div className="rounded-xl bg-[var(--surface-tint)] p-3">
+                    <p className="text-[0.65rem] font-bold text-[var(--muted)] uppercase">{tr("Rekod Hutang", "Debts")}</p>
+                    <p className="text-base font-black text-[var(--text)] mt-0.5">{stats.debt_count.toLocaleString()}</p>
                   </div>
-                  <div className="rounded-2xl bg-[var(--bg2)] px-4 py-3">
-                    <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Loan", "Loans")}</p>
-                    <p className="text-xl font-extrabold text-[var(--text)]">{stats.loan_count.toLocaleString()}</p>
+                  <div className="rounded-xl bg-[var(--surface-tint)] p-3">
+                    <p className="text-[0.65rem] font-bold text-[var(--muted)] uppercase">{tr("Rekod Pinjaman", "Loans")}</p>
+                    <p className="text-base font-black text-[var(--text)] mt-0.5">{stats.loan_count.toLocaleString()}</p>
                   </div>
-                  {stats.subscription_count > 0 && (
-                    <div className="rounded-2xl bg-[var(--bg2)] px-4 py-3">
-                      <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{tr("Subskripsi", "Subscriptions")}</p>
-                      <p className="text-xl font-extrabold text-[var(--text)]">{stats.subscription_count.toLocaleString()}</p>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Bottom actions */}
-          <div className="border-t border-[var(--border)] bg-[var(--bg)] px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-            <div className="mx-auto flex w-full max-w-md gap-2.5">
+          <div className="border-t border-[var(--divider)] bg-[var(--bg)] px-5 py-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <div className="mx-auto flex w-full max-w-md gap-3">
               <button
                 type="button"
                 disabled={dangerBusy}
                 onClick={() => setConfirmOpen(false)}
-                className="flex-1 rounded-2xl border border-[var(--border)] py-3.5 text-sm font-bold text-[var(--muted)] transition hover:border-[var(--text)]/25 disabled:opacity-40"
+                className="flex-1 rounded-xl border border-[var(--border)] py-3 text-xs font-bold text-[var(--muted)] hover:bg-[var(--surface-tint)] transition"
               >
                 {tr("Batal", "Cancel")}
               </button>
@@ -1400,20 +1317,14 @@ export default function AccountPage() {
                 disabled={dangerBusy}
                 onClick={confirmDangerAction}
                 className={cn(
-                  "flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40",
-                  dangerAction === "delete" ? "bg-red-600 hover:bg-red-500" : "bg-[var(--text)] text-[var(--bg)] hover:opacity-90"
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-3 text-xs font-bold text-white transition active:scale-[0.98] disabled:opacity-40",
+                  dangerAction === "delete" ? "bg-rose-600 hover:bg-rose-500" : "bg-[var(--text)] text-[var(--bg)]"
                 )}
               >
-                {dangerBusy ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : dangerAction === "delete" ? (
-                  <Trash2 size={16} />
-                ) : (
-                  <RefreshCw size={16} />
-                )}
-                {dangerAction === "delete"
-                  ? tr("Setuju Padam", "Agree & Delete")
-                  : tr("Setuju Reset", "Agree & Reset")}
+                {dangerBusy ? <Loader2 size={14} className="animate-spin" /> : null}
+                <span>
+                  {dangerAction === "delete" ? tr("Setuju Padam", "Agree & Delete") : tr("Setuju Reset", "Agree & Reset")}
+                </span>
               </button>
             </div>
           </div>
@@ -1442,14 +1353,14 @@ type TextFieldProps = {
 
 function TextField({ label, value, onChange, placeholder, type = "text" }: TextFieldProps) {
   return (
-    <label className="block">
-      <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">{label}</span>
+    <label className="block space-y-1.5">
+      <span className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">{label}</span>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 text-sm font-semibold text-[var(--text)] placeholder:text-[var(--muted)]/40 outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)]"
+        className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--text)] placeholder-[var(--input-placeholder)] outline-none transition focus:border-[var(--input-focus)] focus:ring-1 focus:ring-[var(--input-focus)]"
       />
     </label>
   )
@@ -1457,18 +1368,18 @@ function TextField({ label, value, onChange, placeholder, type = "text" }: TextF
 
 function ErrorBox({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-2.5 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3">
-      <AlertTriangle size={16} className="shrink-0 text-red-500 mt-0.5" />
-      <p className="text-sm font-semibold text-red-600 dark:text-red-400">{children}</p>
+    <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2.5">
+      <AlertTriangle size={15} className="shrink-0 text-rose-500 mt-0.5" />
+      <p className="text-xs font-semibold text-rose-600 dark:text-rose-400">{children}</p>
     </div>
   )
 }
 
 function SuccessBox({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-start gap-2.5 rounded-2xl border border-emerald-500/30 bg-[var(--surface-tint)] px-4 py-3">
-      <CheckCircle2 size={16} className="shrink-0 text-emerald-500 mt-0.5" />
-      <p className="text-sm font-semibold text-[var(--text)]">{children}</p>
+    <div className="flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5">
+      <CheckCircle2 size={15} className="shrink-0 text-emerald-500 mt-0.5" />
+      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{children}</p>
     </div>
   )
 }
