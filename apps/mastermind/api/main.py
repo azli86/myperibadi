@@ -376,17 +376,36 @@ async def transactions_recent(limit: int = 40, db: AsyncSession = Depends(db_ses
 
 @app.get("/live/api", dependencies=[Depends(admin)])
 async def live_api(limit: int = 25, db: AsyncSession = Depends(db_session)):
-    """Live API request feed from access_logs."""
+    """Live user activity feed: transactions + logins + new signups."""
     limit = max(1, min(limit, 60))
     rows = (await db.execute(text("""
-        SELECT a.id, a.method, a.path, a.status_code, a.ip_address, a.created_at, a.user_id,
-               coalesce(u.email, 'anonymous') AS email
-        FROM access_logs a LEFT JOIN users u ON u.id = a.user_id
-        ORDER BY a.created_at DESC LIMIT :limit
+        SELECT kind, created_at, detail1, detail2, amount, user_name, user_email, status, method
+        FROM (
+          SELECT 'TXN' AS kind, t.created_at, t.type AS detail1,
+                 coalesce(t.vendor_or_source,'') AS detail2,
+                 t.amount::float AS amount,
+                 coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
+                 '' AS status, '' AS method
+          FROM transactions t LEFT JOIN users u ON u.id = t.user_id
+          UNION ALL
+          SELECT 'LOGIN' AS kind, l.created_at, l.status AS detail1,
+                 coalesce(l.email,'') AS detail2, NULL AS amount,
+                 coalesce(u.name,'') AS user_name, coalesce(l.email,'') AS user_email,
+                 l.status AS status, '' AS method
+          FROM login_logs l LEFT JOIN users u ON u.id = l.user_id
+          UNION ALL
+          SELECT 'SIGNUP' AS kind, u.created_at, '' AS detail1,
+                 coalesce(u.email,'') AS detail2, NULL AS amount,
+                 coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
+                 '' AS status, '' AS method
+          FROM users u WHERE u.created_at >= now() - interval '7 days'
+        ) q
+        ORDER BY created_at DESC LIMIT :limit
     """), {"limit": limit})).mappings().all()
     result = [dict(r) for r in rows]
     for item in result:
-        item["email"] = mask_email(item.get("email"))
+        item["user_name"] = mask_name(item.get("user_name"))
+        item["user_email"] = mask_email(item.get("user_email"))
     return result
 
 @app.get("/users", dependencies=[Depends(admin)])

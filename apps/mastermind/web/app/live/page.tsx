@@ -57,16 +57,14 @@ export default function LivePage() {
     return `${day} ${time}`;
   };
 
-  const statusClass = (c: number) => (c < 300 ? "ok" : c < 400 ? "redir" : "err");
-
-  if (auth === null) return <div className="lv-load">Memuatkan Live API Feed…</div>;
+  if (auth === null) return <div className="lv-load">Memuatkan Live Feed…</div>;
   if (auth === false) return <div className="lv-load"><a href="/">Sila log masuk Mastermind dahulu.</a></div>;
 
   return (
     <div className="lv-wrap">
       <div className="lv-top">
         <a className="lv-back" href="/">← Dashboard</a>
-        <div className="lv-title">LIVE · API FEED</div>
+        <div className="lv-title">LIVE · AKTIVITI</div>
         <div className="lv-status">
           <button className="lv-pause" onClick={() => setPaused(p => !p)}>{paused ? "▶ Resume" : "❚❚ Pause"}</button>
           <span className="lv-dot" style={{ opacity: paused ? 0.3 : 1 }} />
@@ -76,17 +74,32 @@ export default function LivePage() {
         </div>
       </div>
       <div className="lv-term" ref={termRef}>
-        {reqs.map((r: any) => (
-          <div className="lv-line" key={r.id}>
-            <span className="lv-time">[{fmtStamp(r.created_at)}]</span>
-            <span className={"lv-method " + (r.method === "POST" ? "post" : r.method === "PUT" ? "put" : r.method === "DELETE" ? "del" : "get")}>
-              {r.method}
-            </span>
-            <span className={"lv-code " + statusClass(r.status_code)}>{r.status_code}</span>
-            <span className="lv-path">{r.path}</span>
-            <span className="lv-user">{r.email}</span>
-          </div>
-        ))}
+        {reqs.map((r: any) => {
+          let badge = r.kind;             // TXN / LOGIN / SIGNUP
+          let cls = "t";
+          let main = "";
+          if (r.kind === "TXN") {
+            badge = r.detail1 === "income" ? "IN" : "OUT";
+            cls = r.detail1 === "income" ? "inc" : "exp";
+            main = `RM ${Number(r.amount).toLocaleString("ms-MY", { minimumFractionDigits: 2 })} · ${r.detail2 || "—"}`;
+          } else if (r.kind === "LOGIN") {
+            badge = "LOGIN";
+            cls = "log";
+            main = `${r.status} · ${r.detail2}`;
+          } else {
+            badge = "NEW";
+            cls = "sig";
+            main = `Akaun baharu · ${r.detail2}`;
+          }
+          return (
+            <div className="lv-line" key={r.kind + r.created_at + r.detail2}>
+              <span className="lv-time">[{fmtStamp(r.created_at)}]</span>
+              <span className={"lv-badge " + cls}>{badge}</span>
+              <span className="lv-main">{main}</span>
+              <span className="lv-user">{r.user_name || r.user_email}</span>
+            </div>
+          );
+        })}
         <div className="lv-cursor">$ <span className="lv-blink">▊</span></div>
       </div>
     </div>
