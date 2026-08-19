@@ -160,6 +160,25 @@ async def admin(
 def scalar(row, key):
     return int(row.get(key) or 0)
 
+def mask_name(value):
+    """Mask a name/email-local for privacy, e.g. azlijahroni -> az****ni."""
+    if not value:
+        return "—"
+    s = str(value)
+    if len(s) <= 4:
+        return s[0] + "****"
+    return s[:2] + "****" + s[-2:]
+
+def mask_email(value):
+    """Mask an email local-part, keep domain, e.g. azlijahroni@x.com -> az****ni@x.com."""
+    if not value:
+        return "—"
+    s = str(value)
+    if "@" in s:
+        local, _, domain = s.partition("@")
+        return mask_name(local) + "@" + domain
+    return mask_name(s)
+
 @app.get("/health")
 async def health():
     return {"ok": True, "service": "mastermind-api"}
@@ -316,6 +335,9 @@ async def activity(kind: str = "all", limit: int = 40, db: AsyncSession = Depend
         """), {"limit": limit})).mappings().all()
         out += [dict(r) for r in rows]
     out.sort(key=lambda r: r["at"], reverse=True)
+    for item in out:
+        item["actor"] = mask_name(item.get("actor"))
+        item["email"] = mask_email(item.get("email"))
     return out[:limit]
 
 @app.get("/transactions/recent", dependencies=[Depends(admin)])
@@ -332,7 +354,11 @@ async def transactions_recent(limit: int = 40, db: AsyncSession = Depends(db_ses
         LEFT JOIN categories c ON c.id = t.category_id
         ORDER BY t.created_at DESC LIMIT :limit
     """), {"limit": limit})).mappings().all()
-    return [dict(r) for r in rows]
+    result = [dict(r) for r in rows]
+    for item in result:
+        item["user_name"] = mask_name(item.get("user_name"))
+        item["user_email"] = mask_email(item.get("user_email"))
+    return result
 
 @app.get("/users", dependencies=[Depends(admin)])
 async def users(q: str = "", limit: int = 50, offset: int = 0, db: AsyncSession = Depends(db_session)):
