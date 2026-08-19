@@ -547,13 +547,39 @@ export default function ChatPage() {
       try {
         const res = await fetch(`/share-target-file/${encodeURIComponent(sharedToken)}`)
         if (!res.ok) {
-          throw new Error(`Shared image fetch failed (${res.status})`)
+          throw new Error(`Shared file fetch failed (${res.status})`)
         }
 
-        const contentType = res.headers.get("content-type") || "image/png"
+        // Text-only share (e.g. bank/eWallet notification text): the endpoint
+        // returns JSON {title,text,url} instead of the file + header stream.
+        const contentType = res.headers.get("content-type") || ""
+        let sharedText = ""
         if (!contentType.startsWith("image/")) {
-          throw new Error("Shared file is not an image")
+          try {
+            const info = await res.json()
+            sharedText = [info?.title, info?.text, info?.url].filter(Boolean).join("\n").trim()
+          } catch {
+            sharedText = ""
+          }
+          void fetch(`/share-target-file/${encodeURIComponent(sharedToken)}`, { method: "DELETE" })
+          if (sharedText) {
+            window.setTimeout(() => {
+              void submitMessage(undefined, sharedText)
+            }, 0)
+            showAlert(
+              lang === "EN" ? "Text Sent" : "Teks Dihantar",
+              lang === "EN" ? "Shared text is being processed in chat." : "Teks yang dikongsi sedang diproses dalam chat.",
+              "success"
+            )
+          }
+          return
         }
+
+        sharedText = [
+          decodeSharedHeaderValue(res.headers.get("x-shared-title")),
+          decodeSharedHeaderValue(res.headers.get("x-shared-text")),
+          decodeSharedHeaderValue(res.headers.get("x-shared-url")),
+        ].filter(Boolean).join("\n").trim()
 
         // Clean, friendly file name — phone share names like "temp_screenshot.png"
         // or "Screenshot_20250612-103022.png" look noisy in the chat bubble.
@@ -565,12 +591,6 @@ export default function ChatPage() {
         if (cancelled) return
 
         const file = normalizeReceiptFile(new File([blob], fileName, { type: contentType }))
-
-        const sharedText = [
-          decodeSharedHeaderValue(res.headers.get("x-shared-title")),
-          decodeSharedHeaderValue(res.headers.get("x-shared-text")),
-          decodeSharedHeaderValue(res.headers.get("x-shared-url")),
-        ].filter(Boolean).join("\n").trim()
 
         // Auto-send: shared screenshot goes straight into the conversation.
         void fetch(`/share-target-file/${encodeURIComponent(sharedToken)}`, { method: "DELETE" })
