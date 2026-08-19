@@ -1,3 +1,4 @@
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -34,6 +35,74 @@ class Login(BaseModel):
     email: EmailStr
     password: str
 
+class GoogleLogin(BaseModel):
+    id_token: str
+
+_fcm_initialized = False
+
+def _init_fcm():
+    global _fcm_initialized
+    if _fcm_initialized:
+        return
+    try:
+        from firebase_admin import credentials, initialize_app
+        private_key = os.getenv("FCM_PRIVATE_KEY", "")
+        client_email = os.getenv(
+            "FCM_CLIENT_EMAIL", ""
+        )
+        project_id = os.getenv("FCM_PROJECT_ID", "digitalport-d23f0")
+        if not private_key or not client_email:
+            logging.warning("FCM credentials not configured - Google login disabled")
+            return
+        cred = credentials.Certificate(
+            {
+                "type": "service_account",
+                "project_id": project_id,
+                "private_key_id": os.getenv("FCM_PRIVATE_KEY_ID", ""),
+                "private_key": private_key.replace("\\n", "\n"),
+                "client_email": client_email,
+                "client_id": os.getenv("FCM_CLIENT_ID", ""),
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                "client_x509_cert_url": f"https://www.googleapis.com/robot/v1/metadata/x509/{client_email.replace('@', '%40')}",
+                "universe_domain": "googleapis.com",
+            }
+        )
+        initialize_app(cred)
+        _fcm_initialized = True
+    except Exception as e:  # noqa: BLE001
+        logging.warning("Firebase Admin init failed: %s", e)
+
+
+async def _verify_google_token(db: AsyncSession, id_token: str):
+    import firebase_admin.auth as firebase_auth
+
+    _init_fcm()
+    try:
+        decoded = firebase_auth.verify_id_token(id_token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid Google ID token")
+    firebase_uid = decoded.get("uid")
+    email = (decoded.get("email") or "").strip().lower()
+    if not firebase_uid or not email:
+        raise HTTPException(status_code=400, detail="Google account missing email or UID")
+    row = (
+        await db.execute(
+            text(
+                """
+                SELECT id FROM users
+                WHERE (firebase_uid = :uid OR lower(email) = :email)
+                  AND is_admin = true AND is_active = true
+                """
+            ),
+            {"uid": firebase_uid, "email": email},
+        )
+    ).mappings().first()
+    if not row:
+        raise HTTPException(status_code=403, detail="Not an admin account")
+    return row["id"]
+
 async def db_session():
     async with SessionLocal() as db:
         yield db
@@ -61,6 +130,26 @@ def scalar(row, key):
 @app.get("/health")
 async def health():
     return {"ok": True, "service": "mastermind-api"}
+
+@app.post("/auth/google")
+async def google_login(data: GoogleLogin, response: Response, db: AsyncSession = Depends(db_session)):
+    user_id = await _verify_google_token(db, data.id_token)
+    token = jwt.encode(
+        {"sub": user_id, "scope": "mastermind", "exp": datetime.now(timezone.utc) + timedelta(hours=8)},
+        SECRET,
+        algorithm="HS256",
+    )
+    response.set_cookie(
+        COOKIE,
+        token,
+        httponly=True,
+        secure=os.getenv("COOKIE_SECURE", "true").lower() == "true",
+        samesite="strict",
+        max_age=28800,
+        path="/",
+    )
+    return {"ok": True}
+
 
 @app.post("/auth/login")
 async def login(data: Login, response: Response, db: AsyncSession = Depends(db_session)):
