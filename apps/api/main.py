@@ -13808,6 +13808,51 @@ async def get_transaction_vehicle_link(
         db, current_user=current_user, txn_id=txn_id
     )
 
+# ── Support Tickets (feature request & support) ─────────────────────
+
+@app.post("/support/tickets", response_model=schemas.SupportTicketResponse)
+async def create_support_ticket(
+    body: schemas.SupportTicketCreate,
+    request: Request,
+    current_user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(database.get_db),
+):
+    """User submits a feature request or support ticket."""
+    kind = body.kind.strip().lower()
+    if kind not in ("feature", "support", "bug"):
+        raise HTTPException(status_code=422, detail="Jenis tidak sah (feature/support/bug)")
+    title = body.title.strip()
+    if not title:
+        raise HTTPException(status_code=422, detail="Tajuk diperlukan")
+    priority = (body.priority or "medium").strip().lower()
+    if priority not in ("low", "medium", "high"):
+        priority = "medium"
+    t = models.SupportTicket(
+        user_id=current_user.id,
+        kind=kind,
+        title=title[:200],
+        description=body.description,
+        priority=priority,
+        status="new",
+    )
+    db.add(t)
+    await db.commit()
+    await db.refresh(t)
+    return t
+
+@app.get("/support/tickets/mine", response_model=List[schemas.SupportTicketResponse])
+async def my_support_tickets(
+    current_user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(database.get_db),
+):
+    """User lists their own tickets."""
+    result = await db.execute(
+        select(models.SupportTicket)
+        .where(models.SupportTicket.user_id == current_user.id)
+        .order_by(models.SupportTicket.created_at.desc())
+    )
+    return result.scalars().all()
+
 if __name__ == "__main__":
     import uvicorn
     api_host = os.getenv("API_HOST", "0.0.0.0")

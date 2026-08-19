@@ -1616,3 +1616,24 @@ class DonationResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# ── Support Tickets ───────────────────────────────────────
+
+class SupportTicketCreate(BaseModel):
+    kind: str  # feature | support | bug
+    title: str
+    description: Optional[str] = None
+    priority: Optional[str] = "medium"  # low | medium | high
+
+class SupportTicketResponse(BaseModel):
+    id: int
+    kind: str
+    title: str
+    description: Optional[str] = None
+    status: str
+    priority: str
+    admin_note: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

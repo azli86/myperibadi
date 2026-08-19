@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from dotenv import load_dotenv
-from fastapi import Cookie, Depends, FastAPI, HTTPException, Response
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Response, Request
 import bcrypt
 from jose import JWTError, jwt
 from pydantic import BaseModel, EmailStr
@@ -563,3 +563,68 @@ async def user_reactivate(user_id: str, actor: dict = Depends(admin), db: AsyncS
     await db.execute(text("UPDATE users SET is_active = true, deactivated_reason = NULL, deactivated_at = NULL WHERE id = :id"), {"id": user_id})
     await _audit(db, actor, "reactivate", "user", user_id, user["email"])
     return {"ok": True, "reactivated": user_id}
+
+# ── Support Tickets (feature request & support) ─────────────────────
+
+@app.get("/support/tickets", dependencies=[Depends(admin)])
+async def support_tickets(kind: str = "", status: str = "", q: str = "", limit: int = 50, offset: int = 0, db: AsyncSession = Depends(db_session)):
+    limit = max(1, min(limit, 100))
+    conds = ["1=1"]
+    params: dict = {}
+    if kind:
+        conds.append("st.kind = :kind")
+        params["kind"] = kind
+    if status:
+        conds.append("st.status = :status")
+        params["status"] = status
+    if q.strip():
+        conds.append("(lower(st.title) LIKE :like OR lower(coalesce(st.description,'')) LIKE :like OR lower(coalesce(u.email,'')) LIKE :like)")
+        params["like"] = f"%{q.strip().lower()}%"
+    where = " AND ".join(conds)
+    total = (await db.execute(text(f"SELECT count(*) FROM support_tickets st LEFT JOIN users u ON u.id = st.user_id WHERE {where}"), params)).scalar_one()
+    rows = (await db.execute(text(f"""
+        SELECT st.id, st.kind, st.title, st.description, st.status, st.priority, st.admin_note,
+               st.created_at, st.updated_at, st.resolved_at, st.user_id,
+               coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email
+        FROM support_tickets st LEFT JOIN users u ON u.id = st.user_id
+        WHERE {where}
+        ORDER BY st.created_at DESC LIMIT :limit OFFSET :offset
+    """), {**params, "limit": limit, "offset": max(0, offset)})).mappings().all()
+    result = [dict(r) for r in rows]
+    for item in result:
+        item["user_name"] = mask_name(item.get("user_name"))
+        item["user_email"] = mask_email(item.get("user_email"))
+    return {"tickets": result, "total": total, "limit": limit, "offset": max(0, offset)}
+
+@app.get("/support/tickets/{ticket_id}", dependencies=[Depends(admin)])
+async def support_ticket_detail(ticket_id: int, db: AsyncSession = Depends(db_session)):
+    row = (await db.execute(text("""
+        SELECT st.*, coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email
+        FROM support_tickets st LEFT JOIN users u ON u.id = st.user_id
+        WHERE st.id = :id
+    """), {"id": ticket_id})).mappings().first()
+    if not row:
+        raise HTTPException(404, "Ticket not found")
+    item = dict(row)
+    item["user_name"] = mask_name(item.get("user_name"))
+    item["user_email"] = mask_email(item.get("user_email"))
+    return item
+
+@app.post("/support/tickets/{ticket_id}/status")
+async def support_ticket_status(ticket_id: int, request: Request, actor: dict = Depends(admin), db: AsyncSession = Depends(db_session)):
+    body = await request.json()
+    status_val = (body.get("status") or "").strip().lower()
+    allowed = {"new", "in_progress", "resolved", "closed"}
+    if status_val not in allowed:
+        raise HTTPException(422, "Status tidak sah")
+    row = (await db.execute(text("SELECT id, title FROM support_tickets WHERE id = :id"), {"id": ticket_id})).mappings().first()
+    if not row:
+        raise HTTPException(404, "Ticket not found")
+    admin_note = body.get("admin_note")
+    if status_val == "resolved":
+        await db.execute(text("UPDATE support_tickets SET status = :s, admin_note = COALESCE(:n, admin_note), resolved_at = COALESCE(resolved_at, now()) WHERE id = :id"), {"s": status_val, "n": admin_note, "id": ticket_id})
+    else:
+        await db.execute(text("UPDATE support_tickets SET status = :s, admin_note = COALESCE(:n, admin_note), resolved_at = NULL WHERE id = :id"), {"s": status_val, "n": admin_note, "id": ticket_id})
+    await db.commit()
+    await _audit(db, actor, "ticket_status", "support_ticket", str(ticket_id), f"{row['title']} -> {status_val}")
+    return {"ok": True, "status": status_val}
