@@ -215,9 +215,74 @@ async def dashboard(db: AsyncSession = Depends(db_session)):
           (SELECT count(*) FROM transactions) transactions,
           (SELECT count(*) FROM transactions WHERE created_at >= now() - interval '30 days') transactions_30d,
           (SELECT count(*) FROM wallets WHERE status = 'active') active_wallets,
-          (SELECT count(*) FROM access_logs WHERE created_at >= now() - interval '24 hours') requests_24h
+          (SELECT count(*) FROM access_logs WHERE created_at >= now() - interval '24 hours') requests_24h,
+          (SELECT count(*) FROM users WHERE created_at >= now() - interval '7 days') new_users_7d,
+          (SELECT count(*) FROM user_auth_sessions WHERE created_at >= now() - interval '24 hours') active_sessions_24h
     """))).mappings().one()
     return {key: scalar(values, key) for key in values.keys()}
+
+@app.get("/stats/transactions", dependencies=[Depends(admin)])
+async def stats_transactions(months: int = 6, db: AsyncSession = Depends(db_session)):
+    months = max(1, min(months, 12))
+    rows = (await db.execute(text("""
+        SELECT to_char(date_trunc('month', created_at), 'YYYY-MM') AS month,
+               count(*) AS txn_count,
+               count(*) FILTER (WHERE type = 'expense') AS expenses,
+               count(*) FILTER (WHERE type = 'income') AS income
+        FROM transactions
+        WHERE created_at >= now() - make_interval(months => :months)
+        GROUP BY 1 ORDER BY 1
+    """), {"months": months})).mappings().all()
+    return [dict(r) for r in rows]
+
+@app.get("/stats/users-growth", dependencies=[Depends(admin)])
+async def stats_users_growth(months: int = 6, db: AsyncSession = Depends(db_session)):
+    months = max(1, min(months, 12))
+    rows = (await db.execute(text("""
+        SELECT to_char(date_trunc('month', created_at), 'YYYY-MM') AS month,
+               count(*) AS new_users
+        FROM users
+        WHERE created_at >= now() - make_interval(months => :months)
+        GROUP BY 1 ORDER BY 1
+    """), {"months": months})).mappings().all()
+    return [dict(r) for r in rows]
+
+@app.get("/stats/wallets", dependencies=[Depends(admin)])
+async def stats_wallets(limit: int = 15, db: AsyncSession = Depends(db_session)):
+    limit = max(1, min(limit, 50))
+    rows = (await db.execute(text("""
+        SELECT w.name, w.type, w.currency, w.status, w.is_saving, u.email AS owner,
+               (SELECT count(*) FROM transactions t WHERE t.wallet_id = w.id) txn_count
+        FROM wallets w LEFT JOIN users u ON u.id = w.owner_user_id
+        ORDER BY w.id DESC LIMIT :limit
+    """), {"limit": limit})).mappings().all()
+    return [dict(r) for r in rows]
+
+@app.get("/sessions", dependencies=[Depends(admin)])
+async def sessions(limit: int = 50, db: AsyncSession = Depends(db_session)):
+    limit = max(1, min(limit, 100))
+    rows = (await db.execute(text("""
+        SELECT s.id, s.user_id, u.email, u.name, s.session_kind, s.user_agent, s.created_at, s.last_used_at
+        FROM user_auth_sessions s LEFT JOIN users u ON u.id = s.user_id
+        ORDER BY s.last_used_at DESC NULLS LAST LIMIT :limit
+    """), {"limit": limit})).mappings().all()
+    return [dict(r) for r in rows]
+
+@app.get("/system-status", dependencies=[Depends(admin)])
+async def system_status(db: AsyncSession = Depends(db_session)):
+    db_ok = True
+    try:
+        await db.execute(text("SELECT 1"))
+    except Exception:
+        db_ok = False
+    sizes = (await db.execute(text("""
+        SELECT pg_size_pretty(pg_database_size(current_database())) AS db_size,
+               (SELECT count(*) FROM attachments) attachments,
+               (SELECT count(*) FROM access_logs WHERE created_at >= now() - interval '24 hours') requests_24h,
+               (SELECT count(*) FROM chat_messages) chat_messages,
+               (SELECT count(*) FROM inventory_items) inventory_items
+    """))).mappings().one()
+    return {"db_ok": db_ok, **dict(sizes)}
 
 @app.get("/users", dependencies=[Depends(admin)])
 async def users(q: str = "", limit: int = 50, offset: int = 0, db: AsyncSession = Depends(db_session)):
