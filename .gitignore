@@ -57,3 +57,4 @@ apps/api/.env
 
 # runtime user data
 apps/worker/lid_mapping/
+apps/mastermind/api/venv/
