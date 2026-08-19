@@ -54,7 +54,6 @@ import {
   Bell,
   AlertCircle,
   AlertTriangle,
-  HelpCircle,
   ScrollText,
   Info,
   User,
@@ -819,12 +818,12 @@ function getMobileHeaderMeta(
     };
   }
 
-  if (pathname === `${base}/help`) {
+  if (pathname === `${base}/bot-command`) {
     return {
       title: t.helpSupport,
       subtitle: t.headerHelpSubtitle,
       eyebrow: t.helpSupport,
-      icon: HelpCircle,
+      icon: Bot,
       backHref: `${base}/settings`,
     };
   }
@@ -1019,7 +1018,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { label: "Personal", items: desktopPersonalNavigation },
     { label: "Maps", items: desktopMapNavigation },
     { label: "Connector", items: desktopConnectorNavigation },
-    { label: lang === "BM" ? "Bantuan" : "Help", items: [{ name: t.helpSupport, href: `/${sessionId}/help`, icon: HelpCircle }, { name: t.changelog, href: `/${sessionId}/whatsnew`, icon: ScrollText }] },
+    { label: lang === "BM" ? "Bantuan" : "Help", items: [{ name: lang === "BM" ? "Command Bot" : "Bot Command", href: `/${sessionId}/bot-command`, icon: Bot }, { name: t.changelog, href: `/${sessionId}/whatsnew`, icon: ScrollText }] },
   ];
   const mobileNavLeft = [
     { nameKey: "home" as const, href: `/${sessionId}`, icon: Home },
@@ -1687,7 +1686,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           `${base}/settings`,
           `${base}/account`,
           `${base}/security`,
-          `${base}/help`,
+          `${base}/bot-command`,
           `${base}/about`,
           `${base}/whatsnew`,
           `${base}/households`,
@@ -3762,7 +3761,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 title={lang === "BM" ? "Tetapan" : "Settings"}
                 className={cn(
                   "flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl border text-[0.62rem] font-bold transition active:scale-[0.98]",
-                  ["settings", "security", "help", "about", "whatsnew", "login-logs"].some(
+                  ["settings", "security", "bot-command", "about", "whatsnew", "login-logs"].some(
                     (segment) => pathname === `/${sessionId}/${segment}`,
                   )
                     ? "border-[color-mix(in_srgb,var(--accent2)_28%,var(--border))] bg-[var(--accent-bg)] text-[var(--accent2)]"

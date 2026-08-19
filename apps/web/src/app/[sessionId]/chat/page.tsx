@@ -25,7 +25,6 @@ import {
   Grid2X2,
   Bot,
   Settings,
-  HelpCircle,
   Sparkle,
   type LucideIcon,
 } from "lucide-react"
@@ -314,7 +313,7 @@ export default function ChatPage() {
     { name: lang === "EN" ? "Chat" : "Chat", href: `/${sessionId}/chat`, subtitle: lang === "EN" ? "Assistant chat" : "Chat assistant", icon: MessageSquare },
     { name: lang === "EN" ? "WhatsApp" : "WhatsApp", href: `/${sessionId}/whatsapp`, subtitle: lang === "EN" ? "Bot connection" : "Sambungan bot", icon: Bot },
     { name: lang === "EN" ? "Settings" : "Tetapan", href: `/${sessionId}/settings`, subtitle: lang === "EN" ? "Account and system" : "Akaun dan sistem", icon: Settings },
-    { name: lang === "EN" ? "Help" : "Bantuan", href: `/${sessionId}/help`, subtitle: lang === "EN" ? "Guide and commands" : "Panduan dan command", icon: HelpCircle },
+    { name: lang === "EN" ? "Bot Command" : "Command Bot", href: `/${sessionId}/bot-command`, subtitle: lang === "EN" ? "WhatsApp & Telegram commands" : "Command WhatsApp & Telegram", icon: Bot },
   ], [lang, sessionId])
 
   const commandSuggestions = useMemo(() => {

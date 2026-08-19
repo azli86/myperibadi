@@ -6,7 +6,7 @@ import { useRouter, useParams } from "next/navigation"
 import {
   User,
   Shield,
-  HelpCircle,
+  Bot,
   ScrollText,
   Info,
   LogOut,
@@ -135,7 +135,7 @@ export default function LagiPage() {
   const systemLinks = [
     { icon: User, label: t.myAccount, href: `/${sessionId}/account` },
     { icon: Shield, label: t.security, href: `/${sessionId}/security` },
-    { icon: HelpCircle, label: t.helpSupport, href: `/${sessionId}/help` },
+    { icon: Bot, label: lang === "BM" ? "Command Bot" : "Bot Command", href: `/${sessionId}/bot-command` },
     { icon: ScrollText, label: t.changelog, href: `/${sessionId}/whatsnew` },
     { icon: Award, label: tr("Reward Badge", "Reward Badge"), href: `/${sessionId}/badges` },
     { icon: Info, label: t.about, href: `/${sessionId}/about` },
