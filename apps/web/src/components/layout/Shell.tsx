@@ -57,6 +57,7 @@ import {
   ScrollText,
   Info,
   User,
+  UserCircle2,
   UserPlus,
   ChevronRight,
   Calculator as CalculatorIcon,
@@ -4088,9 +4089,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       className="flex min-w-0 flex-col items-center gap-2 rounded-2xl bg-[var(--card)] p-3 text-center text-[var(--text)] transition active:scale-[0.98]"
                     >
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)]">
-                        <UserPlus size={21} strokeWidth={1.85} />
+                        <UserCircle2 size={21} strokeWidth={1.85} />
                       </span>
-                      <span className="truncate text-xs font-bold">{lang === "BM" ? "Tambah Akaun" : "Add Account"}</span>
+                      <span className="truncate text-xs font-bold">{lang === "BM" ? "Account" : "Account"}</span>
                     </button>
                   </section>
                 </div>
