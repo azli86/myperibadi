@@ -238,7 +238,21 @@ async def dashboard(db: AsyncSession = Depends(db_session)):
           (SELECT count(*) FROM users WHERE created_at >= now() - interval '7 days') new_users_7d,
           (SELECT count(*) FROM user_auth_sessions WHERE created_at >= now() - interval '24 hours') active_sessions_24h
     """))).mappings().one()
-    return {key: scalar(values, key) for key in values.keys()}
+    totals = (await db.execute(text("""
+        SELECT
+          coalesce(sum(amount) FILTER (WHERE type = 'income'), 0) AS total_income,
+          coalesce(sum(amount) FILTER (WHERE type = 'expense'), 0) AS total_expense,
+          coalesce(sum(CASE WHEN type = 'income' THEN amount ELSE -amount END), 0) AS total_net,
+          coalesce(sum(abs(amount)), 0) AS total_amount
+        FROM transactions
+    """))).mappings().one()
+    return {
+        **{key: scalar(values, key) for key in values.keys()},
+        "total_income": float(totals["total_income"] or 0),
+        "total_expense": float(totals["total_expense"] or 0),
+        "total_net": float(totals["total_net"] or 0),
+        "total_amount": float(totals["total_amount"] or 0),
+    }
 
 @app.get("/stats/transactions", dependencies=[Depends(admin)])
 async def stats_transactions(months: int = 6, db: AsyncSession = Depends(db_session)):
