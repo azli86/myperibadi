@@ -81,7 +81,10 @@ export default function LivePage() {
           if (r.kind === "TXN") {
             badge = r.detail1 === "income" ? "IN" : "OUT";
             cls = r.detail1 === "income" ? "inc" : "exp";
-            main = "";
+            const parts: string[] = [];
+            if (r.category_name) parts.push(r.category_name);
+            if (r.household_name) parts.push(`[${r.household_name}]`);
+            main = parts.join(" · ");
           } else if (r.kind === "LOGIN") {
             badge = "LOGIN";
             cls = "log";
@@ -96,7 +99,8 @@ export default function LivePage() {
               <span className="lv-time">[{fmtStamp(r.created_at)}]</span>
               <span className={"lv-badge " + cls}>{badge}</span>
               {main && <span className="lv-main">{main}</span>}
-              <span className="lv-user">{r.user_name || r.user_email}</span>
+              <span className="lv-user">{r.user_name}</span>
+              {r.user_email && <span className="lv-mail">{r.user_email}</span>}
             </div>
           );
         })}

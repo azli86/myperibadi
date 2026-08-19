@@ -379,25 +379,28 @@ async def live_api(limit: int = 25, db: AsyncSession = Depends(db_session)):
     """Live user activity feed: transactions + logins + new signups."""
     limit = max(1, min(limit, 60))
     rows = (await db.execute(text("""
-        SELECT kind, created_at, detail1, detail2, amount, user_name, user_email, status, method
+        SELECT kind, created_at, detail1, detail2, amount, user_name, user_email, status, category_name, household_name
         FROM (
           SELECT 'TXN' AS kind, t.created_at, t.type AS detail1,
                  coalesce(t.vendor_or_source,'') AS detail2,
                  t.amount::float AS amount,
                  coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
-                 '' AS status, '' AS method
+                 '' AS status, coalesce(c.name,'') AS category_name,
+                 coalesce(h.name,'') AS household_name
           FROM transactions t LEFT JOIN users u ON u.id = t.user_id
+                            LEFT JOIN categories c ON c.id = t.category_id
+                            LEFT JOIN households h ON h.id = t.household_id
           UNION ALL
           SELECT 'LOGIN' AS kind, l.created_at, l.status AS detail1,
                  coalesce(l.email,'') AS detail2, NULL AS amount,
                  coalesce(u.name,'') AS user_name, coalesce(l.email,'') AS user_email,
-                 l.status AS status, '' AS method
+                 l.status AS status, '' AS category_name, '' AS household_name
           FROM login_logs l LEFT JOIN users u ON u.id = l.user_id
           UNION ALL
           SELECT 'SIGNUP' AS kind, u.created_at, '' AS detail1,
                  coalesce(u.email,'') AS detail2, NULL AS amount,
                  coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
-                 '' AS status, '' AS method
+                 '' AS status, '' AS category_name, '' AS household_name
           FROM users u WHERE u.created_at >= now() - interval '7 days'
         ) q
         ORDER BY created_at DESC LIMIT :limit
