@@ -99,9 +99,10 @@ export default function Home() {
           const raw=(t.created_at||t.txn_date||"");
           const ts=new Date(raw.endsWith("Z")||raw.includes("+")?raw:raw+"Z");
           const time=ts.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false,timeZone:"Asia/Kuala_Lumpur"});
+          const day=ts.toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric",timeZone:"Asia/Kuala_Lumpur"});
           const type=t.type==="expense"?"OUT":"IN";
           return <div className="term-line" key={t.id}>
-            <span className="t-time">[{time}]</span>
+            <span className="t-time">[{day} {time}]</span>
             <span className={"t-type "+(t.type==="expense"?"exp":"inc")}>{type}</span>
             <span className="t-vendor">{t.vendor_or_source||"—"}</span>
             <span className="t-user">{t.user_name||t.user_email||"—"}</span>
