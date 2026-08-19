@@ -12,7 +12,13 @@ type Household = {id:number;name:string;status:string;created_at:string;owner_na
 type LoginLog = {id:number;email:string;status:string;ip_address:string;device_label:string;created_at:string;name:string|null};
 type AuditLog = {id:number;actor_email:string;action:string;target_type:string;target_id:string;detail:string;created_at:string};
 
-const fmtDate=(s:string|null|undefined)=>s?new Date(s).toLocaleString("ms-MY",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"—";
+const parseUtc=(s:string|null|undefined)=>{if(!s)return null;const raw=String(s);const d=new Date(raw.endsWith("Z")||raw.includes("+")?raw:raw+"Z");return isNaN(d.getTime())?null:d};
+const fmtDate=(s:string|null|undefined)=>{
+  const d=parseUtc(s);
+  if(!d)return "—";
+  return d.toLocaleString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false,timeZone:"Asia/Kuala_Lumpur"}).replace(",","").trim();
+};
+const fmtDay=(s:string|null|undefined)=>{const d=parseUtc(s);if(!d)return "—";return d.toLocaleDateString("en-GB",{day:"2-digit",month:"2-digit",year:"numeric",timeZone:"Asia/Kuala_Lumpur"})};
 
 export default function Home() {
   const [authenticated,setAuthenticated]=useState<boolean|null>(null), [stats,setStats]=useState<Stats|null>(null);
@@ -106,7 +112,7 @@ export default function Home() {
       </div>
     </div>
   </>}
-  {view==="users"&&<><div className="card"><div className="row" style={{justifyContent:"space-between"}}><input className="search" data-user-q placeholder="Cari nama atau e-mel" onChange={e=>{setUsers([]);setUsersOffset(0);void showUsers(e.target.value)}}/><span className="muted">{users.length} / {usersTotal} pengguna</span></div><table className="table"><thead><tr><th>Pengguna</th><th>Login</th><th>Status</th><th>Verified</th><th>Daftar</th><th></th></tr></thead><tbody>{users.map(u=><tr key={u.id}><td><strong>{u.name||"—"}</strong><br/><span className="muted">{u.email}</span></td><td>{u.auth_provider==="google"?<span className="login-badge"><GoogleIcon/><span>Google</span></span>:<span className="login-badge mail">@<span>Email</span></span>}</td><td><span className={u.is_active?"pill ok":"pill bad"}>{u.is_active?"Aktif":u.deactivated_reason||"Tidak aktif"}</span></td><td>{u.email_verified_at?"Ya":"Tidak"}</td><td>{new Date(u.created_at).toLocaleDateString("ms-MY")}</td><td><div className="row"><button className="ghost" onClick={()=>void openUser(u.id)}>Detail</button>{!u.email.endsWith("@invalid.local")&&<button className={u.is_active?"ghost danger":"ghost good"} disabled={busy} onClick={()=>void toggleActive(u)}>{u.is_active?"Nyahaktif":"Aktifkan"}</button>}</div></td></tr>)}</tbody></table>{users.length<usersTotal&&<div style={{textAlign:"center",marginTop:"12px"}}><button className="primary" onClick={()=>void showUsers(document.querySelector<HTMLInputElement>("[data-user-q]")?.value||"",true)}>Muat lagi</button></div>}</div>
+  {view==="users"&&<><div className="card"><div className="row" style={{justifyContent:"space-between"}}><input className="search" data-user-q placeholder="Cari nama atau e-mel" onChange={e=>{setUsers([]);setUsersOffset(0);void showUsers(e.target.value)}}/><span className="muted">{users.length} / {usersTotal} pengguna</span></div><table className="table"><thead><tr><th>Pengguna</th><th>Login</th><th>Status</th><th>Verified</th><th>Daftar</th><th></th></tr></thead><tbody>{users.map(u=><tr key={u.id}><td><strong>{u.name||"—"}</strong><br/><span className="muted">{u.email}</span></td><td>{u.auth_provider==="google"?<span className="login-badge"><GoogleIcon/><span>Google</span></span>:<span className="login-badge mail">@<span>Email</span></span>}</td><td><span className={u.is_active?"pill ok":"pill bad"}>{u.is_active?"Aktif":u.deactivated_reason||"Tidak aktif"}</span></td><td>{u.email_verified_at?"Ya":"Tidak"}</td><td>{fmtDay(u.created_at)}</td><td><div className="row"><button className="ghost" onClick={()=>void openUser(u.id)}>Detail</button>{!u.email.endsWith("@invalid.local")&&<button className={u.is_active?"ghost danger":"ghost good"} disabled={busy} onClick={()=>void toggleActive(u)}>{u.is_active?"Nyahaktif":"Aktifkan"}</button>}</div></td></tr>)}</tbody></table>{users.length<usersTotal&&<div style={{textAlign:"center",marginTop:"12px"}}><button className="primary" onClick={()=>void showUsers(document.querySelector<HTMLInputElement>("[data-user-q]")?.value||"",true)}>Muat lagi</button></div>}</div>
   {detailUser && (
     <div className="overlay" onClick={()=>{setDetail(null);setDetailUser(null)}}>
       <div className="modal" onClick={e=>e.stopPropagation()}>
@@ -133,7 +139,7 @@ export default function Home() {
       </div>
   )}
   </>}
-  {view==="households"&&<><div className="card"><input className="search" placeholder="Cari nama household" onChange={e=>void showHouseholds(e.target.value)}/><table className="table"><thead><tr><th>Household</th><th>Pemilik</th><th>Ahli</th><th>Status</th><th>Daftar</th></tr></thead><tbody>{households.map(h=><tr key={h.id} onClick={()=>void openHousehold(h.id)} style={{cursor:"pointer"}}><td><strong>{h.name}</strong></td><td>{h.owner_name||h.id}</td><td>{h.member_count}</td><td>{h.status}</td><td>{new Date(h.created_at).toLocaleDateString("ms-MY")}</td></tr>)}</tbody></table></div>
+  {view==="households"&&<><div className="card"><input className="search" placeholder="Cari nama household" onChange={e=>void showHouseholds(e.target.value)}/><table className="table"><thead><tr><th>Household</th><th>Pemilik</th><th>Ahli</th><th>Status</th><th>Daftar</th></tr></thead><tbody>{households.map(h=><tr key={h.id} onClick={()=>void openHousehold(h.id)} style={{cursor:"pointer"}}><td><strong>{h.name}</strong></td><td>{h.owner_name||h.id}</td><td>{h.member_count}</td><td>{h.status}</td><td>{fmtDay(h.created_at)}</td></tr>)}</tbody></table></div>
   {hhDetail&&<div className="card detail"><header className="detail-head"><h2>Household: {hhDetail.household.name}</h2><button className="ghost" onClick={()=>setHhDetail(null)}>Tutup</button></header><table className="table"><thead><tr><th>Ahli</th><th>Role</th><th>Status</th><th>Sertai</th></tr></thead><tbody>{hhDetail.members.map((m:any)=><tr key={m.id}><td><strong>{m.name||"—"}</strong><br/><span className="muted">{m.email}</span></td><td>{m.role}</td><td><span className={m.is_active?"pill ok":"pill bad"}>{m.status}</span></td><td>{fmtDate(m.joined_at)}</td></tr>)}</tbody></table></div>}
   </>}
   {view==="analytics"&&<>
