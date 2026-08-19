@@ -36,6 +36,7 @@ export default function Home() {
   const [activity,setActivity]=useState<any[]>([]);
   const [activityKind,setActivityKind]=useState("all");
   const [recentTxns,setRecentTxns]=useState<any[]>([]);
+  const [liveTxns,setLiveTxns]=useState<any[]>([]);
 
   const load=useCallback(async()=>{const r=await fetch("/api/dashboard",{credentials:"include",cache:"no-store"});if(r.status===401){setAuthenticated(false);return}if(!r.ok)throw new Error("Dashboard gagal dimuat");setStats(await r.json());setAuthenticated(true)},[]);
   useEffect(()=>{void load().catch(e=>setError(e.message))},[load]);
@@ -65,6 +66,9 @@ export default function Home() {
   async function showActivity(kind="all"){setView("activity");setActivityKind(kind);setError("");const r=await fetch(`/api/activity?kind=${kind}`,{credentials:"include"});if(!r.ok){setError("Aktiviti gagal dimuat");return}setActivity(await r.json())}
   async function showTransactions(){setView("transactions");setError("");const r=await fetch(`/api/transactions/recent`,{credentials:"include"});if(!r.ok){setError("Transaksi gagal dimuat");return}setRecentTxns(await r.json())}
 
+  const loadLiveTxns=useCallback(async()=>{try{const r=await fetch(`/api/transactions/recent?limit=14`,{credentials:"include"});if(r.ok)setLiveTxns(await r.json())}catch{}},[]);
+  useEffect(()=>{let t:any;if(authenticated&&view==="dashboard"){loadLiveTxns();t=setInterval(loadLiveTxns,5000)}return()=>t&&clearInterval(t)},[authenticated,view,loadLiveTxns]);
+
   if(authenticated===null)return <main className="login"><p className="muted">Memuatkan Mastermind…</p></main>;
   if(!authenticated)return <main className="login"><form className="card" onSubmit={login}><h1>Mastermind</h1><p className="muted">Portal pentadbiran MyPeribadi</p><button type="button" className="primary google" onClick={()=>void loginGoogle()} disabled={googleLoading}><GoogleIcon/><span>{googleLoading?"Memproses…":"Log masuk dengan Google"}</span></button><div className="divider"><span>atau</span></div><div className="label">Log masuk dengan e-mel</div><input className="field" name="email" type="email" placeholder="E-mel admin" required autoComplete="username"/><input className="field" name="password" type="password" placeholder="Kata laluan" required autoComplete="current-password"/><button className="primary">Log masuk</button>{error&&<p className="error">{error}</p>}</form></main>;
 
@@ -82,6 +86,25 @@ export default function Home() {
       </div>
     </div>
     <section className="grid">{cards.map(([label,value])=><article className="card" key={label}><span className="muted">{label}</span><div className="metric">{value?.toLocaleString("ms-MY")??"—"}</div></article>)}</section>
+    <div className="term">
+      <div className="term-bar"><span className="dot r"/><span className="dot y"/><span className="dot g"/><span className="term-title">LIVE · TRANSAKSI FEED</span><span className="live-blink">●</span></div>
+      <div className="term-body">
+        {liveTxns.map((t:any, i)=>{
+          const ts=new Date(t.created_at||t.txn_date);
+          const time=ts.toLocaleTimeString("ms-MY",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+          const type=t.type==="expense"?"EXP":"INC";
+          return <div className="term-line" key={t.id}>
+            <span className="t-time">[{time}]</span>
+            <span className={"t-type "+(t.type==="expense"?"exp":"inc")}>{type}</span>
+            <span className="t-amt">RM {Number(t.amount).toLocaleString("ms-MY",{minimumFractionDigits:2})}</span>
+            <span className="t-vendor">{t.vendor_or_source||"—"}</span>
+            <span className="t-user">{t.user_name||t.user_email||"—"}</span>
+            <span className="t-wallet">{t.wallet_name||""}</span>
+          </div>
+        })}
+        <div className="term-cursor">$ <span className="cursor-blink">▊</span></div>
+      </div>
+    </div>
   </>}
   {view==="users"&&<><div className="card"><div className="row" style={{justifyContent:"space-between"}}><input className="search" data-user-q placeholder="Cari nama atau e-mel" onChange={e=>{setUsers([]);setUsersOffset(0);void showUsers(e.target.value)}}/><span className="muted">{users.length} / {usersTotal} pengguna</span></div><table className="table"><thead><tr><th>Pengguna</th><th>Login</th><th>Status</th><th>Verified</th><th>Daftar</th><th></th></tr></thead><tbody>{users.map(u=><tr key={u.id}><td><strong>{u.name||"—"}</strong><br/><span className="muted">{u.email}</span></td><td>{u.auth_provider==="google"?<span className="login-badge"><GoogleIcon/><span>Google</span></span>:<span className="login-badge mail">@<span>Email</span></span>}</td><td><span className={u.is_active?"pill ok":"pill bad"}>{u.is_active?"Aktif":u.deactivated_reason||"Tidak aktif"}</span></td><td>{u.email_verified_at?"Ya":"Tidak"}</td><td>{new Date(u.created_at).toLocaleDateString("ms-MY")}</td><td><div className="row"><button className="ghost" onClick={()=>void openUser(u.id)}>Detail</button>{!u.email.endsWith("@invalid.local")&&<button className={u.is_active?"ghost danger":"ghost good"} disabled={busy} onClick={()=>void toggleActive(u)}>{u.is_active?"Nyahaktif":"Aktifkan"}</button>}</div></td></tr>)}</tbody></table>{users.length<usersTotal&&<div style={{textAlign:"center",marginTop:"12px"}}><button className="primary" onClick={()=>void showUsers(document.querySelector<HTMLInputElement>("[data-user-q]")?.value||"",true)}>Muat lagi</button></div>}</div>
   {detailUser && (
