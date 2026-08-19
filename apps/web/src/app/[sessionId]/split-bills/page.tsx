@@ -38,7 +38,6 @@ import { MoneyAmount } from "@/components/ui/MoneyAmount"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { formatCurrencyLabel } from "@/components/ui/MoneyAmount"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
-import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 
 type SplitBill = {
@@ -148,6 +147,8 @@ export default function SplitBillsPage() {
   const [payFile, setPayFile] = useState<File | null>(null)
   const payFileInputRef = useRef<HTMLInputElement>(null)
   const [payPreview, setPayPreview] = useState<string | null>(null)
+  const [txnDropdownOpen, setTxnDropdownOpen] = useState(false)
+  const [payWalletDropdownOpen, setPayWalletDropdownOpen] = useState(false)
 
   const showDataSkeleton = useDelayedSkeleton(loading && !hasLoaded)
 
@@ -241,12 +242,14 @@ export default function SplitBillsPage() {
   const openCreateSheet = useCallback(() => {
     setEditingSplit(null)
     setForm({ transaction_id: "", title: "", people_count: "2", am_i_included: true, notes: "" })
+    setTxnDropdownOpen(false)
     setShowCreateSheet(true)
   }, [])
 
   const closeCreateSheet = useCallback(() => {
     setShowCreateSheet(false)
     setEditingSplit(null)
+    setTxnDropdownOpen(false)
   }, [])
 
   const { requestClose: requestCreateClose } = useOverlayBackClose({
@@ -254,7 +257,6 @@ export default function SplitBillsPage() {
     isOpen: showCreateSheet,
     onClose: closeCreateSheet,
   })
-  const showCreateSwipe = useSwipeDownToClose(requestCreateClose)
 
   const openDetail = useCallback(async (split: SplitBill) => {
     try {
@@ -277,7 +279,6 @@ export default function SplitBillsPage() {
     isOpen: !!detailSplit,
     onClose: closeDetail,
   })
-  const showDetailSwipe = useSwipeDownToClose(requestDetailClose)
 
   const openEditFromDetail = useCallback(() => {
     if (!detailSplit) return
@@ -289,6 +290,7 @@ export default function SplitBillsPage() {
       am_i_included: detailSplit.am_i_included,
       notes: detailSplit.notes || "",
     })
+    setTxnDropdownOpen(false)
     setShowCreateSheet(true)
     closeDetail()
   }, [detailSplit, closeDetail])
@@ -304,6 +306,7 @@ export default function SplitBillsPage() {
     })
     setPayFile(null)
     setPayPreview(null)
+    setPayWalletDropdownOpen(false)
     setShowPaymentSheet(true)
   }, [detailSplit])
 
@@ -311,6 +314,7 @@ export default function SplitBillsPage() {
     setShowPaymentSheet(false)
     setPayFile(null)
     setPayPreview(null)
+    setPayWalletDropdownOpen(false)
   }, [])
 
   const { requestClose: requestPaymentClose } = useOverlayBackClose({
@@ -318,7 +322,6 @@ export default function SplitBillsPage() {
     isOpen: showPaymentSheet,
     onClose: closePayment,
   })
-  const showPaymentSwipe = useSwipeDownToClose(requestPaymentClose)
 
   async function handleCreateSplit(e: React.FormEvent) {
     e.preventDefault()
@@ -814,16 +817,12 @@ export default function SplitBillsPage() {
       {mounted && showCreateSheet
         ? createPortal(
             <div
-              className="fixed inset-0 z-50 flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-transparent p-0 md:items-stretch md:justify-end"
+              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] backdrop-blur-xs p-0 md:items-center md:p-4"
               onClick={requestCreateClose}
-              onTouchMove={(event) => event.preventDefault()}
             >
               <div
-                {...showCreateSwipe}
-                data-swipe-sheet
-                data-prevent-pull-refresh="true"
                 style={{ transform: "translateZ(0)" }}
-                className="app-sheet-panel app-sheet-panel--lg max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] will-change-transform md:h-[100dvh] md:max-h-none md:max-w-[420px] md:rounded-none md:border-y-0 md:border-l md:border-r-0"
+                className="app-sheet-panel relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl md:max-h-[86vh] md:max-w-lg md:rounded-2xl"
                 onClick={(event) => event.stopPropagation()}
               >
                 <AppSheetHeader
@@ -834,7 +833,7 @@ export default function SplitBillsPage() {
                       type="submit"
                       form="split-sheet-form"
                       disabled={saving || !createValid}
-                      className="px-1 py-1.5 text-sm font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-50"
+                      className="px-2 py-1 text-sm font-black text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-50"
                     >
                       {saving
                         ? (isBm ? "Menyimpan…" : "Saving…")
@@ -843,181 +842,235 @@ export default function SplitBillsPage() {
                   }
                 />
 
-                <form id="split-sheet-form" className="space-y-4 px-3 py-3 pb-4 text-[var(--text)] md:px-6 md:py-6" onSubmit={handleCreateSplit}>
-                  {/* Transaction picker */}
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Transaksi", "Transaction")}
-                    </label>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => document.getElementById("split-txn-select")?.focus()}
-                        className="flex w-full items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)]"
-                      >
-                        {selectedTxn ? (
-                          <span className="flex min-w-0 items-center gap-2">
-                            <ReceiptIcon size={15} className="shrink-0 text-[var(--muted)]" />
-                            <span className="truncate font-medium">{selectedTxn.vendor_or_source || `#${selectedTxn.id}`}</span>
-                            <span className="ml-auto shrink-0 font-bold">
-                              <MoneyAmount value={selectedTxn.amount} currency={selectedTxn.currency || "RM"} size="sm" />
+                <form
+                  id="split-sheet-form"
+                  className="flex min-h-0 flex-1 flex-col overflow-hidden"
+                  onSubmit={handleCreateSplit}
+                >
+                  <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 text-[var(--text)] sm:px-6 sm:py-5">
+                    {/* Transaction picker */}
+                    <div>
+                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        {tr("Transaksi Berkaitan", "Linked Transaction")}
+                      </label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setTxnDropdownOpen(!txnDropdownOpen)}
+                          className="flex w-full items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)]"
+                        >
+                          {selectedTxn ? (
+                            <span className="flex min-w-0 items-center gap-2">
+                              <ReceiptIcon size={15} className="shrink-0 text-emerald-500" />
+                              <span className="truncate font-bold">{selectedTxn.vendor_or_source || `#${selectedTxn.id}`}</span>
+                              <span className="ml-auto shrink-0 font-bold text-emerald-500">
+                                <MoneyAmount value={selectedTxn.amount} currency={selectedTxn.currency || "RM"} size="sm" />
+                              </span>
                             </span>
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-2 text-[var(--muted)]">
-                            <ReceiptIcon size={15} />
-                            {tr("Pilih transaksi (opsyenal)", "Select transaction (optional)")}
-                          </span>
-                        )}
-                        <ChevronDown size={16} className="shrink-0 text-[var(--muted)]" />
-                      </button>
-                    </div>
-                    <div className="mt-2 max-h-44 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-1">
-                      <button
-                        type="button"
-                        onClick={() => setForm((prev) => ({ ...prev, transaction_id: "" }))}
-                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-[var(--muted)] transition hover:bg-[var(--card)]"
-                      >
-                        {tr("Tiada transaksi", "No transaction")}
-                      </button>
-                      {transactions.slice(0, 40).map((txn) => {
-                        const selected = String(txn.id) === form.transaction_id
-                        return (
+                          ) : (
+                            <span className="flex items-center gap-2 text-[var(--muted)]">
+                              <ReceiptIcon size={15} />
+                              <span>{tr("Pilih transaksi (opsyenal)", "Select transaction (optional)")}</span>
+                            </span>
+                          )}
+                          <ChevronDown size={16} className={cn("shrink-0 text-[var(--muted)] transition-transform", txnDropdownOpen && "rotate-180")} />
+                        </button>
+                      </div>
+
+                      {txnDropdownOpen && (
+                        <div className="mt-2 max-h-48 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1.5 shadow-lg space-y-1">
                           <button
-                            key={txn.id}
                             type="button"
-                            onClick={() => setForm((prev) => ({ ...prev, transaction_id: String(txn.id) }))}
+                            onClick={() => {
+                              setForm((prev) => ({ ...prev, transaction_id: "" }))
+                              setTxnDropdownOpen(false)
+                            }}
                             className={cn(
-                              "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition",
-                              selected ? "bg-[var(--card)]" : "hover:bg-[var(--card)]",
+                              "flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-left text-xs font-semibold transition",
+                              !form.transaction_id ? "bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold" : "text-[var(--muted)] hover:bg-[var(--surface-tint)]"
                             )}
                           >
-                            <span className="min-w-0 flex-1 truncate font-medium text-[var(--text)]">
-                              {txn.vendor_or_source || `#${txn.id}`}
-                              <span className="ml-1 text-[0.6rem] text-[var(--muted)]">{formatDateShort(txn.txn_date)}</span>
-                            </span>
-                            <span className="shrink-0 font-bold text-[var(--text)]">
-                              <MoneyAmount value={txn.amount} currency={txn.currency || "RM"} size="sm" />
-                            </span>
-                            {selected ? <span className="text-[var(--accent2)]">✓</span> : null}
+                            <span>{tr("Tiada transaksi dikaitkan", "No linked transaction")}</span>
+                            {!form.transaction_id && <Check size={14} className="text-emerald-500" />}
                           </button>
-                        )
-                      })}
+                          {transactions.slice(0, 40).map((txn) => {
+                            const selected = String(txn.id) === form.transaction_id
+                            return (
+                              <button
+                                key={txn.id}
+                                type="button"
+                                onClick={() => {
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    transaction_id: String(txn.id),
+                                    title: prev.title || txn.vendor_or_source || "",
+                                  }))
+                                  setTxnDropdownOpen(false)
+                                }}
+                                className={cn(
+                                  "flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left text-xs transition",
+                                  selected ? "bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold" : "hover:bg-[var(--surface-tint)] text-[var(--text)]",
+                                )}
+                              >
+                                <ReceiptIcon size={14} className="shrink-0 text-[var(--muted)]" />
+                                <span className="min-w-0 flex-1 truncate font-medium">
+                                  {txn.vendor_or_source || `#${txn.id}`}
+                                  <span className="ml-1.5 text-[0.65rem] text-[var(--muted)]">({formatDateShort(txn.txn_date)})</span>
+                                </span>
+                                <span className="shrink-0 font-bold">
+                                  <MoneyAmount value={txn.amount} currency={txn.currency || "RM"} size="sm" />
+                                </span>
+                                {selected && <Check size={14} className="shrink-0 text-emerald-500" />}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
-                  </div>
 
-                  {/* Title */}
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Tajuk", "Title")}
-                    </label>
-                    <input
-                      value={form.title}
-                      onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                      className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                      placeholder={tr("Contoh: Makan Nasi Arab", "Example: Lunch")}
-                    />
-                  </div>
-
-                  {/* Total amount (auto from txn) */}
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Jumlah Bayaran", "Total Paid")}
-                    </label>
-                    <div className="flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3">
-                      <span className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">{currentCurrency}</span>
-                      <span className="text-xl font-black text-[var(--text)]">
-                        {formTotal != null ? formTotal.toFixed(2) : "—"}
-                      </span>
+                    {/* Title */}
+                    <div>
+                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        {tr("Tajuk Split Bill", "Split Bill Title")} <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        value={form.title}
+                        onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
+                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-medium text-[var(--text)] outline-none transition focus:border-[var(--btn-primary-bg)] placeholder:text-[var(--muted)]/40"
+                        placeholder={tr("Contoh: Makan Nasi Arab / Grab Share", "Example: Dinner / Grab Ride")}
+                      />
                     </div>
-                    <p className="mt-1 text-[0.6rem] text-[var(--muted)]">
-                      {tr("Amaun diambil daripada transaksi yang dipilih.", "Amount taken from the selected transaction.")}
-                    </p>
-                  </div>
 
-                  {/* Number of people */}
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Bilangan Orang", "Number of People")}
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={form.people_count}
-                      onChange={(e) => setForm((prev) => ({ ...prev, people_count: e.target.value }))}
-                      className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none"
-                    />
-                  </div>
-
-                  {/* I am included toggle */}
-                  <button
-                    type="button"
-                    onClick={() => setForm((prev) => ({ ...prev, am_i_included: !prev.am_i_included }))}
-                    className={cn(
-                      "flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-semibold text-[var(--text)] transition",
-                      form.am_i_included && "border-[var(--accent)]/40",
-                    )}
-                  >
-                    {tr("Saya termasuk", "I am included")}
-                    <span className={cn("flex h-6 w-11 items-center rounded-full p-0.5 transition", form.am_i_included ? "bg-[var(--accent)]" : "bg-[var(--muted)]/40")}>
-                      <span className={cn("h-5 w-5 rounded-full bg-white transition", form.am_i_included && "translate-x-5")} />
-                    </span>
-                  </button>
-
-                  {/* Live calc */}
-                  {formTotal != null ? (
-                    <div className="space-y-1.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[var(--muted)]">{tr("Jumlah Dibayar", "Total paid")}</span>
-                        <span className="font-bold text-[var(--text)]"><MoneyAmount value={formTotal} currency="RM" size="sm" /></span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[var(--muted)]">{peopleCount} {tr("orang × RM", "people × ")}{perPerson != null ? perPerson.toFixed(2) : "0.00"}</span>
-                        <span className="font-bold text-[var(--text)]">
-                          {perPerson != null ? (perPerson * peopleCount).toFixed(2) : "0.00"}
+                    {/* Total amount (auto from txn or manual) */}
+                    <div>
+                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        {tr("Jumlah Bayaran Resit", "Total Paid Amount")}
+                      </label>
+                      <div className="flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3">
+                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{currentCurrency}</span>
+                        <span className="text-xl font-black text-[var(--text)]">
+                          {formTotal != null ? formTotal.toFixed(2) : "0.00"}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[var(--muted)]">{tr("Bahagian Saya", "Your share")}</span>
-                        <span className="font-bold text-[var(--text)]"><MoneyAmount value={formShare} currency="RM" size="sm" /></span>
-                      </div>
-                      <div className="flex items-center justify-between border-t border-[var(--border)] pt-1.5">
-                        <span className="font-bold text-[var(--muted)]">{tr("Perlu Dikumpul", "To collect")}</span>
-                        <span className="font-black text-[var(--accent)]"><MoneyAmount value={formCollect} currency="RM" size="sm" /></span>
+                      <p className="mt-1.5 text-[0.68rem] text-[var(--muted)]">
+                        {selectedTxn
+                          ? tr("Amaun diambil secara automatik daripada transaksi yang dipilih.", "Amount automatically populated from the selected transaction.")
+                          : tr("Sila pilih transaksi untuk menetapkan jumlah bayaran.", "Please select a transaction to populate total amount.")}
+                      </p>
+                    </div>
+
+                    {/* Number of people */}
+                    <div>
+                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        {tr("Bilangan Orang", "Number of People")} <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = Math.max(1, (parseInt(form.people_count, 10) || 2) - 1)
+                            setForm((prev) => ({ ...prev, people_count: String(val) }))
+                          }}
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-lg font-bold text-[var(--text)] transition active:scale-95 hover:bg-[var(--surface-tint-strong)]"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min={1}
+                          value={form.people_count}
+                          onChange={(e) => setForm((prev) => ({ ...prev, people_count: e.target.value }))}
+                          className="w-full text-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-base font-black text-[var(--text)] outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const val = (parseInt(form.people_count, 10) || 2) + 1
+                            setForm((prev) => ({ ...prev, people_count: String(val) }))
+                          }}
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-lg font-bold text-[var(--text)] transition active:scale-95 hover:bg-[var(--surface-tint-strong)]"
+                        >
+                          +
+                        </button>
                       </div>
                     </div>
-                  ) : null}
 
-                  {/* Notes */}
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Nota", "Notes")}
-                    </label>
-                    <textarea
-                      value={form.notes}
-                      onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-                      rows={2}
-                      className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                      placeholder={tr("Opsyenal", "Optional")}
-                    />
+                    {/* I am included toggle */}
+                    <button
+                      type="button"
+                      onClick={() => setForm((prev) => ({ ...prev, am_i_included: !prev.am_i_included }))}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-bold text-[var(--text)] transition",
+                        form.am_i_included ? "border-emerald-500/40 bg-emerald-500/5" : "hover:bg-[var(--surface-tint-strong)]",
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Users size={16} className={form.am_i_included ? "text-emerald-500" : "text-[var(--muted)]"} />
+                        <span>{tr("Saya Termasuk dalam Bahagian", "I Am Included in Split")}</span>
+                      </div>
+                      <span className={cn("flex h-6 w-11 items-center rounded-full p-0.5 transition", form.am_i_included ? "bg-emerald-500" : "bg-[var(--muted)]/40")}>
+                        <span className={cn("h-5 w-5 rounded-full bg-white transition", form.am_i_included && "translate-x-5")} />
+                      </span>
+                    </button>
+
+                    {/* Live calculation breakdown */}
+                    {formTotal != null && (
+                      <div className="space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint-strong)] p-4 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[var(--muted)] font-semibold">{tr("Jumlah Dibayar", "Total Paid")}</span>
+                          <span className="font-black text-[var(--text)]"><MoneyAmount value={formTotal} currency="RM" size="sm" /></span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[var(--muted)] font-semibold">
+                            {peopleCount} {tr("orang × RM", "people × RM")} {perPerson != null ? perPerson.toFixed(2) : "0.00"}
+                          </span>
+                          <span className="font-bold text-[var(--text)]">
+                            RM {perPerson != null ? (perPerson * peopleCount).toFixed(2) : "0.00"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[var(--muted)] font-semibold">{tr("Bahagian Saya", "Your Share")}</span>
+                          <span className="font-bold text-[var(--text)]"><MoneyAmount value={formShare} currency="RM" size="sm" /></span>
+                        </div>
+                        <div className="flex items-center justify-between border-t border-[var(--border)] pt-2">
+                          <span className="font-extrabold text-[var(--text)]">{tr("Perlu Dikumpul", "To Collect")}</span>
+                          <span className="text-sm font-black text-emerald-600 dark:text-emerald-400"><MoneyAmount value={formCollect} currency="RM" size="sm" /></span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    <div>
+                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        {tr("Nota Tambahan", "Additional Notes")}
+                      </label>
+                      <textarea
+                        value={form.notes}
+                        onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+                        rows={2}
+                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
+                        placeholder={tr("Catatan tambahan (opsyenal)", "Additional notes (optional)")}
+                      />
+                    </div>
                   </div>
 
-                  <div className="mt-6 -mx-3 flex items-center gap-2 border-t border-[var(--border)] bg-[var(--sheet-bg)] px-3 pb-2 pt-5 md:-mx-6 md:px-6">
+                  {/* Sticky Footer */}
+                  <div className="flex items-center gap-3 border-t border-[var(--border)] bg-[var(--sheet-bg)] p-4">
                     <button
                       type="button"
                       onClick={requestCreateClose}
-                      className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-bold text-[var(--muted)] transition active:scale-95"
+                      className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-xs font-bold text-[var(--muted)] transition hover:bg-[var(--surface-tint)] active:scale-95"
                     >
                       {tr("Batal", "Cancel")}
                     </button>
                     <button
                       type="submit"
                       disabled={saving || !createValid}
-                      className="flex-1 rounded-full bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-black text-white transition active:scale-[0.98] disabled:opacity-50"
+                      className="flex-1 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2.5 text-xs md:text-sm font-black text-white shadow-sm transition active:scale-[0.98] disabled:opacity-50"
                     >
                       {saving
                         ? (isBm ? "Menyimpan…" : "Saving…")
-                        : editingSplit ? tr("Update", "Update") : tr("Buat Split Bill", "Create Split Bill")}
+                        : editingSplit ? tr("Kemaskini Split Bill", "Update Split Bill") : tr("Buat Split Bill", "Create Split Bill")}
                     </button>
                   </div>
                 </form>
@@ -1031,21 +1084,17 @@ export default function SplitBillsPage() {
       {mounted && detailSplit
         ? createPortal(
             <div
-              className="fixed inset-0 z-50 flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-transparent p-0 md:items-stretch md:justify-end"
+              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] backdrop-blur-xs p-0 md:items-center md:p-4"
               onClick={requestDetailClose}
-              onTouchMove={(event) => event.preventDefault()}
             >
               <div
-                {...showDetailSwipe}
-                data-swipe-sheet
-                data-prevent-pull-refresh="true"
                 style={{ transform: "translateZ(0)" }}
-                className="app-sheet-panel app-sheet-panel--lg max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] will-change-transform md:h-[100dvh] md:max-h-none md:max-w-[420px] md:rounded-none md:border-y-0 md:border-l md:border-r-0"
+                className="app-sheet-panel relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl md:max-h-[86vh] md:max-w-lg md:rounded-2xl"
                 onClick={(event) => event.stopPropagation()}
               >
                 <AppSheetHeader title={tr("Butiran Split Bill", "Split Bill Details")} onClose={requestDetailClose} />
 
-                <div className="px-3 py-3 text-[var(--text)] md:px-6 md:py-6">
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 text-[var(--text)] sm:px-6 sm:py-5">
                   <div className="flex items-center gap-2">
                     <p className="text-lg font-black">{detailSplit.title}</p>
                     <span className={cn("rounded-full px-2 py-0.5 text-[0.55rem] font-black uppercase tracking-wider", statusBadge(detailSplit.status).cls)}>
@@ -1060,7 +1109,7 @@ export default function SplitBillsPage() {
                   {detailSplit.transaction_id ? (
                     <a
                       href={`/${sessionId}/transactions/${detailSplit.transaction_id}`}
-                      className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3 transition active:scale-[0.99]"
+                      className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3 transition active:scale-[0.99] hover:bg-[var(--surface-tint-strong)]"
                     >
                       <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent)]/15 text-[var(--accent)]">
                         <ReceiptIcon size={18} />
@@ -1074,7 +1123,7 @@ export default function SplitBillsPage() {
                   ) : null}
 
                   {/* Summary grid */}
-                  <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3">
                       <p className="text-[0.6rem] font-bold uppercase tracking-wider text-[var(--muted)]">{tr("Jumlah", "Total")}</p>
                       <p className="mt-0.5 text-lg font-black"><MoneyAmount value={detailSplit.total_amount || 0} currency={detailSplit.currency} /></p>
@@ -1104,7 +1153,7 @@ export default function SplitBillsPage() {
                   </div>
 
                   {/* Progress */}
-                  <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3.5">
                     <div className="flex items-center justify-between text-xs text-[var(--muted)]">
                       <span className="font-bold">{tr("Kemajuan Bayaran", "Payment Progress")}</span>
                       <span className="font-black text-[var(--text)]">
@@ -1120,7 +1169,7 @@ export default function SplitBillsPage() {
                   </div>
 
                   {/* Payment history */}
-                  <div className="mt-4">
+                  <div>
                     <p className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">{tr("Sejarah Bayaran", "Payment History")}</p>
                     {detailSplit.payments.length === 0 ? (
                       <p className="mt-2 text-sm text-[var(--muted)]">{tr("Belum ada bayaran.", "No payments yet.")}</p>
@@ -1144,47 +1193,47 @@ export default function SplitBillsPage() {
                       </div>
                     )}
                   </div>
+                </div>
 
-                  {/* Actions */}
-                  <div className="mt-5 space-y-2">
-                    {detailSplit.status !== "completed" && (
-                      <button
-                        type="button"
-                        onClick={openPayment}
-                        className="flex w-full items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-4 py-2.5 text-sm font-black text-white transition active:scale-[0.98]"
-                      >
-                        <Plus size={15} />
-                        {tr("Rekod Bayaran", "Record Payment")}
-                      </button>
-                    )}
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={openEditFromDetail}
-                        className="rounded-full border border-[var(--border)] px-4 py-2.5 text-sm font-bold text-[var(--text)] transition active:scale-[0.98]"
-                      >
-                        {tr("Edit Split", "Edit Split")}
-                      </button>
-                      {detailSplit.status !== "completed" ? (
-                        <button
-                          type="button"
-                          onClick={() => handleMarkCompleted(detailSplit)}
-                          disabled={detailSplit.balance_amount > 0}
-                          className="rounded-full border border-[var(--border)] px-4 py-2.5 text-sm font-bold text-[var(--accent)] transition active:scale-[0.98] disabled:opacity-40"
-                        >
-                          {tr("Tandakan Selesai", "Mark Completed")}
-                        </button>
-                      ) : null}
-                    </div>
+                {/* Sticky Action Footer */}
+                <div className="border-t border-[var(--border)] bg-[var(--sheet-bg)] p-4 space-y-2">
+                  {detailSplit.status !== "completed" && (
                     <button
                       type="button"
-                      onClick={() => handleDeleteSplit(detailSplit)}
-                      className="flex w-full items-center justify-center gap-2 rounded-full border border-red-500/30 px-4 py-2.5 text-sm font-bold text-red-500 transition active:scale-[0.98]"
+                      onClick={openPayment}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2.5 text-xs md:text-sm font-black text-white transition active:scale-[0.98]"
                     >
-                      <Trash2 size={15} />
-                      {tr("Padam Split", "Delete Split")}
+                      <Plus size={15} />
+                      {tr("Rekod Bayaran", "Record Payment")}
                     </button>
+                  )}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={openEditFromDetail}
+                      className="rounded-xl border border-[var(--border)] px-4 py-2 text-xs font-bold text-[var(--text)] transition active:scale-[0.98] hover:bg-[var(--surface-tint)]"
+                    >
+                      {tr("Edit Split", "Edit Split")}
+                    </button>
+                    {detailSplit.status !== "completed" ? (
+                      <button
+                        type="button"
+                        onClick={() => handleMarkCompleted(detailSplit)}
+                        disabled={detailSplit.balance_amount > 0}
+                        className="rounded-xl border border-[var(--border)] px-4 py-2 text-xs font-bold text-[var(--accent)] transition active:scale-[0.98] disabled:opacity-40 hover:bg-[var(--surface-tint)]"
+                      >
+                        {tr("Tandakan Selesai", "Mark Completed")}
+                      </button>
+                    ) : null}
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSplit(detailSplit)}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-500/30 px-4 py-2 text-xs font-bold text-rose-500 transition active:scale-[0.98] hover:bg-rose-500/5"
+                  >
+                    <Trash2 size={14} />
+                    {tr("Padam Split", "Delete Split")}
+                  </button>
                 </div>
               </div>
             </div>,
@@ -1196,193 +1245,216 @@ export default function SplitBillsPage() {
       {mounted && showPaymentSheet && detailSplit
         ? createPortal(
             <div
-              className="fixed inset-0 z-50 flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-transparent p-0 md:items-stretch md:justify-end"
+              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] backdrop-blur-xs p-0 md:items-center md:p-4"
               onClick={requestPaymentClose}
-              onTouchMove={(event) => event.preventDefault()}
             >
               <div
-                {...showPaymentSwipe}
-                data-swipe-sheet
-                data-prevent-pull-refresh="true"
                 style={{ transform: "translateZ(0)" }}
-                className="app-sheet-panel app-sheet-panel--lg max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] will-change-transform md:h-[100dvh] md:max-h-none md:max-w-[420px] md:rounded-none md:border-y-0 md:border-l md:border-r-0"
+                className="app-sheet-panel relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl md:max-h-[86vh] md:max-w-lg md:rounded-2xl"
                 onClick={(event) => event.stopPropagation()}
               >
                 <AppSheetHeader title={tr("Rekod Bayaran", "Record Payment")} onClose={requestPaymentClose} />
 
-                <form className="space-y-4 px-3 py-3 pb-4 text-[var(--text)] md:px-6 md:py-6" onSubmit={handleRecordPayment}>
-                  {/* Amount */}
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Amaun", "Amount")}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={payForm.amount}
-                        onChange={(e) => setPayForm((prev) => ({ ...prev, amount: e.target.value.replace(/[^0-9.]/g, "") }))}
-                        placeholder="0.00"
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] py-3 pl-4 pr-14 text-lg font-black text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                      />
-                      <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-semibold text-[var(--muted)]">
-                        {formatCurrencyLabel(detailSplit.currency)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Receiving wallet */}
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Wallet Penerima", "Receiving Wallet")}
-                    </label>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => document.getElementById("pay-wallet")?.focus()}
-                        className="flex w-full items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)]"
-                      >
-                        {payForm.wallet_id ? (
-                          (() => {
-                            const w = wallets.find((x) => x.id === Number(payForm.wallet_id))
-                            return <span className="truncate font-medium">{w?.name || tr("Pilih wallet", "Select wallet")}</span>
-                          })()
-                        ) : (
-                          <span className="flex items-center gap-2 text-[var(--muted)]">
-                            <WalletIcon size={15} />
-                            {tr("Guna wallet transaksi asal", "Use original transaction wallet")}
-                          </span>
-                        )}
-                        <ChevronDown size={16} className="text-[var(--muted)]" />
-                      </button>
-                    </div>
-                    <div className="mt-2 max-h-44 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-1">
-                      <button
-                        type="button"
-                        onClick={() => setPayForm((prev) => ({ ...prev, wallet_id: "" }))}
-                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-[var(--muted)] transition hover:bg-[var(--card)]"
-                      >
-                        {tr("Wallet transaksi asal", "Original transaction wallet")}
-                      </button>
-                      {wallets.map((w) => {
-                        const selected = String(w.id) === payForm.wallet_id
-                        return (
-                          <button
-                            key={w.id}
-                            type="button"
-                            onClick={() => setPayForm((prev) => ({ ...prev, wallet_id: String(w.id) }))}
-                            className={cn(
-                              "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left transition",
-                              selected ? "bg-[var(--card)]" : "hover:bg-[var(--card)]",
-                            )}
-                          >
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
-                              {w.image_url ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={w.image_url} alt="" className="h-full w-full object-cover" />
-                              ) : (
-                                <WalletIcon size={14} />
-                              )}
-                            </span>
-                            <span className="truncate text-sm font-medium text-[var(--text)]">{w.name}</span>
-                            {selected ? <span className="ml-auto text-[var(--accent2)]">✓</span> : null}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Date + time */}
-                  <div className="grid grid-cols-2 gap-3">
+                <form
+                  className="flex min-h-0 flex-1 flex-col overflow-hidden"
+                  onSubmit={handleRecordPayment}
+                >
+                  <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 text-[var(--text)] sm:px-6 sm:py-5">
+                    {/* Amount */}
                     <div>
-                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">{tr("Tarikh", "Date")}</label>
-                      <input
-                        type="date"
-                        value={payForm.payment_date}
-                        onChange={(e) => setPayForm((prev) => ({ ...prev, payment_date: e.target.value }))}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-3 text-sm text-[var(--text)] outline-none"
-                      />
+                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        {tr("Amaun Bayaran", "Payment Amount")} <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={payForm.amount}
+                          onChange={(e) => setPayForm((prev) => ({ ...prev, amount: e.target.value.replace(/[^0-9.]/g, "") }))}
+                          placeholder="0.00"
+                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] py-3 pl-4 pr-16 text-lg font-black text-[var(--text)] outline-none transition focus:border-[var(--btn-primary-bg)] placeholder:text-[var(--muted)]/40"
+                        />
+                        <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-bold text-[var(--muted)]">
+                          {formatCurrencyLabel(detailSplit.currency)}
+                        </span>
+                      </div>
                     </div>
+
+                    {/* Receiving wallet */}
                     <div>
-                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">{tr("Masa", "Time")}</label>
-                      <input
-                        type="time"
-                        value={payForm.payment_time}
-                        onChange={(e) => setPayForm((prev) => ({ ...prev, payment_time: e.target.value }))}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-3 text-sm text-[var(--text)] outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Notes */}
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">{tr("Nota", "Notes")}</label>
-                    <textarea
-                      value={payForm.notes}
-                      onChange={(e) => setPayForm((prev) => ({ ...prev, notes: e.target.value }))}
-                      rows={2}
-                      className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                      placeholder={tr("Opsyenal", "Optional")}
-                    />
-                  </div>
-
-                  {/* Screenshot upload */}
-                  <div>
-                    <input
-                      ref={payFileInputRef}
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp,application/pdf"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0] || null
-                        setPayFile(file)
-                        if (file && file.type.startsWith("image/")) {
-                          setPayPreview(URL.createObjectURL(file))
-                        } else {
-                          setPayPreview(null)
-                        }
-                        e.target.value = ""
-                      }}
-                    />
-                    {payPreview ? (
-                      <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={payPreview} alt="" className="max-h-40 w-full object-contain bg-[var(--surface-tint)]" />
+                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        {tr("Wallet Penerima", "Receiving Wallet")}
+                      </label>
+                      <div className="relative">
                         <button
                           type="button"
-                          onClick={() => { setPayFile(null); setPayPreview(null) }}
-                          className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--card)] text-[var(--muted)] shadow active:scale-95"
-                          aria-label={tr("Buang", "Remove")}
+                          onClick={() => setPayWalletDropdownOpen(!payWalletDropdownOpen)}
+                          className="flex w-full items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)]"
                         >
-                          <X size={16} />
+                          {payForm.wallet_id ? (
+                            (() => {
+                              const w = wallets.find((x) => x.id === Number(payForm.wallet_id))
+                              return (
+                                <span className="flex items-center gap-2 truncate font-bold">
+                                  <WalletIcon size={15} className="shrink-0 text-emerald-500" />
+                                  <span className="truncate">{w?.name || tr("Pilih wallet", "Select wallet")}</span>
+                                </span>
+                              )
+                            })()
+                          ) : (
+                            <span className="flex items-center gap-2 text-[var(--muted)]">
+                              <WalletIcon size={15} />
+                              <span>{tr("Guna wallet transaksi asal", "Use original transaction wallet")}</span>
+                            </span>
+                          )}
+                          <ChevronDown size={16} className={cn("shrink-0 text-[var(--muted)] transition-transform", payWalletDropdownOpen && "rotate-180")} />
                         </button>
                       </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => payFileInputRef.current?.click()}
-                        className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)] px-4 py-5 text-center transition active:scale-[0.99]"
-                      >
-                        <Upload size={20} className="text-[var(--muted)]" />
-                        <span className="text-xs font-semibold text-[var(--muted)]">
-                          {tr("Muat naik bukti bayaran (opsyenal)", "Upload payment screenshot (optional)")}
-                        </span>
-                      </button>
-                    )}
+
+                      {payWalletDropdownOpen && (
+                        <div className="mt-2 max-h-44 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1.5 shadow-lg space-y-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPayForm((prev) => ({ ...prev, wallet_id: "" }))
+                              setPayWalletDropdownOpen(false)
+                            }}
+                            className={cn(
+                              "flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-left text-xs transition",
+                              !payForm.wallet_id ? "bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold" : "text-[var(--muted)] hover:bg-[var(--surface-tint)]"
+                            )}
+                          >
+                            <span>{tr("Wallet transaksi asal", "Original transaction wallet")}</span>
+                            {!payForm.wallet_id && <Check size={14} className="text-emerald-500" />}
+                          </button>
+                          {wallets.map((w) => {
+                            const selected = String(w.id) === payForm.wallet_id
+                            return (
+                              <button
+                                key={w.id}
+                                type="button"
+                                onClick={() => {
+                                  setPayForm((prev) => ({ ...prev, wallet_id: String(w.id) }))
+                                  setPayWalletDropdownOpen(false)
+                                }}
+                                className={cn(
+                                  "flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left text-xs transition",
+                                  selected ? "bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold" : "hover:bg-[var(--surface-tint)] text-[var(--text)]",
+                                )}
+                              >
+                                <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
+                                  {w.image_url ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={w.image_url} alt="" className="h-full w-full object-cover" />
+                                  ) : (
+                                    <WalletIcon size={12} />
+                                  )}
+                                </span>
+                                <span className="truncate flex-1 font-medium">{w.name}</span>
+                                {selected && <Check size={14} className="shrink-0 text-emerald-500" />}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Date + time */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">{tr("Tarikh", "Date")}</label>
+                        <input
+                          type="date"
+                          value={payForm.payment_date}
+                          onChange={(e) => setPayForm((prev) => ({ ...prev, payment_date: e.target.value }))}
+                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-3 text-sm text-[var(--text)] outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">{tr("Masa", "Time")}</label>
+                        <input
+                          type="time"
+                          value={payForm.payment_time}
+                          onChange={(e) => setPayForm((prev) => ({ ...prev, payment_time: e.target.value }))}
+                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-3 text-sm text-[var(--text)] outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Notes */}
+                    <div>
+                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">{tr("Nota", "Notes")}</label>
+                      <textarea
+                        value={payForm.notes}
+                        onChange={(e) => setPayForm((prev) => ({ ...prev, notes: e.target.value }))}
+                        rows={2}
+                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
+                        placeholder={tr("Contoh: Bayar via DuitNow / QR", "Example: Paid via DuitNow / Cash")}
+                      />
+                    </div>
+
+                    {/* Screenshot upload */}
+                    <div>
+                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        {tr("Bukti Bayaran", "Payment Proof")}
+                      </label>
+                      <input
+                        ref={payFileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0] || null
+                          setPayFile(file)
+                          if (file && file.type.startsWith("image/")) {
+                            setPayPreview(URL.createObjectURL(file))
+                          } else {
+                            setPayPreview(null)
+                          }
+                          e.target.value = ""
+                        }}
+                      />
+                      {payPreview ? (
+                        <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={payPreview} alt="" className="max-h-40 w-full object-contain bg-[var(--surface-tint)]" />
+                          <button
+                            type="button"
+                            onClick={() => { setPayFile(null); setPayPreview(null) }}
+                            className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--card)] text-[var(--muted)] shadow active:scale-95 hover:text-rose-500"
+                            aria-label={tr("Buang", "Remove")}
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => payFileInputRef.current?.click()}
+                          className="flex w-full flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)] px-4 py-5 text-center transition active:scale-[0.99] hover:bg-[var(--surface-tint-strong)]"
+                        >
+                          <Upload size={20} className="text-[var(--muted)]" />
+                          <span className="text-xs font-semibold text-[var(--muted)]">
+                            {tr("Muat naik resit / screenshot bayaran (opsyenal)", "Upload receipt / payment screenshot (optional)")}
+                          </span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="mt-6 -mx-3 flex items-center gap-2 border-t border-[var(--border)] bg-[var(--sheet-bg)] px-3 pb-2 pt-5 md:-mx-6 md:px-6">
+                  {/* Sticky Footer */}
+                  <div className="flex items-center gap-3 border-t border-[var(--border)] bg-[var(--sheet-bg)] p-4">
                     <button
                       type="button"
                       onClick={requestPaymentClose}
-                      className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-bold text-[var(--muted)] transition active:scale-95"
+                      className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-xs font-bold text-[var(--muted)] transition hover:bg-[var(--surface-tint)] active:scale-95"
                     >
                       {tr("Batal", "Cancel")}
                     </button>
                     <button
                       type="submit"
                       disabled={saving || !Number.parseFloat(payForm.amount || "0")}
-                      className="flex-1 rounded-full bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-black text-white transition active:scale-[0.98] disabled:opacity-50"
+                      className="flex-1 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2.5 text-xs md:text-sm font-black text-white transition active:scale-[0.98] disabled:opacity-50"
                     >
                       {saving
                         ? (isBm ? "Menyimpan…" : "Saving…")
