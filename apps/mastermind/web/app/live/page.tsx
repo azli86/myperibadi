@@ -18,7 +18,7 @@ export default function LivePage() {
 
   useEffect(() => {
     const el = termRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el) el.scrollTop = 0;
   }, [reqs]);
 
   useEffect(() => {
@@ -35,8 +35,7 @@ export default function LivePage() {
       try {
         const r = await fetch("/api/live/api?limit=25", { credentials: "include" });
         if (r.ok) {
-          const data = await r.json();
-          setReqs([...data].reverse());
+          setReqs(await r.json());
           setLastUpdate(new Date().toLocaleTimeString("en-GB", {
             hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
             timeZone: "Asia/Kuala_Lumpur",
@@ -104,7 +103,6 @@ export default function LivePage() {
             </div>
           );
         })}
-        <div className="lv-cursor">$ <span className="lv-blink">▊</span></div>
       </div>
     </div>
   );
