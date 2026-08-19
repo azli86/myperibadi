@@ -92,7 +92,7 @@ export default function Home() {
         {liveTxns.map((t:any, i)=>{
           const ts=new Date(t.created_at||t.txn_date);
           const time=ts.toLocaleTimeString("ms-MY",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
-          const type=t.type==="expense"?"EXP":"INC";
+          const type=t.type==="expense"?"OUT":"IN";
           return <div className="term-line" key={t.id}>
             <span className="t-time">[{time}]</span>
             <span className={"t-type "+(t.type==="expense"?"exp":"inc")}>{type}</span>
