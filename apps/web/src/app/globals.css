@@ -646,18 +646,12 @@ div:has(> [data-portal-modal]) {
 }
 
 /*
- * Swipe-down-to-close: neutralise touch-action on sheet panels so the
- * document-level gesture handler (useSwipeDownToClose) receives every
- * touchmove and can preventDefault before the browser claims the gesture.
- * Inner scroll areas opt back in via .app-sheet-scroll / [data-swipe-scroll].
+ * Swipe-down-to-close: the gesture handler (useSwipeDownToClose) decides on
+ * the FIRST touchmove whether a gesture is a native scroll or a sheet drag,
+ * calling preventDefault synchronously (non-passive listener) before the
+ * browser starts scrolling. No touch-action overrides are needed — inner
+ * content always scrolls natively, which keeps sheet scrolling smooth.
  */
-[data-swipe-sheet] {
-  touch-action: none;
-}
-[data-swipe-sheet] [data-swipe-scroll],
-[data-swipe-sheet] .app-sheet-scroll {
-  touch-action: pan-y;
-}
 
 .app-sheet-panel--sm {
   --app-sheet-r: 12px;
