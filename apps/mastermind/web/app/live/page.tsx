@@ -75,7 +75,7 @@ export default function LivePage() {
         </div>
       </div>
       <div className="ub-term" ref={termRef}>
-        <div className="ub-line muted">$ tail -f /var/log/mastermind/activity.log</div>
+        <div className="lv-line tail">$ tail -f /var/log/mastermind/activity.log</div>
         {reqs.map((r: any) => {
           let badge = r.kind;
           let cls = "t";
