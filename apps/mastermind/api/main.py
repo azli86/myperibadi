@@ -458,15 +458,22 @@ async def live_api(limit: int = 25, db: AsyncSession = Depends(db_session)):
     return result
 
 @app.get("/users", dependencies=[Depends(admin)])
-async def users(q: str = "", limit: int = 50, offset: int = 0, db: AsyncSession = Depends(db_session)):
+async def users(q: str = "", status: str = "", limit: int = 50, offset: int = 0, db: AsyncSession = Depends(db_session)):
     limit = max(1, min(limit, 100))
     like = f"%{q.strip().lower()}%"
-    q_cond = "(:q = '' OR lower(email) LIKE :like OR lower(coalesce(name, '')) LIKE :like)"
-    total = (await db.execute(text(f"SELECT count(*) FROM users WHERE {q_cond}"), {"q": q.strip(), "like": like})).scalar_one()
+    conditions = ["(:q = '' OR lower(email) LIKE :like OR lower(coalesce(name, '')) LIKE :like)"]
+    if status == "active_verified":
+        conditions.append("is_active = true AND email_verified_at IS NOT NULL")
+    elif status == "active_unverified":
+        conditions.append("is_active = true AND email_verified_at IS NULL")
+    elif status == "inactive":
+        conditions.append("is_active = false")
+    where_sql = " AND ".join(conditions)
+    total = (await db.execute(text(f"SELECT count(*) FROM users WHERE {where_sql}"), {"q": q.strip(), "like": like})).scalar_one()
     rows = (await db.execute(text(f"""
         SELECT id, name, email, is_active, email_verified_at, created_at, deactivated_reason, auth_provider, phone
         FROM users
-        WHERE {q_cond}
+        WHERE {where_sql}
         ORDER BY created_at DESC LIMIT :limit OFFSET :offset
     """), {"q": q.strip(), "like": like, "limit": limit, "offset": max(0, offset)})).mappings().all()
     return {"users": [dict(row) for row in rows], "total": total, "limit": limit, "offset": max(0, offset)}
