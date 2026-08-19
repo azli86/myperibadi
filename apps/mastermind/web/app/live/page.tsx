@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 const parseUtc = (s?: string | null) => {
   if (!s) return null;
@@ -14,7 +14,6 @@ export default function LivePage() {
   const [reqs, setReqs] = useState<any[]>([]);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [paused, setPaused] = useState(false);
-  const termRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -43,11 +42,6 @@ export default function LivePage() {
     return () => t && clearInterval(t);
   }, [auth, paused]);
 
-  useEffect(() => {
-    const el = termRef.current;
-    if (el) el.scrollTop = 0;
-  }, [reqs]);
-
   const fmtStamp = (s?: string) => {
     const d = parseUtc(s);
     if (!d) return "";
@@ -74,7 +68,7 @@ export default function LivePage() {
           <button className="lv-pause" onClick={() => setPaused(p => !p)}>{paused ? "▶ Resume" : "❚❚ Pause"}</button>
         </div>
       </div>
-      <div className="ub-term" ref={termRef}>
+      <div className="ub-term">
         {reqs.map((r: any) => {
           let badge = r.kind;
           let cls = "t";
