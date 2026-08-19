@@ -85,7 +85,6 @@ export default function LivePage() {
             <span className={"lv-code " + statusClass(r.status_code)}>{r.status_code}</span>
             <span className="lv-path">{r.path}</span>
             <span className="lv-user">{r.email}</span>
-            <span className="lv-ip">{r.ip_address || ""}</span>
           </div>
         ))}
         <div className="lv-cursor">$ <span className="lv-blink">▊</span></div>
