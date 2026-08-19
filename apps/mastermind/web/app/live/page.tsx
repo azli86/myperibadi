@@ -92,6 +92,14 @@ export default function LivePage() {
             badge = "WAL";
             cls = "wal";
             main = `Tambah wallet ${r.detail1 || ""}`.trim();
+          } else if (r.kind === "ITEM") {
+            badge = "BAR";
+            cls = "item";
+            main = `Tambah barang ${r.detail1 || ""}`.trim();
+          } else if (r.kind === "HOUSE") {
+            badge = "RMAH";
+            cls = "house";
+            main = `Buat household ${r.detail1 || ""}`.trim();
           } else {
             badge = "NEW";
             cls = "sig";

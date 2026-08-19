@@ -418,6 +418,20 @@ async def live_api(limit: int = 25, db: AsyncSession = Depends(db_session)):
           LEFT JOIN users u ON u.id = w.owner_user_id
           LEFT JOIN households h ON h.id = w.household_id
           WHERE w.created_at >= now() - interval '7 days'
+          UNION ALL
+          SELECT 'ITEM' AS kind, i.created_at, coalesce(i.name,'') AS detail1,
+                 coalesce(i.category,'') AS detail2, NULL AS amount,
+                 coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
+                 '' AS status, '' AS category_name, '' AS household_name
+          FROM inventory_items i LEFT JOIN users u ON u.id = i.user_id
+          WHERE i.deleted_at IS NULL AND i.created_at >= now() - interval '7 days'
+          UNION ALL
+          SELECT 'HOUSE' AS kind, h.created_at, coalesce(h.name,'') AS detail1,
+                 'household' AS detail2, NULL AS amount,
+                 coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
+                 '' AS status, '' AS category_name, '' AS household_name
+          FROM households h LEFT JOIN users u ON u.id = h.owner_user_id
+          WHERE h.created_at >= now() - interval '7 days'
         ) q
         ORDER BY created_at DESC LIMIT :limit
     """), {"limit": limit})).mappings().all()
