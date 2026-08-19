@@ -166,7 +166,7 @@ export default function BadgesPage() {
         <DesktopPageHeader className="hidden md:block" title="Reward Badge" homeHref={`/${sessionId}`} />
 
         <DesktopPageBody className="mx-auto grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-3">
-          <article className={cn("rounded-[16px] border p-5 md:col-span-2 xl:col-span-3", surface)}>
+          <article className={cn("rounded-2xl border p-5 md:col-span-2 xl:col-span-3", surface)}>
             <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
               <div className="max-w-2xl">
                 <p className={cn("text-[0.72rem] font-black uppercase tracking-[0.22em]", subtext)}>
@@ -199,7 +199,7 @@ export default function BadgesPage() {
           </article>
 
           {liveBadges.map((badge) => (
-            <article key={badge.key} className={cn("relative overflow-hidden rounded-[16px] border p-5 transition-all", surface, badge.status === "locked" && "opacity-72 grayscale-[0.18]")}>
+            <article key={badge.key} className={cn("relative overflow-hidden rounded-2xl border p-5 transition-all", surface, badge.status === "locked" && "opacity-72 grayscale-[0.18]")}>
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -230,7 +230,7 @@ export default function BadgesPage() {
             </article>
           ))}
 
-          <section className={cn("rounded-[16px] border p-5 md:col-span-2 xl:col-span-3", surface)}>
+          <section className={cn("rounded-2xl border p-5 md:col-span-2 xl:col-span-3", surface)}>
             <div className="grid gap-3 md:grid-cols-3">
               <div className={cn("rounded-2xl px-4 py-4", chip)}>
                 <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] opacity-70">{lang === "EN" ? "Current Level" : "Tahap Semasa"}</p>
@@ -250,7 +250,7 @@ export default function BadgesPage() {
             </div>
           </section>
 
-          <section className={cn("rounded-[16px] border p-5 md:col-span-2 xl:col-span-3", surface)}>
+          <section className={cn("rounded-2xl border p-5 md:col-span-2 xl:col-span-3", surface)}>
 
             <div className="flex items-center gap-3">
               <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl", chip)}>

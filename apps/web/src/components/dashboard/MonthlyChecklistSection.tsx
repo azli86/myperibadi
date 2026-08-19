@@ -196,7 +196,7 @@ export function MonthlyChecklistSection() {
   const title = lang === "EN" ? "Commitments" : "Komitmen"
 
   return (
-    <section className="overflow-hidden rounded-[18px] border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-soft)]">
+    <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-soft)]">
       {/* Header */}
       <div className="px-3.5 pt-3.5 pb-3">
         <div className="flex items-start justify-between gap-3">

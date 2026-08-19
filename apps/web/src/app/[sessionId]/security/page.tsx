@@ -428,7 +428,7 @@ export default function SecurityPage() {
         />
         <DesktopPageBody className="space-y-6">
         {/* Hero Card */}
-        <div className="relative overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--card)] shadow-sm">
+        <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
           <div className="relative p-6 md:p-8">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
               <div className="flex items-start gap-4">
@@ -448,7 +448,7 @@ export default function SecurityPage() {
 
               {/* Score */}
               <div className={cn(
-                "shrink-0 rounded-[16px] border p-5 min-w-[220px]",
+                "shrink-0 rounded-2xl border p-5 min-w-[220px]",
                 securityScore >= 3
                   ? "border-emerald-500/30 bg-emerald-500/5 dark:bg-[var(--surface-tint)]"
                   : securityScore >= 2
@@ -489,7 +489,7 @@ export default function SecurityPage() {
         {/* Status Cards */}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {statusCards.map((card) => (
-            <div key={card.key} className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
+            <div key={card.key} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
               <div className={cn(
                 "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
                 card.tone === "green" ? "bg-[var(--surface-tint)] text-[var(--text)]" :
@@ -508,7 +508,7 @@ export default function SecurityPage() {
         {/* Forms Grid */}
         <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
           {/* Password */}
-          <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-6">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]">
                 <Lock size={20} />
@@ -560,7 +560,7 @@ export default function SecurityPage() {
           </div>
 
           {/* PIN */}
-          <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
             <div className="flex items-center justify-between gap-3 mb-6">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]">
@@ -668,7 +668,7 @@ export default function SecurityPage() {
         </div>
 
         {/* Footer */}
-        <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] px-5 py-4 text-center shadow-sm">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 text-center shadow-sm">
           <p className="text-[0.625rem] font-black uppercase tracking-[0.3em] text-[var(--muted)]">
             MyPeribadi
           </p>

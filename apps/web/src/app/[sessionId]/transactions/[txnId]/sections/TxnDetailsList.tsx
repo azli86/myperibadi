@@ -48,7 +48,7 @@ export default function TxnDetailsList({
   const isWalletTransfer = Boolean(txn.is_wallet_transfer)
 
   return (
-    <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-5 md:p-6">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 md:p-6">
       <h3 className="mb-3 text-sm font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
         {isBm ? "Maklumat Transaksi" : "Transaction Info"}
       </h3>

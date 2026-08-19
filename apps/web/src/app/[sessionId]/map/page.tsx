@@ -406,7 +406,7 @@ export default function MapPage() {
               </div>
             </div>
 
-            <div className="ml-auto inline-flex items-center gap-1.5 rounded-[18px] border border-[var(--border)] bg-[var(--card)]/90 p-1.5 shadow-[var(--shadow-soft)] backdrop-blur-xl">
+            <div className="ml-auto inline-flex items-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--card)]/90 p-1.5 shadow-[var(--shadow-soft)] backdrop-blur-xl">
               <button
                 type="button"
                 onClick={() => setSelectedMonth((prev) => shiftMonth(prev, -1))}
@@ -660,7 +660,7 @@ export default function MapPage() {
                 </div>
               )}
 
-              <div className="relative overflow-hidden rounded-[26px] border border-[var(--border)] bg-[var(--card)]/95 p-5 shadow-[var(--shadow-lg)] backdrop-blur-2xl">
+              <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 p-5 shadow-[var(--shadow-lg)] backdrop-blur-2xl">
                 <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-[var(--btn-primary-bg)]/12 blur-3xl" />
                 <button
                   onClick={() => requestActivePointClose()}

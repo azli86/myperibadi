@@ -111,7 +111,7 @@ export function DataSkeletonChart({ className }: SkeletonProps) {
 
 export function DataSkeletonPanel({ className, rows = 4 }: SkeletonProps & { rows?: number }) {
   return (
-    <div className={cn("skeleton-panel rounded-[24px] border border-[color:var(--skeleton-border)] bg-[var(--skeleton-panel)] p-4", className)} aria-hidden="true">
+    <div className={cn("skeleton-panel rounded-2xl border border-[color:var(--skeleton-border)] bg-[var(--skeleton-panel)] p-4", className)} aria-hidden="true">
       <SkeletonLine className="h-3 w-28" />
       <SkeletonLine className="mt-4 h-6 w-40" />
       <div className="mt-5 space-y-3">

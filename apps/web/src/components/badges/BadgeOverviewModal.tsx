@@ -216,7 +216,7 @@ export default function BadgeOverviewModal({ open, onClose, sessionId, lang }: B
               onWheel={(event) => event.stopPropagation()}
             >
               {/* Hero */}
-              <div className="relative overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface-tint)] p-4">
+              <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-4">
                 <div className="relative flex items-center gap-4">
                   <div className="relative grid place-items-center">
                     <ProgressRing percent={progressPercent} />
@@ -273,7 +273,7 @@ export default function BadgeOverviewModal({ open, onClose, sessionId, lang }: B
                     return (
                       <div
                         key={badge.key}
-                        className={`relative flex flex-col items-center rounded-[18px] border px-2 py-3 text-center transition ${
+                        className={`relative flex flex-col items-center rounded-2xl border px-2 py-3 text-center transition ${
                           unlocked
                             ? "border-[var(--border)] bg-[var(--surface-tint)]"
                             : "border-[var(--border)] bg-[var(--card)] opacity-80"
@@ -305,7 +305,7 @@ export default function BadgeOverviewModal({ open, onClose, sessionId, lang }: B
 
               {/* Next unlock */}
               {nextBadge && (
-                <div className="mt-5 overflow-hidden rounded-[20px] border border-[var(--border)] bg-[var(--surface-tint)] p-3.5">
+                <div className="mt-5 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3.5">
                   <div className="flex items-start gap-3">
                     <div className="shrink-0">
                       <BadgeSvg icon={nextBadge.icon} tone={nextBadge.tone} size="sm" locked animated={false} />
@@ -326,7 +326,7 @@ export default function BadgeOverviewModal({ open, onClose, sessionId, lang }: B
               )}
 
               {!nextBadge && unlockedBadges.length > 0 && (
-                <div className="mt-5 rounded-[20px] border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3.5 text-center">
+                <div className="mt-5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3.5 text-center">
                   <p className="text-sm font-black text-[var(--text)]">
                     {isEN ? "Vault complete ✨" : "Vault lengkap ✨"}
                   </p>

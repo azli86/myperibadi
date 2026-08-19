@@ -881,7 +881,7 @@ export default function WalletSettingsPage() {
                 data-swipe-sheet
                 {...createWalletSheetSwipe}
                 style={{ transform: "translateZ(0)" }}
-                className="app-sheet-panel relative flex max-h-[90dvh] w-full flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl will-change-transform md:max-h-[86vh] md:max-w-md md:rounded-[1.75rem]"
+                className="app-sheet-panel relative flex max-h-[90dvh] w-full flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl will-change-transform md:max-h-[86vh] md:max-w-md md:rounded-2xl"
               >
                 <AppSheetHeader
                   title={createWalletStep === 1
@@ -1142,7 +1142,7 @@ export default function WalletSettingsPage() {
                 data-swipe-sheet
                 {...walletDetailSheetSwipe}
                 style={{ transform: "translateZ(0)" }}
-                className="app-sheet-panel relative flex max-h-[90dvh] w-full flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl will-change-transform md:max-h-[86vh] md:max-w-md md:rounded-[1.75rem]"
+                className="app-sheet-panel relative flex max-h-[90dvh] w-full flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl will-change-transform md:max-h-[86vh] md:max-w-md md:rounded-2xl"
               >
                 <AppSheetHeader
                   title={tr("Edit Dompet", "Edit Wallet")}

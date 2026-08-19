@@ -1551,7 +1551,7 @@ export default function Dashboard() {
     <div
       key={key}
       aria-hidden="true"
-      className="rounded-[16px] border border-[color:var(--skeleton-border)] bg-[var(--skeleton-panel)] p-4"
+      className="rounded-2xl border border-[color:var(--skeleton-border)] bg-[var(--skeleton-panel)] p-4"
     >
       <div className="flex items-center justify-between gap-2">
         <div className="skeleton-surface h-2.5 w-16 rounded-full" />
@@ -1660,7 +1660,7 @@ export default function Dashboard() {
   const hasOverBudgetAlert = budgetAlertItems.some((item) => item.status === "over_budget")
 
   const budgetAlertSection = (
-    <div className="overflow-hidden rounded-[18px] border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-soft)]">
+    <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-soft)]">
       <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-3.5 py-3">
         <div className="flex min-w-0 items-center gap-2">
           <span className={cn(
@@ -1757,7 +1757,7 @@ export default function Dashboard() {
   )
 
   const categoryAnalyticsCardMobile = (
-    <div className="rounded-[18px] border border-[var(--border)] bg-[var(--card)] p-3.5 shadow-[var(--shadow-soft)]">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3.5 shadow-[var(--shadow-soft)]">
       {/* Header — title only */}
       <h3 className="truncate text-sm font-bold text-[var(--text)]">
         {lang === "EN" ? "Category compare" : "Banding kategori"}
@@ -1971,7 +1971,7 @@ export default function Dashboard() {
   const moneyLifespanMobileSection = (
     <div className="space-y-3">
       {/* Daily budget card */}
-      <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-5">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold text-[var(--muted)]">
@@ -2014,7 +2014,7 @@ export default function Dashboard() {
 
       {/* Emergency + Savings */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-4">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
           <p className="text-xs font-semibold text-[var(--muted)]">
             {lang === "EN" ? "Emergency / Day" : "Simpan / Hari"}
           </p>
@@ -2022,7 +2022,7 @@ export default function Dashboard() {
             {showDataSkeleton ? dashboardAmountSkeleton("h-5 w-20") : showHeroAmounts ? <><span className="text-[0.6em] font-medium mr-0.5 text-[var(--muted)]">RM</span>{moneyLifespanEmergencyDailyNum}</> : "RM ••••••"}
           </p>
         </div>
-        <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-4">
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
           <p className="text-xs font-semibold text-[var(--muted)]">
             {lang === "EN" ? "Savings Pot" : "Simpanan Semasa"}
           </p>
@@ -2044,7 +2044,7 @@ export default function Dashboard() {
       {/* ─── Support Modal ─── */}
       {supportOpen ? (
  <div className="fixed inset-0 z-[999999] flex items-end justify-center bg-transparent p-0 sm:items-center sm:p-4">
-          <div className="flex min-h-screen w-full flex-col bg-[var(--page-bg)] sm:min-h-0 sm:max-h-[min(88vh,680px)] sm:w-full sm:max-w-md sm:overflow-hidden sm:rounded-[24px] sm:border sm:border-purple-500/20 sm:bg-[var(--card)]">
+          <div className="flex min-h-screen w-full flex-col bg-[var(--page-bg)] sm:min-h-0 sm:max-h-[min(88vh,680px)] sm:w-full sm:max-w-md sm:overflow-hidden sm:rounded-2xl sm:border sm:border-purple-500/20 sm:bg-[var(--card)]">
             <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--card)] px-5 py-4 sm:px-6">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-400">
@@ -2418,7 +2418,7 @@ export default function Dashboard() {
       {/* ─── DESKTOP VIEW (hidden md:block) ─── */}
       <div className="hidden md:block space-y-5 pb-12">
         {/* Unified header → summary → runway (side by side, compact) */}
-        <section className="overflow-hidden rounded-[22px] border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-card)]">
+        <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-card)]">
           {/* Header strip */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-3.5">
             <WeatherClockMini
@@ -2787,7 +2787,7 @@ export default function Dashboard() {
                 </div>
               ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <button type="button" onClick={() => openChartModal("monthly")} className="relative overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-4 text-left text-[var(--text)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]">
+                <button type="button" onClick={() => openChartModal("monthly")} className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-left text-[var(--text)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-bold text-[var(--text)]">{t.monthlyTab}</p>
                     <BarChart2 size={14} className="text-[var(--muted)]" />
@@ -2802,7 +2802,7 @@ export default function Dashboard() {
                     </AreaChart>
                   </ChartContainer>
                 </button>
-                <button type="button" onClick={() => openChartModal("daily")} className="relative overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-4 text-left text-[var(--text)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]">
+                <button type="button" onClick={() => openChartModal("daily")} className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-left text-[var(--text)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-bold text-[var(--text)]">{t.dailyTab}</p>
                     <BarChart2 size={14} className="text-[var(--muted)]" />
@@ -2817,7 +2817,7 @@ export default function Dashboard() {
                     </AreaChart>
                   </ChartContainer>
                 </button>
-                <button type="button" onClick={() => openChartModal("monthly")} className="relative overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-4 text-left text-[var(--text)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]">
+                <button type="button" onClick={() => openChartModal("monthly")} className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-left text-[var(--text)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-bold text-[var(--text)]">{lang === "EN" ? "Net" : "Bersih"}</p>
                     <BarChart2 size={14} className="text-[var(--muted)]" />
@@ -2870,7 +2870,7 @@ export default function Dashboard() {
               <AppSheetHeader
                 title={t.addNewRecord}
                 onClose={requestDashboardAddClose}
-                className="sm:rounded-t-3xl"
+                className="sm:rounded-t-2xl"
                 action={
                   <button
                     type="submit"
@@ -3140,7 +3140,7 @@ export default function Dashboard() {
                     onClick={(e) => e.stopPropagation()}
                     data-swipe-sheet
                     {...walletSheetSwipe}
-                    className="app-sheet-panel relative z-10 flex max-h-[82vh] w-full flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl sm:max-w-md sm:rounded-[1.75rem]"
+                    className="app-sheet-panel relative z-10 flex max-h-[82vh] w-full flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl sm:max-w-md sm:rounded-2xl"
                   >
                     <AppSheetHeader
                       title={lang === "BM" ? "Semua baki" : "All balances"}

@@ -771,7 +771,7 @@ export default function PlacesPage() {
       {draftPin && (
         <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] z-[480] max-h-[min(48dvh,22rem)] overflow-y-auto px-3 sm:px-5 lg:inset-x-auto lg:left-[240px] lg:right-[300px] lg:bottom-8 lg:max-h-none lg:flex lg:justify-end lg:overflow-visible lg:px-4">
           <div className="w-full max-w-md lg:w-[22rem]">
-          <div className="pointer-events-auto mx-auto w-full max-w-md rounded-[26px] border border-[var(--border)] bg-[var(--card)]/95 p-5 shadow-[var(--shadow-lg)] backdrop-blur-2xl lg:mx-0">
+          <div className="pointer-events-auto mx-auto w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 p-5 shadow-[var(--shadow-lg)] backdrop-blur-2xl lg:mx-0">
             <div className="mb-3 flex items-center justify-between gap-2">
               <p className="text-sm font-black text-[var(--text)]">
                 {lang === "EN" ? "Save place" : "Simpan tempat"}
@@ -1205,7 +1205,7 @@ export default function PlacesPage() {
         >
           <div className="mx-auto w-full max-w-md lg:mx-0 lg:w-[22rem]">
             {activePoint && (
-              <div className="pointer-events-auto relative overflow-hidden rounded-[22px] border border-[var(--border)] bg-[var(--card)]/95 px-4 py-3.5 shadow-[var(--shadow-lg)] backdrop-blur-2xl">
+              <div className="pointer-events-auto relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 px-4 py-3.5 shadow-[var(--shadow-lg)] backdrop-blur-2xl">
                 <button
                   onClick={() => requestActivePointClose()}
                   className="absolute right-2.5 top-2.5 z-10 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] p-1.5 text-[var(--muted)]"

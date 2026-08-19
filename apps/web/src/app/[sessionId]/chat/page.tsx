@@ -1273,7 +1273,7 @@ export default function ChatPage() {
             <div
               role="listbox"
               className={cn(
-                "absolute bottom-[calc(100%+0.5rem)] left-0 w-max max-w-[calc(100vw-2rem)] md:max-w-[400px] z-40 overflow-hidden rounded-[16px] border border-[color:var(--border)] p-2",
+                "absolute bottom-[calc(100%+0.5rem)] left-0 w-max max-w-[calc(100vw-2rem)] md:max-w-[400px] z-40 overflow-hidden rounded-2xl border border-[color:var(--border)] p-2",
                 composerBg
               )}
             >
@@ -1351,7 +1351,7 @@ export default function ChatPage() {
               {isAttachmentMenuOpen && (
                 <div
                   role="menu"
-                  className={cn("absolute bottom-14 left-0 z-30 w-60 rounded-[16px] border border-white/[0.08] p-2.5", composerBg)}
+                  className={cn("absolute bottom-14 left-0 z-30 w-60 rounded-2xl border border-white/[0.08] p-2.5", composerBg)}
                 >
                   <button
                     type="button"
@@ -1417,7 +1417,7 @@ export default function ChatPage() {
               )}
             </div>
 
-            <div className={cn("chatgpt-composer-shell flex min-h-12 flex-1 items-end gap-1.5 rounded-[16px] border border-[color:var(--border)] px-3 py-2", composerBg)}>
+            <div className={cn("chatgpt-composer-shell flex min-h-12 flex-1 items-end gap-1.5 rounded-2xl border border-[color:var(--border)] px-3 py-2", composerBg)}>
               <div className="flex min-h-8 flex-1 items-center px-1 py-0.5">
                 <textarea
                   ref={textareaRef}

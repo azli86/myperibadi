@@ -35,7 +35,7 @@ export default function TxnRefundModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full rounded-t-3xl border border-[var(--border)] bg-[var(--sheet-bg)] p-5 sm:max-w-[22rem] sm:rounded-3xl sm:p-6"
+        className="w-full rounded-t-2xl border border-[var(--border)] bg-[var(--sheet-bg)] p-5 sm:max-w-[22rem] sm:rounded-2xl sm:p-6"
       >
         <div className="flex flex-col items-center text-center">
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-500">

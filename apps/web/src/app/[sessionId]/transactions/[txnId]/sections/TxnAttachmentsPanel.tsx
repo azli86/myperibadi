@@ -38,7 +38,7 @@ export default function TxnAttachmentsPanel({
 
   return (
     <div className="sticky top-5 space-y-5">
-      <div className="flex min-h-[320px] flex-col overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--card)] lg:min-h-0">
+      <div className="flex min-h-[320px] flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] lg:min-h-0">
         <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4 md:px-6 md:py-5">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--muted)]">

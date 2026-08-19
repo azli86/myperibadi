@@ -871,7 +871,7 @@ export default function WarrantyListPage() {
               />
               <div
                 data-swipe-sheet
-                className="app-sheet-panel relative z-10 flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] touch-pan-y md:max-h-[86vh] md:max-w-md md:rounded-[1.75rem]"
+                className="app-sheet-panel relative z-10 flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] touch-pan-y md:max-h-[86vh] md:max-w-md md:rounded-2xl"
                 {...searchSwipe}
               >
                 <AppSheetHeader

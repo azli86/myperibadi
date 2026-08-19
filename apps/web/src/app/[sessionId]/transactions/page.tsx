@@ -2061,7 +2061,7 @@ const currentCycleKeyStr = useMemo(
  return (
  <div key={date} className="space-y-3">
  <div
-   className="w-full max-w-full overflow-hidden rounded-2xl border md:rounded-[16px]"
+   className="w-full max-w-full overflow-hidden rounded-2xl border md:rounded-2xl"
  style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
  >
   <div

@@ -1351,9 +1351,9 @@ export default function TransactionDetailPage() {
           />
           <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
             <div className="animate-pulse space-y-4">
-              <div className="h-40 rounded-[16px] bg-[var(--surface-tint)]" />
-              <div className="h-64 rounded-[16px] bg-[var(--surface-tint)]" />
-              <div className="h-40 rounded-[16px] bg-[var(--surface-tint)]" />
+              <div className="h-40 rounded-2xl bg-[var(--surface-tint)]" />
+              <div className="h-64 rounded-2xl bg-[var(--surface-tint)]" />
+              <div className="h-40 rounded-2xl bg-[var(--surface-tint)]" />
             </div>
           </DesktopPageBody>
         </div>
@@ -1384,7 +1384,7 @@ export default function TransactionDetailPage() {
         />
 
         <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
-          <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-5 text-center">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 text-center">
             {error && (
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/10">
                 <AlertTriangle size={26} className="text-rose-500" />
@@ -1581,7 +1581,7 @@ export default function TransactionDetailPage() {
                     ? "?tab=fuel"
                     : ""
               }`}
-              className="mt-3 flex items-center gap-3 rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
+              className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--accent2)]">
                 <Car size={18} />
@@ -1610,7 +1610,7 @@ export default function TransactionDetailPage() {
             splitBill ? (
               <Link
                 href={`/${sessionId}/split-bills`}
-                className="mt-3 flex items-center gap-3 rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
+                className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--accent)]">
                   <Users size={18} />
@@ -1633,7 +1633,7 @@ export default function TransactionDetailPage() {
             ) : (
               <Link
                 href={`/${sessionId}/split-bills?create=1&txn=${txn?.id}`}
-                className="mt-3 flex items-center gap-3 rounded-[16px] border border-dashed border-[var(--border)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
+                className="mt-3 flex items-center gap-3 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)]">
                   <Users size={18} />
@@ -1660,7 +1660,7 @@ export default function TransactionDetailPage() {
               type="button"
               onClick={addTxnToInventory}
               disabled={invAdding}
-              className="mt-3 flex w-full items-center gap-3 rounded-[16px] border border-dashed border-[var(--border)] bg-[var(--card)] p-3.5 text-left transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30 disabled:opacity-50"
+              className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-3.5 text-left transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30 disabled:opacity-50"
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600">
                 {invAdding ? <Loader2 size={18} className="animate-spin" /> : <Package size={18} />}
@@ -1679,7 +1679,7 @@ export default function TransactionDetailPage() {
               <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
             </button>
           ) : invAdded ? (
-            <div className="mt-3 flex items-center gap-3 rounded-[16px] border border-emerald-500/20 bg-emerald-500/5 p-3.5">
+            <div className="mt-3 flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3.5">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600">
                 <Package size={18} />
               </span>

@@ -521,8 +521,8 @@ export default function SubscriptionDetailPage() {
         <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
           <div className="animate-pulse space-y-4">
             <div className="h-44 rounded-2xl bg-[var(--surface-tint)]" />
-            <div className="h-64 rounded-[16px] bg-[var(--surface-tint)]" />
-            <div className="h-40 rounded-[16px] bg-[var(--surface-tint)]" />
+            <div className="h-64 rounded-2xl bg-[var(--surface-tint)]" />
+            <div className="h-40 rounded-2xl bg-[var(--surface-tint)]" />
           </div>
         </DesktopPageBody>
       </div>

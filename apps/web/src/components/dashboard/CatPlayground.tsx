@@ -1798,7 +1798,7 @@ export function CatPlayground({
   const playgroundCard = (
     <div
       className={cn(
-        "catpg relative overflow-hidden rounded-[22px] border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-soft)]",
+        "catpg relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-soft)]",
         compact ? "p-3" : "p-4",
         presentation === "chip" ? "border-0 shadow-none" : className,
       )}

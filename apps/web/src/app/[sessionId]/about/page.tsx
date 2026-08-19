@@ -149,7 +149,7 @@ export default function AboutPage() {
         <DesktopPageHeader title={tr("Tentang Apps", "About App")} homeHref={`/${sessionId}`} />
         <DesktopPageBody className="space-y-6">
         {/* Hero Card */}
-        <div className="relative overflow-hidden rounded-[16px] border border-[var(--border)] bg-[var(--card)] shadow-sm">
+        <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
           <div className="relative grid gap-5 p-6 md:grid-cols-[1.3fr_0.7fr] md:gap-6 md:p-8">
             <div className="flex flex-col gap-5">
               <div className="flex items-start gap-4">
@@ -177,7 +177,7 @@ export default function AboutPage() {
             </div>
 
             {/* Company Identity Sidebar */}
-            <div className="rounded-[16px] border border-[var(--border)] bg-[var(--surface-tint)]/30 p-5">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-5">
               <p className="text-[0.625rem] font-black uppercase tracking-[0.24em] text-[var(--muted)]">{tr("Identiti Syarikat", "Company Identity")}</p>
               <div className="mt-4 divide-y divide-[var(--border)]">
                 <div className="py-3">
@@ -198,7 +198,7 @@ export default function AboutPage() {
           {/* Left Column */}
           <div className="space-y-5">
             {/* Preferences */}
-            <div className="rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]">
                   <Globe size={20} />
@@ -221,7 +221,7 @@ export default function AboutPage() {
             </div>
 
             {/* Privacy */}
-            <div className="rounded-[16px] border border-[var(--border)] bg-[var(--surface-tint)] p-6 shadow-sm">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-6 shadow-sm">
               <div className="flex items-start gap-4">
                 <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--muted)]">
                   <ShieldCheck size={20} />
@@ -244,7 +244,7 @@ export default function AboutPage() {
             {/* Changelog */}
             <Link
               href={`/${sessionId}/whatsnew`}
-              className="block rounded-[16px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm transition-colors hover:border-[var(--text)]"
+              className="block rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm transition-colors hover:border-[var(--text)]"
             >
               <div className="flex items-center justify-between gap-4">
                 <div className="flex min-w-0 items-center gap-3">

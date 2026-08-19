@@ -163,7 +163,7 @@ export function DashboardVehicleHeroRow({
       return (
         <section
           className={cn(
-            "overflow-hidden rounded-[22px] border border-[color:var(--skeleton-border)] bg-[var(--skeleton-panel)] shadow-[var(--shadow-card)]",
+            "overflow-hidden rounded-2xl border border-[color:var(--skeleton-border)] bg-[var(--skeleton-panel)] shadow-[var(--shadow-card)]",
             className,
           )}
           aria-busy="true"
@@ -277,7 +277,7 @@ export function DashboardVehicleHeroRow({
     return (
       <section
         className={cn(
-          "overflow-hidden rounded-[22px] border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-card)]",
+          "overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-card)]",
           className,
         )}
       >

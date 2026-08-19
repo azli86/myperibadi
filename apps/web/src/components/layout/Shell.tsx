@@ -3091,7 +3091,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     }
                     onClick={(event) => event.preventDefault()}
                     className={cn(
-                      "flex h-[62px] touch-manipulation select-none items-center justify-center rounded-[22px] border transition-all duration-150 active:scale-[0.94] disabled:opacity-50",
+                      "flex h-[62px] touch-manipulation select-none items-center justify-center rounded-2xl border transition-all duration-150 active:scale-[0.94] disabled:opacity-50",
                       isLight
                         ? "border-[var(--border)] bg-[var(--card)] text-slate-900 hover:bg-[var(--surface-tint)]"
                         : "border-[var(--border)] bg-[var(--card)] text-white hover:bg-[var(--surface-tint)]",
@@ -3109,7 +3109,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   void handleLogout();
                 }}
                 className={cn(
-                  "flex h-[62px] select-none items-center justify-center rounded-[22px] border text-[0.7rem] font-black uppercase tracking-[0.14em] transition-all active:scale-[0.94]",
+                  "flex h-[62px] select-none items-center justify-center rounded-2xl border text-[0.7rem] font-black uppercase tracking-[0.14em] transition-all active:scale-[0.94]",
                   isLight
                     ? "border-[var(--border)] bg-[var(--card)] text-slate-500 hover:bg-[var(--surface-tint)]"
                     : "border-[var(--border)] bg-[var(--card)] text-white/60 hover:bg-[var(--surface-tint)]",
@@ -3123,7 +3123,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 onPointerDown={(event) => handlePinPointerDown(event, "0")}
                 onClick={(event) => event.preventDefault()}
                 className={cn(
-                  "flex h-[62px] touch-manipulation select-none items-center justify-center rounded-[22px] backdrop-blur-md transition-all duration-150 active:scale-[0.94] disabled:opacity-50",
+                  "flex h-[62px] touch-manipulation select-none items-center justify-center rounded-2xl backdrop-blur-md transition-all duration-150 active:scale-[0.94] disabled:opacity-50",
                   isLight
                     ? "bg-white/60 text-slate-900 hover:bg-white/80"
                     : "bg-white/[0.10] text-white hover:bg-white/[0.16]",
@@ -3139,7 +3139,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 onPointerDown={handlePinDeletePointerDown}
                 onClick={(event) => event.preventDefault()}
                 className={cn(
-                  "flex h-[62px] select-none items-center justify-center rounded-[22px] border transition-all active:scale-[0.94] disabled:opacity-35",
+                  "flex h-[62px] select-none items-center justify-center rounded-2xl border transition-all active:scale-[0.94] disabled:opacity-35",
                   isLight
                     ? "border-[var(--border)] bg-[var(--card)] text-slate-700 hover:bg-[var(--surface-tint)]"
                     : "border-[var(--border)] bg-[var(--card)] text-white/70 hover:bg-[var(--surface-tint)]",
@@ -3451,7 +3451,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           {showMobileHeader && (
             <section className="lg:hidden mb-4">
               <div className={cn(
-                "relative overflow-hidden rounded-[30px] border px-4 py-3.5 backdrop-blur-2xl",
+                "relative overflow-hidden rounded-2xl border px-4 py-3.5 backdrop-blur-2xl",
                 isLight
                   ? "border-white/80 bg-white/82 text-slate-950"
                   : "border-white/10 bg-white/[0.075] text-white",

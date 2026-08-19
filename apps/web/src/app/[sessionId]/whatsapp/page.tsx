@@ -675,7 +675,7 @@ export default function WhatsAppPage() {
             className="space-y-4 md:space-y-5"
           >
             {/* Link Account Card */}
-            <div className={cn("flex flex-col items-center space-y-6 rounded-[16px] p-4 text-center transition-all md:space-y-8 md:rounded-[16px] md:p-7", linkAccountCardClass)}>
+            <div className={cn("flex flex-col items-center space-y-6 rounded-2xl p-4 text-center transition-all md:space-y-8 md:rounded-2xl md:p-7", linkAccountCardClass)}>
               
               <div className="max-w-md space-y-2.5 md:space-y-4">
                 <div className={cn("mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl md:mb-5 md:h-16 md:w-16", iconBgClass)}>
@@ -689,7 +689,7 @@ export default function WhatsAppPage() {
                 </p>
               </div>
 
-              <div className={cn("w-full max-w-xl space-y-3 rounded-2xl border px-3 py-3 md:space-y-4 md:rounded-[16px] md:px-6 md:py-6", innerCardClass)}>
+              <div className={cn("w-full max-w-xl space-y-3 rounded-2xl border px-3 py-3 md:space-y-4 md:rounded-2xl md:px-6 md:py-6", innerCardClass)}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className={cn("text-[0.8125rem] font-semibold tracking-tight md:text-sm md:font-black", primaryTextClass)}>
@@ -760,7 +760,7 @@ export default function WhatsAppPage() {
                   <button
                     onClick={startConnect}
                     className={cn(
-                      "relative z-10 flex aspect-square w-full flex-col items-center justify-center space-y-3 rounded-2xl border transition-all duration-300 group-hover:-translate-y-1 md:space-y-5 md:rounded-[16px]",
+                      "relative z-10 flex aspect-square w-full flex-col items-center justify-center space-y-3 rounded-2xl border transition-all duration-300 group-hover:-translate-y-1 md:space-y-5 md:rounded-2xl",
                       isLight 
                         ? "bg-[var(--card2)] hover:bg-[var(--page-bg)]/80" 
                         : "bg-white/[0.02] hover:bg-[var(--card2)] border-white/10"
@@ -779,7 +779,7 @@ export default function WhatsAppPage() {
                     </div>
                   </button>
                 ) : (sessionStatus === "loading" || sessionStatus === "starting") ? (
-                  <div className={cn("relative z-10 flex aspect-square w-full flex-col items-center justify-center space-y-3 rounded-2xl border md:space-y-5 md:rounded-[16px]", innerCardClass)}>
+                  <div className={cn("relative z-10 flex aspect-square w-full flex-col items-center justify-center space-y-3 rounded-2xl border md:space-y-5 md:rounded-2xl", innerCardClass)}>
                     <RefreshCw className={cn("animate-spin md:hidden", accentTextClass)} size={28} strokeWidth={3} /><RefreshCw className={cn("hidden animate-spin md:block", accentTextClass)} size={40} strokeWidth={3} />
                     <p className={cn("text-xs font-bold uppercase tracking-[0.16em]", accentTextClass)}>
                       {t.generatingQR}
@@ -787,7 +787,7 @@ export default function WhatsAppPage() {
                   </div>
                 ) : sessionStatus === "connected" ? (
                   <div className={cn(
-                    "relative z-10 flex aspect-square w-full flex-col items-center justify-center space-y-4 rounded-2xl border-2 transition-all md:space-y-6 md:rounded-[16px]", 
+                    "relative z-10 flex aspect-square w-full flex-col items-center justify-center space-y-4 rounded-2xl border-2 transition-all md:space-y-6 md:rounded-2xl", 
                     isLight ? "bg-emerald-50/50 border-emerald-200" : "bg-[var(--btn-primary-bg)]/[0.02] border-emerald-500/20"
                   )}>
                     <div className={cn(
@@ -805,7 +805,7 @@ export default function WhatsAppPage() {
                   </div>
                 ) : needsReconnect ? (
                   <div className={cn(
-                    "relative z-10 flex aspect-square w-full flex-col items-center justify-center space-y-4 rounded-2xl border-2 p-4 text-center md:space-y-5 md:rounded-[16px] md:p-6",
+                    "relative z-10 flex aspect-square w-full flex-col items-center justify-center space-y-4 rounded-2xl border-2 p-4 text-center md:space-y-5 md:rounded-2xl md:p-6",
                     isLight ? "bg-amber-50/70 border-amber-200" : "bg-amber-400/[0.04] border-amber-400/20"
                   )}>
                     <div className={cn(
@@ -836,7 +836,7 @@ export default function WhatsAppPage() {
                   </div>
                 ) : sessionStatus === "error" ? (
                   <div className={cn(
-                    "relative z-10 flex aspect-square w-full flex-col items-center justify-center space-y-3 rounded-2xl border-2 p-4 text-center md:space-y-5 md:rounded-[16px] md:p-6", 
+                    "relative z-10 flex aspect-square w-full flex-col items-center justify-center space-y-3 rounded-2xl border-2 p-4 text-center md:space-y-5 md:rounded-2xl md:p-6", 
                     isLight ? "bg-red-50/50 border-red-200" : "bg-red-500/[0.02] border-red-500/20"
                   )}>
                     <div className={cn(
@@ -851,7 +851,7 @@ export default function WhatsAppPage() {
                     </div>
                   </div>
                 ) : sessionStatus === "pairing" ? (
-                  <div className={cn("relative z-10 flex aspect-[4/3] w-full flex-col items-center justify-center space-y-4 rounded-2xl border p-4 text-center md:space-y-6 md:rounded-[16px] md:p-6", isLight ? "bg-[var(--card2)]" : "bg-white/[0.02] border-white/10")}>
+                  <div className={cn("relative z-10 flex aspect-[4/3] w-full flex-col items-center justify-center space-y-4 rounded-2xl border p-4 text-center md:space-y-6 md:rounded-2xl md:p-6", isLight ? "bg-[var(--card2)]" : "bg-white/[0.02] border-white/10")}>
                     <Smartphone size={28} strokeWidth={2.5} className={cn("md:hidden", accentTextClass)} /><Smartphone size={36} strokeWidth={2.5} className={cn("hidden md:block", accentTextClass)} />
                     <div className="space-y-4 w-full">
                       <p className={cn("text-[0.625rem] font-bold uppercase tracking-widest", mutedTextClass)}>
@@ -877,7 +877,7 @@ export default function WhatsAppPage() {
                     </div>
                   </div>
                 ) : qrCode ? (
-                  <div className={cn("relative z-10 rounded-[16px] border-4 p-3 transition-all duration-300 hover:scale-105 md:rounded-2xl md:p-5", isLight ? "bg-white border-slate-100" : "bg-white border-white/10")}>
+                  <div className={cn("relative z-10 rounded-2xl border-4 p-3 transition-all duration-300 hover:scale-105 md:rounded-2xl md:p-5", isLight ? "bg-white border-slate-100" : "bg-white border-white/10")}>
                     <img src={qrCode} alt="WhatsApp QR Code" className="aspect-square h-auto w-full rounded-2xl object-contain md:rounded-2xl" />
                   </div>
                 ) : null}
@@ -990,8 +990,8 @@ export default function WhatsAppPage() {
             transition={{ duration: 0.2 }}
             className="space-y-4 md:space-y-5"
           >
-            <div className={cn("px-1 py-3 transition-all md:rounded-[16px] md:border md:p-8 lg:rounded-[16px]", pageBackgroundCardClass)}>
-              <div className={cn("mb-4 rounded-2xl border px-3 py-3 md:mb-5 md:rounded-[16px] md:px-6 md:py-6", innerCardClass)}>
+            <div className={cn("px-1 py-3 transition-all md:rounded-2xl md:border md:p-8 lg:rounded-2xl", pageBackgroundCardClass)}>
+              <div className={cn("mb-4 rounded-2xl border px-3 py-3 md:mb-5 md:rounded-2xl md:px-6 md:py-6", innerCardClass)}>
                 <div className="flex items-start justify-between gap-3 md:gap-4">
                   <div className="flex items-start gap-3 md:gap-4">
                     <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl border md:h-12 md:w-12 md:rounded-2xl", isLight ? "bg-[var(--card2)]" : "bg-[var(--card2)] border-white/10")}>
@@ -1025,7 +1025,7 @@ export default function WhatsAppPage() {
               </div>
 
               {!isLinked ? (
-                <div className={cn("rounded-2xl border border-dashed px-4 py-8 text-center md:rounded-[16px] md:px-8 md:py-12", isLight ? "border-slate-200 bg-[var(--card2)]/60" : "border-white/10 bg-white/[0.02]")}>
+                <div className={cn("rounded-2xl border border-dashed px-4 py-8 text-center md:rounded-2xl md:px-8 md:py-12", isLight ? "border-slate-200 bg-[var(--card2)]/60" : "border-white/10 bg-white/[0.02]")}>
                   <Smartphone size={24} className={cn("mx-auto mb-2 md:hidden", mutedTextClass)} /><Smartphone size={30} className={cn("mx-auto mb-3 hidden md:block", mutedTextClass)} />
                   <p className={cn("text-xs font-semibold md:text-sm md:font-bold", mutedTextClass)}>
                     {lang === "EN"
@@ -1039,7 +1039,7 @@ export default function WhatsAppPage() {
                   <p className="text-xs font-semibold md:text-sm md:font-bold">{groupErrorMsg}</p>
                 </div>
               ) : availableGroups.length === 0 ? (
-                <div className={cn("rounded-2xl border border-dashed px-4 py-8 text-center md:rounded-[16px] md:px-8 md:py-12", isLight ? "border-slate-200 bg-[var(--card2)]/60 text-slate-500" : "border-white/10 bg-white/[0.02] text-white/50")}>
+                <div className={cn("rounded-2xl border border-dashed px-4 py-8 text-center md:rounded-2xl md:px-8 md:py-12", isLight ? "border-slate-200 bg-[var(--card2)]/60 text-slate-500" : "border-white/10 bg-white/[0.02] text-white/50")}>
                   <Users size={24} className="mx-auto mb-2 opacity-70 md:hidden" /><Users size={30} className="mx-auto mb-3 hidden opacity-70 md:block" />
                   <p className={cn("text-base font-semibold tracking-tight md:text-lg md:font-black", primaryTextClass)}>
                     {lang === "EN" ? "No groups found yet" : "Belum jumpa group lagi"}
@@ -1081,7 +1081,7 @@ export default function WhatsAppPage() {
 
                     if (filtered.length === 0 && searchQuery) {
                       return (
-                        <div className={cn("rounded-2xl border border-dashed py-8 text-center md:rounded-[16px] md:py-12", isLight ? "border-slate-200 bg-[var(--card2)]/50" : "border-white/10 bg-white/[0.02]")}>
+                        <div className={cn("rounded-2xl border border-dashed py-8 text-center md:rounded-2xl md:py-12", isLight ? "border-slate-200 bg-[var(--card2)]/50" : "border-white/10 bg-white/[0.02]")}>
                           <Users size={28} className={cn("mx-auto mb-2", mutedTextClass)} />
                           <p className={cn("text-xs font-semibold md:text-sm md:font-bold", mutedTextClass)}>
                             {lang === "EN" ? `No groups for "${searchQuery}"` : `Tiada group untuk "${searchQuery}"`}
@@ -1321,7 +1321,7 @@ export default function WhatsAppPage() {
             transition={{ duration: 0.2 }}
             className="space-y-5 md:space-y-8"
           >
-            <div className={cn("rounded-2xl border p-4 transition-all md:rounded-[16px] md:p-8", pageBackgroundCardClass)}>
+            <div className={cn("rounded-2xl border p-4 transition-all md:rounded-2xl md:p-8", pageBackgroundCardClass)}>
               <div className="mb-5 flex items-center gap-3 md:mb-8 md:gap-4">
                 <div className={cn("flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl md:h-14 md:w-14", iconBgClass)}>
                   <Bot size={22} className={cn("md:hidden", accentTextClass)} /><Bot size={28} className={cn("hidden md:block", accentTextClass)} />
@@ -1381,7 +1381,7 @@ export default function WhatsAppPage() {
             </div>
 
             {/* Auto-Mapping Info Box */}
-            <div className={cn("flex flex-col items-center justify-between gap-4 rounded-2xl border p-4 transition-all md:flex-row md:gap-6 md:rounded-[16px] md:p-8", isLight ? "bg-slate-900 border-slate-900 text-white" : "bg-[var(--card2)] text-white")}>
+            <div className={cn("flex flex-col items-center justify-between gap-4 rounded-2xl border p-4 transition-all md:flex-row md:gap-6 md:rounded-2xl md:p-8", isLight ? "bg-slate-900 border-slate-900 text-white" : "bg-[var(--card2)] text-white")}>
               <div className="flex items-start gap-3 md:gap-4">
                 <div className={cn("flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full md:h-12 md:w-12", isLight ? "bg-white/10" : "bg-[var(--btn-primary-bg)]/10 text-emerald-400")}>
                   <Zap size={18} className={cn("md:hidden", isLight ? "text-white" : "text-emerald-400")} /><Zap size={24} className={cn("hidden md:block", isLight ? "text-white" : "text-emerald-400")} />

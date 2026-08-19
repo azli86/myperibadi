@@ -84,7 +84,7 @@ export function DashboardBnplHeroRow({
     return (
       <div
         className={cn(
-          "flex items-center justify-between rounded-[18px] border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-card)]",
+          "flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-card)]",
           className,
         )}
       >
@@ -106,7 +106,7 @@ export function DashboardBnplHeroRow({
     <Link
       href={`/${sessionId}/bnpl`}
       className={cn(
-        "group flex items-center justify-between gap-4 rounded-[18px] border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-card)] transition hover:border-[var(--border-strong)]",
+        "group flex items-center justify-between gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-card)] transition hover:border-[var(--border-strong)]",
         className,
       )}
     >
