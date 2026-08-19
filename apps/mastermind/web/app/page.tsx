@@ -96,7 +96,6 @@ export default function Home() {
           return <div className="term-line" key={t.id}>
             <span className="t-time">[{time}]</span>
             <span className={"t-type "+(t.type==="expense"?"exp":"inc")}>{type}</span>
-            <span className="t-amt">RM {Number(t.amount).toLocaleString("ms-MY",{minimumFractionDigits:2})}</span>
             <span className="t-vendor">{t.vendor_or_source||"—"}</span>
             <span className="t-user">{t.user_name||t.user_email||"—"}</span>
             <span className="t-wallet">{t.wallet_name||""}</span>
