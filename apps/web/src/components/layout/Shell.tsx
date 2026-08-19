@@ -4067,7 +4067,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
                   <section className="grid grid-cols-3 gap-2">
                     {[
-                      { name: lang === "BM" ? "Bantuan" : "Help", href: `/${sessionId}/help`, icon: HelpCircle },
+                      { name: lang === "BM" ? "Command Bot" : "Bot Command", href: `/${sessionId}/bot-command`, icon: Bot },
                       { name: lang === "BM" ? "Tetapan" : "Settings", href: `/${sessionId}/settings`, icon: Settings },
                     ].map((item) => (
                       <button
