@@ -35,7 +35,8 @@ export default function LivePage() {
       try {
         const r = await fetch("/api/live/api?limit=25", { credentials: "include" });
         if (r.ok) {
-          setReqs(await r.json());
+          const data = await r.json();
+          setReqs([...data].reverse());
           setLastUpdate(new Date().toLocaleTimeString("en-GB", {
             hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
             timeZone: "Asia/Kuala_Lumpur",
