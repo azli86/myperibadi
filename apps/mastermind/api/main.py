@@ -229,7 +229,7 @@ async def dashboard(db: AsyncSession = Depends(db_session)):
     values = (await db.execute(text("""
         SELECT
           (SELECT count(*) FROM users) users,
-          (SELECT count(*) FROM users WHERE is_active = true) active_users,
+          (SELECT count(*) FROM users WHERE email_verified_at IS NOT NULL) active_users,
           (SELECT count(*) FROM households) households,
           (SELECT count(*) FROM transactions) transactions,
           (SELECT count(*) FROM transactions WHERE created_at >= now() - interval '30 days') transactions_30d,
