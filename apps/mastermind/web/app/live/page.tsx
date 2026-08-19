@@ -100,6 +100,14 @@ export default function LivePage() {
             badge = "RMAH";
             cls = "house";
             main = `Buat household ${r.detail1 || ""}`.trim();
+          } else if (r.kind === "LOAN") {
+            badge = "LOAN";
+            cls = "loan";
+            main = `Buat pinjaman ${r.detail1 || ""}`.trim();
+          } else if (r.kind === "JOIN") {
+            badge = "JOIN";
+            cls = "join";
+            main = `Sertai household ${r.detail1 || ""}`.trim();
           } else {
             badge = "NEW";
             cls = "sig";
