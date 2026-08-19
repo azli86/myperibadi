@@ -272,6 +272,7 @@ export default function HelpPage() {
       { id: "event", label: tr("Acara Saya (My Event)", "My Event"), icon: <CalendarDays size={16} />, badge: "Acara" },
       { id: "security", label: tr("6PIN & Sekuriti", "6PIN & Security"), icon: <KeyRound size={16} />, badge: "Akses" },
       { id: "tips", label: tr("Tips & Pencegahan", "Tips & Safety"), icon: <Shield size={16} />, badge: "Panduan" },
+      { id: "request", label: tr("Hantar Request & Ticket", "Submit Request & Ticket"), icon: <HelpCircle size={16} />, badge: "Hantar" },
     ],
     [tr]
   )
@@ -381,7 +382,7 @@ export default function HelpPage() {
               <button
                 key={s.id}
                 type="button"
-                onClick={() => setActiveSectionId(s.id)}
+                onClick={() => s.id === "request" ? (window.location.href = `/${sessionId}/request`) : setActiveSectionId(s.id)}
                 className={cn(
                   "flex shrink-0 items-center gap-1.5 rounded-2xl px-3.5 py-2 text-xs font-bold transition active:scale-95",
                   isActive
@@ -413,7 +414,7 @@ export default function HelpPage() {
                   <button
                     key={s.id}
                     type="button"
-                    onClick={() => setActiveSectionId(s.id)}
+                    onClick={() => s.id === "request" ? (window.location.href = `/${sessionId}/request`) : setActiveSectionId(s.id)}
                     className={cn(
                       "group flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-bold transition active:scale-[0.98]",
                       isActive
