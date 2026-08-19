@@ -639,6 +639,50 @@ async def _notify_admin_telegram(text_value: str) -> None:
     except Exception:
         pass
 
+async def _notify_ticket_admins_telegram(ticket, user_email: str) -> None:
+    """Notify all active admins (with a linked Telegram) about a new support ticket."""
+    bot_token = TELEGRAM_BOT_TOKEN
+    if not bot_token:
+        return
+    try:
+        async with database.SessionLocal() as db:
+            admin_ids = (await db.execute(
+                select(models.User.id).where(models.User.is_admin.is_(True), models.User.is_active.is_(True))
+            )).scalars().all()
+            if not admin_ids:
+                return
+            rows = (await db.execute(
+                select(models.TelegramLink.telegram_chat_id)
+                .where(models.TelegramLink.user_id.in_(admin_ids), models.TelegramLink.is_active.is_(True))
+            )).scalars().all()
+            chat_ids = {str(c) for c in rows if c}
+    except Exception:
+        return
+    if not chat_ids:
+        return
+    kind_label = {"feature": "Feature Request", "support": "Support", "bug": "Bug"}.get(ticket.kind, ticket.kind)
+    priority_label = str(ticket.priority or "medium")
+    text = (
+        f"<b>🛎 Ticket Baharu</b> #{ticket.id}\n"
+        f"<b>{kind_label}</b> · Prioriti: {priority_label}\n"
+        f"<b>{html.escape(str(ticket.title))}</b>\n"
+    )
+    if ticket.description:
+        text += f"{html.escape(str(ticket.description)[:400])}\n"
+    text += f"\nDari: {html.escape(user_email or '-')}"
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            for cid in chat_ids:
+                try:
+                    await client.post(
+                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                        json={"chat_id": cid, "text": text[:3900], "parse_mode": "HTML"},
+                    )
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
 def _default_notice_banner_settings() -> dict[str, Any]:
     return {
         "personal": {
@@ -13838,6 +13882,10 @@ async def create_support_ticket(
     db.add(t)
     await db.commit()
     await db.refresh(t)
+    try:
+        asyncio.create_task(_notify_ticket_admins_telegram(t, current_user.email))
+    except Exception:
+        pass
     return t
 
 @app.get("/support/tickets/mine", response_model=List[schemas.SupportTicketResponse])
