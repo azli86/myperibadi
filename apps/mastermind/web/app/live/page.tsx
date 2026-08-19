@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const parseUtc = (s?: string | null) => {
   if (!s) return null;
@@ -14,6 +14,12 @@ export default function LivePage() {
   const [reqs, setReqs] = useState<any[]>([]);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [paused, setPaused] = useState(false);
+  const termRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = termRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [reqs]);
 
   useEffect(() => {
     (async () => {
@@ -64,10 +70,11 @@ export default function LivePage() {
           <button className="lv-pause" onClick={() => setPaused(p => !p)}>{paused ? "▶ Resume" : "❚❚ Pause"}</button>
           <span className="lv-dot" style={{ opacity: paused ? 0.3 : 1 }} />
           <span>{paused ? "PAUSED" : "LIVE"}</span>
+          <span className="lv-count">{reqs.length} req</span>
           <span className="lv-upd">kemaskini {lastUpdate}</span>
         </div>
       </div>
-      <div className="lv-term">
+      <div className="lv-term" ref={termRef}>
         {reqs.map((r: any) => (
           <div className="lv-line" key={r.id}>
             <span className="lv-time">[{fmtStamp(r.created_at)}]</span>
