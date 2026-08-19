@@ -38,10 +38,12 @@ export default function ShareTargetPage() {
     }
 
     // Screenshot share lands directly in chat with the image attached.
+    // Hard navigation: PWA share windows are sometimes long-lived client-side
+    // routers; a full location replace guarantees the chat page mounts fresh.
     window.sessionStorage.setItem(`pin_verified_${sessionId}`, "true")
     window.sessionStorage.setItem(getSharedTransactionPinBypassStorageKey(sessionId), "true")
     localStorage.removeItem(PENDING_SHARED_CHAT_TOKEN_STORAGE_KEY)
-    router.replace(`/${sessionId}/chat?${SHARED_CHAT_TOKEN_QUERY_KEY}=${encodeURIComponent(token)}`)
+    window.location.replace(`/${sessionId}/chat?${SHARED_CHAT_TOKEN_QUERY_KEY}=${encodeURIComponent(token)}`)
   }, [error, router, token])
 
   return (
