@@ -140,7 +140,7 @@
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
-  --radius-2xl: 24px;
+  --radius-2xl: 16px;
   --radius-3xl: 28px;
   --radius-4xl: 32px;
   --card-radius-xl: 20px;
@@ -637,8 +637,8 @@ div:has(> [data-portal-modal]) {
  * Use class names — do NOT rely on rounded-t-* + sm:rounded-* (global CSS zeros bottoms)
  */
 .app-sheet-panel {
-  --app-sheet-r: 28px;
-  --app-sheet-r-desktop: 24px;
+  --app-sheet-r: 16px;
+  --app-sheet-r-desktop: 16px;
   border-top-left-radius: var(--app-sheet-r) !important;
   border-top-right-radius: var(--app-sheet-r) !important;
   border-bottom-left-radius: 0 !important;
@@ -660,18 +660,18 @@ div:has(> [data-portal-modal]) {
 }
 
 .app-sheet-panel--sm {
-  --app-sheet-r: 24px;
-  --app-sheet-r-desktop: 20px;
+  --app-sheet-r: 16px;
+  --app-sheet-r-desktop: 16px;
 }
 
 .app-sheet-panel--lg {
-  --app-sheet-r: 32px;
+  --app-sheet-r: 16px;
   --app-sheet-r-desktop: 16px;
 }
 
 .app-sheet-panel--xl {
-  --app-sheet-r: 30px;
-  --app-sheet-r-desktop: 24px;
+  --app-sheet-r: 16px;
+  --app-sheet-r-desktop: 16px;
 }
 
 /* Always bottom-docked (menus): never full-round bottoms */
@@ -683,8 +683,8 @@ div:has(> [data-portal-modal]) {
 }
 
 .app-sheet-panel-header {
-  border-top-left-radius: var(--app-sheet-r, 28px) !important;
-  border-top-right-radius: var(--app-sheet-r, 28px) !important;
+  border-top-left-radius: var(--app-sheet-r, 16px) !important;
+  border-top-right-radius: var(--app-sheet-r, 16px) !important;
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
 }
@@ -702,8 +702,8 @@ div:has(> [data-portal-modal]) {
   }
 
   .app-sheet-panel-header {
-    border-top-left-radius: var(--app-sheet-r-desktop, 24px) !important;
-    border-top-right-radius: var(--app-sheet-r-desktop, 24px) !important;
+    border-top-left-radius: var(--app-sheet-r-desktop, 16px) !important;
+    border-top-right-radius: var(--app-sheet-r-desktop, 16px) !important;
     border-bottom-left-radius: 0 !important;
     border-bottom-right-radius: 0 !important;
   }
@@ -2457,7 +2457,7 @@ html[data-theme="light"] [class~="border-gray-300"] {
     --radius-md: 10px;
     --radius-lg: 12px;
     --radius-xl: 12px;
-    --radius-2xl: 14px;
+    --radius-2xl: 16px;
     --radius-3xl: 16px;
     --radius-4xl: 18px;
     --card-radius-xl: 12px;
