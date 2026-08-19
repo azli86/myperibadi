@@ -61,18 +61,21 @@ export default function LivePage() {
 
   return (
     <div className="lv-wrap">
-      <div className="lv-top">
-        <a className="lv-back" href="/">← Dashboard</a>
-        <div className="lv-title">LIVE · AKTIVITI</div>
-        <div className="lv-status">
-          <button className="lv-pause" onClick={() => setPaused(p => !p)}>{paused ? "▶ Resume" : "❚❚ Pause"}</button>
-          <span className="lv-dot" style={{ opacity: paused ? 0.3 : 1 }} />
+      <div className="ub-bar">
+        <div className="ub-win">
+          <button className="ub-btn close" aria-label="Tutup" onClick={()=>{window.location.href="/"}}><span>✕</span></button>
+          <button className="ub-btn min" aria-label="Kurangkan"><span>–</span></button>
+          <button className="ub-btn max" aria-label="Besarkan"><span>□</span></button>
+        </div>
+        <div className="ub-title">Aktiviti — Terminal</div>
+        <div className="ub-right">
+          <span className="ub-dot"/>
           <span>{paused ? "PAUSED" : "LIVE"}</span>
-          <span className="lv-count">{reqs.length} req</span>
-          <span className="lv-upd">kemaskini {lastUpdate}</span>
+          <button className="lv-pause" onClick={() => setPaused(p => !p)}>{paused ? "▶ Resume" : "❚❚ Pause"}</button>
         </div>
       </div>
-      <div className="lv-term" ref={termRef}>
+      <div className="ub-term" ref={termRef}>
+        <div className="ub-line muted">$ tail -f /var/log/mastermind/activity.log</div>
         {reqs.map((r: any) => {
           let badge = r.kind;
           let cls = "t";
@@ -104,6 +107,7 @@ export default function LivePage() {
           );
         })}
       </div>
+      <div className="ub-prompt"><span className="ub-user">admin</span>@<span className="ub-host">mastermind</span>:<span className="ub-path">~/live</span>$</div>
     </div>
   );
 }
