@@ -402,6 +402,13 @@ async def live_api(limit: int = 25, db: AsyncSession = Depends(db_session)):
                  coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
                  '' AS status, '' AS category_name, '' AS household_name
           FROM users u WHERE u.created_at >= now() - interval '7 days'
+          UNION ALL
+          SELECT 'UPDATE' AS kind, u.updated_at, 'profil' AS detail1,
+                 coalesce(u.email,'') AS detail2, NULL AS amount,
+                 coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
+                 '' AS status, '' AS category_name, '' AS household_name
+          FROM users u
+          WHERE u.updated_at > u.created_at AND u.updated_at >= now() - interval '7 days'
         ) q
         ORDER BY created_at DESC LIMIT :limit
     """), {"limit": limit})).mappings().all()

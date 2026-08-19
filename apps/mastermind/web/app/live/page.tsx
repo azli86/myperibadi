@@ -84,6 +84,10 @@ export default function LivePage() {
             badge = "LOGIN";
             cls = "log";
             main = r.status;
+          } else if (r.kind === "UPDATE") {
+            badge = "UPDT";
+            cls = "upd";
+            main = "Kemas kini akaun";
           } else {
             badge = "NEW";
             cls = "sig";
