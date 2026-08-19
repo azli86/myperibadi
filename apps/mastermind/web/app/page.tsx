@@ -85,27 +85,29 @@ export default function Home() {
   </>}
   {view==="users"&&<><div className="card"><div className="row" style={{justifyContent:"space-between"}}><input className="search" data-user-q placeholder="Cari nama atau e-mel" onChange={e=>{setUsers([]);setUsersOffset(0);void showUsers(e.target.value)}}/><span className="muted">{users.length} / {usersTotal} pengguna</span></div><table className="table"><thead><tr><th>Pengguna</th><th>Login</th><th>Status</th><th>Verified</th><th>Daftar</th><th></th></tr></thead><tbody>{users.map(u=><tr key={u.id}><td><strong>{u.name||"—"}</strong><br/><span className="muted">{u.email}</span></td><td>{u.auth_provider==="google"?<span className="login-badge"><GoogleIcon/><span>Google</span></span>:<span className="login-badge mail">@<span>Email</span></span>}</td><td><span className={u.is_active?"pill ok":"pill bad"}>{u.is_active?"Aktif":u.deactivated_reason||"Tidak aktif"}</span></td><td>{u.email_verified_at?"Ya":"Tidak"}</td><td>{new Date(u.created_at).toLocaleDateString("ms-MY")}</td><td><div className="row"><button className="ghost" onClick={()=>void openUser(u.id)}>Detail</button>{!u.email.endsWith("@invalid.local")&&<button className={u.is_active?"ghost danger":"ghost good"} disabled={busy} onClick={()=>void toggleActive(u)}>{u.is_active?"Nyahaktif":"Aktifkan"}</button>}</div></td></tr>)}</tbody></table>{users.length<usersTotal&&<div style={{textAlign:"center",marginTop:"12px"}}><button className="primary" onClick={()=>void showUsers(document.querySelector<HTMLInputElement>("[data-user-q]")?.value||"",true)}>Muat lagi</button></div>}</div>
   {detailUser && (
-    <div className="card detail">
-      <header className="detail-head"><h2>Detail Pengguna</h2><button className="ghost" onClick={()=>{setDetail(null);setDetailUser(null)}}>Tutup</button></header>
-      {detail && (
-        <>
-          <div className="kv"><span>Nama</span><b>{detail.name||"—"}</b></div>
-          <div className="kv"><span>E-mel</span><b>{detail.email}</b></div>
-          <div className="kv"><span>Telefon</span><b>{detail.phone||"—"}</b></div>
-          <div className="kv"><span>Provider</span><b>{detail.auth_provider||"email"}</b></div>
-          <div className="kv"><span>Verified</span><b>{detail.email_verified_at?"Ya":"Tidak"}</b></div>
-          <div className="kv"><span>Admin</span><b>{detail.is_admin?"Ya":"Tidak"}</b></div>
-          <div className="kv"><span>Status</span><b>{detail.is_active?"Aktif":detail.deactivated_reason||"Tidak aktif"}</b></div>
-          <div className="kv"><span>Daftar</span><b>{fmtDate(detail.created_at)}</b></div>
-          <div className="sub-title">Statistik</div>
-          <div className="row">{Object.entries(detail.stats||{}).map(([k,v])=><span className="pill" key={k}>{k.replace(/_/g," ")}: {String(v)}</span>)}</div>
-          <div className="sub-title">Keahlian Household</div>
-          {(detail.memberships||[]).length ? (
-            <table className="table"><thead><tr><th>Household</th><th>Role</th><th>Status</th></tr></thead><tbody>{detail.memberships.map((m:any)=><tr key={m.id}><td>{m.name}</td><td>{m.role}</td><td>{m.status}</td></tr>)}</tbody></table>
-          ) : <p className="muted">Tiada keahlian.</p>}
-        </>
-      )}
-    </div>
+    <div className="overlay" onClick={()=>{setDetail(null);setDetailUser(null)}}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <div className="modal-head"><h2>Detail Pengguna</h2><button className="ghost" onClick={()=>{setDetail(null);setDetailUser(null)}}>Tutup</button></div>
+        {detail && (
+          <>
+            <div className="kv"><span>Nama</span><b>{detail.name||"—"}</b></div>
+            <div className="kv"><span>E-mel</span><b>{detail.email}</b></div>
+            <div className="kv"><span>Telefon</span><b>{detail.phone||"—"}</b></div>
+            <div className="kv"><span>Provider</span><b>{detail.auth_provider||"email"}</b></div>
+            <div className="kv"><span>Verified</span><b>{detail.email_verified_at?"Ya":"Tidak"}</b></div>
+            <div className="kv"><span>Admin</span><b>{detail.is_admin?"Ya":"Tidak"}</b></div>
+            <div className="kv"><span>Status</span><b>{detail.is_active?"Aktif":detail.deactivated_reason||"Tidak aktif"}</b></div>
+            <div className="kv"><span>Daftar</span><b>{fmtDate(detail.created_at)}</b></div>
+            <div className="sub-title">Statistik</div>
+            <div className="row">{Object.entries(detail.stats||{}).map(([k,v])=><span className="pill" key={k}>{k.replace(/_/g," ")}: {String(v)}</span>)}</div>
+            <div className="sub-title">Keahlian Household</div>
+            {(detail.memberships||[]).length ? (
+              <table className="table"><thead><tr><th>Household</th><th>Role</th><th>Status</th></tr></thead><tbody>{detail.memberships.map((m:any)=><tr key={m.id}><td>{m.name}</td><td>{m.role}</td><td>{m.status}</td></tr>)}</tbody></table>
+            ) : <p className="muted">Tiada keahlian.</p>}
+          </>
+        )}
+        </div>
+      </div>
   )}
   </>}
   {view==="households"&&<><div className="card"><input className="search" placeholder="Cari nama household" onChange={e=>void showHouseholds(e.target.value)}/><table className="table"><thead><tr><th>Household</th><th>Pemilik</th><th>Ahli</th><th>Status</th><th>Daftar</th></tr></thead><tbody>{households.map(h=><tr key={h.id} onClick={()=>void openHousehold(h.id)} style={{cursor:"pointer"}}><td><strong>{h.name}</strong></td><td>{h.owner_name||h.id}</td><td>{h.member_count}</td><td>{h.status}</td><td>{new Date(h.created_at).toLocaleDateString("ms-MY")}</td></tr>)}</tbody></table></div>
