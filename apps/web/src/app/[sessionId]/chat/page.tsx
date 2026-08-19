@@ -555,27 +555,31 @@ export default function ChatPage() {
           throw new Error("Shared file is not an image")
         }
 
-        const fileName = decodeSharedHeaderValue(res.headers.get("x-shared-file-name")) || "shared-screenshot.png"
+        // Clean, friendly file name — phone share names like "temp_screenshot.png"
+        // or "Screenshot_20250612-103022.png" look noisy in the chat bubble.
+        const rawName = decodeSharedHeaderValue(res.headers.get("x-shared-file-name"))
+        const stamp = new Date()
+        const pad = (n: number) => String(n).padStart(2, "0")
+        const fileName = `screenshot-${stamp.getFullYear()}${pad(stamp.getMonth() + 1)}${pad(stamp.getDate())}-${pad(stamp.getHours())}${pad(stamp.getMinutes())}${pad(stamp.getSeconds())}.${(rawName || "png").split(".").pop()?.toLowerCase() || "png"}`
         const blob = await res.blob()
         if (cancelled) return
 
-        const file = new File([blob], fileName, { type: contentType })
-        handlePickFile(file)
+        const file = normalizeReceiptFile(new File([blob], fileName, { type: contentType }))
 
         const sharedText = [
           decodeSharedHeaderValue(res.headers.get("x-shared-title")),
           decodeSharedHeaderValue(res.headers.get("x-shared-text")),
           decodeSharedHeaderValue(res.headers.get("x-shared-url")),
-        ].filter(Boolean).join("\n")
+        ].filter(Boolean).join("\n").trim()
 
-        if (sharedText) {
-          setInput((current) => current.trim() ? current : sharedText)
-        }
-
+        // Auto-send: shared screenshot goes straight into the conversation.
         void fetch(`/share-target-file/${encodeURIComponent(sharedToken)}`, { method: "DELETE" })
+        window.setTimeout(() => {
+          void submitMessage(undefined, sharedText, file)
+        }, 0)
         showAlert(
-          lang === "EN" ? "Screenshot Attached" : "Screenshot Dilampirkan",
-          lang === "EN" ? "Screenshot is ready in chat." : "Screenshot sudah masuk dalam chat.",
+          lang === "EN" ? "Screenshot Sent" : "Screenshot Dihantar",
+          lang === "EN" ? "Screenshot is being processed in chat." : "Screenshot sedang diproses dalam chat.",
           "success"
         )
       } catch {
