@@ -52,11 +52,11 @@ export default function StatusScreen({
       )} />
 
       <div className="w-full max-w-2xl relative z-10">
-        <div className="bg-[var(--card)]/85 backdrop-blur-2xl border border-[var(--border)] rounded-[2rem] shadow-2xl p-8 md:p-10">
+        <div className="bg-[var(--card)]/85 backdrop-blur-2xl border border-[var(--border)] rounded-2xl shadow-2xl p-8 md:p-10">
           <div className="flex flex-col items-center text-center">
             {/* Icon */}
             <div className={cn(
-              "h-18 w-18 md:h-20 md:w-20 rounded-[1.75rem] flex items-center justify-center shadow-xl mb-6",
+              "h-18 w-18 md:h-20 md:w-20 rounded-2xl flex items-center justify-center shadow-xl mb-6",
               isDanger
                 ? "bg-red-500/10 text-red-500 shadow-red-500/10"
                 : "bg-[var(--accent-soft)] text-[var(--accent)]"

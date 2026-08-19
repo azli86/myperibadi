@@ -307,7 +307,7 @@ export default function BotCommandPage() {
       <div className="md:hidden">
         <div className="space-y-4 px-1 pt-1">
           {/* HERO */}
-          <section className="relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[var(--card)] p-5 text-[var(--text)] shadow-sm">
+          <section className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 text-[var(--text)] shadow-sm">
             <div className="pointer-events-none absolute -right-12 -top-12 h-56 w-56 rounded-full bg-neutral-500/10 blur-3xl" />
             <div className="relative z-10">
               <div className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-3 py-0.5 text-xs font-bold text-[var(--text)]">
@@ -373,7 +373,7 @@ export default function BotCommandPage() {
       {/* ── DESKTOP ── */}
       <DesktopPageBody className="space-y-6 hidden md:block">
         {/* HERO */}
-        <section className="relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[var(--card)] p-5 text-[var(--text)] shadow-sm sm:p-6">
+        <section className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 text-[var(--text)] shadow-sm sm:p-6">
           <div className="pointer-events-none absolute -right-12 -top-12 h-56 w-56 rounded-full bg-neutral-500/10 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-12 left-10 h-48 w-48 rounded-full bg-neutral-400/5 blur-3xl" />
           <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -420,7 +420,7 @@ export default function BotCommandPage() {
         {/* DESKTOP DUAL-PANE */}
         <div className="grid grid-cols-1 md:grid-cols-[250px_1fr] lg:grid-cols-[280px_1fr] gap-6 items-start">
           {/* LEFT SIDEBAR */}
-          <aside className="hidden md:flex sticky top-20 flex-col rounded-3xl border border-[var(--border)] bg-[var(--card)] p-3.5 shadow-sm">
+          <aside className="hidden md:flex sticky top-20 flex-col rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3.5 shadow-sm">
             <div className="border-b border-[var(--border)]/60 pb-3 mb-2 px-2">
               <p className="text-[11px] font-black uppercase tracking-wider text-[var(--muted)]">{tr("Kategori Arahan", "Command Categories")}</p>
             </div>

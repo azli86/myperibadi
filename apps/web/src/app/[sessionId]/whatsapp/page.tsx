@@ -678,7 +678,7 @@ export default function WhatsAppPage() {
             <div className={cn("flex flex-col items-center space-y-6 rounded-[16px] p-4 text-center transition-all md:space-y-8 md:rounded-[16px] md:p-7", linkAccountCardClass)}>
               
               <div className="max-w-md space-y-2.5 md:space-y-4">
-                <div className={cn("mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-3xl md:mb-5 md:h-16 md:w-16", iconBgClass)}>
+                <div className={cn("mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl md:mb-5 md:h-16 md:w-16", iconBgClass)}>
                   <QrCode size={26} className={cn("md:hidden", accentTextClass)} /><QrCode size={36} className={cn("hidden md:block", accentTextClass)} />
                 </div>
                 <h2 className={cn("text-lg font-semibold tracking-tight md:text-3xl md:font-extrabold", primaryTextClass)}>
@@ -754,7 +754,7 @@ export default function WhatsAppPage() {
               </div>
 
               <div className="group relative mx-auto w-full max-w-[15rem] md:max-w-xs">
-                <div className={cn("absolute -inset-6 rounded-3xl blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700", isLight ? "bg-slate-300/30" : "bg-white/10")} />
+                <div className={cn("absolute -inset-6 rounded-2xl blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700", isLight ? "bg-slate-300/30" : "bg-white/10")} />
                 
                 {(!hasRequestedQr || !hasAgreedPrivacy) && sessionStatus !== "connected" ? (
                   <button
@@ -877,8 +877,8 @@ export default function WhatsAppPage() {
                     </div>
                   </div>
                 ) : qrCode ? (
-                  <div className={cn("relative z-10 rounded-[16px] border-4 p-3 transition-all duration-300 hover:scale-105 md:rounded-[40px] md:p-5", isLight ? "bg-white border-slate-100" : "bg-white border-white/10")}>
-                    <img src={qrCode} alt="WhatsApp QR Code" className="aspect-square h-auto w-full rounded-2xl object-contain md:rounded-3xl" />
+                  <div className={cn("relative z-10 rounded-[16px] border-4 p-3 transition-all duration-300 hover:scale-105 md:rounded-2xl md:p-5", isLight ? "bg-white border-slate-100" : "bg-white border-white/10")}>
+                    <img src={qrCode} alt="WhatsApp QR Code" className="aspect-square h-auto w-full rounded-2xl object-contain md:rounded-2xl" />
                   </div>
                 ) : null}
               </div>

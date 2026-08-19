@@ -232,17 +232,17 @@ export default function BadgesPage() {
 
           <section className={cn("rounded-[16px] border p-5 md:col-span-2 xl:col-span-3", surface)}>
             <div className="grid gap-3 md:grid-cols-3">
-              <div className={cn("rounded-3xl px-4 py-4", chip)}>
+              <div className={cn("rounded-2xl px-4 py-4", chip)}>
                 <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] opacity-70">{lang === "EN" ? "Current Level" : "Tahap Semasa"}</p>
                 <p className="mt-2 text-base font-black">{lang === "EN" ? "Starter" : "Starter"}</p>
                 <p className="mt-2 text-sm leading-6 opacity-80">{lang === "EN" ? "Complete verification steps to strengthen your account profile." : "Lengkapkan langkah verification untuk kuatkan profil akaun."}</p>
               </div>
-              <div className={cn("rounded-3xl px-4 py-4", chip)}>
+              <div className={cn("rounded-2xl px-4 py-4", chip)}>
                 <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] opacity-70">{lang === "EN" ? "Next Unlock" : "Unlock Seterusnya"}</p>
                 <p className="mt-2 text-base font-black">{nextLockedBadge ? (lang === "EN" ? nextLockedBadge.titleEN : nextLockedBadge.titleBM) : (lang === "EN" ? "All Unlocked" : "Semua Dibuka")}</p>
                 <p className="mt-2 text-sm leading-6 opacity-80">{lang === "EN" ? "Keep recording transactions through the month." : "Teruskan rekod transaksi sepanjang bulan."}</p>
               </div>
-              <div className={cn("rounded-3xl px-4 py-4", chip)}>
+              <div className={cn("rounded-2xl px-4 py-4", chip)}>
                 <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] opacity-70">{lang === "EN" ? "Progress" : "Kemajuan"}</p>
                 <p className="mt-2 text-base font-black">{progressPercent}%</p>
                 <p className="mt-2 text-sm leading-6 opacity-80">{lang === "EN" ? `${unlockedCount} of ${liveBadges.length} badges unlocked.` : `${unlockedCount} daripada ${liveBadges.length} badge sudah dibuka.`}</p>

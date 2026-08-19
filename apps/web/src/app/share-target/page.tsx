@@ -46,7 +46,7 @@ export default function ShareTargetPage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--page-bg)] px-6 text-[var(--text)]">
-      <div className="flex items-center gap-3 rounded-3xl border border-[color:var(--border)] bg-[var(--card)] px-5 py-4 text-sm font-semibold">
+      <div className="flex items-center gap-3 rounded-2xl border border-[color:var(--border)] bg-[var(--card)] px-5 py-4 text-sm font-semibold">
         <Loader2 size={18} className="animate-spin" />
         Preparing transaction update...
       </div>

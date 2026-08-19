@@ -224,7 +224,7 @@ export function DashboardVehicleHeroRow({
         aria-busy="true"
         aria-label={tr("Memuatkan kenderaan", "Loading vehicles")}
       >
-        <div className="flex overflow-hidden rounded-[20px] border border-[color:var(--skeleton-border)] bg-[var(--skeleton-panel)] shadow-[var(--shadow-soft)]">
+        <div className="flex overflow-hidden rounded-2xl border border-[color:var(--skeleton-border)] bg-[var(--skeleton-panel)] shadow-[var(--shadow-soft)]">
           <div className="relative w-[42%] min-w-[7.5rem] max-w-[11rem] self-stretch">
             <div className="absolute inset-0 skeleton-surface" />
           </div>
@@ -485,7 +485,7 @@ export function DashboardVehicleHeroRow({
           key={v.id}
           href={`/${sessionId}/vehicle/${v.id}`}
           className={cn(
-            "group relative flex shrink-0 snap-center overflow-hidden rounded-[20px] border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-soft)] transition active:scale-[0.99]",
+            "group relative flex shrink-0 snap-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-soft)] transition active:scale-[0.99]",
             multi ? "w-[92%] max-w-[24rem]" : "w-full",
           )}
         >

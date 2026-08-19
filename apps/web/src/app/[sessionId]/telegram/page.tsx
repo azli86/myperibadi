@@ -225,7 +225,7 @@ export default function TelegramPage() {
 
         <div className="grid gap-3 md:grid-cols-2">
           {/* Link status */}
-          <section className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
+          <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]">
                 <Link2 size={18} />
@@ -265,7 +265,7 @@ export default function TelegramPage() {
           </section>
 
           {/* Pairing code */}
-          <section className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
+          <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
             <p className="text-base font-black text-[var(--text)]">
               {isBM ? "Kod sambungan" : "Pairing code"}
             </p>
@@ -301,7 +301,7 @@ export default function TelegramPage() {
         </div>
 
         {/* Commands */}
-        <section className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
           <p className="text-base font-black text-[var(--text)]">
             {isBM ? "Command asas" : "Basic commands"}
           </p>

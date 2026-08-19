@@ -476,7 +476,7 @@ export default function BnplPage() {
 
   const renderEmpty = () => (
     <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-[var(--surface-tint)] text-[var(--muted)]">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--muted)]">
         <CreditCard size={28} />
       </div>
       <p className="text-sm font-bold text-[var(--text)]">{tr("Tiada BNPL lagi", "No BNPL yet")}</p>

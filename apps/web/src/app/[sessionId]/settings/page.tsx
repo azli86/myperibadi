@@ -201,7 +201,7 @@ export default function LagiPage() {
         {/* Preferences */}
         <section className="px-1">
           <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{t.preferences}</p>
-          <div className="mt-2 overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)]">
+          <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
             {mobilePreferenceRows.map((item, i) => (
               <button
                 key={item.key}
@@ -224,7 +224,7 @@ export default function LagiPage() {
         {/* System */}
         <section className="px-1">
           <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{t.system}</p>
-          <div className="mt-2 overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)]">
+          <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
             {systemLinks.map((item, i) => (
               <Link
                 key={item.label}
@@ -241,7 +241,7 @@ export default function LagiPage() {
 
         {/* Logout */}
         <div className="px-1">
-          <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)] px-4 py-3.5 text-left transition-all active:scale-[0.99]">
+          <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3.5 text-left transition-all active:scale-[0.99]">
             <LogOut size={20} className="shrink-0 text-red-500" />
             <span className="text-sm font-medium text-red-500">{t.logout}</span>
           </button>
@@ -263,7 +263,7 @@ export default function LagiPage() {
         <DesktopPageBody className="space-y-6">
         {/* Profile Hero Card */}
         <Link href={`/${sessionId}/account`} className="block">
-          <div className="relative overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-gradient-to-br from-[var(--card)] to-[var(--surface-tint)] p-6 shadow-sm transition-all hover:shadow-md">
+          <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-gradient-to-br from-[var(--card)] to-[var(--surface-tint)] p-6 shadow-sm transition-all hover:shadow-md">
             <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-[var(--accent)]/8 blur-3xl" />
             <div className="relative flex items-center gap-4">
               <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--text)] ring-1 ring-[var(--accent)]/15">
@@ -290,7 +290,7 @@ export default function LagiPage() {
           {/* Left Column */}
           <div className="space-y-5">
             {/* Language */}
-            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]"><Globe size={20} /></div>
                 <div>
@@ -325,7 +325,7 @@ export default function LagiPage() {
             </div>
 
             {/* Time & Timezone */}
-            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]"><Clock size={20} /></div>
                 <div>
@@ -377,7 +377,7 @@ export default function LagiPage() {
             </div>
 
             {/* Theme */}
-            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]"><Palette size={20} /></div>
                 <div>
@@ -411,7 +411,7 @@ export default function LagiPage() {
               </div>
             </div>
             {/* Cycle Reset */}
-            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]"><CalendarDays size={20} /></div>
                 <div>
@@ -439,7 +439,7 @@ export default function LagiPage() {
           {/* Right Column */}
           <div className="space-y-5">
             {/* System Links */}
-            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
               <p className="text-[0.625rem] font-black uppercase tracking-[0.24em] text-[var(--muted)]">{t.system}</p>
               <div className="mt-4 space-y-2">
                 {systemLinks.map((item) => (
@@ -457,7 +457,7 @@ export default function LagiPage() {
             </div>
 
             {/* Danger Zone */}
-            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
               <p className="text-[0.625rem] font-black uppercase tracking-[0.24em] text-[var(--muted)]">{t.dangerZone}</p>
               <h3 className="mt-3 text-xl font-black tracking-tight text-[var(--text)]">{tr("Keluar dari sesi", "Exit session")}</h3>
               <p className="mt-2 text-sm font-medium text-[var(--muted)]">{tr("Anda akan log keluar dari peranti ini.", "You will be logged out from this device.")}</p>

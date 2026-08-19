@@ -60,7 +60,7 @@ export default function DonatePage() {
             : "Scan the Touch n Go QR below to support us. Thank you for your kind contribution."}
         </p>
 
-        <div className="rounded-[20px] border border-purple-500/15 bg-purple-500/5 p-5">
+        <div className="rounded-2xl border border-purple-500/15 bg-purple-500/5 p-5">
           <p className="text-center text-[0.65rem] font-black uppercase tracking-[0.14em] text-purple-400">
             {isBm ? "QR TNG" : "TNG QR"}
           </p>

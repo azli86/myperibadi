@@ -740,7 +740,7 @@ export default function BudgetPage() {
     <div
       className={cn(
         "budget-hero relative overflow-hidden border border-[var(--border)] bg-[#1a1a1a] text-[#f5f5f5]",
-        desktop ? "rounded-[1.75rem] p-6" : "rounded-[2rem] p-5",
+        desktop ? "rounded-2xl p-6" : "rounded-2xl p-5",
       )}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
@@ -886,7 +886,7 @@ export default function BudgetPage() {
   )
 
   const emptyState = (
-    <div className="rounded-[1.5rem] border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center">
+    <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center">
       <Wallet size={36} className="mx-auto text-[var(--muted)]/40" />
       <p className="mt-3 text-sm font-bold text-[var(--muted)]">
         {items.length === 0
@@ -980,7 +980,7 @@ export default function BudgetPage() {
           mobileBudgetView === "grid" ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-40 animate-pulse rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)]" />
+                <div key={i} className="h-40 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
               ))}
             </div>
           ) : (

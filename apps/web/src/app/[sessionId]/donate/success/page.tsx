@@ -20,7 +20,7 @@ export default function DonateSuccessPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center px-4 py-10">
-      <div className="w-full max-w-md rounded-[20px] border border-[var(--border)] bg-[var(--card)] p-8 text-center">
+      <div className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)] p-8 text-center">
         {loading ? (
           <div className="flex flex-col items-center py-10">
             <Loader2 className="mb-4 animate-spin text-pink-500" size={40} />

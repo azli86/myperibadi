@@ -192,7 +192,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
               {/* Logo + Welcome (solid card) */}
               <motion.div
                 variants={SLIDE_RIGHT_VARIANTS}
-                className="relative z-10 mx-auto w-full rounded-[32px] border border-[var(--border)] bg-gradient-to-br from-[var(--btn-primary-bg)]/25 via-[var(--surface-tint)] to-[var(--page-bg)] p-8 text-center"
+                className="relative z-10 mx-auto w-full rounded-2xl border border-[var(--border)] bg-gradient-to-br from-[var(--btn-primary-bg)]/25 via-[var(--surface-tint)] to-[var(--page-bg)] p-8 text-center"
               >
                 <div className="relative flex flex-col items-center">
                   <motion.div
@@ -253,7 +253,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
               {/* Hero */}
               <motion.div
                 variants={SLIDE_RIGHT_VARIANTS}
-                className="relative overflow-hidden rounded-[28px] border border-[var(--border)] bg-gradient-to-br from-[var(--btn-primary-bg)]/25 via-[var(--surface-tint)] to-[var(--page-bg)] p-6"
+                className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-gradient-to-br from-[var(--btn-primary-bg)]/25 via-[var(--surface-tint)] to-[var(--page-bg)] p-6"
               >
                 <motion.div
                   className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-[var(--btn-primary-bg)]/20 blur-3xl"
@@ -462,7 +462,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
               {/* Success hero */}
               <motion.div
                 variants={SLIDE_RIGHT_VARIANTS}
-                className="relative overflow-hidden rounded-[28px] border border-[var(--border)] bg-gradient-to-br from-[var(--btn-primary-bg)]/25 via-[var(--surface-tint)] to-[var(--page-bg)] p-6"
+                className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-gradient-to-br from-[var(--btn-primary-bg)]/25 via-[var(--surface-tint)] to-[var(--page-bg)] p-6"
               >
                 <motion.div
                   className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-[var(--btn-primary-bg)]/20 blur-3xl"

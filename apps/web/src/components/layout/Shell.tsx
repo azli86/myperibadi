@@ -3013,7 +3013,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <div className="flex w-full max-w-[320px] flex-col items-center">
               <div
                 className={cn(
-                  "mb-6 flex h-16 w-16 items-center justify-center rounded-[20px] border",
+                  "mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border",
                   isLight
                     ? "border-[var(--border)] bg-[var(--card)] text-slate-800"
                     : "border-[var(--border)] bg-[var(--card)] text-white",
@@ -4527,7 +4527,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             }}
           >
             <div
-              className="w-full max-w-[380px] overflow-visible rounded-[28px] border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl"
+              className="w-full max-w-[380px] overflow-visible rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl"
             >
               <div className="mb-5 flex items-center justify-between">
                 <h2 className="text-lg font-black tracking-tight text-[var(--text)]">

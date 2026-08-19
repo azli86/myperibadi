@@ -308,7 +308,7 @@ export default function WarrantyListPage() {
         key={d.id}
         type="button"
         onClick={() => router.push(`/${sessionId}/warranty/${d.id}`)}
-        className="group relative flex flex-col overflow-hidden rounded-[1.35rem] sm:rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] text-left transition hover:border-[var(--accent)]/40 hover:shadow-lg active:scale-[0.98]"
+        className="group relative flex flex-col overflow-hidden rounded-[1.35rem] sm:rounded-2xl border border-[var(--border)] bg-[var(--card)] text-left transition hover:border-[var(--accent)]/40 hover:shadow-lg active:scale-[0.98]"
       >
         {/* Photo Canvas */}
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-neutral-900/60 border-b border-[var(--border)]/50">
@@ -660,7 +660,7 @@ export default function WarrantyListPage() {
             ))}
           </div>
         ) : filteredDevices.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 px-4 py-12 text-center">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 px-4 py-12 text-center">
             <Shield className="h-8 w-8 text-[var(--muted)]" />
             <p className="mt-2 text-xs font-bold text-[var(--text)]">
               {tr("Tiada peranti dijumpai", "No devices found")}
@@ -681,7 +681,7 @@ export default function WarrantyListPage() {
       <div className="hidden md:block">
         <DesktopPageBody className="space-y-5">
           {/* Desktop Hero */}
-          <section className="relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[var(--card)] p-6 text-[var(--text)] shadow-sm">
+          <section className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 text-[var(--text)] shadow-sm">
             <div className="pointer-events-none absolute -right-12 -top-12 h-56 w-56 rounded-full bg-[var(--accent)]/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-12 left-10 h-48 w-48 rounded-full bg-emerald-500/10 blur-3xl" />
 
@@ -843,7 +843,7 @@ export default function WarrantyListPage() {
                 ))}
               </div>
             ) : filteredDevices.length === 0 ? (
-              <div className="rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 p-12 text-center text-sm text-[var(--muted)]">
+              <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 p-12 text-center text-sm text-[var(--muted)]">
                 {tr("Tiada peranti dijumpai.", "No devices found.")}
               </div>
             ) : displayMode === "gallery" ? (

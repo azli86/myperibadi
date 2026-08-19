@@ -593,7 +593,7 @@ export default function DebtPage() {
     <div
       className={cn(
         "debt-hero relative overflow-hidden border border-[var(--border)] bg-[#1a1a1a] text-[#f5f5f5]",
-        desktop ? "rounded-[1.75rem] p-6" : "rounded-[2rem] p-5",
+        desktop ? "rounded-2xl p-6" : "rounded-2xl p-5",
       )}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
@@ -693,7 +693,7 @@ export default function DebtPage() {
   )
 
   const detailHero = activeName ? (
-    <div className="debt-hero relative overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[#1a1a1a] p-5 text-[#f5f5f5] md:p-6">
+    <div className="debt-hero relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] p-5 text-[#f5f5f5] md:p-6">
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
       <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
       <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
@@ -775,7 +775,7 @@ export default function DebtPage() {
           </div>
         ))
       ) : entries.length === 0 ? (
-        <div className="rounded-[1.5rem] border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-10 text-center">
+        <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-10 text-center">
           <History size={28} className="mx-auto text-[var(--muted)]/40" />
           <p className="mt-3 text-sm font-bold text-[var(--muted)]">{tr("Belum ada sejarah.", "No history yet.")}</p>
         </div>
@@ -913,7 +913,7 @@ export default function DebtPage() {
                     </div>
                   ))
                 ) : activeList.length === 0 ? (
-                  <div className="rounded-[1.5rem] border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 text-center">
+                  <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 text-center">
                     <HandCoins size={32} className="mx-auto text-[var(--muted)]/40" />
                     <p className="mt-3 text-sm font-bold text-[var(--muted)]">{tr("Tiada senarai hutang.", "No debt list.")}</p>
                     <p className="mt-1 text-[11px] font-medium text-[var(--muted)]/80">
@@ -988,7 +988,7 @@ export default function DebtPage() {
                   <div key={i} className="h-28 animate-pulse rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)]" />
                 ))
               ) : activeList.length === 0 ? (
-                <div className="flex min-h-[220px] flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[var(--border)] bg-[var(--card)]/70 px-4 text-center">
+                <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/70 px-4 text-center">
                   <HandCoins size={28} className="text-[var(--muted)]/40" />
                   <p className="mt-2 text-sm font-bold text-[var(--muted)]">{tr("Tiada senarai.", "No list.")}</p>
                 </div>
@@ -1018,7 +1018,7 @@ export default function DebtPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex min-h-[420px] flex-col items-center justify-center rounded-[1.75rem] border border-dashed border-[var(--border)] bg-[var(--card)]/70 px-6 text-center">
+              <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/70 px-6 text-center">
                 <HandCoins size={40} className="text-[var(--muted)]/30" />
                 <p className="mt-4 text-sm font-bold text-[var(--muted)]">
                   {tr("Pilih nama di sebelah kiri untuk lihat detail.", "Select a name on the left to view details.")}

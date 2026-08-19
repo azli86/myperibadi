@@ -557,7 +557,7 @@ export default function SubscriptionPage() {
         />
 
         <section className="px-1">
-          <div className="subscription-hero relative overflow-hidden rounded-[2rem] bg-[#1a1a1a] p-5 text-center text-[#f5f5f5]">
+          <div className="subscription-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] p-5 text-center text-[#f5f5f5]">
             <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
             <div className="relative flex min-h-24 flex-col items-center justify-center">
               <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">{tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}</p>
@@ -579,7 +579,7 @@ export default function SubscriptionPage() {
                 </div>
               ))
             ) : sortedSubscriptions.length === 0 ? (
-              <div className="rounded-[1.5rem] border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 text-center">
+              <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 text-center">
                 <CalendarClock size={32} className="mx-auto text-[var(--muted)]/40" />
                 <p className="mt-3 text-sm font-bold text-[var(--muted)]">{tr("Belum ada subscription.", "No subscriptions yet.")}</p>
                 <p className="mt-1 text-[11px] font-medium text-[var(--muted)]/80">
@@ -615,7 +615,7 @@ export default function SubscriptionPage() {
         />
 
         <DesktopPageBody className="space-y-5">
-        <div className="subscription-hero relative overflow-hidden rounded-[1.75rem] bg-[#1a1a1a] p-6 text-center text-[#f5f5f5]">
+        <div className="subscription-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] p-6 text-center text-[#f5f5f5]">
           <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
           <div className="relative flex min-h-28 flex-col items-center justify-center">
             <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">{tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}</p>
@@ -629,10 +629,10 @@ export default function SubscriptionPage() {
           <div className="space-y-3">
             {showDataSkeleton ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-16 animate-pulse rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)]" />
+                <div key={i} className="h-16 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
               ))
             ) : sortedSubscriptions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[var(--border)] bg-[var(--card)]/70 px-6 py-14 text-center">
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/70 px-6 py-14 text-center">
                 <CalendarClock size={40} className="text-[var(--muted)]/30" />
                 <p className="mt-3 text-sm font-bold text-[var(--muted)]">{tr("Belum ada subscription.", "No subscriptions yet.")}</p>
                 <button

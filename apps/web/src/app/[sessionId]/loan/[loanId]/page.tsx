@@ -539,7 +539,7 @@ export default function LoanDetailPage() {
         />
         <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
           <div className="animate-pulse space-y-4">
-            <div className="h-44 rounded-[2rem] bg-[var(--surface-tint)]" />
+            <div className="h-44 rounded-2xl bg-[var(--surface-tint)]" />
             <div className="h-64 rounded-[16px] bg-[var(--surface-tint)]" />
             <div className="h-40 rounded-[16px] bg-[var(--surface-tint)]" />
           </div>
@@ -643,7 +643,7 @@ export default function LoanDetailPage() {
 
       {/* Hero */}
       <div className="mt-4 px-1">
-        <div className="loan-detail-hero relative overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[#1a1a1a] p-5 text-white md:p-6">
+        <div className="loan-detail-hero relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] p-5 text-white md:p-6">
           <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
           <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
           <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.04] blur-2xl" />

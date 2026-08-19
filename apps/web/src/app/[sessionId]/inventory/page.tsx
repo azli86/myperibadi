@@ -883,7 +883,7 @@ export default function InventoryPage() {
                 ))}
               </div>
             ) : filteredItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 px-4 py-12 text-center">
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 px-4 py-12 text-center">
                 <Package className="h-7 w-7 text-[var(--muted)]" />
                 <p className="mt-2 text-xs font-bold text-[var(--text)]">
                   {tr("Tiada barang dijumpai", "No items found")}
@@ -1032,7 +1032,7 @@ export default function InventoryPage() {
           {/* Desktop Dual-Pane: Folder Tree (Left) + Main Explorer (Right) */}
           <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] lg:grid-cols-[290px_1fr] gap-5 items-start">
             {/* ── LEFT PANEL: FOLDER TREE SIDEBAR ── */}
-            <aside className="sticky top-20 flex flex-col rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+            <aside className="sticky top-20 flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
               <div className="flex items-center justify-between border-b border-[var(--border)]/60 pb-3 mb-3">
                 <div className="flex items-center gap-2">
                   <FolderTree className="h-4 w-4 text-[var(--text)]" />
@@ -1454,7 +1454,7 @@ export default function InventoryPage() {
                     ))}
                   </div>
                 ) : filteredItems.length === 0 ? (
-                  <div className="rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 p-12 text-center text-sm text-[var(--muted)]">
+                  <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 p-12 text-center text-sm text-[var(--muted)]">
                     <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p className="font-bold text-[var(--text)]">{tr("Tiada barang dalam folder ini.", "No items in this folder.")}</p>
                     <p className="text-xs text-[var(--muted)] mt-1">{tr("Sila tambah barang atau pilih folder lain.", "Add items or select another folder.")}</p>

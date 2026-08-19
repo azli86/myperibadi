@@ -1009,7 +1009,7 @@ export default function VehicleDetailPage() {
             <section
               ref={documentsSectionRef}
               id="vehicle-documents"
-              className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5"
+              className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5"
             >
               <div className="mb-3.5 flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
@@ -1156,7 +1156,7 @@ export default function VehicleDetailPage() {
             </section>
 
             {/* Fuel logs (compact) */}
-            <section className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5">
+            <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5">
               <div className="mb-3.5 flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]">

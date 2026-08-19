@@ -392,7 +392,7 @@ export default function MapPage() {
       <div className="pointer-events-none absolute inset-x-0 top-0 z-[430] px-3 pt-[calc(env(safe-area-inset-top,0px)+0.85rem)] sm:px-5 sm:pt-5">
         <div className="mx-auto w-full max-w-6xl space-y-2.5 md:max-w-none lg:pr-[27rem]">
           <div className="pointer-events-auto flex flex-wrap items-center gap-2">
-            <div className="inline-flex min-w-0 flex-1 items-center gap-2.5 rounded-[20px] border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:flex-none sm:px-4">
+            <div className="inline-flex min-w-0 flex-1 items-center gap-2.5 rounded-2xl border border-[var(--border)] bg-[var(--card)]/90 px-3 py-2 shadow-[var(--shadow-soft)] backdrop-blur-xl sm:flex-none sm:px-4">
               <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent-bg)] text-[var(--accent2)]">
                 <MapPinned size={16} strokeWidth={2.3} />
               </span>
@@ -470,8 +470,8 @@ export default function MapPage() {
 
       {!loading && points.length === 0 && !error && (
         <div className="pointer-events-none absolute inset-0 z-[440] flex items-center justify-center p-6">
-          <div className="pointer-events-auto max-w-sm rounded-[28px] border border-[var(--border)] bg-[var(--card)]/95 px-7 py-8 text-center shadow-[var(--shadow-lg)] backdrop-blur-xl">
-            <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-3xl bg-[var(--accent-bg)] text-[var(--accent2)]">
+          <div className="pointer-events-auto max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 px-7 py-8 text-center shadow-[var(--shadow-lg)] backdrop-blur-xl">
+            <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-bg)] text-[var(--accent2)]">
               <MapPinned size={24} />
             </span>
             <p className="text-base font-black text-[var(--text)]">{t.mapNoLocations}</p>
@@ -483,7 +483,7 @@ export default function MapPage() {
       {/* Desktop side panel */}
       {!loading && points.length > 0 && (
         <div className="pointer-events-none absolute bottom-5 right-5 top-5 z-[445] hidden w-[25.5rem] lg:flex">
-          <aside className="pointer-events-auto flex h-full w-full flex-col overflow-hidden rounded-[28px] border border-[var(--border)] bg-[var(--card)]/95 text-[var(--text)] shadow-[var(--shadow-lg)] backdrop-blur-2xl">
+          <aside className="pointer-events-auto flex h-full w-full flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 text-[var(--text)] shadow-[var(--shadow-lg)] backdrop-blur-2xl">
             <div className="relative overflow-hidden border-b border-[var(--border)] px-5 pb-4 pt-5">
               <div className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full bg-[var(--btn-primary-bg)]/15 blur-3xl" />
               <div className="relative flex items-start justify-between gap-3">

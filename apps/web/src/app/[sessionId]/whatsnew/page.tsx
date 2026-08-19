@@ -303,7 +303,7 @@ export default function ChangelogPage() {
   const [latest, ...past] = entries
 
   const Hero = (
-    <div className="relative overflow-hidden rounded-[20px] border border-[var(--border)] bg-gradient-to-br from-amber-500/12 via-[var(--card)] to-[var(--card)] p-5 md:p-6">
+    <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-gradient-to-br from-amber-500/12 via-[var(--card)] to-[var(--card)] p-5 md:p-6">
       <Sparkles className="pointer-events-none absolute -right-4 -top-4 text-amber-500/15" size={110} strokeWidth={1.2} />
       <div className="relative">
         <div className="flex flex-wrap items-center gap-2">

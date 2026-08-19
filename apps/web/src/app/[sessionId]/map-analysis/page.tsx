@@ -490,7 +490,7 @@ export default function MapAnalysisPage() {
     <div
       className={cn(
         "map-analysis-hero relative overflow-hidden border border-[var(--border)] bg-[#1a1a1a] text-[#f5f5f5]",
-        desktop ? "rounded-[1.75rem] p-6" : "rounded-[2rem] p-5",
+        desktop ? "rounded-2xl p-6" : "rounded-2xl p-5",
       )}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />

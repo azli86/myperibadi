@@ -456,7 +456,7 @@ export default function EventPage() {
                 </div>
               ))
             ) : sortedEvents.length === 0 ? (
-              <div className="rounded-[1.5rem] border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 text-center">
+              <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 text-center">
                 <PartyPopper size={32} className="mx-auto text-[var(--muted)]/40" />
                 <p className="mt-3 text-sm font-bold text-[var(--muted)]">{tr("Belum ada acara.", "No events yet.")}</p>
                 <p className="mt-1 text-[11px] font-medium text-[var(--muted)]/80">
@@ -496,10 +496,10 @@ export default function EventPage() {
             <div className="space-y-3">
               {showDataSkeleton ? (
                 Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-16 animate-pulse rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)]" />
+                  <div key={i} className="h-16 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
                 ))
               ) : sortedEvents.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[var(--border)] bg-[var(--card)]/70 px-6 py-14 text-center">
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/70 px-6 py-14 text-center">
                   <PartyPopper size={40} className="text-[var(--muted)]/30" />
                   <p className="mt-3 text-sm font-bold text-[var(--muted)]">{tr("Belum ada acara.", "No events yet.")}</p>
                   <button

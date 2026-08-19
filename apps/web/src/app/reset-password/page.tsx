@@ -107,7 +107,7 @@ function ResetPasswordForm() {
   if (!token && !success) {
     return (
       <div className="text-center space-y-8 py-4 animate-in fade-in zoom-in duration-500">
-        <div className="mx-auto h-24 w-24 bg-red-500/10 border border-red-500/20 rounded-[2rem] flex items-center justify-center text-red-400">
+        <div className="mx-auto h-24 w-24 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center text-red-400">
           <AlertCircle size={48} />
         </div>
         <div className="space-y-3">
@@ -204,7 +204,7 @@ function ResetPasswordForm() {
         </div>
       ) : (
         <div className="text-center space-y-8 py-4 animate-in fade-in zoom-in duration-500">
-          <div className="mx-auto h-24 w-24 bg-emerald-500/10 border border-emerald-500/20 rounded-[2rem] flex items-center justify-center text-emerald-400">
+          <div className="mx-auto h-24 w-24 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-400">
             <CheckCircle2 size={48} />
           </div>
           <div className="space-y-3">

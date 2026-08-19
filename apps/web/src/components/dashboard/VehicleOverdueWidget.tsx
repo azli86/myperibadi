@@ -71,7 +71,7 @@ export function VehicleOverdueWidget() {
   const items = data.items || []
 
   return (
-    <section className="overflow-hidden rounded-[20px] border border-red-500/25 bg-[color-mix(in_srgb,theme(colors.red.500)_8%,var(--card))] shadow-[var(--shadow-card)]">
+    <section className="overflow-hidden rounded-2xl border border-red-500/25 bg-[color-mix(in_srgb,theme(colors.red.500)_8%,var(--card))] shadow-[var(--shadow-card)]">
       <div className="flex items-center justify-between gap-2 border-b border-red-500/15 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-red-500/15 text-red-500">

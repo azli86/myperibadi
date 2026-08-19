@@ -61,7 +61,7 @@ export function VehicleHeroCard({
     <section className="relative w-full pb-5">
       {/* Full width, height capped so hero stays compact */}
       <div className="relative h-48 w-full sm:h-56 md:h-64">
-        <div className="absolute inset-0 overflow-hidden rounded-[1.75rem] border border-[var(--border)] shadow-[var(--shadow-card)]">
+        <div className="absolute inset-0 overflow-hidden rounded-2xl border border-[var(--border)] shadow-[var(--shadow-card)]">
         {vehicle.has_image ? (
           <CachedVehicleImage
             vehicleId={vehicle.id}
@@ -69,12 +69,12 @@ export function VehicleHeroCard({
             imageUrl={vehicle.image_url}
             alt={vehicle.name}
             bust={imageBust}
-            className="h-full w-full overflow-hidden rounded-[1.75rem]"
+            className="h-full w-full overflow-hidden rounded-2xl"
             imgClassName="h-full w-full object-cover object-center"
             fallbackIconSize={56}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[1.75rem] bg-[var(--surface-tint)]">
+          <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-[var(--surface-tint)]">
             <Icon
               size={56}
               className="text-[var(--muted)] opacity-40 md:h-16 md:w-16"

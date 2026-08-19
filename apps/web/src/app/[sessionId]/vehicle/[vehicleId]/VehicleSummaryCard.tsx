@@ -31,7 +31,7 @@ export function VehicleSummaryCard({
   return (
     <section
       className={cn(
-        "rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5",
+        "rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5",
         className
       )}
     >

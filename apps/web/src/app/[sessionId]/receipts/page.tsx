@@ -449,7 +449,7 @@ export default function ReceiptsPage() {
                       className="fixed inset-0 z-30 cursor-default"
                       onClick={() => setMobileMonthOpen(false)}
                     />
-                    <div className="absolute right-0 top-10 z-40 w-56 rounded-3xl border border-[var(--border)] bg-[var(--sheet-bg)] p-2.5 shadow-2xl shadow-black/20">
+                    <div className="absolute right-0 top-10 z-40 w-56 rounded-2xl border border-[var(--border)] bg-[var(--sheet-bg)] p-2.5 shadow-2xl shadow-black/20">
                       <div className="mb-2 px-1 text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
                         {monthKey.slice(0, 4)}
                       </div>
@@ -615,7 +615,7 @@ export default function ReceiptsPage() {
             >
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="relative flex h-full w-full max-w-5xl flex-col overflow-hidden bg-[var(--sheet-bg)] md:h-[90vh] md:rounded-3xl"
+                className="relative flex h-full w-full max-w-5xl flex-col overflow-hidden bg-[var(--sheet-bg)] md:h-[90vh] md:rounded-2xl"
               >
                 <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] px-4 py-3">
                   <div className="flex min-w-0 items-center gap-3">
@@ -757,7 +757,7 @@ export default function ReceiptsPage() {
 
     if (error && receipts.length === 0) {
       return (
-        <div className="flex flex-col items-center justify-center rounded-3xl bg-[var(--card)] py-20 text-center">
+        <div className="flex flex-col items-center justify-center rounded-2xl bg-[var(--card)] py-20 text-center">
           <AlertTriangle size={32} className="mb-4 text-rose-500/50" />
           <p className="text-sm font-medium text-[var(--text)]">
             {lang === "EN" ? "Something went wrong" : "Sesuatu tidak kena"}
@@ -775,7 +775,7 @@ export default function ReceiptsPage() {
 
     if (receipts.length === 0) {
       return (
-        <div className="flex flex-col items-center justify-center rounded-3xl bg-[var(--card)] py-20 text-center text-[var(--text)]">
+        <div className="flex flex-col items-center justify-center rounded-2xl bg-[var(--card)] py-20 text-center text-[var(--text)]">
           <ImageIcon size={32} className="mb-4 opacity-20" />
           <h4 className="text-lg font-medium">
             {lang === "EN" ? "No receipts yet" : "Tiada resit lagi"}

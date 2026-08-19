@@ -886,7 +886,7 @@ export default function Dashboard() {
     : (latestCategoriesTotal > 0 ? 100 : 0)
 
   const categoryAnalyticsCard = (
-    <div className="rounded-[20px] border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5 shadow-[var(--shadow-soft)]">
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5 shadow-[var(--shadow-soft)]">
       {/* Header — title only */}
       <div className="flex min-w-0 items-center gap-2.5">
         <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-bg)] text-[var(--accent2)]">
@@ -1511,7 +1511,7 @@ export default function Dashboard() {
       key={key}
       aria-hidden="true"
       className={cn(
-        "skeleton-panel shrink-0 overflow-hidden rounded-3xl border border-[color:var(--skeleton-border)] bg-[var(--skeleton-panel)] p-5",
+        "skeleton-panel shrink-0 overflow-hidden rounded-2xl border border-[color:var(--skeleton-border)] bg-[var(--skeleton-panel)] p-5",
         className,
       )}
     >
@@ -1593,7 +1593,7 @@ export default function Dashboard() {
               return (
                 <div key={`${wallet.id || index}-desktop-wallet-card`} className="min-w-0 w-full">
                   <div
-                    className="relative flex h-[196px] w-full flex-col overflow-hidden rounded-3xl border border-[var(--border)] p-5 pb-6 shadow-sm transition hover:border-[var(--border-strong)] hover:shadow-md"
+                    className="relative flex h-[196px] w-full flex-col overflow-hidden rounded-2xl border border-[var(--border)] p-5 pb-6 shadow-sm transition hover:border-[var(--border-strong)] hover:shadow-md"
                     style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 16%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 8%, var(--card)) 100%)` }}
                   >
                     {wallet.image_url && <><img src={wallet.image_url} alt="" className="absolute -right-5 -top-8 h-[135%] w-[62%] rotate-[9deg] object-cover opacity-55 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_55%)]" /><div className="absolute inset-0 bg-gradient-to-r from-[var(--card)] from-30% via-[var(--card)] via-52% to-transparent to-90%" /><div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-white/5" /></>}
@@ -2134,10 +2134,10 @@ export default function Dashboard() {
           {/* Balance Hero Card — Modern Fintech Style */}
           <div className="relative px-1">
           <div
-            className="balance-hero relative overflow-hidden rounded-[28px] p-6 pb-7"
+            className="balance-hero relative overflow-hidden rounded-2xl p-6 pb-7"
           >
             {/* Abstract curved layers — deeper navy orbs (mobile-friendly) */}
-            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[28px]">
+            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
               <div
                 className="absolute -right-16 -top-20 h-64 w-64 rounded-full"
                 style={{ background: "linear-gradient(135deg, rgba(21,101,255,0.22), rgba(8,18,44,0.35))", filter: "blur(2px)" }}
@@ -2154,9 +2154,9 @@ export default function Dashboard() {
                 className="absolute right-8 top-32 h-20 w-20 rounded-full"
                 style={{ background: "radial-gradient(circle, rgba(21,101,255,0.2), transparent 70%)" }}
               />
-              <div className="absolute inset-0 rounded-[28px] ring-1 ring-inset ring-white/[0.06]" />
+              <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/[0.06]" />
               <div className="absolute inset-x-0 top-0 h-1/3 rounded-t-[28px] bg-gradient-to-b from-white/[0.05] to-transparent" />
- <div className="absolute inset-0 rounded-[28px] bg-transparent" />
+ <div className="absolute inset-0 rounded-2xl bg-transparent" />
             </div>
 
             <div className="relative z-10 flex flex-col text-white">

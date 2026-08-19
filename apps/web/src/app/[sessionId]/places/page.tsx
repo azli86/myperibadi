@@ -752,8 +752,8 @@ export default function PlacesPage() {
 
       {!loading && points.length === 0 && !error && !draftPin && !listOpen && (
         <div className="pointer-events-none absolute inset-0 z-[440] flex items-center justify-center p-6">
-          <div className="pointer-events-auto max-w-sm rounded-[28px] border border-[var(--border)] bg-[var(--card)]/95 px-7 py-8 text-center shadow-[var(--shadow-lg)] backdrop-blur-xl">
-            <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-3xl bg-[var(--accent-bg)] text-[var(--accent2)]">
+          <div className="pointer-events-auto max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 px-7 py-8 text-center shadow-[var(--shadow-lg)] backdrop-blur-xl">
+            <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-bg)] text-[var(--accent2)]">
               <MapPinned size={24} />
             </span>
             <p className="text-base font-black text-[var(--text)]">
@@ -971,7 +971,7 @@ export default function PlacesPage() {
             className="absolute inset-0 bg-transparent"
           />
           <div className="absolute inset-x-0 bottom-0 flex justify-center px-0 sm:px-4 lg:justify-center lg:px-6">
-            <div className="flex max-h-[min(82dvh,36rem)] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] border border-[var(--border)] border-b-0 bg-[var(--card)] shadow-2xl sm:mb-4 sm:rounded-[28px] sm:border-b">
+            <div className="flex max-h-[min(82dvh,36rem)] w-full max-w-lg flex-col overflow-hidden rounded-t-[28px] border border-[var(--border)] border-b-0 bg-[var(--card)] shadow-2xl sm:mb-4 sm:rounded-2xl sm:border-b">
               <div className="mb-1 flex shrink-0 justify-center pt-2.5">
                 <span className="h-1 w-10 rounded-full bg-[var(--border)]" />
               </div>

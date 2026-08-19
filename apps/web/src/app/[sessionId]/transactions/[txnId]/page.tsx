@@ -1780,7 +1780,7 @@ export default function TransactionDetailPage() {
 
       {attachmentToDelete && (
  <div className="fixed inset-0 z-[70] flex items-center justify-center bg-transparent animate-in fade-in duration-200">
-          <div className="w-full max-w-sm rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 text-red-500">
               <Trash2 size={24} />
             </div>

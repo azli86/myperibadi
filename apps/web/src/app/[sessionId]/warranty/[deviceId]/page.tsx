@@ -745,13 +745,13 @@ export default function WarrantyDetailPage() {
       <DesktopPageBody className="space-y-5">
         {showDataSkeleton || !device ? (
           <div className="space-y-4">
-            <div className="h-44 animate-pulse rounded-[1.75rem] border border-[var(--border)] bg-[var(--card)]" />
-            <div className="h-64 animate-pulse rounded-[1.75rem] border border-[var(--border)] bg-[var(--card)]" />
+            <div className="h-44 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
+            <div className="h-64 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
           </div>
         ) : (
           <>
             {/* ── HERO SHOWCASE CARD (MONOCHROME) ── */}
-            <section className="relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[var(--card)] p-5 text-[var(--text)] shadow-sm sm:p-6">
+            <section className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 text-[var(--text)] shadow-sm sm:p-6">
               <div className="pointer-events-none absolute -right-16 -top-16 h-52 w-52 rounded-full bg-neutral-500/10 blur-3xl" />
               <div className="pointer-events-none absolute -bottom-16 left-10 h-44 w-44 rounded-full bg-neutral-400/5 blur-3xl" />
 

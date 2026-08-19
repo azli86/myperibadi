@@ -209,7 +209,7 @@ function GlossyWalletPreview({
 }) {
   return (
     <div
-      className="relative flex h-[196px] w-full flex-col overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 pb-6 shadow-sm"
+      className="relative flex h-[196px] w-full flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 pb-6 shadow-sm"
       style={{
         background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 16%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 8%, var(--card)) 100%)`,
       }}
@@ -626,7 +626,7 @@ export default function WalletSettingsPage() {
     <div
       className={cn(
         "wallet-hero relative overflow-hidden border border-[var(--border)] bg-[#1a1a1a] text-[#f5f5f5]",
-        desktop ? "rounded-[1.75rem] p-6" : "rounded-[2rem] p-5",
+        desktop ? "rounded-2xl p-6" : "rounded-2xl p-5",
       )}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
@@ -659,7 +659,7 @@ export default function WalletSettingsPage() {
         key={wallet.id}
         type="button"
         onClick={() => openWalletModal(wallet)}
-        className="group relative flex h-[196px] w-full flex-col overflow-hidden rounded-3xl border border-[var(--border)] p-5 pb-6 text-left shadow-sm transition hover:border-[var(--border-strong)] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text)]/25"
+        className="group relative flex h-[196px] w-full flex-col overflow-hidden rounded-2xl border border-[var(--border)] p-5 pb-6 text-left shadow-sm transition hover:border-[var(--border-strong)] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text)]/25"
         style={{
           background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 16%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 8%, var(--card)) 100%)`,
         }}
@@ -721,7 +721,7 @@ export default function WalletSettingsPage() {
   }
 
   const emptyState = (
-    <div className="rounded-[1.5rem] border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center">
+    <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center">
       <Wallet size={36} className="mx-auto text-[var(--muted)]/40" />
       <p className="mt-3 text-sm font-bold text-[var(--muted)]">
         {query || filterTab !== "all"
@@ -783,7 +783,7 @@ export default function WalletSettingsPage() {
               {Array.from({ length: 3 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-[196px] animate-pulse rounded-3xl border border-[var(--border)] bg-[var(--card)]"
+                  className="h-[196px] animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]"
                 />
               ))}
             </div>
@@ -795,7 +795,7 @@ export default function WalletSettingsPage() {
               <button
                 type="button"
                 onClick={openCreateWalletModal}
-                className="flex h-[196px] w-full flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-tint)]/20 text-[var(--muted)] transition active:scale-[0.98] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
+                className="flex h-[196px] w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-tint)]/20 text-[var(--muted)] transition active:scale-[0.98] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)]">
                   <Plus size={20} strokeWidth={2} />
@@ -842,7 +842,7 @@ export default function WalletSettingsPage() {
               {Array.from({ length: 6 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-[196px] animate-pulse rounded-3xl border border-[var(--border)] bg-[var(--card)]"
+                  className="h-[196px] animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]"
                 />
               ))}
             </div>
@@ -854,7 +854,7 @@ export default function WalletSettingsPage() {
               <button
                 type="button"
                 onClick={openCreateWalletModal}
-                className="flex h-[196px] flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-tint)]/20 text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--text)] active:scale-[0.98]"
+                className="flex h-[196px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-tint)]/20 text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--text)] active:scale-[0.98]"
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)]">
                   <Plus size={20} />

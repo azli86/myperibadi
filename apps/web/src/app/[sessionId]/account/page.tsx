@@ -440,7 +440,7 @@ export default function AccountPage() {
       <div className="space-y-5 md:hidden">
         {/* Profile summary card */}
         <section className="px-1">
-          <div className="overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)]">
+          <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
             <button
               type="button"
               onClick={() => setActiveMobileSheet("profile")}
@@ -459,7 +459,7 @@ export default function AccountPage() {
         {/* Account settings rows */}
         <section className="px-1">
           <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{tr("Akaun", "Account")}</p>
-          <div className="mt-2 overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)]">
+          <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
             {[
               { key: "profile" as const, icon: PencilLine, label: tr("Edit Profil", "Edit Profile"), value: tr("Nama & personaliti bot", "Name & bot personality") },
               { key: "email" as const, icon: MailCheck, label: tr("Tukar E-mel", "Change Email"), value: profile?.email || "-" },
@@ -484,7 +484,7 @@ export default function AccountPage() {
         {/* Stored accounts */}
         <section className="px-1">
           <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{tr("Akaun", "Accounts")}</p>
-          <div className="mt-2 overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)]">
+          <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
             {accounts.map((acct) => {
               const isActive = acct.email === activeEmail
               return (
@@ -525,7 +525,7 @@ export default function AccountPage() {
           <button
             type="button"
             onClick={() => setActiveMobileSheet("danger")}
-            className="mt-2 flex w-full items-center gap-3 rounded-[1.25rem] border border-red-500/30 bg-[var(--card)] px-4 py-3.5 text-left transition-all active:scale-[0.99]"
+            className="mt-2 flex w-full items-center gap-3 rounded-2xl border border-red-500/30 bg-[var(--card)] px-4 py-3.5 text-left transition-all active:scale-[0.99]"
           >
             <AlertTriangle size={20} className="shrink-0 text-red-500" />
             <div className="min-w-0 flex-1">
@@ -546,7 +546,7 @@ export default function AccountPage() {
 
       <DesktopPageBody className="hidden flex-col gap-5 md:flex md:gap-7">
       {/* ─── Edit Profile Form ─── */}
-      <section className="overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <div className="border-b border-[var(--border)] bg-[var(--surface-tint)]/30 px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--text)] text-[var(--bg)]">
@@ -677,7 +677,7 @@ export default function AccountPage() {
       </section>
 
       {/* ─── Change Email ─── */}
-      <section className="overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <div className="border-b border-[var(--border)] bg-[var(--surface-tint)]/30 px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--text)] text-[var(--bg)]">
@@ -780,7 +780,7 @@ export default function AccountPage() {
       </section>
 
       {/* ─── Stored Accounts ─── */}
-      <section className="overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
         <div className="border-b border-[var(--border)] bg-[var(--surface-tint)]/30 px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--text)] text-[var(--bg)]">
@@ -834,7 +834,7 @@ export default function AccountPage() {
       </section>
 
       {/* ─── Danger Zone: Reset / Delete Account ─── */}
-      <section className="overflow-hidden rounded-[1.5rem] border border-red-500/30 bg-[var(--card)] shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-red-500/30 bg-[var(--card)] shadow-sm">
         <div className="border-b border-red-500/20 bg-red-500/10 px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-500 text-white">
@@ -1327,7 +1327,7 @@ export default function AccountPage() {
             <div className="mx-auto w-full max-w-md">
               {/* Icon + warning */}
               <div className="flex flex-col items-center pt-6 pb-6 text-center">
-                <div className={`flex h-16 w-16 items-center justify-center rounded-3xl ${dangerAction === "delete" ? "bg-red-500/15 text-red-500" : "bg-[var(--text)]/10 text-[var(--text)]"}`}>
+                <div className={`flex h-16 w-16 items-center justify-center rounded-2xl ${dangerAction === "delete" ? "bg-red-500/15 text-red-500" : "bg-[var(--text)]/10 text-[var(--text)]"}`}>
                   {dangerAction === "delete" ? <Trash2 size={30} /> : <RefreshCw size={30} />}
                 </div>
                 <h3 className="mt-4 text-xl font-extrabold text-[var(--text)]">
@@ -1343,7 +1343,7 @@ export default function AccountPage() {
               </div>
 
               {/* Account summary card */}
-              <div className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5">
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
                 <div className="flex items-center justify-between py-1.5">
                   <span className="text-xs font-semibold text-[var(--muted)]">{tr("Nama", "Name")}</span>
                   <span className="text-sm font-bold text-[var(--text)]">{profile?.name || "-"}</span>

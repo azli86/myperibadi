@@ -369,7 +369,7 @@ export default function SecurityPage() {
         {/* Security rows (settings-page style) */}
         <section className="px-1">
           <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{tr("Urus Keselamatan", "Manage Security")}</p>
-          <div className="mt-2 overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)]">
+          <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
             <button
               type="button"
               onClick={() => setActiveMobileSheet("password")}

@@ -478,7 +478,7 @@ export default function Calculator({
         <>
  <div className="fixed inset-0 z-[220] bg-transparent" onClick={() => !sending && setSendOpen(false)} />
  <div className="fixed inset-0 z-[221] flex items-center justify-center px-4">
-            <form onSubmit={submitTransaction} className="w-full max-w-sm rounded-[28px] border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl">
+            <form onSubmit={submitTransaction} className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--muted)]">{tr("Transaksi", "Transaction")}</p>
@@ -550,7 +550,7 @@ export default function Calculator({
         <>
  <div className="fixed inset-0 z-[220] bg-transparent" onClick={() => setSuccessInfo(null)} />
  <div className="fixed inset-0 z-[221] flex items-center justify-center px-4">
-            <div className="w-full max-w-sm rounded-[28px] border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl">
+            <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-500">{tr("Selesai", "Done")}</p>
               <h3 className="mt-1 text-xl font-black text-[var(--text)]">{tr("Transaksi disimpan", "Transaction saved")}</h3>
               <div className="mt-4 space-y-2 rounded-2xl bg-[var(--surface-tint)] p-4 text-sm">
@@ -587,7 +587,7 @@ export default function Calculator({
   )
 
   const calcCard = (
-    <div className="overflow-hidden rounded-[28px] border border-[var(--border)] bg-[var(--card)]">
+    <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
       <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
         <span className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">{tr("Kalkulator", "Calculator")}</span>
         {embedded ? (

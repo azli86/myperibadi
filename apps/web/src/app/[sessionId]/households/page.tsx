@@ -9,7 +9,7 @@ export default function HouseholdsPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-      <div className="w-20 h-20 rounded-3xl bg-[var(--text)] flex items-center justify-center mb-6">
+      <div className="w-20 h-20 rounded-2xl bg-[var(--text)] flex items-center justify-center mb-6">
         <Users size={40} className="text-[var(--text)]" />
       </div>
       <h1 className="text-3xl font-bold tracking-tight mb-3">

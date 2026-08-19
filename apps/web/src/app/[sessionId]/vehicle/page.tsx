@@ -417,7 +417,7 @@ export default function VehicleListPage() {
 
         {/* Hero card */}
         <section className="px-1">
-          <div className="vehicle-hero-card relative overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[#1a1a1a] p-5 text-white shadow-[var(--shadow-card)]">
+          <div className="vehicle-hero-card relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] p-5 text-white shadow-[var(--shadow-card)]">
             <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
             <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
             <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.04] blur-2xl" />
@@ -550,7 +550,7 @@ export default function VehicleListPage() {
           <div className="mt-3.5 space-y-3">
             {showDataSkeleton ? (
               Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="flex overflow-hidden rounded-[20px] border border-[var(--border)] bg-[var(--card)]">
+                    <div key={i} className="flex overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)]">
                       <AmountSkeleton className="h-[7.5rem] w-[42%] min-w-[7.5rem] rounded-none" />
                       <div className="flex flex-1 flex-col justify-between gap-2 p-3">
                         <div className="space-y-1.5">
@@ -567,7 +567,7 @@ export default function VehicleListPage() {
                     </div>
               ))
             ) : displayedVehicles.length === 0 ? (
-              <div className="rounded-[1.5rem] border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 text-center">
+              <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 text-center">
                 <Car size={32} className="mx-auto text-[var(--muted)]/40" />
                 <p className="mt-3 text-sm font-bold text-[var(--muted)]">
                   {filterOverdue
@@ -615,7 +615,7 @@ export default function VehicleListPage() {
                     key={v.id}
                     type="button"
                     onClick={() => router.push(`/${sessionId}/vehicle/${v.id}`)}
-                    className="group relative flex w-full overflow-hidden rounded-[20px] border border-[var(--border)] bg-[var(--card)] text-left shadow-[var(--shadow-soft)] transition active:scale-[0.99]"
+                    className="group relative flex w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] text-left shadow-[var(--shadow-soft)] transition active:scale-[0.99]"
                   >
                     {/* Left media — flush with card edge */}
                     <div className="relative w-[42%] min-w-[7.5rem] max-w-[11rem] self-stretch bg-[var(--surface-tint)]">
@@ -732,7 +732,7 @@ export default function VehicleListPage() {
 
         <DesktopPageBody className="space-y-5">
         {/* Desktop hero */}
-        <div className="vehicle-hero-card relative overflow-hidden rounded-[1.75rem] border border-[var(--border)] bg-[#1a1a1a] p-6 text-white">
+        <div className="vehicle-hero-card relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] p-6 text-white">
           <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
           <div className="relative grid gap-6 lg:grid-cols-[1.2fr_1fr]">
             <div>
@@ -822,7 +822,7 @@ export default function VehicleListPage() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {showDataSkeleton
               ? Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-56 animate-pulse rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)]" />
+                  <div key={i} className="h-56 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
                 ))
               : displayedVehicles.map((v) => {
                   const badge = serviceBadge(v.id)
@@ -832,7 +832,7 @@ export default function VehicleListPage() {
                       key={v.id}
                       type="button"
                       onClick={() => router.push(`/${sessionId}/vehicle/${v.id}`)}
-                      className="group overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] text-left shadow-[var(--shadow-card)] transition hover:border-[color-mix(in_srgb,var(--accent2)_35%,var(--border))] active:scale-[0.99]"
+                      className="group overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] text-left shadow-[var(--shadow-card)] transition hover:border-[color-mix(in_srgb,var(--accent2)_35%,var(--border))] active:scale-[0.99]"
                     >
                       <div className="relative h-36 w-full bg-[var(--surface-tint)]">
                         <CachedVehicleImage
@@ -887,7 +887,7 @@ export default function VehicleListPage() {
                 })}
           </div>
           {!showDataSkeleton && displayedVehicles.length === 0 && (
-            <div className="rounded-[1.5rem] border border-dashed border-[var(--border)] p-12 text-center">
+            <div className="rounded-2xl border border-dashed border-[var(--border)] p-12 text-center">
               <Car size={36} className="mx-auto text-[var(--muted)]/40" />
               <p className="mt-3 text-sm font-bold text-[var(--muted)]">
                 {tr("Belum ada kenderaan.", "No vehicles yet.")}
