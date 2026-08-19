@@ -287,13 +287,16 @@ async def system_status(db: AsyncSession = Depends(db_session)):
 @app.get("/users", dependencies=[Depends(admin)])
 async def users(q: str = "", limit: int = 50, offset: int = 0, db: AsyncSession = Depends(db_session)):
     limit = max(1, min(limit, 100))
-    rows = (await db.execute(text("""
+    like = f"%{q.strip().lower()}%"
+    q_cond = "(:q = '' OR lower(email) LIKE :like OR lower(coalesce(name, '')) LIKE :like)"
+    total = (await db.execute(text(f"SELECT count(*) FROM users WHERE {q_cond}"), {"q": q.strip(), "like": like})).scalar_one()
+    rows = (await db.execute(text(f"""
         SELECT id, name, email, is_active, email_verified_at, created_at, deactivated_reason, auth_provider, phone
         FROM users
-        WHERE (:q = '' OR lower(email) LIKE :like OR lower(coalesce(name, '')) LIKE :like)
+        WHERE {q_cond}
         ORDER BY created_at DESC LIMIT :limit OFFSET :offset
-    """), {"q": q.strip(), "like": f"%{q.strip().lower()}%", "limit": limit, "offset": max(0, offset)})).mappings().all()
-    return [dict(row) for row in rows]
+    """), {"q": q.strip(), "like": like, "limit": limit, "offset": max(0, offset)})).mappings().all()
+    return {"users": [dict(row) for row in rows], "total": total, "limit": limit, "offset": max(0, offset)}
 
 @app.get("/users/{user_id}", dependencies=[Depends(admin)])
 async def user_detail(user_id: str, db: AsyncSession = Depends(db_session)):
