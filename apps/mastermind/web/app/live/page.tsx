@@ -14,12 +14,7 @@ export default function LivePage() {
   const [reqs, setReqs] = useState<any[]>([]);
   const [lastUpdate, setLastUpdate] = useState<string>("");
   const [paused, setPaused] = useState(false);
-  const termRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = termRef.current;
-    if (el) el.scrollTop = 0;
-  }, [reqs]);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -33,7 +28,7 @@ export default function LivePage() {
     let t: any;
     const load = async () => {
       try {
-        const r = await fetch("/api/live/api?limit=25", { credentials: "include" });
+        const r = await fetch("/api/live/api?limit=30", { credentials: "include" });
         if (r.ok) {
           setReqs(await r.json());
           setLastUpdate(new Date().toLocaleTimeString("en-GB", {
@@ -48,58 +43,75 @@ export default function LivePage() {
     return () => t && clearInterval(t);
   }, [auth, paused]);
 
-  const fmtStamp = (s?: string) => {
+  useEffect(() => {
+    const el = listRef.current;
+    if (el) el.scrollTop = 0;
+  }, [reqs]);
+
+  const fmtTime = (s?: string) => {
     const d = parseUtc(s);
     if (!d) return "";
-    const day = d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Kuala_Lumpur" });
-    const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: "Asia/Kuala_Lumpur" });
-    return `${day} ${time}`;
+    return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kuala_Lumpur" });
+  };
+  const fmtDay = (s?: string) => {
+    const d = parseUtc(s);
+    if (!d) return "";
+    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", timeZone: "Asia/Kuala_Lumpur" });
   };
 
-  if (auth === null) return <div className="lv-load">Memuatkan Live Feed…</div>;
+  const meta = (r: any) => {
+    if (r.kind === "TXN") {
+      const label = r.detail1 === "income" ? "IN" : "OUT";
+      const tone = r.detail1 === "income" ? "in" : "out";
+      const parts: string[] = [];
+      if (r.category_name) parts.push(r.category_name);
+      if (r.household_name) parts.push(r.household_name);
+      return { label, tone, title: parts.join(" · ") || "Transaksi", sub: r.user_email || "" };
+    }
+    if (r.kind === "LOGIN") {
+      return { label: "LOGIN", tone: "login", title: r.status, sub: r.user_email || r.detail2 || "" };
+    }
+    return { label: "NEW", tone: "new", title: "Akaun baharu", sub: r.user_email || "" };
+  };
+
+  if (auth === null) return <div className="lv-load">Memuatkan Live Aktiviti…</div>;
   if (auth === false) return <div className="lv-load"><a href="/">Sila log masuk Mastermind dahulu.</a></div>;
 
   return (
     <div className="lv-wrap">
-      <div className="lv-top">
-        <a className="lv-back" href="/">← Dashboard</a>
-        <div className="lv-title">LIVE · AKTIVITI</div>
-        <div className="lv-status">
-          <button className="lv-pause" onClick={() => setPaused(p => !p)}>{paused ? "▶ Resume" : "❚❚ Pause"}</button>
-          <span className="lv-dot" style={{ opacity: paused ? 0.3 : 1 }} />
-          <span>{paused ? "PAUSED" : "LIVE"}</span>
-          <span className="lv-count">{reqs.length} req</span>
-          <span className="lv-upd">kemaskini {lastUpdate}</span>
+      <header className="lv-head">
+        <div>
+          <a className="lv-back" href="/">← Dashboard</a>
+          <h1 className="lv-h1">Live Aktiviti</h1>
+          <p className="lv-sub">Aktiviti pengguna masa nyata dalam sistem</p>
         </div>
+        <div className="lv-ctl">
+          <button className={"lv-pause " + (paused ? "on" : "")} onClick={() => setPaused(p => !p)}>
+            {paused ? "▶ Resume" : "❚❚ Jeda"}
+          </button>
+          <div className="lv-badge-live">
+            <span className="lv-dot" style={{ opacity: paused ? 0.3 : 1 }} />
+            {paused ? "Dijeda" : "LIVE"}
+          </div>
+        </div>
+      </header>
+
+      <div className="lv-summary">
+        <div className="lv-stat"><span className="muted">Jumlah</span><b>{reqs.length} aktiviti</b></div>
+        <div className="lv-stat"><span className="muted">Kemaskini</span><b>{lastUpdate}</b></div>
       </div>
-      <div className="lv-term" ref={termRef}>
+
+      <div className="lv-list" ref={listRef}>
         {reqs.map((r: any) => {
-          let badge = r.kind;             // TXN / LOGIN / SIGNUP
-          let cls = "t";
-          let main = "";
-          if (r.kind === "TXN") {
-            badge = r.detail1 === "income" ? "IN" : "OUT";
-            cls = r.detail1 === "income" ? "inc" : "exp";
-            const parts: string[] = [];
-            if (r.category_name) parts.push(r.category_name);
-            if (r.household_name) parts.push(`[${r.household_name}]`);
-            main = parts.join(" · ");
-          } else if (r.kind === "LOGIN") {
-            badge = "LOGIN";
-            cls = "log";
-            main = `${r.status} · ${r.detail2}`;
-          } else {
-            badge = "NEW";
-            cls = "sig";
-            main = `Akaun baharu · ${r.detail2}`;
-          }
+          const m = meta(r);
           return (
-            <div className="lv-line" key={r.kind + r.created_at + r.detail2}>
-              <span className="lv-time">[{fmtStamp(r.created_at)}]</span>
-              <span className={"lv-badge " + cls}>{badge}</span>
-              {main && <span className="lv-main">{main}</span>}
-              <span className="lv-user">{r.user_name}</span>
-              {r.user_email && <span className="lv-mail">{r.user_email}</span>}
+            <div className={"lv-row " + m.tone} key={r.kind + r.created_at + (r.detail2 || "")}>
+              <span className={"lv-chip " + m.tone}>{m.label}</span>
+              <div className="lv-info">
+                <div className="lv-title">{m.title}</div>
+                <div className="lv-sub"><span className="lv-name">{r.user_name}</span>{m.sub ? <span className="lv-mail"> · {m.sub}</span> : null}</div>
+              </div>
+              <div className="lv-stamp"><div>{fmtTime(r.created_at)}</div><div className="muted">{fmtDay(r.created_at)}</div></div>
             </div>
           );
         })}
