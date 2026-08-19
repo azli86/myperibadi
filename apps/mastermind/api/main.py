@@ -1,11 +1,10 @@
-import hashlib
-import hmac
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from dotenv import load_dotenv
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Response
+import bcrypt
 from jose import JWTError, jwt
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import text
@@ -15,10 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 load_dotenv()
 
 SECRET = os.environ.get("MASTERMIND_SECRET_KEY", "")
-ADMIN_EMAIL = os.environ.get("MASTERMIND_ADMIN_EMAIL", "").strip().lower()
-ADMIN_PASSWORD_HASH = os.environ.get("MASTERMIND_ADMIN_PASSWORD_SHA256", "")
-if not SECRET or not ADMIN_EMAIL or not ADMIN_PASSWORD_HASH:
-    raise RuntimeError("MASTERMIND_SECRET_KEY, MASTERMIND_ADMIN_EMAIL and MASTERMIND_ADMIN_PASSWORD_SHA256 are required")
+if not SECRET:
+    raise RuntimeError("MASTERMIND_SECRET_KEY is required")
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 if not DATABASE_URL:
@@ -41,14 +38,22 @@ async def db_session():
     async with SessionLocal() as db:
         yield db
 
-async def admin(token: Annotated[str | None, Cookie(alias=COOKIE)] = None):
+async def admin(
+    token: Annotated[str | None, Cookie(alias=COOKIE)] = None,
+    db: AsyncSession = Depends(db_session),
+):
     try:
         payload = jwt.decode(token or "", SECRET, algorithms=["HS256"])
-        if payload.get("sub") != ADMIN_EMAIL or payload.get("scope") != "mastermind":
+        if payload.get("scope") != "mastermind" or not payload.get("sub"):
             raise ValueError
-        return payload
     except (JWTError, ValueError):
         raise HTTPException(401, "Authentication required")
+    row = (await db.execute(text(
+        "SELECT id, email FROM users WHERE id = :id AND is_admin = true AND is_active = true"
+    ), {"id": payload["sub"]})).mappings().first()
+    if not row:
+        raise HTTPException(401, "Admin access revoked")
+    return dict(row)
 
 def scalar(row, key):
     return int(row.get(key) or 0)
@@ -58,11 +63,17 @@ async def health():
     return {"ok": True, "service": "mastermind-api"}
 
 @app.post("/auth/login")
-async def login(data: Login, response: Response):
-    supplied = hashlib.sha256(data.password.encode()).hexdigest()
-    if data.email.lower() != ADMIN_EMAIL or not hmac.compare_digest(supplied, ADMIN_PASSWORD_HASH):
+async def login(data: Login, response: Response, db: AsyncSession = Depends(db_session)):
+    user = (await db.execute(text("""
+        SELECT id, password_hash FROM users
+        WHERE lower(email) = :email AND is_admin = true AND is_active = true
+    """), {"email": data.email.lower()})).mappings().first()
+    valid = bool(user and user["password_hash"] and bcrypt.checkpw(
+        data.password.encode("utf-8"), user["password_hash"].encode("utf-8")
+    ))
+    if not valid:
         raise HTTPException(401, "Invalid credentials")
-    token = jwt.encode({"sub": ADMIN_EMAIL, "scope": "mastermind", "exp": datetime.now(timezone.utc) + timedelta(hours=8)}, SECRET, algorithm="HS256")
+    token = jwt.encode({"sub": user["id"], "scope": "mastermind", "exp": datetime.now(timezone.utc) + timedelta(hours=8)}, SECRET, algorithm="HS256")
     response.set_cookie(COOKIE, token, httponly=True, secure=os.getenv("COOKIE_SECURE", "true").lower() == "true", samesite="strict", max_age=28800, path="/")
     return {"ok": True}
 

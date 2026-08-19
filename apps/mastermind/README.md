@@ -21,10 +21,6 @@ cp .env.example .env.local
 npm run dev -- --port 8030
 ```
 
-Set `MASTERMIND_ADMIN_PASSWORD_SHA256` using:
+Admin login uses the existing `users` table: active users with `is_admin=true`, verified against the existing bcrypt `password_hash`. Mastermind keeps its own JWT secret and cookie; normal users cannot enter.
 
-```bash
-printf '%s' 'strong-password' | sha256sum
-```
-
-Initial scope: isolated admin login, system dashboard, read-only user directory. Mutations, RBAC, MFA, audit trail intentionally deferred until admin identity storage is finalized.
+Initial scope: isolated admin login, system dashboard, read-only user directory. Mutations, role levels, MFA, audit trail intentionally deferred.
