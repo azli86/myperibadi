@@ -24,6 +24,12 @@ try:
 except Exception:
     pass
 
+# Email verification grace: how long a new user has to verify before the account
+# is auto-disabled, and how long a verify link stays valid. Extended from 2 to 14
+# days because 2 days was trapping users whose verify link expired (token purged)
+# while their account got auto-disabled with no way to re-verify or login.
+EMAIL_VERIFY_GRACE_DAYS = 14
+
 import httpx
 from fastapi import FastAPI, Depends, HTTPException, status, Query, Request, UploadFile, File, Form, Response, Body
 from fastapi.responses import StreamingResponse, HTMLResponse, PlainTextResponse, RedirectResponse, JSONResponse
@@ -1192,9 +1198,9 @@ async def start_account_verification_email_task():
                     )
                     await db.commit()
 
-                    # Auto-disable accounts that never verified email within the 2-day grace.
+                    # Auto-disable accounts that never verified email within the grace.
                     # Legacy users (verification_email_sent_at is None) are exempt.
-                    cutoff = now - timedelta(days=2)
+                    cutoff = now - timedelta(days=EMAIL_VERIFY_GRACE_DAYS)
                     unverified = (
                         await db.execute(
                             select(models.User).where(
@@ -1316,6 +1322,10 @@ async def start_expired_token_cleanup_task():
                         sa_delete(models.User).where(
                             models.User.email_verify_token.is_not(None),
                             models.User.email_verify_token_expires < now,
+                            # Keep the token for accounts disabled because they never
+                            # verified — the verify link (proof of email ownership) is
+                            # their only recovery path, so we still honour it after expiry.
+                            models.User.deactivated_reason != "email_verify_expired",
                         ).values(email_verify_token=None, email_verify_token_expires=None)
                     )
                     r3 = await db.execute(
@@ -2103,14 +2113,14 @@ def _email_domain(email: str) -> str:
 
 
 def _is_verify_grace_expired(user: Any) -> bool:
-    """True when a user must have verified their email but the 2-day grace has lapsed.
+    """True when a user must have verified their email but the grace has lapsed.
     Legacy users (verification_email_sent_at is None) are exempt so we never disable existing accounts."""
     if getattr(user, "email_verified_at", None) is not None:
         return False
     sent_at = getattr(user, "verification_email_sent_at", None)
     if sent_at is None:
         return False
-    return datetime.utcnow() > sent_at + timedelta(days=2)
+    return datetime.utcnow() > sent_at + timedelta(days=EMAIL_VERIFY_GRACE_DAYS)
 
 
 def _is_disposable_email(email: str) -> bool:
@@ -9377,18 +9387,20 @@ async def verify_email(token: str, db: AsyncSession = Depends(database.get_db)):
     # Soft verification: confirms email ownership via a single-use link. Does not gate login.
     result = await db.execute(select(models.User).where(models.User.email_verify_token == _hash_email_verify_token(token)))
     user = result.scalars().first()
-    if (
-        user is None
-        or user.email_verified_at is not None
-        or user.email_verify_token_expires is None
-        or user.email_verify_token_expires < datetime.utcnow()
-    ):
+    if user is None or user.email_verified_at is not None or user.email_verify_token_expires is None:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+    # If the user was auto-disabled because they never verified within the grace,
+    # honour the link even if the token is now past its nominal expiry — the token
+    # in the email is proof of email ownership, which is their only recovery path
+    # (login is blocked while disabled, so they can't re-send).
+    is_recovery = user.deactivated_reason == "email_verify_expired"
+    if user.email_verify_token_expires < datetime.utcnow() and not is_recovery:
         raise HTTPException(status_code=400, detail="Invalid or expired verification link")
     user.email_verified_at = datetime.utcnow()
     user.email_verify_token = None
     user.email_verify_token_expires = None
     # Successful verification proves ownership; restore access if auto-disabled by grace expiry.
-    if user.deactivated_reason == "email_verify_expired":
+    if is_recovery:
         user.is_active = True
         user.deactivated_at = None
         user.deactivated_reason = None
@@ -9423,7 +9435,7 @@ async def resend_verify_email(
 
     verify_token = secrets.token_urlsafe(32)[:43]
     current_user.email_verify_token = _hash_email_verify_token(verify_token)
-    current_user.email_verify_token_expires = datetime.utcnow() + timedelta(days=2)
+    current_user.email_verify_token_expires = datetime.utcnow() + timedelta(days=EMAIL_VERIFY_GRACE_DAYS)
     current_user.verification_email_sent_at = now
     current_user.verification_email_resend_count += 1
     await db.commit()

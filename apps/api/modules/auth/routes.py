@@ -57,7 +57,7 @@ async def register_route(
     try:
         verify_token = secrets.token_urlsafe(32)[:43]
         db_user.email_verify_token = hash_email_verify_token(verify_token)
-        db_user.email_verify_token_expires = datetime.utcnow() + timedelta(days=2)
+        db_user.email_verify_token_expires = datetime.utcnow() + timedelta(days=14)
         db_user.verification_email_sent_at = datetime.utcnow()
         db_user.verification_email_resend_count = 0
         await db.commit()
