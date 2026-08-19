@@ -31,6 +31,39 @@ SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=
 app = FastAPI(title="Mastermind Admin API", docs_url=None, redoc_url=None)
 COOKIE = "mastermind_session"
 
+
+async def _ensure_audit_table(db: AsyncSession):
+    await db.execute(text("""
+        CREATE TABLE IF NOT EXISTS mastermind_audit_logs (
+            id BIGSERIAL PRIMARY KEY,
+            actor_user_id VARCHAR(16),
+            actor_email VARCHAR(190),
+            action VARCHAR(64),
+            target_type VARCHAR(64),
+            target_id VARCHAR(190),
+            detail TEXT,
+            created_at TIMESTAMP DEFAULT now()
+        )
+    """))
+    await db.commit()
+
+
+async def _audit(db: AsyncSession, actor: dict, action: str, target_type: str = "", target_id: str = "", detail: str = ""):
+    await db.execute(text("""
+        INSERT INTO mastermind_audit_logs (actor_user_id, actor_email, action, target_type, target_id, detail)
+        VALUES (:a, :e, :action, :tt, :ti, :d)
+    """), {"a": actor["id"], "e": actor["email"], "action": action, "tt": target_type, "ti": target_id, "d": detail})
+    await db.commit()
+
+
+@app.on_event("startup")
+async def _startup():
+    async with SessionLocal() as db:
+        try:
+            await _ensure_audit_table(db)
+        except Exception as e:  # noqa: BLE001
+            logging.warning("Failed to ensure mastermind_audit_logs: %s", e)
+
 class Login(BaseModel):
     email: EmailStr
     password: str
@@ -190,9 +223,102 @@ async def dashboard(db: AsyncSession = Depends(db_session)):
 async def users(q: str = "", limit: int = 50, offset: int = 0, db: AsyncSession = Depends(db_session)):
     limit = max(1, min(limit, 100))
     rows = (await db.execute(text("""
-        SELECT id, name, email, is_active, email_verified_at, created_at, deactivated_reason
+        SELECT id, name, email, is_active, email_verified_at, created_at, deactivated_reason, auth_provider, phone
         FROM users
         WHERE (:q = '' OR lower(email) LIKE :like OR lower(coalesce(name, '')) LIKE :like)
         ORDER BY created_at DESC LIMIT :limit OFFSET :offset
     """), {"q": q.strip(), "like": f"%{q.strip().lower()}%", "limit": limit, "offset": max(0, offset)})).mappings().all()
     return [dict(row) for row in rows]
+
+@app.get("/users/{user_id}", dependencies=[Depends(admin)])
+async def user_detail(user_id: str, db: AsyncSession = Depends(db_session)):
+    user = (await db.execute(text("""
+        SELECT id, name, email, phone, is_active, is_admin, auth_provider, email_verified_at,
+               created_at, deactivated_reason, deactivated_at, language
+        FROM users WHERE id = :id
+    """), {"id": user_id})).mappings().first()
+    if not user:
+        raise HTTPException(404, "User not found")
+    user = dict(user)
+    memberships = (await db.execute(text("""
+        SELECT h.id, h.name, hm.role, hm.status, hm.joined_at
+        FROM household_members hm
+        JOIN households h ON h.id = hm.household_id
+        WHERE hm.user_id = :uid ORDER BY h.id
+    """), {"uid": user_id})).mappings().all()
+    stats = (await db.execute(text("""
+        SELECT
+          (SELECT count(*) FROM transactions WHERE user_id = :uid) txn_count,
+          (SELECT count(*) FROM wallets WHERE owner_user_id = :uid) wallet_count,
+          (SELECT count(*) FROM inventory_items WHERE user_id = :uid) inventory_count
+    """), {"uid": user_id})).mappings().one()
+    user["memberships"] = [dict(r) for r in memberships]
+    user["stats"] = dict(stats)
+    return user
+
+@app.get("/households", dependencies=[Depends(admin)])
+async def households(q: str = "", limit: int = 50, offset: int = 0, db: AsyncSession = Depends(db_session)):
+    limit = max(1, min(limit, 100))
+    rows = (await db.execute(text("""
+        SELECT h.id, h.name, h.status, h.created_at, h.owner_user_id, u.name AS owner_name,
+               (SELECT count(*) FROM household_members hm WHERE hm.household_id = h.id) member_count
+        FROM households h
+        LEFT JOIN users u ON u.id = h.owner_user_id
+        WHERE (:q = '' OR lower(h.name) LIKE :like)
+        ORDER BY h.id DESC LIMIT :limit OFFSET :offset
+    """), {"q": q.strip(), "like": f"%{q.strip().lower()}%", "limit": limit, "offset": max(0, offset)})).mappings().all()
+    return [dict(row) for row in rows]
+
+@app.get("/households/{household_id}", dependencies=[Depends(admin)])
+async def household_detail(household_id: int, db: AsyncSession = Depends(db_session)):
+    h = (await db.execute(text("""
+        SELECT h.*, u.name AS owner_name
+        FROM households h LEFT JOIN users u ON u.id = h.owner_user_id WHERE h.id = :id
+    """), {"id": household_id})).mappings().first()
+    if not h:
+        raise HTTPException(404, "Household not found")
+    members = (await db.execute(text("""
+        SELECT u.id, u.name, u.email, u.is_active, hm.role, hm.status, hm.joined_at
+        FROM household_members hm JOIN users u ON u.id = hm.user_id
+        WHERE hm.household_id = :id ORDER BY hm.joined_at
+    """), {"id": household_id})).mappings().all()
+    return {"household": dict(h), "members": [dict(m) for m in members]}
+
+@app.get("/login-logs", dependencies=[Depends(admin)])
+async def login_logs(limit: int = 50, offset: int = 0, db: AsyncSession = Depends(db_session)):
+    limit = max(1, min(limit, 100))
+    rows = (await db.execute(text("""
+        SELECT l.id, l.email, l.status, l.ip_address, l.device_label, l.created_at, u.name
+        FROM login_logs l LEFT JOIN users u ON u.id = l.user_id
+        ORDER BY l.id DESC LIMIT :limit OFFSET :offset
+    """), {"limit": limit, "offset": max(0, offset)})).mappings().all()
+    return [dict(row) for row in rows]
+
+@app.get("/audit-logs", dependencies=[Depends(admin)])
+async def audit_logs(limit: int = 50, offset: int = 0, db: AsyncSession = Depends(db_session)):
+    limit = max(1, min(limit, 100))
+    rows = (await db.execute(text("""
+        SELECT * FROM mastermind_audit_logs ORDER BY id DESC LIMIT :limit OFFSET :offset
+    """), {"limit": limit, "offset": max(0, offset)})).mappings().all()
+    return [dict(row) for row in rows]
+
+@app.post("/users/{user_id}/deactivate")
+async def user_deactivate(user_id: str, actor: dict = Depends(admin), db: AsyncSession = Depends(db_session)):
+    if user_id == actor["id"]:
+        raise HTTPException(400, "Cannot deactivate your own admin account")
+    user = (await db.execute(text("SELECT id, name, email FROM users WHERE id = :id"), {"id": user_id})).mappings().first()
+    if not user:
+        raise HTTPException(404, "User not found")
+    if not user["email"].endswith("@invalid.local"):
+        await db.execute(text("UPDATE users SET is_active = false, deactivated_reason = 'manual', deactivated_at = now() WHERE id = :id"), {"id": user_id})
+        await _audit(db, actor, "deactivate", "user", user_id, user["email"])
+    return {"ok": True, "deactivated": user_id}
+
+@app.post("/users/{user_id}/reactivate")
+async def user_reactivate(user_id: str, actor: dict = Depends(admin), db: AsyncSession = Depends(db_session)):
+    user = (await db.execute(text("SELECT id, name, email FROM users WHERE id = :id"), {"id": user_id})).mappings().first()
+    if not user:
+        raise HTTPException(404, "User not found")
+    await db.execute(text("UPDATE users SET is_active = true, deactivated_reason = NULL, deactivated_at = NULL WHERE id = :id"), {"id": user_id})
+    await _audit(db, actor, "reactivate", "user", user_id, user["email"])
+    return {"ok": True, "reactivated": user_id}
