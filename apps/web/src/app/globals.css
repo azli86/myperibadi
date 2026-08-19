@@ -135,17 +135,17 @@
   --bottom-nav-active-fill: #262626;
   --bottom-nav-active-detail: #e5e5e5;
   --radius: 12px;
-  --radius-xs: 8px;
-  --radius-sm: 10px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-2xl: 16px;
-  --radius-3xl: 28px;
-  --radius-4xl: 32px;
-  --card-radius-xl: 20px;
-  --card-radius-lg: 16px;
-  --card-radius-md: 14px;
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 12px;
+  --radius-2xl: 12px;
+  --radius-3xl: 16px;
+  --radius-4xl: 18px;
+  --card-radius-xl: 12px;
+  --card-radius-lg: 12px;
+  --card-radius-md: 12px;
   --card-radius-sm: 12px;
   --card-shadow: var(--m3-elevation-1);
   --card-shadow-hover: var(--m3-elevation-3);
@@ -637,8 +637,8 @@ div:has(> [data-portal-modal]) {
  * Use class names — do NOT rely on rounded-t-* + sm:rounded-* (global CSS zeros bottoms)
  */
 .app-sheet-panel {
-  --app-sheet-r: 16px;
-  --app-sheet-r-desktop: 16px;
+  --app-sheet-r: 12px;
+  --app-sheet-r-desktop: 12px;
   border-top-left-radius: var(--app-sheet-r) !important;
   border-top-right-radius: var(--app-sheet-r) !important;
   border-bottom-left-radius: 0 !important;
@@ -660,18 +660,18 @@ div:has(> [data-portal-modal]) {
 }
 
 .app-sheet-panel--sm {
-  --app-sheet-r: 16px;
-  --app-sheet-r-desktop: 16px;
+  --app-sheet-r: 12px;
+  --app-sheet-r-desktop: 12px;
 }
 
 .app-sheet-panel--lg {
-  --app-sheet-r: 16px;
-  --app-sheet-r-desktop: 16px;
+  --app-sheet-r: 12px;
+  --app-sheet-r-desktop: 12px;
 }
 
 .app-sheet-panel--xl {
-  --app-sheet-r: 16px;
-  --app-sheet-r-desktop: 16px;
+  --app-sheet-r: 12px;
+  --app-sheet-r-desktop: 12px;
 }
 
 /* Always bottom-docked (menus): never full-round bottoms */
@@ -683,8 +683,8 @@ div:has(> [data-portal-modal]) {
 }
 
 .app-sheet-panel-header {
-  border-top-left-radius: var(--app-sheet-r, 16px) !important;
-  border-top-right-radius: var(--app-sheet-r, 16px) !important;
+  border-top-left-radius: var(--app-sheet-r, 12px) !important;
+  border-top-right-radius: var(--app-sheet-r, 12px) !important;
   border-bottom-left-radius: 0 !important;
   border-bottom-right-radius: 0 !important;
 }
@@ -702,8 +702,8 @@ div:has(> [data-portal-modal]) {
   }
 
   .app-sheet-panel-header {
-    border-top-left-radius: var(--app-sheet-r-desktop, 16px) !important;
-    border-top-right-radius: var(--app-sheet-r-desktop, 16px) !important;
+    border-top-left-radius: var(--app-sheet-r-desktop, 12px) !important;
+    border-top-right-radius: var(--app-sheet-r-desktop, 12px) !important;
     border-bottom-left-radius: 0 !important;
     border-bottom-right-radius: 0 !important;
   }
@@ -2457,13 +2457,13 @@ html[data-theme="light"] [class~="border-gray-300"] {
     --radius-md: 10px;
     --radius-lg: 12px;
     --radius-xl: 12px;
-    --radius-2xl: 16px;
+    --radius-2xl: 12px;
     --radius-3xl: 16px;
     --radius-4xl: 18px;
     --card-radius-xl: 12px;
-    --card-radius-lg: 10px;
-    --card-radius-md: 8px;
-    --card-radius-sm: 8px;
+    --card-radius-lg: 12px;
+    --card-radius-md: 12px;
+    --card-radius-sm: 12px;
   }
 
   .portal-personal-shell .modern-card {
@@ -2482,14 +2482,14 @@ html[data-theme="light"] [class~="border-gray-300"] {
   .portal-personal-shell [class*="rounded-[20px]"],
   .portal-personal-shell [class*="rounded-[18px]"],
   .portal-personal-shell [class*="rounded-[16px]"] {
-    border-radius: 10px !important;
+    border-radius: 12px !important;
   }
 
   .portal-personal-shell [class*="rounded-t-[30px]"],
   .portal-personal-shell [class*="rounded-t-[28px]"],
   .portal-personal-shell [class*="rounded-t-[24px]"],
   .portal-personal-shell [class*="rounded-t-[20px]"] {
-    border-radius: 10px 10px 0 0 !important;
+    border-radius: 12px 12px 0 0 !important;
   }
 
   .portal-personal-shell [class~="rounded-3xl"] {
