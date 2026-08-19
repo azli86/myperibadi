@@ -374,6 +374,21 @@ async def transactions_recent(limit: int = 40, db: AsyncSession = Depends(db_ses
         item["user_email"] = mask_email(item.get("user_email"))
     return result
 
+@app.get("/live/api", dependencies=[Depends(admin)])
+async def live_api(limit: int = 25, db: AsyncSession = Depends(db_session)):
+    """Live API request feed from access_logs."""
+    limit = max(1, min(limit, 60))
+    rows = (await db.execute(text("""
+        SELECT a.id, a.method, a.path, a.status_code, a.ip_address, a.created_at, a.user_id,
+               coalesce(u.email, 'anonymous') AS email
+        FROM access_logs a LEFT JOIN users u ON u.id = a.user_id
+        ORDER BY a.created_at DESC LIMIT :limit
+    """), {"limit": limit})).mappings().all()
+    result = [dict(r) for r in rows]
+    for item in result:
+        item["email"] = mask_email(item.get("email"))
+    return result
+
 @app.get("/users", dependencies=[Depends(admin)])
 async def users(q: str = "", limit: int = 50, offset: int = 0, db: AsyncSession = Depends(db_session)):
     limit = max(1, min(limit, 100))
