@@ -88,6 +88,10 @@ export default function LivePage() {
             badge = "UPDT";
             cls = "upd";
             main = "Kemas kini akaun";
+          } else if (r.kind === "WALLET") {
+            badge = "WAL";
+            cls = "wal";
+            main = `Tambah wallet ${r.detail1 || ""}`.trim();
           } else {
             badge = "NEW";
             cls = "sig";

@@ -409,6 +409,15 @@ async def live_api(limit: int = 25, db: AsyncSession = Depends(db_session)):
                  '' AS status, '' AS category_name, '' AS household_name
           FROM users u
           WHERE u.updated_at > u.created_at AND u.updated_at >= now() - interval '7 days'
+          UNION ALL
+          SELECT 'WALLET' AS kind, w.created_at, coalesce(w.name,'') AS detail1,
+                 coalesce(w.label,'') AS detail2, NULL AS amount,
+                 coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
+                 '' AS status, '' AS category_name, coalesce(h.name,'') AS household_name
+          FROM wallets w
+          LEFT JOIN users u ON u.id = w.owner_user_id
+          LEFT JOIN households h ON h.id = w.household_id
+          WHERE w.created_at >= now() - interval '7 days'
         ) q
         ORDER BY created_at DESC LIMIT :limit
     """), {"limit": limit})).mappings().all()
