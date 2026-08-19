@@ -81,7 +81,7 @@ export default function LivePage() {
           if (r.kind === "TXN") {
             badge = r.detail1 === "income" ? "IN" : "OUT";
             cls = r.detail1 === "income" ? "inc" : "exp";
-            main = `RM ${Number(r.amount).toLocaleString("ms-MY", { minimumFractionDigits: 2 })} · ${r.detail2 || "—"}`;
+            main = "";
           } else if (r.kind === "LOGIN") {
             badge = "LOGIN";
             cls = "log";
@@ -95,7 +95,7 @@ export default function LivePage() {
             <div className="lv-line" key={r.kind + r.created_at + r.detail2}>
               <span className="lv-time">[{fmtStamp(r.created_at)}]</span>
               <span className={"lv-badge " + cls}>{badge}</span>
-              <span className="lv-main">{main}</span>
+              {main && <span className="lv-main">{main}</span>}
               <span className="lv-user">{r.user_name || r.user_email}</span>
             </div>
           );
