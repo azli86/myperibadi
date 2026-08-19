@@ -1018,7 +1018,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { label: "Personal", items: desktopPersonalNavigation },
     { label: "Maps", items: desktopMapNavigation },
     { label: "Connector", items: desktopConnectorNavigation },
-    { label: lang === "BM" ? "Bantuan" : "Help", items: [{ name: lang === "BM" ? "Command Bot" : "Bot Command", href: `/${sessionId}/bot-command`, icon: Bot }, { name: t.changelog, href: `/${sessionId}/whatsnew`, icon: ScrollText }] },
+    { label: lang === "BM" ? "Bantuan" : "Help", items: [{ name: lang === "BM" ? "Command Bot" : "Bot Command", href: `/${sessionId}/bot-command`, icon: Bot }, { name: lang === "BM" ? "Request & Ticket" : "Request & Ticket", href: `/${sessionId}/request`, icon: Send }, { name: t.changelog, href: `/${sessionId}/whatsnew`, icon: ScrollText }] },
   ];
   const mobileNavLeft = [
     { nameKey: "home" as const, href: `/${sessionId}`, icon: Home },
@@ -4064,10 +4064,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     </span>
                   </button>
 
-                  <section className="grid grid-cols-3 gap-2">
+                  <section className="grid grid-cols-2 gap-2">
                     {[
                       { name: lang === "BM" ? "Command Bot" : "Bot Command", href: `/${sessionId}/bot-command`, icon: Bot },
                       { name: lang === "BM" ? "Tetapan" : "Settings", href: `/${sessionId}/settings`, icon: Settings },
+                      { name: lang === "BM" ? "Request & Ticket" : "Request & Ticket", href: `/${sessionId}/request`, icon: Send },
                     ].map((item) => (
                       <button
                         key={item.href}
@@ -4083,7 +4084,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     ))}
                     <button
                       type="button"
-                      onClick={() => requestMobileMenuCloseThen(() => setShowAddAccountModal(true))}
+                      onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/account`))}
                       className="flex min-w-0 flex-col items-center gap-2 rounded-2xl bg-[var(--card)] p-3 text-center text-[var(--text)] transition active:scale-[0.98]"
                     >
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)]">

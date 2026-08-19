@@ -26,6 +26,7 @@ import {
 import { useLang } from "@/lib/lang"
 import { UserAvatar } from "@/components/ui/UserAvatar"
 import { getAccessToken, setAuthTokens, logoutAuthSession } from "@/lib/auth-session"
+import { getAccounts, getActiveEmail, switchToAccount, type AccountProfile } from "@/lib/multi-account"
 import { MobilePageHeader, DesktopPageBody, DesktopPageHeader } from "@/components/layout/PageHeader"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
@@ -90,6 +91,13 @@ export default function AccountPage() {
     subscription_count: number
   } | null>(null)
   const [activeMobileSheet, setActiveMobileSheet] = useState<"profile" | "email" | "danger" | null>(null)
+  const [accounts, setAccounts] = useState<AccountProfile[]>([])
+  const [activeEmail, setActiveEmail] = useState<string | null>(null)
+
+  useEffect(() => {
+    setAccounts(getAccounts())
+    setActiveEmail(getActiveEmail())
+  }, [])
 
   const isBm = lang === "BM"
   const tr = (bm: string, en: string) => isBm ? bm : en
@@ -473,6 +481,44 @@ export default function AccountPage() {
           </div>
         </section>
 
+        {/* Stored accounts */}
+        <section className="px-1">
+          <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{tr("Akaun", "Accounts")}</p>
+          <div className="mt-2 overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)]">
+            {accounts.map((acct) => {
+              const isActive = acct.email === activeEmail
+              return (
+                <button
+                  key={acct.email}
+                  type="button"
+                  onClick={() => {
+                    if (!isActive) { switchToAccount(acct.email); setActiveEmail(acct.email); window.location.reload() }
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all active:scale-[0.99]"
+                >
+                  <UserCircle2 size={22} className="shrink-0 text-[var(--accent)]" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-[var(--text)]">{acct.name || acct.email}</p>
+                    <p className="truncate text-xs font-medium text-[var(--muted)]">{acct.email}</p>
+                  </div>
+                  {isActive && <CheckCircle2 size={18} className="shrink-0 text-emerald-500" />}
+                </button>
+              )
+            })}
+            <Link
+              href={`/${sessionId}/login`}
+              className="flex w-full items-center gap-3 border-t border-[var(--border)] px-4 py-3.5 text-left transition-all active:scale-[0.99]"
+            >
+              <UserCircle2 size={22} className="shrink-0 text-[var(--text)]" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-[var(--text)]">{tr("Tambah Akaun", "Add Account")}</p>
+                <p className="truncate text-xs font-medium text-[var(--muted)]">{tr("Log masuk akaun lain", "Sign in to another account")}</p>
+              </div>
+              <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
+            </Link>
+          </div>
+        </section>
+
         {/* Danger zone row */}
         <section className="px-1">
           <p className="px-1 text-[0.625rem] font-black uppercase tracking-[0.2em] text-[var(--muted)]">{tr("Bahaya", "Danger")}</p>
@@ -730,6 +776,60 @@ export default function AccountPage() {
 
           {emailMessage && <div className="mt-4"><SuccessBox>{emailMessage}</SuccessBox></div>}
           {emailError && <div className="mt-4"><ErrorBox>{emailError}</ErrorBox></div>}
+        </div>
+      </section>
+
+      {/* ─── Stored Accounts ─── */}
+      <section className="overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] shadow-sm">
+        <div className="border-b border-[var(--border)] bg-[var(--surface-tint)]/30 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--text)] text-[var(--bg)]">
+              <UserCircle2 size={22} />
+            </div>
+            <div>
+              <h3 className="text-base font-black tracking-tight text-[var(--text)]">
+                {tr("Akaun", "Accounts")}
+              </h3>
+              <p className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                {tr("Tukar atau tambah akaun", "Switch or add accounts")}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="p-6">
+          <div className="divide-y divide-[var(--border)] rounded-2xl border border-[var(--border)]">
+            {accounts.map((acct) => {
+              const isActive = acct.email === activeEmail
+              return (
+                <button
+                  key={acct.email}
+                  type="button"
+                  onClick={() => {
+                    if (!isActive) { switchToAccount(acct.email); setActiveEmail(acct.email); window.location.reload() }
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all hover:bg-[var(--surface-tint)]/50 active:scale-[0.99]"
+                >
+                  <UserCircle2 size={22} className="shrink-0 text-[var(--accent)]" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-[var(--text)]">{acct.name || acct.email}</p>
+                    <p className="truncate text-xs font-medium text-[var(--muted)]">{acct.email}</p>
+                  </div>
+                  {isActive && <CheckCircle2 size={18} className="shrink-0 text-emerald-500" />}
+                </button>
+              )
+            })}
+            <Link
+              href={`/${sessionId}/login`}
+              className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-all hover:bg-[var(--surface-tint)]/50 active:scale-[0.99]"
+            >
+              <UserCircle2 size={22} className="shrink-0 text-[var(--text)]" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-[var(--text)]">{tr("Tambah Akaun", "Add Account")}</p>
+                <p className="truncate text-xs font-medium text-[var(--muted)]">{tr("Log masuk akaun lain", "Sign in to another account")}</p>
+              </div>
+              <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
+            </Link>
+          </div>
         </div>
       </section>
 
