@@ -75,7 +75,6 @@ export default function LivePage() {
         </div>
       </div>
       <div className="ub-term" ref={termRef}>
-        <div className="lv-line tail">$ tail -f /var/log/mastermind/activity.log</div>
         {reqs.map((r: any) => {
           let badge = r.kind;
           let cls = "t";
@@ -107,7 +106,6 @@ export default function LivePage() {
           );
         })}
       </div>
-      <div className="ub-prompt"><span className="ub-user">admin</span>@<span className="ub-host">mastermind</span>:<span className="ub-path">~/live</span>$</div>
     </div>
   );
 }
