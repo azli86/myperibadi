@@ -284,6 +284,56 @@ async def system_status(db: AsyncSession = Depends(db_session)):
     """))).mappings().one()
     return {"db_ok": db_ok, **dict(sizes)}
 
+@app.get("/activity", dependencies=[Depends(admin)])
+async def activity(kind: str = "all", limit: int = 40, db: AsyncSession = Depends(db_session)):
+    """Recent activity feed. kind: all | login | api | audit"""
+    limit = max(1, min(limit, 100))
+    out = []
+    if kind in ("all", "login"):
+        rows = (await db.execute(text("""
+            SELECT 'login' AS kind, l.created_at AS at, l.email, l.status AS detail, l.ip_address,
+                   l.device_label, u.name AS actor
+            FROM login_logs l LEFT JOIN users u ON u.id = l.user_id
+            ORDER BY l.created_at DESC LIMIT :limit
+        """), {"limit": limit})).mappings().all()
+        out += [dict(r) for r in rows]
+    if kind in ("all", "api"):
+        rows = (await db.execute(text("""
+            SELECT 'api' AS kind, a.created_at AS at, coalesce(u.email, 'anonymous') AS email,
+                   a.method || ' ' || a.path AS detail, a.ip_address, a.user_agent AS device_label,
+                   u.name AS actor, a.status_code
+            FROM access_logs a LEFT JOIN users u ON u.id = a.user_id
+            ORDER BY a.created_at DESC LIMIT :limit
+        """), {"limit": limit})).mappings().all()
+        out += [dict(r) for r in rows]
+    if kind in ("all", "audit"):
+        rows = (await db.execute(text("""
+            SELECT 'audit' AS kind, a.created_at AS at, a.actor_email AS email,
+                   a.action AS detail, '' AS ip_address, '' AS device_label,
+                   a.actor_email AS actor, a.target_type || ':' || a.target_id AS status_code
+            FROM mastermind_audit_logs a
+            ORDER BY a.created_at DESC LIMIT :limit
+        """), {"limit": limit})).mappings().all()
+        out += [dict(r) for r in rows]
+    out.sort(key=lambda r: r["at"], reverse=True)
+    return out[:limit]
+
+@app.get("/transactions/recent", dependencies=[Depends(admin)])
+async def transactions_recent(limit: int = 40, db: AsyncSession = Depends(db_session)):
+    """Most recent transactions across the system."""
+    limit = max(1, min(limit, 100))
+    rows = (await db.execute(text("""
+        SELECT t.id, t.reference_id, t.type, t.amount, t.vendor_or_source, t.txn_date, t.created_at,
+               t.source_channel, t.household_id, u.email AS user_email, u.name AS user_name,
+               w.name AS wallet_name, c.name AS category_name
+        FROM transactions t
+        LEFT JOIN users u ON u.id = t.user_id
+        LEFT JOIN wallets w ON w.id = t.wallet_id
+        LEFT JOIN categories c ON c.id = t.category_id
+        ORDER BY t.created_at DESC LIMIT :limit
+    """), {"limit": limit})).mappings().all()
+    return [dict(r) for r in rows]
+
 @app.get("/users", dependencies=[Depends(admin)])
 async def users(q: str = "", limit: int = 50, offset: int = 0, db: AsyncSession = Depends(db_session)):
     limit = max(1, min(limit, 100))
