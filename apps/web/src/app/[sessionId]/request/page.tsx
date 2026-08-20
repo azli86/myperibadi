@@ -188,6 +188,7 @@ export default function RequestPage() {
   // Ticket Chat / Discussion Modal
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [extraReplies, setExtraReplies] = useState<Record<number, DiscussionMessage[]>>({})
+  const [serverReplies, setServerReplies] = useState<Record<number, DiscussionMessage[]>>({})
   const [userReplyText, setUserReplyText] = useState("")
   const [replying, setReplying] = useState(false)
   const [replyError, setReplyError] = useState("")
@@ -258,14 +259,50 @@ export default function RequestPage() {
     setError("")
   }, [])
 
+  const loadReplies = useCallback(
+    async (ticketId: number) => {
+      try {
+        const r = await fetch(`/api/support/tickets/${ticketId}/replies`, {
+          credentials: "include",
+          headers:
+            token && token !== "cookie"
+              ? { Authorization: `Bearer ${token}` }
+              : {},
+          cache: "no-store",
+        })
+        if (r.ok) {
+          const data = (await r.json()) as {
+            id: number
+            sender: string
+            body: string
+            created_at?: string | null
+          }[]
+          const msgs: DiscussionMessage[] = (Array.isArray(data) ? data : []).map(
+            (m) => ({
+              id: `srv-${m.id}`,
+              sender: m.sender === "admin" ? "admin" : "user",
+              text: m.body,
+              timestamp: m.created_at,
+            })
+          )
+          setServerReplies((prev) => ({ ...prev, [ticketId]: msgs }))
+        }
+      } catch {
+        // Ignore
+      }
+    },
+    [token]
+  )
+
   const openTicketChat = useCallback((tk: Ticket) => {
     setSelectedTicket(tk)
     setUserReplyText("")
     setReplyError("")
+    void loadReplies(tk.id)
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }, 150)
-  }, [])
+  }, [loadReplies])
 
   const closeTicketChat = useCallback(() => {
     setSelectedTicket(null)
@@ -353,6 +390,7 @@ export default function RequestPage() {
         [selectedTicket.id]: [...(prev[selectedTicket.id] || []), newEntry],
       }))
       setUserReplyText("")
+      void loadReplies(selectedTicket.id)
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
       }, 100)
@@ -1107,41 +1145,93 @@ export default function RequestPage() {
                     </div>
                   </div>
 
-                  {/* 2. Admin Response Bubble (if exists) */}
-                  {selectedTicket.admin_note ? (
-                    <div className="flex flex-col items-start space-y-1 pt-1">
-                      <div className="flex items-center gap-1.5 pl-1 text-[0.65rem] font-bold text-sky-600 dark:text-sky-400">
-                        <ShieldCheck size={13} />
-                        <span>{tr("Admin / Sokongan", "Admin Support")}</span>
+                  {/* 2. Full Conversation (server replies) + user local replies */}
+                  {(() => {
+                    const serverMsgs = serverReplies[selectedTicket.id] || []
+                    const serverTexts = new Set(serverMsgs.map((m) => m.text + "|" + (m.timestamp || "")))
+                    const extraMsgs = (extraReplies[selectedTicket.id] || []).filter(
+                      (m) => !serverTexts.has(m.text + "|" + (m.timestamp || ""))
+                    )
+                    const hasConversation = serverMsgs.length > 0 || extraMsgs.length > 0
+                    return hasConversation ? (
+                      <>
+                        {serverMsgs.map((msg) =>
+                          msg.sender === "admin" ? (
+                            <div
+                              key={msg.id}
+                              className="flex flex-col items-start space-y-1"
+                            >
+                              <div className="flex items-center gap-1.5 pl-1 text-[0.65rem] font-bold text-sky-600 dark:text-sky-400">
+                                <ShieldCheck size={13} />
+                                <span>{tr("Admin / Sokongan", "Admin Support")}</span>
+                                {msg.timestamp ? (
+                                  <span className="font-normal text-[var(--muted)]">
+                                    · {formatChatTime(msg.timestamp)}
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="max-w-[85%] rounded-2xl rounded-tl-xs border border-sky-500/30 bg-sky-500/10 p-3.5 shadow-sm text-xs leading-relaxed text-[var(--text)]">
+                                <p className="whitespace-pre-wrap font-medium leading-relaxed">
+                                  {msg.text}
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div
+                              key={msg.id}
+                              className="flex flex-col items-end space-y-1"
+                            >
+                              <div className="flex items-center gap-1.5 pr-1 text-[0.65rem] font-bold text-[var(--muted)]">
+                                <span>{tr("Anda", "You")}</span>
+                                {msg.timestamp ? (
+                                  <span>· {formatChatTime(msg.timestamp)}</span>
+                                ) : null}
+                              </div>
+                              <div className="max-w-[85%] rounded-2xl rounded-tr-xs bg-[var(--text)] text-[var(--bg)] p-3.5 shadow-sm text-xs leading-relaxed">
+                                <p className="whitespace-pre-wrap opacity-95 leading-relaxed font-medium">
+                                  {msg.text}
+                                </p>
+                              </div>
+                            </div>
+                          )
+                        )}
+                        {extraMsgs.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className="flex flex-col items-end space-y-1"
+                          >
+                            <div className="flex items-center gap-1.5 pr-1 text-[0.65rem] font-bold text-[var(--muted)]">
+                              <span>{tr("Anda", "You")}</span>
+                              <span>·</span>
+                              <span>{formatChatTime(msg.timestamp)}</span>
+                            </div>
+                            <div className="max-w-[85%] rounded-2xl rounded-tr-xs bg-[var(--text)] text-[var(--bg)] p-3.5 shadow-sm text-xs leading-relaxed">
+                              <p className="whitespace-pre-wrap opacity-95 leading-relaxed font-medium">
+                                {msg.text}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    ) : selectedTicket.admin_note ? (
+                      <div className="flex flex-col items-start space-y-1 pt-1">
+                        <div className="flex items-center gap-1.5 pl-1 text-[0.65rem] font-bold text-sky-600 dark:text-sky-400">
+                          <ShieldCheck size={13} />
+                          <span>{tr("Admin / Sokongan", "Admin Support")}</span>
+                        </div>
+                        <div className="max-w-[85%] rounded-2xl rounded-tl-xs border border-sky-500/30 bg-sky-500/10 p-3.5 shadow-sm text-xs leading-relaxed text-[var(--text)]">
+                          <p className="whitespace-pre-wrap font-medium leading-relaxed">
+                            {selectedTicket.admin_note}
+                          </p>
+                        </div>
                       </div>
-                      <div className="max-w-[85%] rounded-2xl rounded-tl-xs border border-sky-500/30 bg-sky-500/10 p-3.5 shadow-sm text-xs leading-relaxed text-[var(--text)]">
-                        <p className="whitespace-pre-wrap font-medium leading-relaxed">
-                          {selectedTicket.admin_note}
-                        </p>
+                    ) : (
+                      <div className="flex items-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/40 p-3 text-xs text-[var(--muted)]">
+                        <Clock size={14} className="shrink-0 text-amber-500" />
+                        <span>{tr("Menunggu balasan & semakan daripada pentadbir…", "Awaiting reply & review from administrator…")}</span>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/40 p-3 text-xs text-[var(--muted)]">
-                      <Clock size={14} className="shrink-0 text-amber-500" />
-                      <span>{tr("Menunggu balasan & semakan daripada pentadbir…", "Awaiting reply & review from administrator…")}</span>
-                    </div>
-                  )}
-
-                  {/* 3. Subsequent Dynamic Replies in this session */}
-                  {(extraReplies[selectedTicket.id] || []).map((msg) => (
-                    <div key={msg.id} className="flex flex-col items-end space-y-1">
-                      <div className="flex items-center gap-1.5 pr-1 text-[0.65rem] font-bold text-[var(--muted)]">
-                        <span>{tr("Anda", "You")}</span>
-                        <span>·</span>
-                        <span>{formatChatTime(msg.timestamp)}</span>
-                      </div>
-                      <div className="max-w-[85%] rounded-2xl rounded-tr-xs bg-[var(--text)] text-[var(--bg)] p-3.5 shadow-sm text-xs leading-relaxed">
-                        <p className="whitespace-pre-wrap opacity-95 leading-relaxed font-medium">
-                          {msg.text}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })()}
 
                   {/* Error Notification */}
                   {replyError && (
