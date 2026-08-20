@@ -2346,79 +2346,87 @@ export default function Home() {
                           style={{
                             display: "flex",
                             flexDirection: "column",
-                            gap: "8px",
-                            maxHeight: "280px",
+                            gap: "10px",
+                            maxHeight: "300px",
                             overflowY: "auto",
                             marginBottom: "12px",
                           }}
                         >
-                          {/* User's original question as first bubble */}
+                          {/* User's original question as first bubble (dark, right? no—user on left in admin view) */}
                           {(ticketDetail.description || ticketDetail.title) && (
-                            <div
-                              style={{
-                                alignSelf: "flex-start",
-                                background: "var(--panel)",
-                                color: "var(--text-main)",
-                                border: "1px solid var(--border)",
-                                borderTopLeftRadius: 4,
-                                borderRadius: 12,
-                                padding: "10px 12px",
-                                maxWidth: "85%",
-                                whiteSpace: "pre-wrap",
-                                fontSize: 13,
-                              }}
-                            >
-                              <div
-                                className="muted"
-                                style={{ fontSize: 10, marginBottom: 3 }}
-                              >
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                              <div className="muted" style={{ fontSize: 10, fontWeight: 700, marginBottom: 3, paddingLeft: 4 }}>
                                 Pengguna · {fmtDate(ticketDetail.created_at)}
                               </div>
-                              {ticketDetail.description || ticketDetail.title}
+                              <div
+                                style={{
+                                  maxWidth: "85%",
+                                  background: "var(--panel)",
+                                  color: "var(--text-main)",
+                                  border: "1px solid var(--border-subtle)",
+                                  borderTopLeftRadius: 4,
+                                  borderRadius: 12,
+                                  padding: "10px 12px",
+                                  whiteSpace: "pre-wrap",
+                                  fontSize: 13,
+                                  lineHeight: "1.5",
+                                }}
+                              >
+                                <div style={{ fontWeight: 800, marginBottom: 2 }}>
+                                  {ticketDetail.title}
+                                </div>
+                                {ticketDetail.description}
+                              </div>
                             </div>
                           )}
                           {(ticketDetail.replies || []).length > 0 ? (
-                            (ticketDetail.replies || []).map((r: any) => (
-                              <div
-                                key={r.id}
-                                style={{
-                                  alignSelf:
-                                    r.sender === "admin" ? "flex-end" : "flex-start",
-                                  background:
-                                    r.sender === "admin"
-                                      ? "var(--accent)"
-                                      : "var(--panel)",
-                                  color:
-                                    r.sender === "admin"
-                                      ? "#fff"
-                                      : "var(--text-main)",
-                                  border: "1px solid var(--border)",
-                                  borderTopRightRadius:
-                                    r.sender === "admin" ? 4 : 12,
-                                  borderTopLeftRadius:
-                                    r.sender === "admin" ? 12 : 4,
-                                  borderRadius: 12,
-                                  padding: "8px 12px",
-                                  maxWidth: "85%",
-                                  whiteSpace: "pre-wrap",
-                                  fontSize: 13,
-                                }}
-                              >
-                                <div
-                                  className="muted"
-                                  style={{
-                                    fontSize: 10,
-                                    marginBottom: 3,
-                                    color:
-                                      r.sender === "admin" ? "#e2e8f0" : "inherit",
-                                  }}
-                                >
-                                  {r.sender === "admin" ? "Admin" : "Pengguna"} ·{" "}
-                                  {fmtDate(r.created_at)}
+                            (ticketDetail.replies || []).map((r: any) =>
+                              r.sender === "admin" ? (
+                                <div key={r.id} style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
+                                  <div className="muted" style={{ fontSize: 10, fontWeight: 700, marginBottom: 3, paddingRight: 4 }}>
+                                    Admin · {fmtDate(r.created_at)}
+                                  </div>
+                                  <div
+                                    style={{
+                                      maxWidth: "85%",
+                                      background: "rgba(14,165,233,0.12)",
+                                      color: "var(--text-main)",
+                                      border: "1px solid rgba(14,165,233,0.3)",
+                                      borderTopRightRadius: 4,
+                                      borderRadius: 12,
+                                      padding: "10px 12px",
+                                      whiteSpace: "pre-wrap",
+                                      fontSize: 13,
+                                      lineHeight: "1.5",
+                                    }}
+                                  >
+                                    {r.body}
+                                  </div>
                                 </div>
-                                {r.body}
-                              </div>
-                            ))
+                              ) : (
+                                <div key={r.id} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                                  <div className="muted" style={{ fontSize: 10, fontWeight: 700, marginBottom: 3, paddingLeft: 4 }}>
+                                    Pengguna · {fmtDate(r.created_at)}
+                                  </div>
+                                  <div
+                                    style={{
+                                      maxWidth: "85%",
+                                      background: "var(--panel)",
+                                      color: "var(--text-main)",
+                                      border: "1px solid var(--border-subtle)",
+                                      borderTopLeftRadius: 4,
+                                      borderRadius: 12,
+                                      padding: "10px 12px",
+                                      whiteSpace: "pre-wrap",
+                                      fontSize: 13,
+                                      lineHeight: "1.5",
+                                    }}
+                                  >
+                                    {r.body}
+                                  </div>
+                                </div>
+                              )
+                            )
                           ) : (
                             <div
                               className="muted"
