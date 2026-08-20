@@ -204,6 +204,7 @@ export default function Home() {
   const [ticketDetail, setTicketDetail] = useState<any | null>(null);
 
   const [busy, setBusy] = useState(false);
+  const [ticketReply, setTicketReply] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
   const [txnStats, setTxnStats] = useState<any[]>([]);
@@ -464,6 +465,26 @@ export default function Home() {
       setError((d && d.detail) || "Tindakan gagal");
       return;
     }
+    await openTicket(id);
+    await showTickets(ticketKindFilter);
+  }
+
+  async function sendTicketReply(id: number) {
+    const reply = ticketReply.trim();
+    if (!reply) return;
+    setError("");
+    const r = await fetch(`/api/support/tickets/${id}/reply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ reply }),
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => null);
+      setError((d && d.detail) || "Balasan gagal dihantar");
+      return;
+    }
+    setTicketReply("");
     await openTicket(id);
     await showTickets(ticketKindFilter);
   }
@@ -2317,6 +2338,56 @@ export default function Home() {
                         </button>
                       ))}
                     </div>
+
+                    {ticketDetail.kind === "support" && (
+                      <div style={{ marginTop: "16px" }}>
+                        <div className="sub-title">Balas Tiket</div>
+                        {ticketDetail.admin_note ? (
+                          <div
+                            className="ticket-reply-box"
+                            style={{
+                              background: "var(--panel)",
+                              border: "1px solid var(--border)",
+                              borderRadius: "10px",
+                              padding: "10px 12px",
+                              marginBottom: "10px",
+                              whiteSpace: "pre-wrap",
+                            }}
+                          >
+                            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>
+                              Balasan semasa
+                            </div>
+                            {ticketDetail.admin_note}
+                          </div>
+                        ) : null}
+                        <textarea
+                          value={ticketReply}
+                          onChange={(e) => setTicketReply(e.target.value)}
+                          placeholder="Taip balasan untuk pengguna…"
+                          rows={3}
+                          style={{
+                            width: "100%",
+                            boxSizing: "border-box",
+                            borderRadius: "10px",
+                            border: "1px solid var(--border)",
+                            background: "var(--bg)",
+                            color: "var(--text-main)",
+                            padding: "10px 12px",
+                            fontSize: 13,
+                            fontFamily: "inherit",
+                            resize: "vertical",
+                          }}
+                        />
+                        <button
+                          className="primary"
+                          style={{ marginTop: "10px", width: "100%" }}
+                          disabled={busy || !ticketReply.trim()}
+                          onClick={() => void sendTicketReply(ticketDetail.id)}
+                        >
+                          Hantar Balasan
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

@@ -624,3 +624,23 @@ async def support_ticket_status(ticket_id: int, request: Request, actor: dict = 
     await db.commit()
     await _audit(db, actor, "ticket_status", "support_ticket", str(ticket_id), f"{row['title']} -> {status_val}")
     return {"ok": True, "status": status_val}
+
+@app.post("/support/tickets/{ticket_id}/reply")
+async def support_ticket_reply(ticket_id: int, request: Request, actor: dict = Depends(admin), db: AsyncSession = Depends(db_session)):
+    """Admin replies to a ticket. The reply is stored as admin_note, which the
+    user sees as the admin's answer on their /request page."""
+    body = await request.json()
+    reply = (body.get("reply") or "").strip()
+    if not reply:
+        raise HTTPException(422, "Reply tidak boleh kosong")
+    row = (await db.execute(text("SELECT id, title, status, kind FROM support_tickets WHERE id = :id"), {"id": ticket_id})).mappings().first()
+    if not row:
+        raise HTTPException(404, "Ticket not found")
+    if row["kind"] != "support":
+        raise HTTPException(422, "Reply hanya untuk tiket jenis support")
+    await db.execute(text(
+        "UPDATE support_tickets SET admin_note = :n, status = CASE WHEN status = 'new' THEN 'in_progress' ELSE status END WHERE id = :id"
+    ), {"n": reply, "id": ticket_id})
+    await db.commit()
+    await _audit(db, actor, "ticket_reply", "support_ticket", str(ticket_id), row["title"])
+    return {"ok": True, "admin_note": reply}
