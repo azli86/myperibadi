@@ -3808,106 +3808,110 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               )}
               onClick={(event) => event.stopPropagation()}
             >
+              {/* ── Header: iOS Inset Account & Navigation Bar ── */}
               <div
                 className={cn(
-                  "relative z-10 mx-4 mb-5 mt-4 rounded-2xl p-3",
+                  "relative z-10 mx-4 mb-4 mt-3 rounded-3xl border border-[var(--border)] p-3 shadow-sm",
                   "bg-[var(--card)]",
                 )}
               >
-                <div className="relative flex items-center justify-between gap-3">
-                  {/* Account display & switch trigger */}
+                <div className="relative flex items-center justify-between gap-2.5">
+                  {/* Account Switcher Trigger */}
                   <div className="relative min-w-0 flex-1">
                     <button
                       type="button"
                       onClick={() => setShowMobileSheetAccountSwitcher((open) => !open)}
                       className={cn(
-                        "flex w-full items-center gap-2.5 rounded-xl bg-[var(--surface-tint)] px-3 py-2 text-left transition-all active:scale-[0.98]", 
+                        "group flex w-full items-center gap-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-left transition-all hover:bg-[var(--surface-tint-strong)] active:scale-[0.98]", 
                       )}
                     >
-                      <UserAvatar name={displayName || activeEmail} size={32} src={user?.avatar_url} />
+                      <div className="relative shrink-0">
+                        <UserAvatar name={displayName || activeEmail} size={36} src={user?.avatar_url} />
+                        <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[var(--card)]" />
+                      </div>
                       <div className="min-w-0 flex-1">
-                        <span className={cn("block truncate text-xs font-black leading-tight", mobileSheetTitleClass)}>
+                        <span className={cn("block truncate text-xs font-black leading-tight tracking-tight", mobileSheetTitleClass)}>
                           {displayName}
                         </span>
-                        <span className="block truncate text-[9px] font-semibold text-[var(--muted)] leading-tight mt-0.5">
+                        <span className="mt-0.5 block truncate text-[10px] font-medium leading-tight text-[var(--muted)]">
                           {activeEmail || (lang === "BM" ? "Akaun aktif" : "Active account")}
                         </span>
                       </div>
-                      <ChevronDown
-                        size={13}
-                        className={cn(
-                          "shrink-0 text-[var(--muted)] transition-transform duration-200",
-                          showMobileSheetAccountSwitcher && "rotate-180",
-                        )}
-                      />
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--muted)] transition-transform group-hover:text-[var(--text)]">
+                        <ChevronDown
+                          size={13}
+                          className={cn(
+                            "transition-transform duration-200",
+                            showMobileSheetAccountSwitcher && "rotate-180",
+                          )}
+                        />
+                      </div>
                     </button>
 
-                    
-                      {showMobileSheetAccountSwitcher && (
-                        <div
-                          className={cn(
-                            "absolute left-0 right-0 top-[48px] z-20 overflow-hidden rounded-2xl border p-2 shadow-2xl",
-                            "border-[var(--border)] bg-[var(--sheet-bg)]",
-                          )}
+                    {showMobileSheetAccountSwitcher && (
+                      <div
+                        className={cn(
+                          "absolute left-0 right-0 top-[56px] z-30 overflow-hidden rounded-3xl border p-2 shadow-2xl backdrop-blur-xl",
+                          "border-[var(--border)] bg-[var(--sheet-bg)]",
+                        )}
+                      >
+                        {storedAccounts.map((acct: AccountProfile) => {
+                          const isActiveAccount = acct.email === activeEmail;
+                          return (
+                            <button
+                              key={acct.email}
+                              type="button"
+                              onClick={() => {
+                                if (isActiveAccount) {
+                                  setShowMobileSheetAccountSwitcher(false);
+                                  return;
+                                }
+                                switchToAccount(acct.email);
+                                setShowMobileSheetAccountSwitcher(false);
+                                setShowMobileMenu(false);
+                                window.location.reload();
+                              }}
+                              className={cn(
+                                "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-xs font-bold transition-all",
+                                isActiveAccount
+                                  ? "bg-[var(--surface-tint-strong)] text-[var(--text)]"
+                                  : "text-[var(--text)] hover:bg-[var(--surface-tint)]",
+                              )}
+                            >
+                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--brand-gradient)] text-[10px] font-black uppercase text-white shadow-xs">
+                                {(acct.name || acct.email)[0]}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate">{acct.name || acct.email.split("@")[0]}</span>
+                              {isActiveAccount ? <Check size={14} className="shrink-0 font-bold text-emerald-500" /> : null}
+                            </button>
+                          );
+                        })}
+                        <button
+                          type="button"
+                          onClick={() => { setShowMobileSheetAccountSwitcher(false); setShowMobileMenu(false); setShowAddAccountModal(true); }}
+                          className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/50 px-2.5 py-2 text-xs font-black text-[var(--muted)] transition-colors hover:text-[var(--text)]"
                         >
-                          {storedAccounts.map((acct: AccountProfile) => {
-                            const isActiveAccount = acct.email === activeEmail;
-                            return (
-                              <button
-                                key={acct.email}
-                                type="button"
-                                onClick={() => {
-                                  if (isActiveAccount) {
-                                    setShowMobileSheetAccountSwitcher(false);
-                                    return;
-                                  }
-                                  switchToAccount(acct.email)
-                                  setShowMobileSheetAccountSwitcher(false)
-                                  setShowMobileMenu(false)
-                                  window.location.reload()
-                                }}
-                                className={cn(
-                                  "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-xs font-bold transition-colors",
-                                  isActiveAccount
-                                    ? "bg-[var(--surface-tint-strong)] text-[var(--text)]"
-                                    : "text-[var(--text)] hover:bg-[var(--surface-tint)]",
-                                )}
-                              >
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[10px] font-black uppercase text-[var(--text)]">
-                                  {(acct.name || acct.email)[0]}
-                                </span>
-                                <span className="min-w-0 flex-1 truncate">{acct.name || acct.email.split("@")[0]}</span>
-                                {isActiveAccount ? <Check size={13} className="shrink-0 text-[var(--text)]" /> : null}
-                              </button>
-                            );
-                          })}
-                          <button
-                            type="button"
-                            onClick={() => { setShowMobileSheetAccountSwitcher(false); setShowMobileMenu(false); setShowAddAccountModal(true) }}
-                            className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/40 px-2.5 py-2 text-xs font-black text-[var(--muted)]"
-                          >
-                            <UserPlus size={13} />
-                            {lang === "BM" ? "Tambah akaun" : "Add account"}
-                          </button>
-                          {/* Logout Button inside dropdown */}
-                          <button
-                            type="button"
-                            onClick={() => { setShowMobileSheetAccountSwitcher(false); setShowMobileMenu(false); void handleLogout(); }}
-                            className="mt-1.5 flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-2 text-xs font-black text-[var(--text)] active:scale-95 transition-all"
-                          >
-                            <LogOut size={13} strokeWidth={2.5} />
-                            {lang === "BM" ? "Log keluar" : "Logout"}
-                          </button>
-                        </div>
-                      )}
-                    
+                          <UserPlus size={13} />
+                          {lang === "BM" ? "Tambah akaun" : "Add account"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowMobileSheetAccountSwitcher(false); setShowMobileMenu(false); void handleLogout(); }}
+                          className="mt-1.5 flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-2.5 py-2 text-xs font-black text-rose-500 transition-all hover:bg-rose-500/20 active:scale-95 dark:text-rose-400"
+                        >
+                          <LogOut size={13} strokeWidth={2.5} />
+                          {lang === "BM" ? "Log keluar" : "Logout"}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
+                  {/* iOS Quick Action Segment */}
                   <div className="flex shrink-0 items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => setLang(lang === "EN" ? "BM" : "EN")}
-                      className="flex h-10 min-w-10 items-center justify-center rounded-xl bg-[var(--surface-tint)] px-2 text-[11px] font-black text-[var(--text)]"
+                      className="flex h-10 min-w-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 text-[11px] font-black text-[var(--text)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] active:scale-95"
                       aria-label={lang === "BM" ? "Tukar bahasa" : "Switch language"}
                     >
                       {lang}
@@ -3915,26 +3919,33 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     <ThemeToggle
                       compact
                       inverted={!isLight}
-                      className="h-10 w-10 rounded-xl bg-[var(--surface-tint)]"
+                      className="h-10 w-10 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] shadow-2xs"
                     />
                     <button
                       type="button"
                       onClick={requestMobileMenuClose}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]"
+                      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] active:scale-95"
+                      aria-label="Tutup menu"
                     >
-                      <X size={15} />
+                      <X size={16} />
                     </button>
                   </div>
                 </div>
               </div>
 
-              <div className="px-4 pb-10">
-                <div className="space-y-5">
-                  <section>
-                    <p className="mb-2.5 text-[0.62rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                      Personal
-                    </p>
-                    <div className="grid grid-cols-4 gap-x-1 gap-y-4">
+              <div className="px-4 pb-12">
+                <div className="space-y-4">
+                  {/* ── Section 1: Inset-Grouped Personal App Grid ── */}
+                  <section className={cn("rounded-3xl border border-[var(--border)] p-4 shadow-sm", "bg-[var(--card)]")}>
+                    <div className="mb-3.5 flex items-center justify-between px-0.5">
+                      <span className="text-[0.68rem] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
+                        Personal & Finance
+                      </span>
+                      <span className="text-[10px] font-semibold text-[var(--muted)]">
+                        10 {lang === "BM" ? "modul" : "modules"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-x-2 gap-y-4">
                       {mobileMenuSections.flatMap((section) => section.items).filter((item) => ![
                         `/${sessionId}`,
                         `/${sessionId}/chat`,
@@ -3961,73 +3972,94 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                                   router.push(item.href);
                                 });
                               }}
-                                className="flex min-w-0 flex-col items-center gap-1.5 text-center transition-transform active:scale-[0.94]"
+                              className="group flex min-w-0 flex-col items-center gap-1.5 text-center transition-all duration-200 active:scale-90"
+                            >
+                              <div
+                                className={cn(
+                                  "flex h-13 w-13 items-center justify-center rounded-[18px] border border-[var(--border)] shadow-2xs transition-all duration-200 group-hover:scale-105 group-hover:bg-[var(--surface-tint-strong)]",
+                                  "bg-[var(--surface-tint)] text-[var(--text)]",
+                                )}
                               >
-                                <div
-                                  className={cn(
-                                    "flex h-14 w-14 items-center justify-center rounded-2xl",
-                                    "bg-[var(--card)] text-[var(--text)]",
-                                  )}
-                                >
-                                  <item.icon
-                                    size={25}
-                                    strokeWidth={1.85}
-                                    className="shrink-0"
-                                  />
-                                </div>
-                                <p
-                                  className={cn(
-                                    "w-full line-clamp-2 px-0.5 text-xs font-semibold leading-tight",
-                                    "text-[var(--muted)]",
-                                  )}
-                                >
-                                  {item.name}
-                                </p>
-                              </button>
-                            );
-                          })}
+                                <item.icon
+                                  size={23}
+                                  strokeWidth={1.9}
+                                  className="shrink-0 transition-transform group-hover:scale-110"
+                                />
+                              </div>
+                              <p
+                                className={cn(
+                                  "w-full line-clamp-2 px-0.5 text-[11px] font-semibold leading-tight transition-colors",
+                                  "text-[var(--text)]",
+                                )}
+                              >
+                                {item.name}
+                              </p>
+                            </button>
+                          );
+                        })}
                     </div>
                   </section>
 
-                  <section className={cn("rounded-2xl p-4", "bg-[var(--card)]")}>
-                    <div className="grid grid-cols-2 gap-2">
+                  {/* ── Section 2: Inset-Grouped Shortcuts ── */}
+                  <section className={cn("rounded-3xl border border-[var(--border)] p-3.5 shadow-sm", "bg-[var(--card)]")}>
+                    <div className="grid grid-cols-2 gap-2.5">
                       <button
                         type="button"
                         onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/receipts`))}
-                        className="flex items-center gap-3 rounded-xl bg-[var(--surface-tint)] p-3 text-left text-[var(--text)] transition active:scale-[0.97]"
+                        className="group flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3 text-left text-[var(--text)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] active:scale-[0.97]"
                       >
-                        <Images size={25} strokeWidth={1.85} />
-                        <span className="text-sm font-bold">Gallery</span>
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500 transition-transform group-hover:scale-105">
+                          <Images size={21} strokeWidth={2} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-bold leading-tight">Gallery</span>
+                          <span className="block truncate text-[10px] text-[var(--muted)]">{lang === "BM" ? "Resit & media" : "Receipts"}</span>
+                        </div>
                       </button>
                       <button
                         type="button"
                         onClick={() => { requestMobileMenuClose(); setShowCalculator(true); }}
-                        className="flex items-center gap-3 rounded-xl bg-[var(--surface-tint)] p-3 text-left text-[var(--text)] transition active:scale-[0.97]"
+                        className="group flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3 text-left text-[var(--text)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] active:scale-[0.97]"
                       >
-                        <CalculatorIcon size={25} strokeWidth={1.85} />
-                        <span className="text-sm font-bold">Calculator</span>
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-500 transition-transform group-hover:scale-105">
+                          <CalculatorIcon size={21} strokeWidth={2} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-bold leading-tight">Calculator</span>
+                          <span className="block truncate text-[10px] text-[var(--muted)]">{lang === "BM" ? "Kira pantas" : "Quick calc"}</span>
+                        </div>
                       </button>
                       {[
-                        { name: lang === "BM" ? "Kenderaan Saya" : "My Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
-                        { name: lang === "BM" ? "Waranti Saya" : "My Warranty", href: `/${sessionId}/warranty`, icon: Shield },
+                        { name: lang === "BM" ? "Kenderaan Saya" : "My Vehicle", subtitle: lang === "BM" ? "Minyak & servis" : "Fuel & log", href: `/${sessionId}/vehicle`, icon: Car, color: "text-sky-500 bg-sky-500/15" },
+                        { name: lang === "BM" ? "Waranti Saya" : "My Warranty", subtitle: lang === "BM" ? "Peranti & tamat" : "Expiry alert", href: `/${sessionId}/warranty`, icon: Shield, color: "text-violet-500 bg-violet-500/15" },
                       ].map((item) => (
                         <button
                           key={item.href}
                           type="button"
                           onClick={() => requestMobileMenuCloseThen(() => router.push(item.href))}
-                          className="flex items-center gap-3 rounded-xl bg-[var(--surface-tint)] p-3 text-left text-[var(--text)] transition active:scale-[0.97]"
+                          className="group flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3 text-left text-[var(--text)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] active:scale-[0.97]"
                         >
-                          <item.icon size={25} strokeWidth={1.85} />
-                          <span className="text-sm font-bold">{item.name}</span>
+                          <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-105", item.color)}>
+                            <item.icon size={21} strokeWidth={2} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className="block truncate text-xs font-bold leading-tight">{item.name}</span>
+                            <span className="block truncate text-[10px] text-[var(--muted)]">{item.subtitle}</span>
+                          </div>
                         </button>
                       ))}
                     </div>
                   </section>
 
-                  <section className={cn("rounded-2xl p-4", "bg-[var(--card)]")}>
-                    <div className="mb-3 flex items-center gap-3 text-[var(--text)]">
-                      <MapPinned size={25} strokeWidth={1.85} />
-                      <span className="text-sm font-bold">Maps</span>
+                  {/* ── Section 3: Inset-Grouped Maps ── */}
+                  <section className={cn("rounded-3xl border border-[var(--border)] p-3.5 shadow-sm", "bg-[var(--card)]")}>
+                    <div className="mb-2.5 flex items-center gap-2 text-[var(--text)]">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-rose-500/15 text-rose-500">
+                        <MapPinned size={14} strokeWidth={2.2} />
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+                        {lang === "BM" ? "Peta & Lokasi" : "Maps & Places"}
+                      </span>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       {[
@@ -4039,60 +4071,63 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           key={item.href}
                           type="button"
                           onClick={() => requestMobileMenuCloseThen(() => router.push(item.href))}
-                          className="flex min-w-0 flex-col items-center gap-2 rounded-xl bg-[var(--surface-tint)] p-3 text-center text-[var(--text)] transition active:scale-[0.97]"
+                          className="flex min-w-0 flex-col items-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2.5 text-center text-[var(--text)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] active:scale-[0.96]"
                         >
-                          <item.icon size={23} strokeWidth={1.85} />
-                          <span className="text-xs font-semibold">{item.name}</span>
+                          <item.icon size={20} strokeWidth={1.9} />
+                          <span className="truncate text-xs font-semibold">{item.name}</span>
                         </button>
                       ))}
                     </div>
                   </section>
 
+                  {/* ── Section 4: Inset-Grouped Connector ── */}
                   <button
                     type="button"
                     onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/connector`))}
                     className={cn(
-                      "flex w-full items-center gap-4 rounded-2xl p-4 text-left transition active:scale-[0.98]",
+                      "group flex w-full items-center justify-between rounded-3xl border border-[var(--border)] p-3.5 text-left shadow-sm transition-all hover:bg-[var(--surface-tint)] active:scale-[0.98]",
                       "bg-[var(--card)] text-[var(--text)]",
                     )}
                   >
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)]">
-                      <Bot size={26} strokeWidth={1.85} />
-                    </span>
-                    <span>
-                      <span className="block text-sm font-bold">Connector</span>
-                      <span className="mt-0.5 block text-xs text-[var(--muted)]">WhatsApp & Telegram</span>
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/15 text-indigo-500 transition-transform group-hover:scale-105">
+                        <Bot size={24} strokeWidth={2} />
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="block text-xs font-black tracking-tight">Connector Hub</span>
+                          <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-500">
+                            Active
+                          </span>
+                        </div>
+                        <span className="mt-0.5 block text-[11px] text-[var(--muted)]">WhatsApp & Telegram Bot</span>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-[var(--muted)] transition-transform group-hover:translate-x-0.5" />
                   </button>
 
-                  <section className="grid grid-cols-2 gap-2">
-                    {[
-                      { name: lang === "BM" ? "Command Bot" : "Bot Command", href: `/${sessionId}/bot-command`, icon: Bot },
-                      { name: lang === "BM" ? "Tetapan" : "Settings", href: `/${sessionId}/settings`, icon: Settings },
-                      { name: lang === "BM" ? "Request & Ticket" : "Request & Ticket", href: `/${sessionId}/request`, icon: Send },
-                    ].map((item) => (
-                      <button
-                        key={item.href}
-                        type="button"
-                        onClick={() => requestMobileMenuCloseThen(() => router.push(item.href))}
-                        className="flex min-w-0 flex-col items-center gap-2 rounded-2xl bg-[var(--card)] p-3 text-center text-[var(--text)] transition active:scale-[0.98]"
-                      >
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)]">
-                          <item.icon size={21} strokeWidth={1.85} />
-                        </span>
-                        <span className="truncate text-xs font-bold">{item.name}</span>
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/account`))}
-                      className="flex min-w-0 flex-col items-center gap-2 rounded-2xl bg-[var(--card)] p-3 text-center text-[var(--text)] transition active:scale-[0.98]"
-                    >
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)]">
-                        <UserCircle2 size={21} strokeWidth={1.85} />
-                      </span>
-                      <span className="truncate text-xs font-bold">{lang === "BM" ? "Account" : "Account"}</span>
-                    </button>
+                  {/* ── Section 5: Inset-Grouped Utilities ── */}
+                  <section className={cn("rounded-3xl border border-[var(--border)] p-3 shadow-sm", "bg-[var(--card)]")}>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { name: lang === "BM" ? "Command Bot" : "Bot Command", href: `/${sessionId}/bot-command`, icon: Bot },
+                        { name: lang === "BM" ? "Tetapan" : "Settings", href: `/${sessionId}/settings`, icon: Settings },
+                        { name: lang === "BM" ? "Request & Ticket" : "Request & Ticket", href: `/${sessionId}/request`, icon: Send },
+                        { name: lang === "BM" ? "Akaun Saya" : "My Account", href: `/${sessionId}/account`, icon: UserCircle2 },
+                      ].map((item) => (
+                        <button
+                          key={item.href}
+                          type="button"
+                          onClick={() => requestMobileMenuCloseThen(() => router.push(item.href))}
+                          className="group flex items-center gap-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2.5 text-left text-[var(--text)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] active:scale-[0.98]"
+                        >
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)] transition-transform group-hover:scale-105">
+                            <item.icon size={17} strokeWidth={1.9} />
+                          </span>
+                          <span className="truncate text-xs font-bold leading-tight">{item.name}</span>
+                        </button>
+                      ))}
+                    </div>
                   </section>
                 </div>
               </div>

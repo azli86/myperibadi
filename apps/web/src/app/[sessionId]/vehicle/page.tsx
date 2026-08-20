@@ -386,12 +386,10 @@ export default function VehicleListPage() {
       return {
         tone: "ok" as const,
         label: tr("Servis seterusnya", "Next service"),
-        detail: [
-          vs.next_service_date,
-          vs.next_service_odometer != null ? `${Number(vs.next_service_odometer).toLocaleString()} KM` : null,
-        ]
-          .filter(Boolean)
-          .join(" · "),
+        detail:
+          vs.next_service_odometer != null
+            ? `${Number(vs.next_service_odometer).toLocaleString()} KM`
+            : (vs.next_service_date ?? tr("Tiada", "None")),
       }
     }
     return {
