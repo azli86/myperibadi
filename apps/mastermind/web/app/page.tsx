@@ -2342,18 +2342,43 @@ export default function Home() {
                     {ticketDetail.kind === "support" && (
                       <div style={{ marginTop: "16px" }}>
                         <div className="sub-title">Perbualan Tiket</div>
-                        {(ticketDetail.replies || []).length > 0 ? (
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "8px",
-                              maxHeight: "240px",
-                              overflowY: "auto",
-                              marginBottom: "12px",
-                            }}
-                          >
-                            {(ticketDetail.replies || []).map((r: any) => (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "8px",
+                            maxHeight: "280px",
+                            overflowY: "auto",
+                            marginBottom: "12px",
+                          }}
+                        >
+                          {/* User's original question as first bubble */}
+                          {(ticketDetail.description || ticketDetail.title) && (
+                            <div
+                              style={{
+                                alignSelf: "flex-start",
+                                background: "var(--panel)",
+                                color: "var(--text-main)",
+                                border: "1px solid var(--border)",
+                                borderTopLeftRadius: 4,
+                                borderRadius: 12,
+                                padding: "10px 12px",
+                                maxWidth: "85%",
+                                whiteSpace: "pre-wrap",
+                                fontSize: 13,
+                              }}
+                            >
+                              <div
+                                className="muted"
+                                style={{ fontSize: 10, marginBottom: 3 }}
+                              >
+                                Pengguna · {fmtDate(ticketDetail.created_at)}
+                              </div>
+                              {ticketDetail.description || ticketDetail.title}
+                            </div>
+                          )}
+                          {(ticketDetail.replies || []).length > 0 ? (
+                            (ticketDetail.replies || []).map((r: any) => (
                               <div
                                 key={r.id}
                                 style={{
@@ -2368,7 +2393,11 @@ export default function Home() {
                                       ? "#fff"
                                       : "var(--text-main)",
                                   border: "1px solid var(--border)",
-                                  borderRadius: "12px",
+                                  borderTopRightRadius:
+                                    r.sender === "admin" ? 4 : 12,
+                                  borderTopLeftRadius:
+                                    r.sender === "admin" ? 12 : 4,
+                                  borderRadius: 12,
                                   padding: "8px 12px",
                                   maxWidth: "85%",
                                   whiteSpace: "pre-wrap",
@@ -2389,16 +2418,16 @@ export default function Home() {
                                 </div>
                                 {r.body}
                               </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div
-                            className="muted"
-                            style={{ fontSize: 12, marginBottom: 12 }}
-                          >
-                            Tiada balasan lagi.
-                          </div>
-                        )}
+                            ))
+                          ) : (
+                            <div
+                              className="muted"
+                              style={{ fontSize: 12, marginBottom: 12 }}
+                            >
+                              Tiada balasan lagi.
+                            </div>
+                          )}
+                        </div>
                         <textarea
                           value={ticketReply}
                           onChange={(e) => setTicketReply(e.target.value)}
