@@ -38,6 +38,7 @@ type VehicleSummaryRow = {
   fuel_cost?: number
   total_cost?: number
   next_service_date?: string | null
+  next_service_odometer?: number | null
   road_tax_expiry?: string | null
   insurance_expiry?: string | null
 }
@@ -361,7 +362,9 @@ export function DashboardVehicleHeroRow({
                   {tr("Servis", "Service")}
                 </p>
                 <p className="mt-1 truncate text-sm font-black text-[var(--text)]">
-                  {formatDate(primarySummary?.next_service_date, isBm)}
+                  {primarySummary?.next_service_odometer != null
+                    ? `${Number(primarySummary.next_service_odometer).toLocaleString()} km`
+                    : formatDate(primarySummary?.next_service_date, isBm)}
                 </p>
               </div>
               <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2.5">
@@ -556,7 +559,9 @@ export function DashboardVehicleHeroRow({
                   {tr("Servis", "Service")}
                 </p>
                 <p className="mt-0.5 truncate text-xs font-black text-[var(--text)]">
-                  {formatDate(vs?.next_service_date, isBm)}
+                  {vs?.next_service_odometer != null
+                    ? `${Number(vs.next_service_odometer).toLocaleString()} km`
+                    : formatDate(vs?.next_service_date, isBm)}
                 </p>
               </div>
               <div className="min-w-0">
