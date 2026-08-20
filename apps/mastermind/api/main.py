@@ -161,23 +161,12 @@ def scalar(row, key):
     return int(row.get(key) or 0)
 
 def mask_name(value):
-    """Mask a name/email-local for privacy, e.g. azlijahroni -> az****ni."""
-    if not value:
-        return "—"
-    s = str(value)
-    if len(s) <= 4:
-        return s[0] + "****"
-    return s[:2] + "****" + s[-2:]
+    """Return the value unmasked — the mastermind dashboard shows full names."""
+    return value
 
 def mask_email(value):
-    """Mask an email local-part, keep domain, e.g. azlijahroni@x.com -> az****ni@x.com."""
-    if not value:
-        return "—"
-    s = str(value)
-    if "@" in s:
-        local, _, domain = s.partition("@")
-        return mask_name(local) + "@" + domain
-    return mask_name(s)
+    """Return the value unmasked — the mastermind dashboard shows full emails."""
+    return value
 
 @app.get("/health")
 async def health():
