@@ -1283,9 +1283,6 @@ async def create_odometer(
     vehicle = await queries.get_vehicle_or_404(db, vehicle_id=vehicle_id, household_id=household_id)
     if payload.odometer < 0:
         raise HTTPException(status_code=400, detail="Odometer cannot be negative.")
-    current = float(vehicle.current_odometer) if vehicle.current_odometer is not None else None
-    if current is not None and payload.odometer < current - 0.05:
-        raise HTTPException(status_code=400, detail="New odometer cannot be lower than the latest reading.")
     reading_date = _parse_date(payload.reading_date, "reading_date") or date.today()
     row = models.VehicleOdometerReading(
         vehicle_id=vehicle.id,
