@@ -187,7 +187,6 @@ export default function RequestPage() {
 
   // Ticket Chat / Discussion Modal
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
-  const [extraReplies, setExtraReplies] = useState<Record<number, DiscussionMessage[]>>({})
   const [serverReplies, setServerReplies] = useState<Record<number, DiscussionMessage[]>>({})
   const [userReplyText, setUserReplyText] = useState("")
   const [replying, setReplying] = useState(false)
@@ -363,14 +362,6 @@ export default function RequestPage() {
     setReplying(true)
     setReplyError("")
 
-    // Optimistically create new message bubble
-    const newEntry: DiscussionMessage = {
-      id: `local-${Date.now()}`,
-      sender: "user",
-      text: textToSend,
-      timestamp: new Date().toISOString(),
-    }
-
     try {
       const r = await fetch(`/api/support/tickets/${selectedTicket.id}/reply`, {
         method: "POST",
@@ -385,12 +376,8 @@ export default function RequestPage() {
         return
       }
 
-      setExtraReplies((prev) => ({
-        ...prev,
-        [selectedTicket.id]: [...(prev[selectedTicket.id] || []), newEntry],
-      }))
       setUserReplyText("")
-      void loadReplies(selectedTicket.id)
+      await loadReplies(selectedTicket.id)
       setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
       }, 100)
@@ -424,11 +411,24 @@ export default function RequestPage() {
     return { total, inProgress, resolved }
   }, [tickets])
 
-  function formatTimestamp(isoStr?: string | null) {
-    if (!isoStr) return "—"
+  function parseDateSafe(isoStr?: string | null): Date | null {
+    if (!isoStr) return null
     try {
-      const d = new Date(isoStr)
-      if (Number.isNaN(d.getTime())) return isoStr
+      // API returns naive UTC datetimes (no timezone). Treat as UTC so the
+      // browser renders it in the user's local timezone.
+      const hasZone = /(Z|[+-]\d{2}:?\d{2})$/.test(isoStr.trim())
+      const normalized = hasZone ? isoStr : isoStr.trim() + "Z"
+      const d = new Date(normalized)
+      return Number.isNaN(d.getTime()) ? null : d
+    } catch {
+      return null
+    }
+  }
+
+  function formatTimestamp(isoStr?: string | null) {
+    const d = parseDateSafe(isoStr)
+    if (!d) return isoStr || "—"
+    try {
       return d.toLocaleDateString(isBm ? "ms-MY" : "en-US", {
         day: "numeric",
         month: "short",
@@ -437,15 +437,14 @@ export default function RequestPage() {
         minute: "2-digit",
       })
     } catch {
-      return isoStr
+      return isoStr || "—"
     }
   }
 
   function formatChatTime(isoStr?: string | null) {
-    if (!isoStr) return ""
+    const d = parseDateSafe(isoStr)
+    if (!d) return ""
     try {
-      const d = new Date(isoStr)
-      if (Number.isNaN(d.getTime())) return ""
       return d.toLocaleTimeString(isBm ? "ms-MY" : "en-US", {
         hour: "numeric",
         minute: "2-digit",
@@ -1145,14 +1144,10 @@ export default function RequestPage() {
                     </div>
                   </div>
 
-                  {/* 2. Full Conversation (server replies) + user local replies */}
+                  {/* 2. Full Conversation (server replies) */}
                   {(() => {
                     const serverMsgs = serverReplies[selectedTicket.id] || []
-                    const serverTexts = new Set(serverMsgs.map((m) => m.text + "|" + (m.timestamp || "")))
-                    const extraMsgs = (extraReplies[selectedTicket.id] || []).filter(
-                      (m) => !serverTexts.has(m.text + "|" + (m.timestamp || ""))
-                    )
-                    const hasConversation = serverMsgs.length > 0 || extraMsgs.length > 0
+                    const hasConversation = serverMsgs.length > 0
                     return hasConversation ? (
                       <>
                         {serverMsgs.map((msg) =>
@@ -1195,23 +1190,6 @@ export default function RequestPage() {
                             </div>
                           )
                         )}
-                        {extraMsgs.map((msg) => (
-                          <div
-                            key={msg.id}
-                            className="flex flex-col items-end space-y-1"
-                          >
-                            <div className="flex items-center gap-1.5 pr-1 text-[0.65rem] font-bold text-[var(--muted)]">
-                              <span>{tr("Anda", "You")}</span>
-                              <span>·</span>
-                              <span>{formatChatTime(msg.timestamp)}</span>
-                            </div>
-                            <div className="max-w-[85%] rounded-2xl rounded-tr-xs bg-[var(--text)] text-[var(--bg)] p-3.5 shadow-sm text-xs leading-relaxed">
-                              <p className="whitespace-pre-wrap opacity-95 leading-relaxed font-medium">
-                                {msg.text}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
                       </>
                     ) : selectedTicket.admin_note ? (
                       <div className="flex flex-col items-start space-y-1 pt-1">
