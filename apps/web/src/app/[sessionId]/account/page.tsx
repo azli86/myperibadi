@@ -36,6 +36,7 @@ import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 import { usePageAlert } from "@/hooks/usePageAlert"
 import { cn } from "@/lib/utils"
 import BadgeOverviewModal from "@/components/badges/BadgeOverviewModal"
+import { AddAccountModal } from "@/components/ui/AddAccountModal"
 
 type Profile = {
   id: string
@@ -77,6 +78,7 @@ export default function AccountPage() {
   const [emailMessage, setEmailMessage] = useState("")
   const [emailError, setEmailError] = useState("")
   const [showBadgeModal, setShowBadgeModal] = useState(false)
+  const [showAddAccountModal, setShowAddAccountModal] = useState(false)
   const { showAlert, alertModal } = usePageAlert(lang)
 
   const [dangerAction, setDangerAction] = useState<"reset" | "delete" | null>(null)
@@ -881,8 +883,9 @@ export default function AccountPage() {
                       </button>
                     )
                   })}
-                  <Link
-                    href={`/${sessionId}/login`}
+                  <button
+                    type="button"
+                    onClick={() => setShowAddAccountModal(true)}
                     className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition hover:bg-[var(--surface-tint-strong)]"
                   >
                     <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--surface-tint-strong)] text-[var(--text)]">
@@ -893,7 +896,7 @@ export default function AccountPage() {
                       <p className="text-[0.68rem] text-[var(--muted)]">{tr("Log masuk akaun kedua", "Sign in another profile")}</p>
                     </div>
                     <ChevronRight size={14} className="shrink-0 text-[var(--muted)]" />
-                  </Link>
+                  </button>
                 </div>
               </section>
 
@@ -1338,6 +1341,12 @@ export default function AccountPage() {
         onClose={() => setShowBadgeModal(false)}
         sessionId={sessionId}
         lang={lang}
+      />
+
+      <AddAccountModal
+        open={showAddAccountModal}
+        onClose={() => setShowAddAccountModal(false)}
+        onAdded={() => window.location.reload()}
       />
     </div>
   )

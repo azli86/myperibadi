@@ -617,6 +617,30 @@ export default function SplitBillsPage() {
     )
   }
 
+  // Hero Card Component (matches loan hero card design)
+  const renderHeroStats = (isDesktop = false) => (
+    <div className={cn("splitbill-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] text-center text-white", isDesktop ? "p-6" : "p-5")}>
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
+      <div className={cn("relative flex flex-col items-center justify-center", isDesktop ? "min-h-28" : "min-h-24")}>
+        <p className={cn("font-bold uppercase tracking-[0.14em] text-[#a3a3a3]", isDesktop ? "text-[0.7rem]" : "text-[0.625rem]")}>
+          {tr("Jumlah Belum Diterima", "Pending Collection")}
+        </p>
+        <div className="mt-2 text-[#ffffff]">
+          {showDataSkeleton ? (
+            <AmountSkeleton className={cn("bg-white/10", isDesktop ? "h-10 w-40" : "h-7 w-32")} />
+          ) : (
+            <MoneyAmount
+              value={Number(pendingCollection || 0)}
+              size={isDesktop ? "heroLg" : "hero"}
+              className="text-[#ffffff]"
+              currencyClassName="text-[#ffffff] opacity-55"
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
   const filters: { key: typeof filter; label: string }[] = [
     { key: "all", label: tr("Semua", "All") },
     { key: "active", label: tr("Aktif", "Active") },
@@ -627,7 +651,7 @@ export default function SplitBillsPage() {
   return (
     <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
       {/* ─── Mobile ─── */}
-      <div className="space-y-5 md:hidden">
+      <div className="space-y-4 md:hidden">
         <MobilePageHeader
           title={tr("Split Bill", "Split Bill")}
           fallbackHref={`/${sessionId}`}
@@ -638,34 +662,11 @@ export default function SplitBillsPage() {
           }
         />
 
-        <section className="px-1">
-          {/* Summary */}
-          <div className="mb-4 rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-4">
-            <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)]">
-                <HandCoins size={22} />
-              </span>
-              <div>
-                <p className="text-[0.6875rem] font-bold uppercase tracking-wider text-[var(--muted)]">{tr("Belum Diterima", "Pending Collection")}</p>
-                <p className="text-xl font-black text-[var(--text)]">
-                  <MoneyAmount value={pendingCollection} currency="RM" />
-                </p>
-              </div>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-3 border-t border-[var(--border)] pt-3">
-              <div>
-                <p className="text-[0.6rem] font-bold uppercase tracking-wider text-[var(--muted)]">{tr("Aktif", "Active")}</p>
-                <p className="text-lg font-black text-[var(--text)]">{activeCount}</p>
-              </div>
-              <div>
-                <p className="text-[0.6rem] font-bold uppercase tracking-wider text-[var(--muted)]">{tr("Selesai", "Completed")}</p>
-                <p className="text-lg font-black text-[var(--text)]">{completedCount}</p>
-              </div>
-            </div>
-          </div>
+        <section className="px-1 space-y-4">
+          {renderHeroStats(false)}
 
           {/* Filter + search */}
-          <div className="mb-3 flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <div className="flex flex-1 gap-1 overflow-x-auto rounded-full border border-[var(--border)] bg-[var(--surface-tint)] p-1">
               {filters.map((f) => (
                 <button
@@ -682,7 +683,7 @@ export default function SplitBillsPage() {
               ))}
             </div>
           </div>
-          <div className="mb-3">
+          <div>
             <input
               type="text"
               value={search}
@@ -736,33 +737,11 @@ export default function SplitBillsPage() {
           }
         />
 
-        <DesktopPageBody className="space-y-5">
-          <div>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)]">
-                  <HandCoins size={22} />
-                </span>
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{tr("Belum Diterima", "Pending Collection")}</p>
-                  <p className="text-2xl font-black text-[var(--text)]">
-                    <MoneyAmount value={pendingCollection} currency="RM" />
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-6">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{tr("Aktif", "Active")}</p>
-                  <p className="text-xl font-black text-[var(--text)]">{activeCount}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{tr("Selesai", "Completed")}</p>
-                  <p className="text-xl font-black text-[var(--text)]">{completedCount}</p>
-                </div>
-              </div>
-            </div>
+        <DesktopPageBody className="space-y-6">
+          {renderHeroStats(true)}
 
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] p-1">
                 {filters.map((f) => (
                   <button

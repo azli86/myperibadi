@@ -2,18 +2,24 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  ArrowLeft,
   Calendar,
   CalendarClock,
   ChevronDown,
   ChevronRight,
+  Clock,
+  Coins,
+  Compass,
   Loader2,
+  PartyPopper,
   Plus,
-  X,
+  Sparkles,
   Trash2,
   Upload,
   Wallet as WalletIcon,
-  PartyPopper,
+  X,
+  Check,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react"
 import { useParams } from "next/navigation"
 import { createPortal } from "react-dom"
@@ -21,7 +27,6 @@ import { getAccessToken } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
 import { usePageAlert } from "@/hooks/usePageAlert"
-import HistoryBackButton from "@/components/navigation/HistoryBackButton"
 import {
   DesktopPageAction,
   DesktopPageBody,
@@ -35,7 +40,6 @@ import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import CurrencySelect from "@/components/ui/CurrencySelect"
 import { CATEGORY_ICON_OPTIONS, CategoryIconGlyph } from "@/lib/category-icons"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
-import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 
 type EventItem = {
@@ -74,6 +78,8 @@ type EventFormState = {
   notes: string
 }
 
+type FilterTab = "all" | "active" | "ended"
+
 const defaultForm = (): EventFormState => ({
   name: "",
   icon_name: "gift",
@@ -103,7 +109,7 @@ function daysUntil(value?: string | null): number | null {
 
 export default function EventPage() {
   const params = useParams()
-  const sessionId = (params.sessionId as string) || ""
+  const sessionId = (params?.sessionId as string) || ""
   const { lang } = useLang()
   const isBm = lang === "BM"
   const tr = useCallback((bm: string, en: string) => (isBm ? bm : en), [isBm])
@@ -121,6 +127,7 @@ export default function EventPage() {
   const [form, setForm] = useState<EventFormState>(defaultForm)
   const [walletOpen, setWalletOpen] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [filterTab, setFilterTab] = useState<FilterTab>("all")
   const fileInputRef = useRef<HTMLInputElement>(null)
   const showDataSkeleton = useDelayedSkeleton(loading && !hasLoaded)
 
@@ -173,7 +180,7 @@ export default function EventPage() {
       const data = await res.json()
       setWallets(Array.isArray(data) ? data : [])
     } catch {
-      // silent — wallet picker optional
+      // silent
     }
   }, [])
 
@@ -188,6 +195,7 @@ export default function EventPage() {
   const openCreateSheet = useCallback(() => {
     setEditingEvent(null)
     resetForm()
+    setWalletOpen(false)
     setShowCreateSheet(true)
   }, [resetForm])
 
@@ -203,12 +211,14 @@ export default function EventPage() {
       budget: ev.budget != null ? String(ev.budget) : "",
       notes: ev.notes || "",
     })
+    setWalletOpen(false)
     setShowCreateSheet(true)
   }, [])
 
   const closeCreateSheet = useCallback(() => {
     setShowCreateSheet(false)
     setEditingEvent(null)
+    setWalletOpen(false)
     resetForm()
   }, [resetForm])
 
@@ -217,7 +227,6 @@ export default function EventPage() {
     isOpen: showCreateSheet,
     onClose: closeCreateSheet,
   })
-  const showCreateSheetSwipe = useSwipeDownToClose(requestCreateSheetClose)
 
   async function handleSaveEvent(e: React.FormEvent) {
     e.preventDefault()
@@ -326,6 +335,32 @@ export default function EventPage() {
     return w?.name || ""
   }
 
+  // Analytics & Stats
+  const stats = useMemo(() => {
+    let totalBudget = 0
+    let activeCount = 0
+    let endedCount = 0
+    let nextUpcoming: { name: string; days: number } | null = null
+
+    for (const ev of events) {
+      const days = daysUntil(ev.end_date)
+      const isEnded = ev.status === "ended" || (days != null && days < 0)
+      if (isEnded) {
+        endedCount++
+      } else {
+        activeCount++
+        totalBudget += Number(ev.budget || 0)
+        if (days != null && days >= 0) {
+          if (!nextUpcoming || days < nextUpcoming.days) {
+            nextUpcoming = { name: ev.name, days }
+          }
+        }
+      }
+    }
+
+    return { totalBudget, activeCount, endedCount, nextUpcoming }
+  }, [events])
+
   const sortedEvents = useMemo(() => {
     return [...events].sort((a, b) => {
       const aDays = daysUntil(a.end_date) ?? Number.MAX_SAFE_INTEGER
@@ -333,6 +368,16 @@ export default function EventPage() {
       return aDays - bDays
     })
   }, [events])
+
+  const filteredEvents = useMemo(() => {
+    return sortedEvents.filter((ev) => {
+      const days = daysUntil(ev.end_date)
+      const isEnded = ev.status === "ended" || (days != null && days < 0)
+      if (filterTab === "active") return !isEnded
+      if (filterTab === "ended") return isEnded
+      return true
+    })
+  }, [sortedEvents, filterTab])
 
   const currentCurrency = form.currency || "RM"
 
@@ -345,22 +390,24 @@ export default function EventPage() {
         : days != null && days <= 7
           ? "soon"
           : "upcoming"
+
     const statusLabel =
       tone === "ended"
         ? tr("Tamat", "Ended")
         : tone === "today"
-          ? tr("Hari Ini", "Today")
+          ? tr("Hari Ini!", "Today!")
           : tone === "soon"
-            ? tr("Hampir", "Soon")
+            ? (isBm ? `Tinggal ${days} hari` : `${days} days left`)
             : tr("Akan Datang", "Upcoming")
+
     const statusClass =
       tone === "ended"
-        ? "bg-[var(--muted)]/15 text-[var(--muted)]"
+        ? "bg-[var(--muted)]/15 text-[var(--muted)] border-[var(--border)]"
         : tone === "today"
-          ? "bg-[var(--accent2)]/15 text-[var(--accent2)]"
+          ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
           : tone === "soon"
-            ? "bg-amber-500/15 text-amber-500"
-            : "bg-[var(--accent)]/15 text-[var(--accent)]"
+            ? "bg-amber-500/15 text-amber-500 border-amber-500/30"
+            : "bg-cyan-500/15 text-cyan-500 border-cyan-500/30"
 
     return (
       <div
@@ -375,69 +422,136 @@ export default function EventPage() {
           }
         }}
         className={cn(
-          "group w-full overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] px-3.5 py-3 text-left transition",
-          compact ? "hover:border-[color-mix(in_srgb,var(--accent2)_30%,var(--border))] active:scale-[0.99] md:px-4 md:py-3.5" : "active:scale-[0.985]",
+          "group relative w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-left shadow-[var(--shadow-card)] transition hover:border-[var(--border-strong)] hover:shadow-md active:scale-[0.99]",
+          compact && "md:p-4.5"
         )}
       >
-        <div className="flex items-center gap-2.5 md:gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--icon-fg)]">
+        <div className="flex items-start gap-3.5 md:gap-4">
+          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--icon-fg)] shadow-xs">
             {ev.has_image && ev.image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={ev.image_url} alt={ev.name} className="h-full w-full object-cover" />
             ) : (
-              <CategoryIconGlyph iconName={ev.icon_name} categoryName={ev.name} kind="expense" size={22} />
+              <CategoryIconGlyph iconName={ev.icon_name} categoryName={ev.name} kind="expense" size={24} />
             )}
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col">
-            <div className="flex items-center gap-2">
-              <p className="truncate text-sm font-bold text-[var(--text)]">{ev.name}</p>
-              {walletName(ev.wallet_id) ? (
-                <span className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2 py-0.5 text-[0.55rem] font-bold text-[var(--muted)]">
-                  <WalletIcon size={10} />
-                  {walletName(ev.wallet_id)}
-                </span>
-              ) : null}
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-base font-black tracking-tight text-[var(--text)]">{ev.name}</p>
+              <span className={cn("shrink-0 rounded-full border px-2.5 py-0.5 text-[0.625rem] font-black uppercase tracking-wider", statusClass)}>
+                {statusLabel}
+              </span>
             </div>
-            <div className="mt-0.5 flex items-center gap-1.5 text-[0.6875rem] text-[var(--muted)]">
-              <Calendar size={11} />
-              {ev.start_date ? formatDateShort(ev.start_date) : "—"} → {ev.end_date ? formatDateShort(ev.end_date) : tr("Tiada tarikh tamat", "No end date")}
-            </div>
-            <div className="mt-1 flex items-center gap-2">
-              {ev.budget != null ? (
-                <span className="text-[0.6875rem] font-bold text-[var(--text)]">
-                  <MoneyAmount value={Number(ev.budget || 0)} currency={ev.currency} size="sm" />
-                </span>
-              ) : null}
-              <span className={cn("rounded-full px-2 py-0.5 text-[0.55rem] font-black uppercase tracking-wider", statusClass)}>{statusLabel}</span>
-            </div>
-          </div>
 
-          <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleDeleteEvent(ev)
-              }}
-              className="rounded-lg p-2 text-[var(--muted)] transition hover:bg-[var(--surface-tint)] hover:text-red-500"
-              aria-label={tr("Padam", "Delete")}
-            >
-              <Trash2 size={15} />
-            </button>
-            <ChevronRight size={16} className="text-[var(--muted)]/50" />
+            <div className="mt-1 flex items-center gap-1.5 text-xs text-[var(--muted)]">
+              <Calendar size={12} className="shrink-0" />
+              <span className="truncate">
+                {ev.start_date ? formatDateShort(ev.start_date) : "—"} → {ev.end_date ? formatDateShort(ev.end_date) : tr("Tiada tarikh tamat", "No end date")}
+              </span>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)]/60 pt-2.5">
+              <div className="flex items-center gap-2">
+                {ev.budget != null ? (
+                  <div className="flex items-center gap-1 text-xs font-black text-[var(--text)]">
+                    <span className="text-[0.625rem] font-bold text-[var(--muted)] uppercase">{tr("Bajet", "Budget")}:</span>
+                    <MoneyAmount value={Number(ev.budget || 0)} currency={ev.currency} size="sm" />
+                  </div>
+                ) : (
+                  <span className="text-[0.6875rem] font-medium text-[var(--muted)]">{tr("Tiada had bajet", "No budget limit")}</span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {walletName(ev.wallet_id) ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[0.6rem] font-bold text-[var(--muted)]">
+                    <WalletIcon size={10} />
+                    {walletName(ev.wallet_id)}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDeleteEvent(ev)
+                  }}
+                  className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-rose-500/10 hover:text-rose-500 active:scale-95"
+                  aria-label={tr("Padam", "Delete")}
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     )
   }
 
+  // Hero Card Component (matches loan hero card design)
+  const renderHeroStats = (isDesktop = false) => (
+    <div className={cn("event-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] text-center text-white", isDesktop ? "p-6" : "p-5")}>
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
+      <div className={cn("relative flex flex-col items-center justify-center", isDesktop ? "min-h-28" : "min-h-24")}>
+        <p className={cn("font-bold uppercase tracking-[0.14em] text-[#a3a3a3]", isDesktop ? "text-[0.7rem]" : "text-[0.625rem]")}>
+          {tr("Jumlah Peruntukan Bajet Acara", "Total Event Budget")}
+        </p>
+        <div className="mt-2 text-[#ffffff]">
+          {showDataSkeleton ? (
+            <AmountSkeleton className={cn("bg-white/10", isDesktop ? "h-10 w-40" : "h-7 w-32")} />
+          ) : (
+            <MoneyAmount
+              value={Number(stats.totalBudget || 0)}
+              size={isDesktop ? "heroLg" : "hero"}
+              className="text-[#ffffff]"
+              currencyClassName="text-[#ffffff] opacity-55"
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
+  // Filter Segmented Tabs
+  const renderFilterTabs = () => (
+    <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+      {[
+        { key: "all" as FilterTab, label: tr("Semua", "All"), count: events.length },
+        { key: "active" as FilterTab, label: tr("Aktif & Akan Datang", "Active & Upcoming"), count: stats.activeCount },
+        { key: "ended" as FilterTab, label: tr("Tamat", "Ended"), count: stats.endedCount },
+      ].map((tab) => (
+        <button
+          key={tab.key}
+          type="button"
+          onClick={() => setFilterTab(tab.key)}
+          className={cn(
+            "flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition active:scale-95",
+            filterTab === tab.key
+              ? "bg-[var(--text)] text-[var(--bg)] shadow-xs"
+              : "bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)]"
+          )}
+        >
+          <span>{tab.label}</span>
+          <span
+            className={cn(
+              "rounded-full px-1.5 py-0.2 text-[0.625rem] font-black",
+              filterTab === tab.key ? "bg-[var(--bg)]/20 text-[var(--bg)]" : "bg-[var(--card)] text-[var(--muted)]"
+            )}
+          >
+            {tab.count}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+
   return (
     <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
       {/* ─── Mobile ─── */}
-      <div className="space-y-5 md:hidden">
+      <div className="space-y-4 md:hidden">
         <MobilePageHeader
-          title={tr("Acara Saya", "My Events")}
+          title={tr("Acara & Majlis", "Events")}
           fallbackHref={`/${sessionId}`}
           action={
             <MobileIconButton onClick={openCreateSheet} label={tr("Tambah Acara", "Add Event")}>
@@ -446,33 +560,33 @@ export default function EventPage() {
           }
         />
 
-        <section className="px-1">
+        <section className="px-1 space-y-4">
+          {renderHeroStats()}
+          {renderFilterTabs()}
+
           <div className="space-y-3">
             {showDataSkeleton ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-4">
-                  <AmountSkeleton className="h-4 w-32" />
-                  <AmountSkeleton className="mt-2 h-3 w-40" />
-                </div>
+                <div key={i} className="h-28 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
               ))
-            ) : sortedEvents.length === 0 ? (
+            ) : filteredEvents.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 text-center">
-                <PartyPopper size={32} className="mx-auto text-[var(--muted)]/40" />
-                <p className="mt-3 text-sm font-bold text-[var(--muted)]">{tr("Belum ada acara.", "No events yet.")}</p>
-                <p className="mt-1 text-[11px] font-medium text-[var(--muted)]/80">
-                  {tr("Simpan acara, majlis atau perjalanan dengan bajet & tarikh tamat.", "Track events, parties or trips with a budget & end date.")}
+                <PartyPopper size={36} className="mx-auto text-[var(--muted)]/40" />
+                <p className="mt-3 text-sm font-bold text-[var(--text)]">{tr("Tiada rekod acara", "No events found")}</p>
+                <p className="mt-1 text-xs text-[var(--muted)]">
+                  {tr("Rancang bajet percutian, majlis hari jadi atau kenduri dengan mudah.", "Plan vacation budgets, parties, or trips effortlessly.")}
                 </p>
                 <button
                   type="button"
                   onClick={openCreateSheet}
-                  className="mt-4 rounded-full bg-[var(--text)] px-4 py-2 text-[0.625rem] font-black uppercase tracking-wider text-[var(--bg)] transition active:scale-95"
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-black text-white shadow-sm transition active:scale-95"
                 >
-                  <Plus size={14} className="mr-1 inline" />
-                  {tr("Tambah Acara", "Add Event")}
+                  <Plus size={15} />
+                  <span>{tr("Buat Acara Baru", "Create Event")}</span>
                 </button>
               </div>
             ) : (
-              sortedEvents.map((ev) => renderEventCard(ev, false))
+              filteredEvents.map((ev) => renderEventCard(ev, false))
             )}
           </div>
         </section>
@@ -481,7 +595,7 @@ export default function EventPage() {
       {/* ─── Desktop ─── */}
       <div className="hidden md:block">
         <DesktopPageHeader
-          title={tr("Papan Acara", "Events Board")}
+          title={tr("Papan Acara & Perancangan", "Events Board")}
           homeHref={`/${sessionId}`}
           actions={
             <DesktopPageAction onClick={openCreateSheet}>
@@ -491,30 +605,34 @@ export default function EventPage() {
           }
         />
 
-        <DesktopPageBody className="space-y-5">
-          <div>
-            <div className="space-y-3">
-              {showDataSkeleton ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-16 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
-                ))
-              ) : sortedEvents.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/70 px-6 py-14 text-center">
-                  <PartyPopper size={40} className="text-[var(--muted)]/30" />
-                  <p className="mt-3 text-sm font-bold text-[var(--muted)]">{tr("Belum ada acara.", "No events yet.")}</p>
-                  <button
-                    type="button"
-                    onClick={openCreateSheet}
-                    className="mt-4 rounded-full bg-[var(--text)] px-4 py-2 text-xs font-black uppercase tracking-wider text-[var(--bg)]"
-                  >
-                    <Plus size={14} className="mr-1.5 inline" />
-                    {tr("Tambah Acara", "Add Event")}
-                  </button>
-                </div>
-              ) : (
-                sortedEvents.map((ev) => renderEventCard(ev, true))
-              )}
-            </div>
+        <DesktopPageBody className="space-y-6">
+          {renderHeroStats(true)}
+          {renderFilterTabs()}
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {showDataSkeleton ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-32 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
+              ))
+            ) : filteredEvents.length === 0 ? (
+              <div className="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/70 px-6 py-14 text-center">
+                <PartyPopper size={44} className="text-[var(--muted)]/30" />
+                <p className="mt-3 text-base font-bold text-[var(--text)]">{tr("Tiada rekod acara", "No events found")}</p>
+                <p className="mt-1 max-w-sm text-xs text-[var(--muted)]">
+                  {tr("Rancang bajet percutian, majlis hari jadi atau kenduri dengan mudah.", "Plan vacation budgets, parties, or trips effortlessly.")}
+                </p>
+                <button
+                  type="button"
+                  onClick={openCreateSheet}
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2.5 text-xs font-black text-white shadow-sm transition active:scale-95"
+                >
+                  <Plus size={15} />
+                  <span>{tr("Buat Acara Baru", "Create Event")}</span>
+                </button>
+              </div>
+            ) : (
+              filteredEvents.map((ev) => renderEventCard(ev, true))
+            )}
           </div>
         </DesktopPageBody>
       </div>
@@ -523,16 +641,12 @@ export default function EventPage() {
       {mounted && showCreateSheet
         ? createPortal(
             <div
-              className="fixed inset-0 z-50 flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-transparent p-0 md:items-stretch md:justify-end"
+              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] backdrop-blur-xs p-0 md:items-center md:p-4"
               onClick={requestCreateSheetClose}
-              onTouchMove={(event) => event.preventDefault()}
             >
               <div
-                {...showCreateSheetSwipe}
-                data-swipe-sheet
-                data-prevent-pull-refresh="true"
                 style={{ transform: "translateZ(0)" }}
-                className="app-sheet-panel app-sheet-panel--lg max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] will-change-transform md:h-[100dvh] md:max-h-none md:max-w-[420px] md:rounded-none md:border-y-0 md:border-l md:border-r-0"
+                className="app-sheet-panel relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl md:max-h-[86vh] md:max-w-lg md:rounded-2xl"
                 onClick={(event) => event.stopPropagation()}
               >
                 <AppSheetHeader
@@ -543,7 +657,7 @@ export default function EventPage() {
                       type="submit"
                       form="event-sheet-form"
                       disabled={saving}
-                      className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                      className="px-2 py-1 text-sm font-black text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
                     >
                       {saving
                         ? (isBm ? "Menyimpan…" : "Saving…")
@@ -552,237 +666,249 @@ export default function EventPage() {
                   }
                 />
 
-                <form id="event-sheet-form" className="space-y-4 px-3 py-3 pb-4 text-[var(--text)] md:px-6 md:py-6" onSubmit={handleSaveEvent}>
-                  {/* Budget hero + image upload */}
-                  <div className="flex flex-col items-center gap-3">
-                    <label className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Bajet Acara", "Event Budget")}
-                    </label>
-                    <div className="flex w-full flex-col items-center">
-                      <span className="text-sm font-bold uppercase tracking-wide text-[var(--muted)]">{form.currency || "RM"}</span>
-                      <input
-                        inputMode="decimal"
-                        value={form.budget}
-                        onChange={(e) => setForm((prev) => ({ ...prev, budget: e.target.value }))}
-                        placeholder="0.00"
-                        style={{ fontSize: "2.5rem", fontWeight: 900 }}
-                        className="w-full bg-transparent text-center leading-tight text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploadingImage || !editingEvent}
-                      className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-2 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--text)] active:scale-95 disabled:opacity-50"
-                    >
-                      {uploadingImage ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                      {tr("Muat Naik Gambar", "Upload Image")}
-                    </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) void uploadImage(file)
-                        e.target.value = ""
-                      }}
-                    />
-                  </div>
-                  {!editingEvent ? (
-                    <p className="text-center text-[0.625rem] text-[var(--muted)]">
-                      {tr("Simpan dahulu untuk muat naik gambar.", "Save first to upload an image.")}
-                    </p>
-                  ) : null}
+                <form
+                  id="event-sheet-form"
+                  className="flex min-h-0 flex-1 flex-col overflow-hidden"
+                  onSubmit={handleSaveEvent}
+                >
+                  <div className="min-h-0 flex-1 space-y-4.5 overflow-y-auto overscroll-contain px-4 py-4 text-[var(--text)] sm:px-6 sm:py-5">
+                    {/* Budget Hero Card Input */}
+                    <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-4 text-center">
+                      <label className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        {tr("Peruntukan Bajet Acara", "Event Budget Allocation")}
+                      </label>
+                      <div className="mt-1 flex items-center justify-center gap-2">
+                        <span className="text-sm font-bold uppercase text-[var(--muted)]">{form.currency || "RM"}</span>
+                        <input
+                          inputMode="decimal"
+                          value={form.budget}
+                          onChange={(e) => setForm((prev) => ({ ...prev, budget: e.target.value.replace(/[^0-9.]/g, "") }))}
+                          placeholder="0.00"
+                          className="w-48 bg-transparent text-center text-3xl font-black text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
+                        />
+                      </div>
 
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Nama Acara", "Event Name")}
-                    </label>
-                    <input
-                      value={form.name}
-                      onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                      className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                      placeholder={tr("Contoh: Majlis Kahwin", "Example: Wedding")}
-                    />
-                  </div>
-
-                  {/* Icon picker */}
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Ikon", "Icon")}
-                    </label>
-                    <div className="grid grid-cols-6 gap-1.5 md:grid-cols-8">
-                      {CATEGORY_ICON_OPTIONS.map((opt) => {
-                        const selected = form.icon_name === opt.name
-                        return (
+                      {editingEvent && (
+                        <div className="mt-3 border-t border-[var(--border)]/60 pt-3">
                           <button
-                            key={opt.name}
                             type="button"
-                            onClick={() => setForm((prev) => ({ ...prev, icon_name: opt.name }))}
-                            className={cn(
-                              "flex h-10 w-10 items-center justify-center rounded-xl border transition active:scale-90",
-                              selected ? "border-[var(--accent2)] bg-[var(--accent2)]/15 text-[var(--accent2)]" : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)]",
-                            )}
-                            aria-label={opt.label}
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadingImage}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-3.5 py-1.5 text-xs font-bold text-[var(--text)] shadow-xs transition hover:bg-[var(--surface-tint-strong)] active:scale-95 disabled:opacity-50"
                           >
-                            <opt.icon size={18} />
+                            {uploadingImage ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                            <span>{editingEvent.has_image ? tr("Tukar Gambar Banner", "Change Banner Image") : tr("Muat Naik Gambar Banner", "Upload Banner Image")}</span>
                           </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Dates */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                        {tr("Tarikh Mula", "Start Date")}
-                      </label>
+                        </div>
+                      )}
                       <input
-                        type="date"
-                        value={form.start_date}
-                        onChange={(e) => setForm((prev) => ({ ...prev, start_date: e.target.value }))}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none"
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) void uploadImage(file)
+                          e.target.value = ""
+                        }}
                       />
                     </div>
+
+                    {/* Event Name */}
                     <div>
                       <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                        {tr("Tarikh Tamat", "End Date")}
+                        {tr("Nama Acara", "Event Name")} <span className="text-rose-500">*</span>
                       </label>
                       <input
-                        type="date"
-                        value={form.end_date}
-                        onChange={(e) => setForm((prev) => ({ ...prev, end_date: e.target.value }))}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none"
+                        value={form.name}
+                        onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-semibold text-[var(--text)] outline-none transition focus:border-[var(--btn-primary-bg)] placeholder:text-[var(--muted)]/40"
+                        placeholder={tr("Contoh: Percutian Sabah / Kenduri Kahwin", "Example: Trip to Japan / Birthday Party")}
                       />
                     </div>
-                  </div>
 
-                  {/* Currency + Wallet */}
-                  <div className="grid gap-4 md:grid-cols-2">
+                    {/* Icon picker */}
                     <div>
                       <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                        {tr("Mata Wang", "Currency")}
+                        {tr("Pilih Ikon", "Select Icon")}
                       </label>
-                      <CurrencySelect value={currentCurrency} onChange={(v) => setForm((prev) => ({ ...prev, currency: v }))} />
-                    </div>
-                    <div>
-                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                        {tr("Wallet", "Wallet")}
-                      </label>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setWalletOpen((o) => !o)}
-                          className={cn(
-                            "flex w-full items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] transition",
-                            walletOpen && "border-[var(--border-strong)]",
-                          )}
-                        >
-                          {form.wallet_id ? (
-                            (() => {
-                              const w = wallets.find((x) => x.id === Number(form.wallet_id))
-                              return (
-                                <span className="flex min-w-0 items-center gap-2">
-                                  <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
-                                    {w?.image_url ? (
-                                      // eslint-disable-next-line @next/next/no-img-element
-                                      <img src={w.image_url} alt="" className="h-full w-full object-cover" />
-                                    ) : (
-                                      <WalletIcon size={13} />
-                                    )}
-                                  </span>
-                                  <span className="truncate font-medium">{w?.name || tr("Pilih wallet", "Select wallet")}</span>
-                                </span>
-                              )
-                            })()
-                          ) : (
-                            <span className="flex items-center gap-2 text-[var(--muted)]">
-                              <WalletIcon size={15} />
-                              {tr("Pilih wallet", "Select wallet")}
-                            </span>
-                          )}
-                          <ChevronDown size={16} className={cn("shrink-0 text-[var(--muted)] transition-transform", walletOpen && "rotate-180")} />
-                        </button>
-                        {walletOpen ? (
-                          <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-60 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-xl shadow-black/20">
+                      <div className="grid grid-cols-6 gap-2 sm:grid-cols-8">
+                        {CATEGORY_ICON_OPTIONS.map((opt) => {
+                          const selected = form.icon_name === opt.name
+                          return (
                             <button
+                              key={opt.name}
                               type="button"
-                              onClick={() => {
-                                setForm((prev) => ({ ...prev, wallet_id: "", currency: prev.currency }))
-                                setWalletOpen(false)
-                              }}
-                              className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-sm text-[var(--muted)] transition hover:bg-[var(--surface-tint)]"
+                              onClick={() => setForm((prev) => ({ ...prev, icon_name: opt.name }))}
+                              className={cn(
+                                "flex h-10 w-full items-center justify-center rounded-xl border transition active:scale-90",
+                                selected
+                                  ? "border-[var(--btn-primary-bg)] bg-[var(--btn-primary-bg)]/10 text-[var(--btn-primary-bg)] shadow-xs"
+                                  : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)]",
+                              )}
+                              aria-label={opt.label}
                             >
-                              <WalletIcon size={15} />
-                              {tr("Tiada wallet", "No wallet")}
+                              <opt.icon size={18} />
                             </button>
-                            {wallets.map((w) => {
-                              const selected = form.wallet_id === String(w.id)
-                              return (
-                                <button
-                                  key={w.id}
-                                  type="button"
-                                  onClick={() => {
-                                    setForm((prev) => ({ ...prev, wallet_id: String(w.id), currency: w.currency || prev.currency }))
-                                    setWalletOpen(false)
-                                  }}
-                                  className={cn(
-                                    "flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left transition",
-                                    selected ? "bg-[var(--surface-tint)]" : "hover:bg-[var(--surface-tint)]",
-                                  )}
-                                >
-                                  <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
-                                    {w.image_url ? (
-                                      // eslint-disable-next-line @next/next/no-img-element
-                                      <img src={w.image_url} alt="" className="h-full w-full object-cover" />
-                                    ) : (
-                                      <WalletIcon size={14} />
-                                    )}
-                                  </span>
-                                  <span className="truncate text-sm font-medium text-[var(--text)]">{w.name}</span>
-                                  {selected ? <span className="ml-auto text-[var(--accent2)]">✓</span> : null}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        ) : null}
+                          )
+                        })}
                       </div>
                     </div>
+
+                    {/* Dates */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                          {tr("Tarikh Mula", "Start Date")}
+                        </label>
+                        <input
+                          type="date"
+                          value={form.start_date}
+                          onChange={(e) => setForm((prev) => ({ ...prev, start_date: e.target.value }))}
+                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-3 text-sm text-[var(--text)] outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                          {tr("Tarikh Tamat", "End Date")}
+                        </label>
+                        <input
+                          type="date"
+                          value={form.end_date}
+                          onChange={(e) => setForm((prev) => ({ ...prev, end_date: e.target.value }))}
+                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-3 text-sm text-[var(--text)] outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Currency & Wallet */}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                          {tr("Mata Wang", "Currency")}
+                        </label>
+                        <CurrencySelect value={currentCurrency} onChange={(v) => setForm((prev) => ({ ...prev, currency: v }))} />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                          {tr("Dompet Pembayar", "Linked Wallet")}
+                        </label>
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setWalletOpen((o) => !o)}
+                            className={cn(
+                              "flex w-full items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)]",
+                              walletOpen && "border-[var(--btn-primary-bg)]",
+                            )}
+                          >
+                            {form.wallet_id ? (
+                              (() => {
+                                const w = wallets.find((x) => x.id === Number(form.wallet_id))
+                                return (
+                                  <span className="flex min-w-0 items-center gap-2">
+                                    <span className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
+                                      {w?.image_url ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={w.image_url} alt="" className="h-full w-full object-cover" />
+                                      ) : (
+                                        <WalletIcon size={11} />
+                                      )}
+                                    </span>
+                                    <span className="truncate font-bold">{w?.name || tr("Pilih wallet", "Select wallet")}</span>
+                                  </span>
+                                )
+                              })()
+                            ) : (
+                              <span className="flex items-center gap-2 text-[var(--muted)]">
+                                <WalletIcon size={14} />
+                                <span>{tr("Pilih wallet (opsyenal)", "Select wallet (optional)")}</span>
+                              </span>
+                            )}
+                            <ChevronDown size={15} className={cn("shrink-0 text-[var(--muted)] transition-transform", walletOpen && "rotate-180")} />
+                          </button>
+                          {walletOpen && (
+                            <div className="mt-2 max-h-48 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1.5 shadow-lg space-y-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setForm((prev) => ({ ...prev, wallet_id: "", currency: prev.currency }))
+                                  setWalletOpen(false)
+                                }}
+                                className={cn(
+                                  "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition",
+                                  !form.wallet_id ? "bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold" : "text-[var(--muted)] hover:bg-[var(--surface-tint)]"
+                                )}
+                              >
+                                <span>{tr("Tiada wallet dikaitkan", "No wallet linked")}</span>
+                                {!form.wallet_id && <Check size={14} className="text-emerald-500" />}
+                              </button>
+                              {wallets.map((w) => {
+                                const selected = form.wallet_id === String(w.id)
+                                return (
+                                  <button
+                                    key={w.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setForm((prev) => ({ ...prev, wallet_id: String(w.id), currency: w.currency || prev.currency }))
+                                      setWalletOpen(false)
+                                    }}
+                                    className={cn(
+                                      "flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs transition",
+                                      selected ? "bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold" : "hover:bg-[var(--surface-tint)] text-[var(--text)]",
+                                    )}
+                                  >
+                                    <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
+                                      {w.image_url ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img src={w.image_url} alt="" className="h-full w-full object-cover" />
+                                      ) : (
+                                        <WalletIcon size={12} />
+                                      )}
+                                    </span>
+                                    <span className="truncate flex-1 font-medium">{w.name}</span>
+                                    {selected && <Check size={14} className="shrink-0 text-emerald-500" />}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Notes */}
+                    <div>
+                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        {tr("Nota Tambahan", "Additional Notes")}
+                      </label>
+                      <textarea
+                        value={form.notes}
+                        onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+                        rows={2}
+                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
+                        placeholder={tr("Catatan tambahan (opsyenal)", "Additional notes (optional)")}
+                      />
+                    </div>
                   </div>
 
-                  {/* Notes */}
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Nota", "Notes")}
-                    </label>
-                    <textarea
-                      value={form.notes}
-                      onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-                      rows={2}
-                      className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                      placeholder={tr("Opsyenal", "Optional")}
-                    />
-                  </div>
-
-                  <div className="mt-6 -mx-3 flex items-center gap-2 border-t border-[var(--border)] bg-[var(--sheet-bg)] px-3 pb-2 pt-5 md:-mx-6 md:px-6">
+                  {/* Sticky Footer */}
+                  <div className="flex items-center gap-3 border-t border-[var(--border)] bg-[var(--sheet-bg)] p-4">
                     <button
                       type="button"
                       onClick={requestCreateSheetClose}
-                      className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-bold text-[var(--muted)] transition active:scale-95"
+                      className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-xs font-bold text-[var(--muted)] transition hover:bg-[var(--surface-tint)] active:scale-95"
                     >
                       {tr("Batal", "Cancel")}
                     </button>
                     <button
                       type="submit"
                       disabled={saving}
-                      className="flex-1 rounded-full bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-black text-white transition active:scale-[0.98] disabled:opacity-60"
+                      className="flex-1 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2.5 text-xs md:text-sm font-black text-white shadow-sm transition active:scale-[0.98] disabled:opacity-50"
                     >
                       {saving
                         ? (isBm ? "Menyimpan…" : "Saving…")
-                        : editingEvent ? tr("Update", "Update") : tr("Simpan Acara", "Save Event")}
+                        : editingEvent ? tr("Kemaskini Acara", "Update Event") : tr("Simpan Acara", "Save Event")}
                     </button>
                   </div>
                 </form>

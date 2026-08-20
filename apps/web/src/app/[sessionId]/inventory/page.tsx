@@ -576,6 +576,32 @@ export default function InventoryPage() {
     )
   }
 
+  // Hero Card Component (matches loan hero card design)
+  const renderHeroStats = (isDesktop = false) => (
+    <div className={cn("inventory-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] text-center text-white", isDesktop ? "p-6 mb-5" : "p-5")}>
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
+      <div className={cn("relative flex flex-col items-center justify-center", isDesktop ? "min-h-28" : "min-h-24")}>
+        <p className={cn("font-bold uppercase tracking-[0.14em] text-[#a3a3a3]", isDesktop ? "text-[0.7rem]" : "text-[0.625rem]")}>
+          {tr("Jumlah Inventori Barang", "Total Inventory Items")}
+        </p>
+        <div className="mt-2 text-[#ffffff]">
+          {loading && items.length === 0 ? (
+            <div className={cn("animate-pulse rounded bg-white/10 mx-auto", isDesktop ? "h-10 w-40" : "h-7 w-32")} />
+          ) : (
+            <div className="flex items-baseline justify-center gap-1.5 font-black text-white">
+              <span className={cn("tracking-tight font-black", isDesktop ? "text-4xl" : "text-3xl")}>
+                {summary ? summary.total_units : items.length}
+              </span>
+              <span className={cn("font-bold text-white opacity-55 uppercase tracking-wider", isDesktop ? "text-sm" : "text-xs")}>
+                {tr("unit", "units")} · {summary ? summary.total_types : items.length} {tr("jenis", "types")}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <>
       {/* ── HEADER PRESERVED UNTOUCHED ── */}
@@ -606,24 +632,20 @@ export default function InventoryPage() {
 
       {/* ── MOBILE VIEW ── */}
       <div className="md:hidden px-1 pb-24 pt-1 space-y-4">
+        {renderHeroStats(false)}
+
         {/* ── HERO STATS STRIP (REDESIGNED) ── */}
-        <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
-          <div className="space-y-4">
-            {/* Top Row: Title + Actions */}
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm space-y-3">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div>
-                <span className="text-2xl font-black tracking-tight text-[var(--text)]">
-                  {summary ? summary.total_units : "—"}
-                </span>
-                <span className="ml-1.5 text-xs font-semibold text-[var(--muted)]">
-                  {tr("unit", "units")} · {summary ? summary.total_types : 0} {tr("jenis", "types")}
-                </span>
-              </div>
+              <span className="text-xs font-black uppercase tracking-wider text-[var(--text)]">
+                {tr("Status Ringkasan", "Summary Status")}
+              </span>
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => openCreate()}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-3 py-2 text-xs font-bold text-[var(--bg)] shadow-sm transition active:scale-95"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-3 py-1.5 text-xs font-bold text-[var(--bg)] shadow-sm transition active:scale-95"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>{tr("Tambah", "Add")}</span>
@@ -631,7 +653,7 @@ export default function InventoryPage() {
                 <button
                   type="button"
                   onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
-                  className="inline-flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-2 text-[var(--text)] transition active:scale-95"
+                  className="inline-flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-1.5 text-[var(--text)] transition active:scale-95"
                   title={tr("Tambah Lokasi", "Add Location")}
                 >
                   <FolderPlus className="h-4 w-4" />
@@ -1029,6 +1051,8 @@ export default function InventoryPage() {
       {/* ── DESKTOP VIEW (LEFT FOLDER TREE + RIGHT ITEMS GRID) ── */}
       <div className="hidden md:block">
         <DesktopPageBody className="space-y-5">
+          {renderHeroStats(true)}
+
           {/* Desktop Dual-Pane: Folder Tree (Left) + Main Explorer (Right) */}
           <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] lg:grid-cols-[290px_1fr] gap-5 items-start">
             {/* ── LEFT PANEL: FOLDER TREE SIDEBAR ── */}

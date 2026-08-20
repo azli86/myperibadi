@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 import { createPortal } from "react-dom"
 import {
-  ArrowLeft,
   CalendarDays,
   CalendarClock,
   ChevronDown,
@@ -17,23 +16,29 @@ import {
   Check,
   Layers,
   X,
+  Sparkles,
+  CheckCircle2,
+  Clock,
+  Coins,
+  Receipt,
+  AlertTriangle,
 } from "lucide-react"
 import { getAccessToken } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
 import { usePageAlert } from "@/hooks/usePageAlert"
-import HistoryBackButton from "@/components/navigation/HistoryBackButton"
 import {
   MobileIconButton,
   MobilePageHeader,
   DesktopPageHeader,
+  DesktopPageAction,
+  DesktopPageBody,
 } from "@/components/layout/PageHeader"
-import { DataSkeletonList } from "@/components/ui/DataSkeleton"
+import { DataSkeletonList, AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount } from "@/components/ui/MoneyAmount"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { CategoryIconGlyph } from "@/lib/category-icons"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
-import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 import { BNPL_PROVIDERS, BnplProviderBadge, bnplProviderBrand } from "@/components/bnpl/bnpl-providers"
 
@@ -70,6 +75,7 @@ type WalletItem = {
   id: number
   name: string
   label?: string | null
+  image_url?: string | null
   currency: string
 }
 
@@ -85,6 +91,8 @@ type FormState = {
   start_date: string
   notes: string
 }
+
+type FilterTab = "all" | "active" | "settled"
 
 const defaultForm: FormState = {
   name: "",
@@ -120,17 +128,22 @@ export default function BnplPage() {
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [uploadingId, setUploadingId] = useState<number | null>(null)
   const [providerOpen, setProviderOpen] = useState(false)
-  const [walletOpen, setWalletOpen] = useState(false)
+  const [categoryOpen, setCategoryOpen] = useState(false)
+  const [payWalletOpen, setPayWalletOpen] = useState(false)
   const [payWalletId, setPayWalletId] = useState<number | null>(null)
+  const [filterTab, setFilterTab] = useState<FilterTab>("all")
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const payFileRef = useRef<HTMLInputElement | null>(null)
 
   const { requestClose: requestSheetClose } = useOverlayBackClose({
     id: "bnpl-sheet",
     isOpen: showSheet,
-    onClose: () => setShowSheet(false),
+    onClose: () => {
+      setShowSheet(false)
+      setEditing(null)
+      setProviderOpen(false)
+      setCategoryOpen(false)
+    },
   })
-  const sheetSwipe = useSwipeDownToClose(requestSheetClose)
 
   const fetchData = useCallback(async () => {
     try {
@@ -160,7 +173,7 @@ export default function BnplPage() {
     } finally {
       setLoading(false)
     }
-  }, [showAlert])
+  }, [showAlert, tr])
 
   useEffect(() => {
     void fetchData()
@@ -168,15 +181,18 @@ export default function BnplPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const { requestClose: requestPayClose } = useOverlayBackClose({
-    id: "bnpl-pay",
-    isOpen: payingId !== null,
-    onClose: () => setPayingId(null),
-  })
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("portal:mobile-bottom-nav-visibility", { detail: { hidden: showSheet || payingId !== null } }))
+    return () => {
+      window.dispatchEvent(new CustomEvent("portal:mobile-bottom-nav-visibility", { detail: { hidden: false } }))
+    }
+  }, [showSheet, payingId])
 
   const openCreateSheet = () => {
     setEditing(null)
     setForm(defaultForm)
+    setProviderOpen(false)
+    setCategoryOpen(false)
     setShowSheet(true)
   }
 
@@ -194,6 +210,8 @@ export default function BnplPage() {
       start_date: item.start_date || "",
       notes: item.notes || "",
     })
+    setProviderOpen(false)
+    setCategoryOpen(false)
     setShowSheet(true)
   }
 
@@ -268,6 +286,7 @@ export default function BnplPage() {
         return
       }
       setPayWalletId(null)
+      setPayingId(null)
       showAlert(
         tr("Ansuran direkod sebagai transaksi kategori", "Installment recorded as category transaction"),
         "",
@@ -348,15 +367,32 @@ export default function BnplPage() {
     return Math.min(100, Math.max(0, Math.round(pct)))
   }
 
-  const active = items.filter((i) => i.status === "active")
-  const settled = items.filter((i) => i.status === "settled")
-  const monthlyTotal = active.reduce((s, i) => s + Number(i.monthly_amount || 0), 0)
+  const active = useMemo(() => items.filter((i) => i.status === "active"), [items])
+  const settled = useMemo(() => items.filter((i) => i.status === "settled"), [items])
+
+  const stats = useMemo(() => {
+    const monthlyTotal = active.reduce((s, i) => s + Number(i.monthly_amount || 0), 0)
+    const outstandingTotal = active.reduce((s, i) => s + Number(i.outstanding_amount || 0), 0)
+    const paidTotal = items.reduce((s, i) => s + Number(i.paid_amount || 0), 0)
+    const originalTotal = items.reduce((s, i) => s + Number(i.total_amount || 0), 0)
+    const overallPct = originalTotal > 0 ? Math.min(100, Math.round((paidTotal / originalTotal) * 100)) : 100
+
+    return { monthlyTotal, outstandingTotal, paidTotal, originalTotal, overallPct }
+  }, [items, active])
+
+  const filteredItems = useMemo(() => {
+    if (filterTab === "active") return active
+    if (filterTab === "settled") return settled
+    return items
+  }, [items, active, settled, filterTab])
+
   const showSkeleton = useDelayedSkeleton(loading)
 
   const renderCard = (item: BnplItem) => {
     const brand = bnplProviderBrand(item.provider)
     const pct = progress(item)
     const isActive = item.status === "active"
+
     return (
       <div
         key={item.id}
@@ -369,23 +405,31 @@ export default function BnplPage() {
             openEditSheet(item)
           }
         }}
-        className="group w-full rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-3.5 text-left transition active:scale-[0.99]"
+        className={cn(
+          "group relative w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-left shadow-[var(--shadow-card)] transition hover:border-[var(--border-strong)] hover:shadow-md active:scale-[0.99]",
+          !isActive && "opacity-80"
+        )}
       >
-        <div className="flex items-center gap-3">
-          <BnplProviderBadge provider={item.provider} size={44} />
+        <div className="flex items-start gap-3.5">
+          <BnplProviderBadge provider={item.provider} size={46} rounded="rounded-2xl" />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <p className="truncate text-sm font-black tracking-tight text-[var(--text)]">{item.name}</p>
-              {!isActive && (
-                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[0.55rem] font-black uppercase tracking-wider text-emerald-500">
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate text-base font-black tracking-tight text-[var(--text)]">{item.name}</p>
+              {isActive ? (
+                <span className="shrink-0 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-wider text-cyan-500">
+                  {item.due_day_of_month}hb Due
+                </span>
+              ) : (
+                <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-wider text-emerald-500">
                   {tr("Selesai", "Settled")}
                 </span>
               )}
             </div>
-            <p className="mt-0.5 truncate text-[0.6875rem] text-[var(--muted)]">
-              {item.category_name || tr("Tiada kategori", "No category")} · {item.installment_count} {tr("ansuran", "installments")}
+            <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
+              {item.category_name || tr("Tiada kategori", "No category")} · {item.installment_count} {tr("bulan ansuran", "months")}
             </p>
           </div>
+
           <div className="flex shrink-0 items-center gap-1">
             <button
               type="button"
@@ -394,17 +438,17 @@ export default function BnplPage() {
                 handleDelete(item)
               }}
               disabled={deletingId === item.id}
-              className="rounded-lg p-2 text-[var(--muted)] transition hover:bg-[var(--surface-tint)] hover:text-red-500 disabled:opacity-40"
+              className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-rose-500/10 hover:text-rose-500 active:scale-95 disabled:opacity-40"
               aria-label={tr("Padam", "Delete")}
             >
               {deletingId === item.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
             </button>
-            <ChevronRight size={16} className="text-[var(--muted)]/50" />
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-2">
+        {/* 3-Metric Statistics Grid */}
+        <div className="mt-3.5 grid grid-cols-3 gap-2">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2">
             <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
               {tr("Bulanan", "Monthly")}
             </p>
@@ -412,62 +456,63 @@ export default function BnplPage() {
               RM {Number(item.monthly_amount).toLocaleString("en-MY", { minimumFractionDigits: 2 })}
             </p>
           </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-2">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2">
             <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
               {tr("Baki", "Due")}
             </p>
-            <p className="mt-0.5 truncate text-sm font-black tabular-nums text-[var(--text)]">
+            <p className="mt-0.5 truncate text-sm font-black tabular-nums text-rose-600 dark:text-rose-400">
               RM {Number(item.outstanding_amount).toLocaleString("en-MY", { minimumFractionDigits: 2 })}
             </p>
           </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-2">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2">
             <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-              {tr("Due Hari", "Due Day")}
+              {tr("Due Day", "Due Day")}
             </p>
             <p className="mt-0.5 truncate text-sm font-black tabular-nums text-[var(--text)]">
               {item.due_day_of_month}
-              <span className="text-[0.6rem] font-bold text-[var(--muted)]">
-                {isBm ? " hb" : "th"}
+              <span className="text-[0.65rem] font-bold text-[var(--muted)] ml-0.5">
+                {isBm ? "hb" : "th"}
               </span>
             </p>
           </div>
         </div>
 
+        {/* Progress Bar */}
         <div className="mt-3">
-          <div className="mb-1 flex items-center justify-between text-[0.6rem] font-semibold text-[var(--muted)]">
-            <span>{tr("Bayaran", "Paid")}</span>
+          <div className="mb-1 flex items-center justify-between text-[0.625rem] font-semibold text-[var(--muted)]">
+            <span>{tr("Bayaran", "Paid")}: {pct}%</span>
             <span>
               RM {Number(item.paid_amount).toLocaleString("en-MY", { minimumFractionDigits: 0 })} / RM{" "}
               {Number(item.total_amount).toLocaleString("en-MY", { minimumFractionDigits: 0 })}
             </span>
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
             <div
-              className="h-full rounded-full bg-[var(--accent2)] transition-all"
+              className={cn("h-full rounded-full transition-all", isActive ? "bg-emerald-500" : "bg-[var(--muted)]")}
               style={{ width: `${pct}%` }}
             />
           </div>
         </div>
 
+        {/* Quick Pay Action Button */}
         {isActive && (
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation()
               setPayWalletId(null)
+              setPayWalletOpen(false)
               setPayingId(item.id)
             }}
             disabled={payingId === item.id}
-            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] py-2 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-[0.99] disabled:opacity-50"
+            className="mt-3.5 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] py-2.5 text-xs font-black text-white shadow-xs transition active:scale-[0.99] hover:opacity-95 disabled:opacity-50"
           >
             {payingId === item.id ? (
               <Loader2 size={14} className="animate-spin" />
             ) : (
               <CreditCard size={14} />
             )}
-            {payingId === item.id
-              ? tr("Memproses…", "Processing…")
-              : tr("Bayar Ansuran", "Pay Installment")}
+            <span>{tr("Bayar Ansuran Ini", "Pay This Installment")}</span>
           </button>
         )}
       </div>
@@ -475,456 +520,562 @@ export default function BnplPage() {
   }
 
   const renderEmpty = () => (
-    <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--muted)]">
-        <CreditCard size={28} />
+    <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 py-14 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--muted)] shadow-xs">
+        <CreditCard size={32} />
       </div>
-      <p className="text-sm font-bold text-[var(--text)]">{tr("Tiada BNPL lagi", "No BNPL yet")}</p>
-      <p className="max-w-[240px] text-xs text-[var(--muted)]">
-        {tr("Tambah BNPL untuk jejak ansuran bulanan dengan duedate.", "Add a BNPL to track monthly installments with a due date.")}
+      <p className="text-sm font-bold text-[var(--text)]">{tr("Tiada pelan BNPL lagi", "No BNPL plans yet")}</p>
+      <p className="max-w-xs text-xs text-[var(--muted)]">
+        {tr("Tambah komitmen SPayLater, Atome atau ansuran lain untuk jejak baki & tarikh due bulanan.", "Track SPayLater, Atome or other installments with due date tracking.")}
       </p>
+      <button
+        type="button"
+        onClick={openCreateSheet}
+        className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-black text-white shadow-sm transition active:scale-95"
+      >
+        <Plus size={15} />
+        <span>{tr("Tambah BNPL Baru", "Add New BNPL")}</span>
+      </button>
     </div>
   )
 
   const catName = (id: string) =>
     categories.find((c) => String(c.id) === id)?.name || tr("Pilih kategori", "Select category")
 
+  // Hero Card Component (matches loan hero card design)
+  const renderHeroStats = (isDesktop = false) => (
+    <div className={cn("bnpl-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] text-center text-white", isDesktop ? "p-6" : "p-5")}>
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
+      <div className={cn("relative flex flex-col items-center justify-center", isDesktop ? "min-h-28" : "min-h-24")}>
+        <p className={cn("font-bold uppercase tracking-[0.14em] text-[#a3a3a3]", isDesktop ? "text-[0.7rem]" : "text-[0.625rem]")}>
+          {tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}
+        </p>
+        <div className="mt-2 text-[#ffffff]">
+          {showSkeleton ? (
+            <AmountSkeleton className={cn("bg-white/10", isDesktop ? "h-10 w-40" : "h-7 w-32")} />
+          ) : (
+            <MoneyAmount
+              value={Number(stats.monthlyTotal || 0)}
+              size={isDesktop ? "heroLg" : "hero"}
+              className="text-[#ffffff]"
+              currencyClassName="text-[#ffffff] opacity-55"
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
+  // Segmented Filter Tabs
+  const renderFilterTabs = () => (
+    <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+      {[
+        { key: "all" as FilterTab, label: tr("Semua", "All"), count: items.length },
+        { key: "active" as FilterTab, label: tr("Sedang Berjalan", "Active Plans"), count: active.length },
+        { key: "settled" as FilterTab, label: tr("Selesai", "Settled"), count: settled.length },
+      ].map((tab) => (
+        <button
+          key={tab.key}
+          type="button"
+          onClick={() => setFilterTab(tab.key)}
+          className={cn(
+            "flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition active:scale-95",
+            filterTab === tab.key
+              ? "bg-[var(--text)] text-[var(--bg)] shadow-xs"
+              : "bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)]"
+          )}
+        >
+          <span>{tab.label}</span>
+          <span
+            className={cn(
+              "rounded-full px-1.5 py-0.2 text-[0.625rem] font-black",
+              filterTab === tab.key ? "bg-[var(--bg)]/20 text-[var(--bg)]" : "bg-[var(--card)] text-[var(--muted)]"
+            )}
+          >
+            {tab.count}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+
   return (
-    <div className="space-y-4 pb-24 md:pb-0">
-      {/* ─── Mobile header ─── */}
-      <div className="md:hidden">
+    <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
+      {/* ─── Mobile ─── */}
+      <div className="space-y-4 md:hidden">
         <MobilePageHeader
-          title={tr("BNPL", "BNPL")}
+          title={tr("Buy Now Pay Later", "BNPL")}
           fallbackHref={`/${sessionId}`}
           action={
-            <MobileIconButton onClick={openCreateSheet} label={tr("Tambah", "Add")}>
-              <Plus size={20} />
+            <MobileIconButton onClick={openCreateSheet} label={tr("Tambah BNPL", "Add BNPL")}>
+              <Plus strokeWidth={2.5} />
             </MobileIconButton>
           }
         />
+
+        <section className="px-1 space-y-4">
+          {renderHeroStats()}
+          {renderFilterTabs()}
+
+          <div className="space-y-3">
+            {showSkeleton ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-36 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
+              ))
+            ) : filteredItems.length === 0 ? (
+              renderEmpty()
+            ) : (
+              filteredItems.map((item) => renderCard(item))
+            )}
+          </div>
+        </section>
       </div>
 
-      {/* ─── Desktop header ─── */}
+      {/* ─── Desktop ─── */}
       <div className="hidden md:block">
         <DesktopPageHeader
-          title={tr("Buy Now Pay Later", "Buy Now Pay Later")}
-          backHref={`/${sessionId}`}
+          title={tr("Buy Now Pay Later (BNPL)", "Buy Now Pay Later")}
+          homeHref={`/${sessionId}`}
           actions={
-            <button
-              type="button"
-              onClick={openCreateSheet}
-              className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 text-sm font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)]"
-            >
-              <Plus size={16} />
+            <DesktopPageAction onClick={openCreateSheet}>
+              <Plus strokeWidth={2.5} />
               {tr("Tambah BNPL", "Add BNPL")}
-            </button>
+            </DesktopPageAction>
           }
         />
+
+        <DesktopPageBody className="space-y-6">
+          {renderHeroStats(true)}
+          {renderFilterTabs()}
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {showSkeleton ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-36 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
+              ))
+            ) : filteredItems.length === 0 ? (
+              <div className="col-span-full">{renderEmpty()}</div>
+            ) : (
+              filteredItems.map((item) => renderCard(item))
+            )}
+          </div>
+        </DesktopPageBody>
       </div>
 
-      {/* Monthly total summary */}
-      {active.length > 0 && (
-        <div className="flex items-center justify-between rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] px-4 py-3.5">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--accent2)]">
-              <Layers size={18} />
-            </div>
-            <div>
-              <p className="text-[0.62rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                {tr("Total Perlu Bayar Bulanan", "Total Monthly Due")}
-              </p>
-              <p className="text-lg font-black text-[var(--text)]">
-                RM {monthlyTotal.toLocaleString("en-MY", { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showSkeleton ? (
-        <DataSkeletonList rows={3} />
-      ) : (
-        <>
-          {active.length > 0 && (
-            <div className="space-y-3 md:grid md:grid-cols-2 md:gap-4 md:space-y-0 xl:grid-cols-3">
-              {active.map(renderCard)}
-            </div>
-          )}
-          {active.length === 0 && !loading && renderEmpty()}
-          {settled.length > 0 && (
-            <>
-              <div className="flex items-center gap-2 pt-1">
-                <Check size={14} className="text-emerald-500" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
-                  {tr("Selesai", "Settled")}
-                </h3>
-              </div>
-              <div className="space-y-3 opacity-60 md:grid md:grid-cols-2 md:gap-4 md:space-y-0 xl:grid-cols-3">
-                {settled.map(renderCard)}
-              </div>
-            </>
-          )}
-        </>
-      )}
-
-      {/* ─── Add/Edit sheet ─── */}
-      {mounted && showSheet &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-50 flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-transparent p-0 md:items-stretch md:justify-end"
-            onClick={requestSheetClose}
-            onTouchMove={(event) => event.preventDefault()}
-          >
+      {/* ─── Add/Edit Sheet ─── */}
+      {mounted && showSheet
+        ? createPortal(
             <div
-              {...sheetSwipe}
-              data-swipe-sheet
-              data-prevent-pull-refresh="true"
-              style={{ transform: "translateZ(0)" }}
-              onClick={(event) => event.stopPropagation()}
-              className="app-sheet-panel app-sheet-panel--lg max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] will-change-transform md:h-[100dvh] md:max-h-none md:max-w-[420px] md:rounded-none md:border-y-0 md:border-l md:border-r-0"
+              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] backdrop-blur-xs p-0 md:items-center md:p-4"
+              onClick={requestSheetClose}
             >
-              <AppSheetHeader
-                title={editing ? tr("Edit BNPL", "Edit BNPL") : tr("Tambah BNPL", "Add BNPL")}
-                onClose={requestSheetClose}
-              />
-              <form id="bnpl-sheet-form" className="space-y-4 px-3 py-3 pb-4 text-[var(--text)] md:px-6 md:py-6" onSubmit={handleSave}>
-                {/* Name */}
-                <div>
-                  <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                    {tr("Nama BNPL", "BNPL Name")}
-                  </label>
-                  <input
-                    value={form.name}
-                    onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                    className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                    placeholder={tr("Contoh: iPhone 15", "Example: iPhone 15")}
-                  />
-                </div>
+              <div
+                style={{ transform: "translateZ(0)" }}
+                className="app-sheet-panel relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl md:max-h-[86vh] md:max-w-lg md:rounded-2xl"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <AppSheetHeader
+                  title={editing ? tr("Edit BNPL", "Edit BNPL") : tr("Tambah BNPL", "Add BNPL")}
+                  onClose={requestSheetClose}
+                  action={
+                    <button
+                      type="submit"
+                      form="bnpl-sheet-form"
+                      disabled={saving}
+                      className="px-2 py-1 text-sm font-black text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
+                    >
+                      {saving
+                        ? (isBm ? "Menyimpan…" : "Saving…")
+                        : editing ? tr("Update", "Update") : tr("Simpan", "Save")}
+                    </button>
+                  }
+                />
 
-                {/* Provider */}
-                <div>
-                  <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                    {tr("Provider", "Provider")}
-                  </label>
-                  <div className="relative">
+                <form
+                  id="bnpl-sheet-form"
+                  className="flex min-h-0 flex-1 flex-col overflow-hidden"
+                  onSubmit={handleSave}
+                >
+                  <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 text-[var(--text)] sm:px-6 sm:py-5">
+                    {/* Name */}
+                    <div>
+                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        {tr("Nama Pembelian / Barang", "Purchase / Item Name")} <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        value={form.name}
+                        onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-semibold text-[var(--text)] outline-none transition focus:border-[var(--btn-primary-bg)] placeholder:text-[var(--muted)]/40"
+                        placeholder={tr("Contoh: iPhone 15 Pro / Kasut Nike", "Example: iPhone 15 / Nike Shoes")}
+                      />
+                    </div>
+
+                    {/* Provider */}
+                    <div>
+                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        {tr("Penyedia Perkhidmatan BNPL", "BNPL Provider")}
+                      </label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setProviderOpen((o) => !o)}
+                          className={cn(
+                            "flex w-full items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3.5 py-3 text-left transition hover:bg-[var(--surface-tint-strong)]",
+                            providerOpen && "border-[var(--btn-primary-bg)]"
+                          )}
+                        >
+                          <span className="flex min-w-0 items-center gap-3">
+                            <BnplProviderBadge provider={form.provider} size={30} rounded="rounded-xl" />
+                            <span className="truncate text-sm font-black text-[var(--text)]">
+                              {form.provider}
+                            </span>
+                          </span>
+                          <ChevronDown size={16} className={cn("shrink-0 text-[var(--muted)] transition-transform", providerOpen && "rotate-180")} />
+                        </button>
+                        {providerOpen && (
+                          <div className="mt-2 max-h-56 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1.5 shadow-xl space-y-1">
+                            {BNPL_PROVIDERS.map((p) => {
+                              const selected = form.provider === p.value
+                              return (
+                                <button
+                                  key={p.value}
+                                  type="button"
+                                  onClick={() => {
+                                    setForm((prev) => ({ ...prev, provider: p.value }))
+                                    setProviderOpen(false)
+                                  }}
+                                  className={cn(
+                                    "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition",
+                                    selected ? "bg-[var(--surface-tint-strong)]" : "hover:bg-[var(--surface-tint)]",
+                                  )}
+                                >
+                                  <BnplProviderBadge provider={p.value} size={28} rounded="rounded-xl" />
+                                  <span className="truncate text-xs font-bold text-[var(--text)]">{p.label}</span>
+                                  {selected && <Check size={14} className="ml-auto text-emerald-500" />}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Category */}
+                    <div>
+                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        {tr("Kategori Transaksi", "Expense Category")} <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setCategoryOpen((o) => !o)}
+                          className={cn(
+                            "flex w-full items-center justify-between gap-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-left transition hover:bg-[var(--surface-tint-strong)]",
+                            categoryOpen && "border-[var(--btn-primary-bg)]"
+                          )}
+                        >
+                          <span className="flex min-w-0 items-center gap-2.5">
+                            {form.category_id ? (
+                              <CategoryIconGlyph
+                                iconName={categories.find((c) => String(c.id) === form.category_id)?.icon_name}
+                                categoryName={catName(form.category_id)}
+                                kind="expense"
+                                size={18}
+                              />
+                            ) : (
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--muted)]">
+                                <Receipt size={12} />
+                              </span>
+                            )}
+                            <span className={cn("truncate text-sm", form.category_id ? "font-black text-[var(--text)]" : "text-[var(--muted)]")}>
+                              {catName(form.category_id)}
+                            </span>
+                          </span>
+                          <ChevronDown size={16} className={cn("shrink-0 text-[var(--muted)] transition-transform", categoryOpen && "rotate-180")} />
+                        </button>
+                        {categoryOpen && (
+                          <div className="mt-2 max-h-52 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1.5 shadow-xl space-y-1">
+                            {categories.length === 0 && (
+                              <div className="px-3 py-3 text-center text-xs text-[var(--muted)]">
+                                {tr("Tiada kategori dijumpai", "No categories found")}
+                              </div>
+                            )}
+                            {categories.map((c) => {
+                              const selected = form.category_id === String(c.id)
+                              return (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setForm((prev) => ({ ...prev, category_id: String(c.id) }))
+                                    setCategoryOpen(false)
+                                  }}
+                                  className={cn(
+                                    "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition",
+                                    selected ? "bg-[var(--surface-tint-strong)]" : "hover:bg-[var(--surface-tint)]",
+                                  )}
+                                >
+                                  <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
+                                    <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind="expense" size={14} />
+                                  </span>
+                                  <span className="truncate text-xs font-semibold text-[var(--text)]">{c.name}</span>
+                                  {selected && <Check size={14} className="ml-auto text-emerald-500" />}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Total & Monthly Amount */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                          {tr("Jumlah Penuh (RM)", "Total (RM)")} <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          inputMode="decimal"
+                          value={form.total_amount}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9.]/g, "")
+                            setForm((prev) => {
+                              const totalNum = Number(val)
+                              const count = Number(prev.installment_count) || 3
+                              const monthlyCalc = totalNum > 0 && count > 0 ? (totalNum / count).toFixed(2) : prev.monthly_amount
+                              return { ...prev, total_amount: val, monthly_amount: monthlyCalc }
+                            })
+                          }}
+                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-black text-[var(--text)] outline-none transition focus:border-[var(--btn-primary-bg)] placeholder:text-[var(--muted)]/40"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                          {tr("Ansuran Bulanan (RM)", "Monthly (RM)")} <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          inputMode="decimal"
+                          value={form.monthly_amount}
+                          onChange={(e) => setForm((prev) => ({ ...prev, monthly_amount: e.target.value.replace(/[^0-9.]/g, "") }))}
+                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-black text-[var(--text)] outline-none transition focus:border-[var(--btn-primary-bg)] placeholder:text-[var(--muted)]/40"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Installments count & Due Day */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                          {tr("Tempoh Ansuran (Bulan)", "Installment Count")}
+                        </label>
+                        <input
+                          inputMode="numeric"
+                          value={form.installment_count}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^0-9]/g, "")
+                            setForm((prev) => {
+                              const count = Number(val) || 0
+                              const totalNum = Number(prev.total_amount) || 0
+                              const monthlyCalc = totalNum > 0 && count > 0 ? (totalNum / count).toFixed(2) : prev.monthly_amount
+                              return { ...prev, installment_count: val, monthly_amount: monthlyCalc }
+                            })
+                          }}
+                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-bold text-[var(--text)] outline-none transition focus:border-[var(--btn-primary-bg)]"
+                          placeholder="3"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                          {tr("Hari Tarikh Due (hb)", "Due Day of Month")}
+                        </label>
+                        <input
+                          inputMode="numeric"
+                          value={form.due_day_of_month}
+                          onChange={(e) => setForm((prev) => ({ ...prev, due_day_of_month: e.target.value.replace(/[^0-9]/g, "") }))}
+                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-bold text-[var(--text)] outline-none transition focus:border-[var(--btn-primary-bg)]"
+                          placeholder="15"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Start Date */}
+                    <div>
+                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        {tr("Tarikh Mula Langganan", "Start Date")}
+                      </label>
+                      <input
+                        type="date"
+                        value={form.start_date}
+                        onChange={(e) => setForm((prev) => ({ ...prev, start_date: e.target.value }))}
+                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none"
+                      />
+                    </div>
+
+                    {/* Notes */}
+                    <div>
+                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                        {tr("Catatan / Nota", "Notes")}
+                      </label>
+                      <textarea
+                        value={form.notes}
+                        onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+                        rows={2}
+                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
+                        placeholder={tr("Catatan tambahan (opsyenal)", "Additional notes (optional)")}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Sticky Footer */}
+                  <div className="flex items-center gap-3 border-t border-[var(--border)] bg-[var(--sheet-bg)] p-4">
                     <button
                       type="button"
-                      onClick={() => setProviderOpen((o) => !o)}
-                      className="flex w-full items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2.5 text-left"
+                      onClick={requestSheetClose}
+                      className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-xs font-bold text-[var(--muted)] transition hover:bg-[var(--surface-tint)] active:scale-95"
                     >
-                      <span className="flex min-w-0 items-center gap-2.5">
-                        <BnplProviderBadge provider={form.provider} size={30} rounded="rounded-xl" />
-                        <span className="truncate text-sm font-bold text-[var(--text)]">
-                          {form.provider}
-                        </span>
-                      </span>
-                      <ChevronDown size={16} className={cn("shrink-0 text-[var(--muted)] transition-transform", providerOpen && "rotate-180")} />
+                      {tr("Batal", "Cancel")}
                     </button>
-                    {providerOpen && (
-                      <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-64 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-xl shadow-black/20">
-                        {BNPL_PROVIDERS.map((p) => {
-                          const selected = form.provider === p.value
-                          return (
-                            <button
-                              key={p.value}
-                              type="button"
-                              onClick={() => {
-                                setForm((prev) => ({ ...prev, provider: p.value }))
-                                setProviderOpen(false)
-                              }}
-                              className={cn(
-                                "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
-                                selected ? "bg-[var(--surface-tint)]" : "hover:bg-[var(--surface-tint)]",
-                              )}
-                            >
-                              <BnplProviderBadge provider={p.value} size={30} rounded="rounded-xl" />
-                              <span className="truncate text-sm font-semibold text-[var(--text)]">{p.label}</span>
-                              {selected ? <span className="ml-auto text-[var(--accent2)]">✓</span> : null}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Category (required) */}
-                <div>
-                  <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                    {tr("Kategori", "Category")} <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <div className="relative min-w-0 flex-1">
-                      <button
-                        type="button"
-                        onClick={() => setWalletOpen((o) => !o)}
-                        className="flex w-full items-center gap-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2.5 text-left"
-                      >
-                        {form.category_id ? (
-                          <CategoryIconGlyph
-                            iconName={categories.find((c) => String(c.id) === form.category_id)?.icon_name}
-                            categoryName={catName(form.category_id)}
-                            kind="expense"
-                            size={16}
-                          />
-                        ) : (
-                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--muted)]">
-                            <CreditCard size={13} />
-                          </span>
-                        )}
-                        <span className={cn("truncate text-sm", form.category_id ? "font-bold text-[var(--text)]" : "text-[var(--muted)]")}>
-                          {catName(form.category_id)}
-                        </span>
-                        <ChevronDown size={16} className="ml-auto shrink-0 text-[var(--muted)]" />
-                      </button>
-                      {walletOpen && (
-                        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-60 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-xl shadow-black/20">
-                          {categories.length === 0 && (
-                            <div className="px-3 py-3 text-center text-xs text-[var(--muted)]">
-                              {tr("Tiada kategori", "No categories")}
-                            </div>
-                          )}
-                          {categories.map((c) => {
-                            const selected = form.category_id === String(c.id)
-                            return (
-                              <button
-                                key={c.id}
-                                type="button"
-                                onClick={() => {
-                                  setForm((prev) => ({ ...prev, category_id: String(c.id) }))
-                                  setWalletOpen(false)
-                                }}
-                                className={cn(
-                                  "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
-                                  selected ? "bg-[var(--surface-tint)]" : "hover:bg-[var(--surface-tint)]",
-                                )}
-                              >
-                                <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
-                                  <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind="expense" size={16} />
-                                </span>
-                                <span className="truncate text-sm font-semibold text-[var(--text)]">{c.name}</span>
-                                {selected ? <span className="ml-auto text-[var(--accent2)]">✓</span> : null}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                    <a
-                      href={`/${sessionId}/categories`}
-                      className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--accent2)] transition hover:bg-[var(--surface-tint-strong)]"
-                      aria-label={tr("Tambah kategori", "Add category")}
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="flex-1 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2.5 text-xs md:text-sm font-black text-white shadow-sm transition active:scale-[0.98] disabled:opacity-50"
                     >
-                      <Plus size={18} />
-                    </a>
+                      {saving
+                        ? (isBm ? "Menyimpan…" : "Saving…")
+                        : editing ? tr("Kemaskini BNPL", "Update BNPL") : tr("Simpan BNPL", "Save BNPL")}
+                    </button>
                   </div>
-                </div>
+                </form>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
-                {/* Total + monthly */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Jumlah BNPL", "Total")}
-                    </label>
-                    <input
-                      inputMode="decimal"
-                      value={form.total_amount}
-                      onChange={(e) => setForm((prev) => ({ ...prev, total_amount: e.target.value }))}
-                      className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Ansuran Bulanan", "Monthly")}
-                    </label>
-                    <input
-                      inputMode="decimal"
-                      value={form.monthly_amount}
-                      onChange={(e) => setForm((prev) => ({ ...prev, monthly_amount: e.target.value }))}
-                      className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-
-                {/* Installment count + due day */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Bilangan Ansuran", "Installments")}
-                    </label>
-                    <input
-                      inputMode="numeric"
-                      value={form.installment_count}
-                      onChange={(e) => setForm((prev) => ({ ...prev, installment_count: e.target.value }))}
-                      className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none"
-                      placeholder="3"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Due Date (Hari)", "Due Day")}
-                    </label>
-                    <input
-                      inputMode="numeric"
-                      value={form.due_day_of_month}
-                      onChange={(e) => setForm((prev) => ({ ...prev, due_day_of_month: e.target.value }))}
-                      className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none"
-                      placeholder="15"
-                    />
-                  </div>
-                </div>
-
-                {/* Start date */}
-                <div>
-                  <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                    {tr("Tarikh Mula", "Start Date")}
-                  </label>
-                  <input
-                    type="date"
-                    value={form.start_date}
-                    onChange={(e) => setForm((prev) => ({ ...prev, start_date: e.target.value }))}
-                    className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none"
-                  />
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                    {tr("Nota", "Notes")}
-                  </label>
-                  <textarea
-                    value={form.notes}
-                    onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-                    rows={2}
-                    className="w-full resize-none rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none"
-                  />
-                </div>
-
-                <div className="mt-6 -mx-3 flex items-center gap-2 border-t border-[var(--border)] bg-[var(--sheet-bg)] px-3 pb-2 pt-5 md:-mx-6 md:px-6">
-                  <button
-                    type="button"
-                    onClick={requestSheetClose}
-                    className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-bold text-[var(--muted)] transition active:scale-95"
-                  >
-                    {tr("Batal", "Cancel")}
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="flex-1 rounded-full bg-[var(--btn-primary-bg)] px-4 py-2 text-sm font-black text-white transition active:scale-[0.98] disabled:opacity-60"
-                  >
-                    {saving
-                      ? (isBm ? "Menyimpan…" : "Saving…")
-                      : editing ? tr("Update", "Update") : tr("Simpan BNPL", "Save BNPL")}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>,
-          document.body,
-        )}
-
-      {/* ─── Pay sheet ─── */}
+      {/* ─── Quick Pay Sheet ─── */}
       {payingId !== null &&
         (() => {
           const item = items.find((i) => i.id === payingId)
           if (!item) return null
           return createPortal(
             <div
-              className="fixed inset-0 z-[140] flex items-end justify-center bg-transparent sm:items-center"
+              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] backdrop-blur-xs p-0 md:items-center md:p-4"
               onClick={() => setPayingId(null)}
             >
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="app-sheet-panel app-sheet-panel--sm w-full max-w-md rounded-t-[28px] border border-[var(--border)] bg-[var(--sheet-bg)] p-5 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]"
+                className="app-sheet-panel relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl md:max-h-[86vh] md:max-w-md md:rounded-2xl"
               >
-                <div className="mx-auto mb-4 h-1 w-8 rounded-full bg-[var(--surface-tint-strong)]" />
-                <div className="mb-4 flex items-center gap-3">
-                  <BnplProviderBadge provider={item.provider} size={44} />
-                  <div className="min-w-0">
-                    <h3 className="truncate text-base font-black text-[var(--text)]">{item.name}</h3>
-                    <p className="text-xs text-[var(--muted)]">
-                      {tr("Ansuran bulanan", "Monthly installment")}: RM{" "}
-                      {Number(item.monthly_amount).toLocaleString("en-MY", { minimumFractionDigits: 2 })}
-                    </p>
+                <AppSheetHeader title={tr("Bayar Ansuran BNPL", "Pay BNPL Installment")} onClose={() => setPayingId(null)} />
+
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 text-[var(--text)] sm:px-6 sm:py-5">
+                  <div className="flex items-center gap-3.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-4">
+                    <BnplProviderBadge provider={item.provider} size={44} rounded="rounded-2xl" />
+                    <div className="min-w-0">
+                      <h3 className="truncate text-base font-black text-[var(--text)]">{item.name}</h3>
+                      <p className="text-xs text-[var(--muted)]">
+                        {tr("Ansuran Bulanan", "Monthly Installment")}:{" "}
+                        <span className="font-bold text-[var(--text)]">
+                          RM {Number(item.monthly_amount).toLocaleString("en-MY", { minimumFractionDigits: 2 })}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                      {tr("Dompet Pembayar (Pilihan)", "Payment Wallet (Optional)")}
+                    </label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setPayWalletOpen((o) => !o)}
+                        className={cn(
+                          "flex w-full items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-left transition hover:bg-[var(--surface-tint-strong)]",
+                          payWalletOpen && "border-[var(--btn-primary-bg)]"
+                        )}
+                      >
+                        {payWalletId ? (
+                          (() => {
+                            const w = wallets.find((x) => x.id === payWalletId)
+                            return (
+                              <span className="flex items-center gap-2 truncate font-bold text-sm text-[var(--text)]">
+                                <CreditCard size={15} className="shrink-0 text-emerald-500" />
+                                <span>{w?.name || "Wallet"}</span>
+                              </span>
+                            )
+                          })()
+                        ) : (
+                          <span className="text-sm text-[var(--muted)]">{tr("Guna wallet lalai / Tunai", "Use default wallet / Cash")}</span>
+                        )}
+                        <ChevronDown size={16} className={cn("shrink-0 text-[var(--muted)] transition-transform", payWalletOpen && "rotate-180")} />
+                      </button>
+                      {payWalletOpen && (
+                        <div className="mt-2 max-h-48 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1.5 shadow-xl space-y-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPayWalletId(null)
+                              setPayWalletOpen(false)
+                            }}
+                            className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs text-[var(--muted)] hover:bg-[var(--surface-tint)]"
+                          >
+                            <span>{tr("Wallet lalai", "Default wallet")}</span>
+                            {!payWalletId && <Check size={14} className="text-emerald-500" />}
+                          </button>
+                          {wallets.map((w) => (
+                            <button
+                              key={w.id}
+                              type="button"
+                              onClick={() => {
+                                setPayWalletId(w.id)
+                                setPayWalletOpen(false)
+                              }}
+                              className={cn(
+                                "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs transition",
+                                payWalletId === w.id ? "bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold" : "hover:bg-[var(--surface-tint)] text-[var(--text)]"
+                              )}
+                            >
+                              <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
+                                <CreditCard size={12} />
+                              </span>
+                              <span className="truncate flex-1 font-medium">{w.name}</span>
+                              {payWalletId === w.id && <Check size={14} className="text-emerald-500" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="relative mb-4">
+                {/* Sticky Pay Footer */}
+                <div className="flex items-center gap-3 border-t border-[var(--border)] bg-[var(--sheet-bg)] p-4">
                   <button
                     type="button"
-                    onClick={() => setWalletOpen((o) => !o)}
-                    className="flex w-full items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-left"
+                    onClick={() => setPayingId(null)}
+                    className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-xs font-bold text-[var(--muted)] transition hover:bg-[var(--surface-tint)] active:scale-95"
                   >
-                    {payWalletId ? (
-                      (() => {
-                        const w = wallets.find((x) => x.id === payWalletId)
-                        return <span className="truncate text-sm font-bold text-[var(--text)]">{w?.name || "Wallet"}</span>
-                      })()
-                    ) : (
-                      <span className="text-sm text-[var(--muted)]">{tr("Pilih wallet (pilihan)", "Select wallet (optional)")}</span>
-                    )}
-                    <ChevronDown size={16} className="shrink-0 text-[var(--muted)]" />
+                    {tr("Batal", "Cancel")}
                   </button>
-                  {walletOpen && (
-                    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-60 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-xl shadow-black/20">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPayWalletId(null)
-                          setWalletOpen(false)
-                        }}
-                        className="w-full px-3 py-2 text-left text-sm text-[var(--muted)] hover:bg-[var(--surface-tint)]"
-                      >
-                        {tr("Wallet lalai", "Default wallet")}
-                      </button>
-                      {wallets.map((w) => (
-                        <button
-                          key={w.id}
-                          type="button"
-                          onClick={() => {
-                            setPayWalletId(w.id)
-                            setWalletOpen(false)
-                          }}
-                          className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-[var(--surface-tint)]"
-                        >
-                          <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
-                            <CreditCard size={14} />
-                          </span>
-                          <span className="truncate text-sm font-semibold text-[var(--text)]">{w.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => handlePay(item)}
+                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2.5 text-xs md:text-sm font-black text-white shadow-sm transition active:scale-[0.98]"
+                  >
+                    <CreditCard size={15} />
+                    <span>{tr("Sahkan Bayaran", "Confirm Payment")}</span>
+                  </button>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => handlePay(item)}
-                  disabled={payingId === null && false}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-2xl border border-transparent bg-[var(--btn-primary-bg)] py-3 text-sm font-bold text-[var(--btn-primary-text)] transition active:scale-[0.99] disabled:opacity-60"
-                >
-                  <CreditCard size={16} />
-                  {tr("Bayar Ansuran", "Pay Installment")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPayingId(null)}
-                  className="mt-2 w-full rounded-2xl py-2.5 text-sm font-semibold text-[var(--muted)] transition hover:text-[var(--text)]"
-                >
-                  {tr("Batal", "Cancel")}
-                </button>
               </div>
             </div>,
             document.body,
           )
         })()}
 
-      {/* hidden file inputs */}
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
-
       {alertModal}
     </div>
   )
