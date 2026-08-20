@@ -1482,3 +1482,14 @@ class SupportTicket(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+
+class SupportTicketReply(Base):
+    """A single reply on a support ticket — 2-way conversation (user or admin)."""
+    __tablename__ = "support_ticket_replies"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    ticket_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("support_tickets.id"), nullable=False, index=True)
+    sender: Mapped[str] = mapped_column(String(20), nullable=False, default="user")  # user | admin
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo, useCallback } from "react"
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { useParams } from "next/navigation"
 import { createPortal } from "react-dom"
 import {
@@ -25,6 +25,10 @@ import {
   Plus,
   X,
   ChevronRight,
+  User,
+  ShieldCheck,
+  Bot,
+  Headphones,
 } from "lucide-react"
 import { getAccessToken } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
@@ -48,6 +52,14 @@ type Ticket = {
   priority: string
   admin_note?: string | null
   created_at?: string | null
+}
+
+type DiscussionMessage = {
+  id: string
+  sender: "user" | "admin"
+  text: string
+  title?: string
+  timestamp?: string | null
 }
 
 const KIND_CONFIG = [
@@ -162,7 +174,6 @@ export default function RequestPage() {
   const [description, setDescription] = useState("")
   const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium")
   const [submitting, setSubmitting] = useState(false)
-  const [done, setDone] = useState(false)
   const [error, setError] = useState("")
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loaded, setLoaded] = useState(false)
@@ -170,9 +181,17 @@ export default function RequestPage() {
   const [showCreateSheet, setShowCreateSheet] = useState(false)
 
   // Filtering & Search
+  const [kindFilter, setKindFilter] = useState<string>("support")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [replyTicket, setReplyTicket] = useState<Ticket | null>(null)
+
+  // Ticket Chat / Discussion Modal
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
+  const [extraReplies, setExtraReplies] = useState<Record<number, DiscussionMessage[]>>({})
+  const [userReplyText, setUserReplyText] = useState("")
+  const [replying, setReplying] = useState(false)
+  const [replyError, setReplyError] = useState("")
+  const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -180,14 +199,16 @@ export default function RequestPage() {
 
   useEffect(() => {
     window.dispatchEvent(
-      new CustomEvent("portal:mobile-bottom-nav-visibility", { detail: { hidden: showCreateSheet } })
+      new CustomEvent("portal:mobile-bottom-nav-visibility", {
+        detail: { hidden: showCreateSheet || Boolean(selectedTicket) },
+      })
     )
     return () => {
       window.dispatchEvent(
         new CustomEvent("portal:mobile-bottom-nav-visibility", { detail: { hidden: false } })
       )
     }
-  }, [showCreateSheet])
+  }, [showCreateSheet, selectedTicket])
 
   const token = getAccessToken()
   const headers: Record<string, string> = { "Content-Type": "application/json" }
@@ -203,7 +224,13 @@ export default function RequestPage() {
       })
       if (r.ok) {
         const data = await r.json()
-        setTickets(Array.isArray(data) ? data : [])
+        const list: Ticket[] = Array.isArray(data) ? data : []
+        setTickets(list)
+        setSelectedTicket((prev) => {
+          if (!prev) return null
+          const updated = list.find((t) => t.id === prev.id)
+          return updated || prev
+        })
       }
     } catch {
       // Ignore
@@ -231,10 +258,31 @@ export default function RequestPage() {
     setError("")
   }, [])
 
+  const openTicketChat = useCallback((tk: Ticket) => {
+    setSelectedTicket(tk)
+    setUserReplyText("")
+    setReplyError("")
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }, 150)
+  }, [])
+
+  const closeTicketChat = useCallback(() => {
+    setSelectedTicket(null)
+    setUserReplyText("")
+    setReplyError("")
+  }, [])
+
   const { requestClose: requestCreateSheetClose } = useOverlayBackClose({
     id: "request-create-sheet",
     isOpen: showCreateSheet,
     onClose: closeCreateSheet,
+  })
+
+  const { requestClose: requestChatClose } = useOverlayBackClose({
+    id: "request-chat-sheet",
+    isOpen: Boolean(selectedTicket),
+    onClose: closeTicketChat,
   })
 
   async function submit(e: React.FormEvent) {
@@ -262,7 +310,6 @@ export default function RequestPage() {
         setError((d && (d.detail || d.message)) || tr("Gagal menghantar permohonan.", "Failed to submit request."))
         return
       }
-      setDone(true)
       closeCreateSheet()
       await loadMine()
     } catch {
@@ -272,8 +319,54 @@ export default function RequestPage() {
     }
   }
 
+  async function handleSendChatMessage(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedTicket || !userReplyText.trim()) return
+    const textToSend = userReplyText.trim()
+    setReplying(true)
+    setReplyError("")
+
+    // Optimistically create new message bubble
+    const newEntry: DiscussionMessage = {
+      id: `local-${Date.now()}`,
+      sender: "user",
+      text: textToSend,
+      timestamp: new Date().toISOString(),
+    }
+
+    try {
+      const r = await fetch(`/api/support/tickets/${selectedTicket.id}/reply`, {
+        method: "POST",
+        credentials: "include",
+        headers,
+        body: JSON.stringify({ reply: textToSend }),
+      })
+      if (!r.ok) {
+        const d = await r.json().catch(() => null)
+        const errMsg = (d && (d.detail || d.message)) || tr("Gagal menghantar mesej.", "Failed to send message.")
+        setReplyError(errMsg)
+        return
+      }
+
+      setExtraReplies((prev) => ({
+        ...prev,
+        [selectedTicket.id]: [...(prev[selectedTicket.id] || []), newEntry],
+      }))
+      setUserReplyText("")
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+      }, 100)
+      await loadMine()
+    } catch {
+      setReplyError(tr("Ralat rangkaian. Sila cuba lagi.", "Network error. Please try again."))
+    } finally {
+      setReplying(false)
+    }
+  }
+
   const filteredTickets = useMemo(() => {
     return tickets.filter((t) => {
+      if (kindFilter !== "all" && t.kind !== kindFilter) return false
       if (statusFilter !== "all" && t.status !== statusFilter) return false
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase()
@@ -284,7 +377,7 @@ export default function RequestPage() {
       }
       return true
     })
-  }, [tickets, statusFilter, searchQuery])
+  }, [tickets, kindFilter, statusFilter, searchQuery])
 
   const stats = useMemo(() => {
     const total = tickets.length
@@ -307,6 +400,20 @@ export default function RequestPage() {
       })
     } catch {
       return isoStr
+    }
+  }
+
+  function formatChatTime(isoStr?: string | null) {
+    if (!isoStr) return ""
+    try {
+      const d = new Date(isoStr)
+      if (Number.isNaN(d.getTime())) return ""
+      return d.toLocaleTimeString(isBm ? "ms-MY" : "en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    } catch {
+      return ""
     }
   }
 
@@ -336,16 +443,55 @@ export default function RequestPage() {
     </div>
   )
 
-  // Filter Pills & Search Bar
+  // Filter Pills & Search Bar with Category Tabs (Support, Bug, Feature)
   const renderFilterControls = () => (
     <div className="space-y-3">
+      {/* ── Main Category Tabs: Support, Bug, Feature ── */}
+      <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-[var(--surface-tint)] p-1.5 border border-[var(--border)]">
+        {[
+          { key: "support", labelBm: "Support", labelEn: "Support", icon: LifeBuoy, count: tickets.filter((t) => t.kind === "support").length },
+          { key: "bug", labelBm: "Bug", labelEn: "Bug", icon: Bug, count: tickets.filter((t) => t.kind === "bug").length },
+          { key: "feature", labelBm: "Feature", labelEn: "Feature", icon: Lightbulb, count: tickets.filter((t) => t.kind === "feature").length },
+        ].map((tab) => {
+          const isSelected = kindFilter === tab.key
+          const Icon = tab.icon
+          return (
+            <button
+              type="button"
+              key={tab.key}
+              onClick={() => setKindFilter(tab.key)}
+              className={cn(
+                "flex items-center justify-center gap-1.5 py-2.5 px-1.5 text-xs font-bold rounded-xl transition active:scale-[0.98]",
+                isSelected
+                  ? "bg-[var(--card)] text-[var(--text)] shadow-xs font-black border border-[var(--border)]/70"
+                  : "text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]/40"
+              )}
+            >
+              <Icon size={14} className={cn(isSelected ? "text-[var(--text)]" : "text-[var(--muted)]")} />
+              <span className="truncate">{tr(tab.labelBm, tab.labelEn)}</span>
+              <span
+                className={cn(
+                  "hidden sm:inline-flex rounded-full px-1.5 py-0.2 text-[0.625rem] font-black",
+                  isSelected
+                    ? "bg-[var(--surface-tint-strong)] text-[var(--text)]"
+                    : "bg-[var(--card)] text-[var(--muted)]"
+                )}
+              >
+                {tab.count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ── Status Pills ── */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         {[
-          { key: "all", labelBm: "Semua", labelEn: "All", count: tickets.length },
-          { key: "new", labelBm: "Baru", labelEn: "New", count: tickets.filter((t) => t.status === "new").length },
-          { key: "in_progress", labelBm: "Dalam Proses", labelEn: "In Progress", count: tickets.filter((t) => t.status === "in_progress").length },
-          { key: "resolved", labelBm: "Selesai", labelEn: "Resolved", count: tickets.filter((t) => t.status === "resolved").length },
-          { key: "closed", labelBm: "Ditutup", labelEn: "Closed", count: tickets.filter((t) => t.status === "closed").length },
+          { key: "all", labelBm: "Semua", labelEn: "All", count: (kindFilter === "all" ? tickets : tickets.filter((t) => t.kind === kindFilter)).length },
+          { key: "new", labelBm: "Baru", labelEn: "New", count: (kindFilter === "all" ? tickets : tickets.filter((t) => t.kind === kindFilter)).filter((t) => t.status === "new").length },
+          { key: "in_progress", labelBm: "Dalam Proses", labelEn: "In Progress", count: (kindFilter === "all" ? tickets : tickets.filter((t) => t.kind === kindFilter)).filter((t) => t.status === "in_progress").length },
+          { key: "resolved", labelBm: "Selesai", labelEn: "Resolved", count: (kindFilter === "all" ? tickets : tickets.filter((t) => t.kind === kindFilter)).filter((t) => t.status === "resolved").length },
+          { key: "closed", labelBm: "Ditutup", labelEn: "Closed", count: (kindFilter === "all" ? tickets : tickets.filter((t) => t.kind === kindFilter)).filter((t) => t.status === "closed").length },
         ].map((f) => {
           const isSelected = statusFilter === f.key
           return (
@@ -354,7 +500,7 @@ export default function RequestPage() {
               key={f.key}
               onClick={() => setStatusFilter(f.key)}
               className={cn(
-                "flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition active:scale-95",
+                "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition active:scale-95",
                 isSelected
                   ? "bg-[var(--text)] text-[var(--bg)] shadow-xs"
                   : "bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)]"
@@ -386,82 +532,6 @@ export default function RequestPage() {
       </div>
     </div>
   )
-
-  // Ticket Card Component
-  const renderTicketCard = (tk: Ticket) => {
-    const kindMeta = KIND_CONFIG.find((k) => k.key === tk.kind) || KIND_CONFIG[0]
-    const KindIcon = kindMeta.icon
-    const statusMeta = STATUS_CONFIG[tk.status] || STATUS_CONFIG.new
-    const priorityMeta = PRIORITY_CONFIG[tk.priority] || PRIORITY_CONFIG.medium
-    const isResolved = tk.status === "resolved"
-
-    return (
-      <div
-        key={tk.id}
-        className={cn(
-          "rounded-2xl border p-4 transition-all relative overflow-hidden text-left shadow-[var(--shadow-card)]",
-          isResolved
-            ? "border-emerald-500/40 bg-emerald-950/10 [background-image:repeating-linear-gradient(135deg,rgba(16,185,129,0.08)_0,rgba(16,185,129,0.08)_10px,transparent_10px,transparent_20px)] shadow-[0_0_15px_-3px_rgba(16,185,129,0.15)]"
-            : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--border-strong)]"
-        )}
-        onClick={() => { if (tk.admin_note) setReplyTicket(tk) }}
-        role={tk.admin_note ? "button" : undefined}
-      >
-        {/* Top Row: Kind Badge + Priority + Status */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-[var(--border)]/60">
-          <div className="flex items-center gap-1.5">
-            <span className={cn("inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.68rem] font-bold border", kindMeta.badgeBg)}>
-              <KindIcon size={12} />
-              <span>{tr(kindMeta.labelBm, kindMeta.labelEn)}</span>
-            </span>
-
-            <span className={cn("inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.68rem] font-bold border", priorityMeta.bg, priorityMeta.text)}>
-              <span className={cn("h-1.5 w-1.5 rounded-full", priorityMeta.dot)} />
-              <span>{tr(priorityMeta.labelBm, priorityMeta.labelEn)}</span>
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.68rem] font-bold border", statusMeta.badge)}>
-              <span className={cn("h-1.5 w-1.5 rounded-full", statusMeta.dot)} />
-              <span>{tr(statusMeta.labelBm, statusMeta.labelEn)}</span>
-            </span>
-          </div>
-        </div>
-
-        {/* Title & Description */}
-        <div className="pt-3">
-          <h3 className="text-sm font-black text-[var(--text)] leading-snug">
-            {tk.title}
-          </h3>
-          {tk.description && (
-            <p className="mt-1 text-xs text-[var(--muted)] leading-relaxed whitespace-pre-wrap">
-              {tk.description}
-            </p>
-          )}
-          <div className="mt-2.5 flex items-center gap-1.5 text-[0.68rem] text-[var(--muted)]">
-            <Clock size={11} />
-            <span>{formatTimestamp(tk.created_at)}</span>
-          </div>
-        </div>
-
-        {/* Admin Response — NOT shown inline in card; shown via popup instead */}
-        {tk.admin_note && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setReplyTicket(tk) }}
-            className="mt-3 flex w-full items-center justify-between gap-2 rounded-xl border border-sky-500/25 bg-sky-500/10 px-3 py-2.5 text-left text-xs transition hover:bg-sky-500/15"
-          >
-            <div className="flex items-center gap-1.5 font-bold text-sky-600 dark:text-sky-400">
-              <MessageSquare size={13} />
-              <span>{tr("Admin Respond to Your Ticket", "Admin Balas Tiket Anda")}</span>
-            </div>
-            <ChevronRight size={14} className="shrink-0 text-sky-600/60 dark:text-sky-400/60" />
-          </button>
-        )}
-      </div>
-    )
-  }
 
   const renderEmpty = () => (
     <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 py-14 text-center">
@@ -507,17 +577,104 @@ export default function RequestPage() {
           {renderHeroStats(false)}
           {renderFilterControls()}
 
-          <div className="space-y-3">
-            {!loaded ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-32 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
-              ))
-            ) : filteredTickets.length === 0 ? (
-              renderEmpty()
-            ) : (
-              filteredTickets.map((tk) => renderTicketCard(tk))
-            )}
-          </div>
+          {!loaded ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-28 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
+              ))}
+            </div>
+          ) : filteredTickets.length === 0 ? (
+            renderEmpty()
+          ) : (
+            /* Mobile Table-List Card Panel */
+            <div className="divide-y divide-[var(--border)]/60 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-xs">
+              {filteredTickets.map((tk) => {
+                const kindMeta = KIND_CONFIG.find((k) => k.key === tk.kind) || KIND_CONFIG[0]
+                const KindIcon = kindMeta.icon
+                const statusMeta = STATUS_CONFIG[tk.status] || STATUS_CONFIG.new
+                const priorityMeta = PRIORITY_CONFIG[tk.priority] || PRIORITY_CONFIG.medium
+                const isResolved = tk.status === "resolved"
+
+                return (
+                  <div
+                    key={tk.id}
+                    onClick={() => openTicketChat(tk)}
+                    className={cn(
+                      "p-4 transition-colors relative cursor-pointer active:bg-[var(--surface-tint)]",
+                      isResolved
+                        ? "bg-emerald-950/10 [background-image:repeating-linear-gradient(135deg,rgba(16,185,129,0.06)_0,rgba(16,185,129,0.06)_10px,transparent_10px,transparent_20px)]"
+                        : "hover:bg-[var(--surface-tint)]/40"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border", kindMeta.badgeBg)}>
+                        <KindIcon size={16} />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[0.65rem] font-bold text-[var(--muted)]">#{tk.id}</span>
+                            <span className="text-xs font-bold text-[var(--text)]">
+                              {tr(kindMeta.labelBm, kindMeta.labelEn)}
+                            </span>
+                          </div>
+
+                          <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.2 text-[0.6rem] font-black uppercase tracking-wider border", statusMeta.badge)}>
+                            <span className={cn("h-1.5 w-1.5 rounded-full", statusMeta.dot)} />
+                            <span>{tr(statusMeta.labelBm, statusMeta.labelEn)}</span>
+                          </span>
+                        </div>
+
+                        <h3 className="mt-1 text-sm font-black text-[var(--text)] leading-snug">
+                          {tk.title}
+                        </h3>
+
+                        {tk.description && (
+                          <p className="mt-1 text-xs text-[var(--muted)] leading-relaxed line-clamp-2">
+                            {tk.description}
+                          </p>
+                        )}
+
+                        <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-[var(--border)]/40 pt-2">
+                          <span className={cn("inline-flex items-center gap-1 rounded-md px-1.5 py-0.2 text-[0.6rem] font-bold border", priorityMeta.bg, priorityMeta.text)}>
+                            <span className={cn("h-1 w-1 rounded-full", priorityMeta.dot)} />
+                            <span>{tr(priorityMeta.labelBm, priorityMeta.labelEn)}</span>
+                          </span>
+
+                          <div className="flex items-center gap-1 text-[0.65rem] text-[var(--muted)]">
+                            <Clock size={10} />
+                            <span>{formatTimestamp(tk.created_at)}</span>
+                          </div>
+                        </div>
+
+                        {/* Admin note banner / Reply trigger */}
+                        {tk.admin_note ? (
+                          <div className="mt-2.5 flex items-center justify-between gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 text-xs font-bold text-sky-600 dark:text-sky-400">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <MessageSquare size={13} className="shrink-0" />
+                              <span className="truncate">{tr("Balasan Admin: ", "Admin Reply: ")}{tk.admin_note}</span>
+                            </div>
+                            <span className="shrink-0 text-[0.65rem] font-bold underline flex items-center gap-0.5">
+                              {tr("Chat", "Chat")}
+                              <ChevronRight size={12} />
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="mt-2.5 flex items-center justify-end">
+                            <span className="inline-flex items-center gap-1 text-[0.68rem] font-bold text-[var(--muted)] hover:text-[var(--text)]">
+                              <MessageSquare size={12} />
+                              <span>{tr("Buka Chat Tiket →", "Open Ticket Chat →")}</span>
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </section>
       </div>
 
@@ -553,21 +710,134 @@ export default function RequestPage() {
           {renderHeroStats(true)}
           {renderFilterControls()}
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {!loaded ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-36 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
-              ))
-            ) : filteredTickets.length === 0 ? (
-              <div className="col-span-full">{renderEmpty()}</div>
-            ) : (
-              filteredTickets.map((tk) => renderTicketCard(tk))
-            )}
-          </div>
+          {/* Desktop Table Container */}
+          {!loaded ? (
+            <div className="space-y-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-16 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
+              ))}
+            </div>
+          ) : filteredTickets.length === 0 ? (
+            renderEmpty()
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-[var(--border)] bg-[var(--surface-tint)]/60 text-[0.68rem] font-black uppercase tracking-wider text-[var(--muted)]">
+                      <th className="py-3.5 pl-5 pr-3">{tr("Tiket & Butiran", "Ticket & Details")}</th>
+                      <th className="py-3.5 px-3 text-center">{tr("Jenis", "Type")}</th>
+                      <th className="py-3.5 px-3 text-center">{tr("Keutamaan", "Priority")}</th>
+                      <th className="py-3.5 px-3 text-center">{tr("Status", "Status")}</th>
+                      <th className="py-3.5 px-3">{tr("Tarikh", "Date")}</th>
+                      <th className="py-3.5 pr-5 pl-3 text-right">{tr("Tindakan / Chat", "Action / Chat")}</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]/60">
+                    {filteredTickets.map((tk) => {
+                      const kindMeta = KIND_CONFIG.find((k) => k.key === tk.kind) || KIND_CONFIG[0]
+                      const KindIcon = kindMeta.icon
+                      const statusMeta = STATUS_CONFIG[tk.status] || STATUS_CONFIG.new
+                      const priorityMeta = PRIORITY_CONFIG[tk.priority] || PRIORITY_CONFIG.medium
+                      const isResolved = tk.status === "resolved"
+
+                      return (
+                        <tr
+                          key={tk.id}
+                          onClick={() => openTicketChat(tk)}
+                          className={cn(
+                            "transition-colors cursor-pointer",
+                            isResolved
+                              ? "bg-emerald-950/10 [background-image:repeating-linear-gradient(135deg,rgba(16,185,129,0.06)_0,rgba(16,185,129,0.06)_10px,transparent_10px,transparent_20px)] hover:bg-emerald-950/20"
+                              : "hover:bg-[var(--surface-tint)]/50"
+                          )}
+                        >
+                          {/* 1. Ticket Title & Details */}
+                          <td className="py-4 pl-5 pr-3 align-top max-w-sm">
+                            <div className="flex items-start gap-3">
+                              <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border mt-0.5", kindMeta.badgeBg)}>
+                                <KindIcon size={14} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[0.65rem] font-bold text-[var(--muted)]">#{tk.id}</span>
+                                  <span className="font-black text-sm text-[var(--text)] leading-snug">
+                                    {tk.title}
+                                  </span>
+                                </div>
+                                {tk.description && (
+                                  <p className="mt-1 text-xs text-[var(--muted)] line-clamp-1 leading-relaxed">
+                                    {tk.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* 2. Type Badge */}
+                          <td className="py-4 px-3 align-middle text-center">
+                            <span className={cn("inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.68rem] font-bold border", kindMeta.badgeBg)}>
+                              <KindIcon size={11} />
+                              <span>{tr(kindMeta.labelBm, kindMeta.labelEn)}</span>
+                            </span>
+                          </td>
+
+                          {/* 3. Priority Badge */}
+                          <td className="py-4 px-3 align-middle text-center">
+                            <span className={cn("inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.68rem] font-bold border", priorityMeta.bg, priorityMeta.text)}>
+                              <span className={cn("h-1.5 w-1.5 rounded-full", priorityMeta.dot)} />
+                              <span>{tr(priorityMeta.labelBm, priorityMeta.labelEn)}</span>
+                            </span>
+                          </td>
+
+                          {/* 4. Status Badge */}
+                          <td className="py-4 px-3 align-middle text-center">
+                            <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.68rem] font-black uppercase tracking-wider border", statusMeta.badge)}>
+                              <span className={cn("h-1.5 w-1.5 rounded-full", statusMeta.dot)} />
+                              <span>{tr(statusMeta.labelBm, statusMeta.labelEn)}</span>
+                            </span>
+                          </td>
+
+                          {/* 5. Date */}
+                          <td className="py-4 px-3 align-middle text-[0.72rem] text-[var(--muted)] whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <Clock size={11} className="shrink-0" />
+                              <span>{formatTimestamp(tk.created_at)}</span>
+                            </div>
+                          </td>
+
+                          {/* 6. Admin Feedback / Chat Action */}
+                          <td className="py-4 pr-5 pl-3 align-middle text-right whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                openTicketChat(tk)
+                              }}
+                              className={cn(
+                                "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition active:scale-95",
+                                tk.admin_note
+                                  ? "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400 hover:bg-sky-500/20"
+                                  : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] hover:bg-[var(--surface-tint-strong)]"
+                              )}
+                            >
+                              <MessageSquare size={13} />
+                              <span>{tk.admin_note ? tr("Chat Balasan", "Reply Chat") : tr("Buka Chat", "Open Chat")}</span>
+                              <ChevronRight size={13} />
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </DesktopPageBody>
       </div>
 
-      {/* ─── Popup Sheet / Modal for Create Request (matches /bnpl modal style) ─── */}
+      {/* ─── Popup Sheet / Modal for Create Request ─── */}
       {mounted && showCreateSheet
         ? createPortal(
             <div
@@ -755,40 +1025,168 @@ export default function RequestPage() {
           )
         : null}
 
-      {/* ─── Admin Reply Popup ─── */}
-      {mounted && replyTicket && replyTicket.admin_note
+      {/* ─── Ticket Live Chat Interface Modal (Styled like /chat page) ─── */}
+      {mounted && selectedTicket
         ? createPortal(
             <div
               className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] backdrop-blur-xs p-0 md:items-center md:p-4"
-              onClick={() => setReplyTicket(null)}
+              onClick={requestChatClose}
             >
               <div
-                className="app-sheet-panel relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl md:max-h-[80vh] md:max-w-md md:rounded-2xl"
+                style={{ transform: "translateZ(0)" }}
+                className="app-sheet-panel relative flex h-[88dvh] max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-[var(--border)] bg-[var(--card)] shadow-2xl md:h-[82vh] md:max-w-lg md:rounded-2xl"
                 onClick={(event) => event.stopPropagation()}
               >
-                <AppSheetHeader
-                  title={tr("Balasan Admin", "Admin Response")}
-                  onClose={() => setReplyTicket(null)}
-                  showCancel={false}
-                />
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5">
-                  <div className="flex items-start gap-3 rounded-2xl border border-sky-500/25 bg-sky-500/10 p-4">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/20 text-sky-600 dark:text-sky-400">
-                      <MessageSquare size={18} />
+                {/* ── Chat Header ── */}
+                <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--card)] px-4 py-3.5 sm:px-5">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-sky-500/30 bg-sky-500/10 text-sky-500">
+                      <Headphones size={20} />
+                      <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[var(--card)] bg-emerald-500" />
                     </div>
+
                     <div className="min-w-0 flex-1">
-                      <p className="text-[0.62rem] font-bold uppercase tracking-widest text-sky-600 dark:text-sky-400">
-                        {tr("Admin Respond to Your Ticket", "Admin Balas Tiket Anda")}
+                      <div className="flex items-center gap-2">
+                        <h3 className="truncate text-sm font-black text-[var(--text)]">
+                          {selectedTicket.title}
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[0.65rem] font-bold text-[var(--muted)]">
+                        <span>#{selectedTicket.id}</span>
+                        <span>·</span>
+                        {(() => {
+                          const sm = STATUS_CONFIG[selectedTicket.status] || STATUS_CONFIG.new
+                          return (
+                            <span className="inline-flex items-center gap-1">
+                              <span className={cn("h-1.5 w-1.5 rounded-full", sm.dot)} />
+                              <span>{tr(sm.labelBm, sm.labelEn)}</span>
+                            </span>
+                          )
+                        })()}
+                        <span>·</span>
+                        {(() => {
+                          const pm = PRIORITY_CONFIG[selectedTicket.priority] || PRIORITY_CONFIG.medium
+                          return <span className={pm.text}>{tr(pm.labelBm, pm.labelEn)}</span>
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={requestChatClose}
+                    className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] active:scale-95 transition"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {/* ── Chat Message Stream (Feed) ── */}
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 bg-[var(--bg)]/50">
+                  {/* Date separator */}
+                  <div className="flex items-center justify-center my-2">
+                    <span className="rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-0.5 text-[0.65rem] font-bold text-[var(--muted)] shadow-2xs">
+                      {formatTimestamp(selectedTicket.created_at)}
+                    </span>
+                  </div>
+
+                  {/* 1. Initial User Ticket Message Bubble */}
+                  <div className="flex flex-col items-end space-y-1">
+                    <div className="flex items-center gap-1.5 pr-1 text-[0.65rem] font-bold text-[var(--muted)]">
+                      <span>{tr("Anda", "You")}</span>
+                      <span>·</span>
+                      <span>{formatChatTime(selectedTicket.created_at)}</span>
+                    </div>
+                    <div className="max-w-[85%] rounded-2xl rounded-tr-xs bg-[var(--text)] text-[var(--bg)] p-3.5 shadow-sm text-xs leading-relaxed">
+                      <p className="font-black text-xs md:text-sm mb-1 opacity-95">
+                        {selectedTicket.title}
                       </p>
-                      <h3 className="mt-0.5 text-sm font-black text-[var(--text)] leading-snug">
-                        {replyTicket.title}
-                      </h3>
-                      <p className="mt-2 text-sm leading-relaxed whitespace-pre-wrap text-[var(--text)]">
-                        {replyTicket.admin_note}
+                      <p className="whitespace-pre-wrap opacity-90 leading-relaxed font-medium">
+                        {selectedTicket.description || tr("Tiada keterangan tambahan.", "No additional details provided.")}
                       </p>
                     </div>
                   </div>
+
+                  {/* 2. Admin Response Bubble (if exists) */}
+                  {selectedTicket.admin_note ? (
+                    <div className="flex flex-col items-start space-y-1 pt-1">
+                      <div className="flex items-center gap-1.5 pl-1 text-[0.65rem] font-bold text-sky-600 dark:text-sky-400">
+                        <ShieldCheck size={13} />
+                        <span>{tr("Admin / Sokongan", "Admin Support")}</span>
+                      </div>
+                      <div className="max-w-[85%] rounded-2xl rounded-tl-xs border border-sky-500/30 bg-sky-500/10 p-3.5 shadow-sm text-xs leading-relaxed text-[var(--text)]">
+                        <p className="whitespace-pre-wrap font-medium leading-relaxed">
+                          {selectedTicket.admin_note}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/40 p-3 text-xs text-[var(--muted)]">
+                      <Clock size={14} className="shrink-0 text-amber-500" />
+                      <span>{tr("Menunggu balasan & semakan daripada pentadbir…", "Awaiting reply & review from administrator…")}</span>
+                    </div>
+                  )}
+
+                  {/* 3. Subsequent Dynamic Replies in this session */}
+                  {(extraReplies[selectedTicket.id] || []).map((msg) => (
+                    <div key={msg.id} className="flex flex-col items-end space-y-1">
+                      <div className="flex items-center gap-1.5 pr-1 text-[0.65rem] font-bold text-[var(--muted)]">
+                        <span>{tr("Anda", "You")}</span>
+                        <span>·</span>
+                        <span>{formatChatTime(msg.timestamp)}</span>
+                      </div>
+                      <div className="max-w-[85%] rounded-2xl rounded-tr-xs bg-[var(--text)] text-[var(--bg)] p-3.5 shadow-sm text-xs leading-relaxed">
+                        <p className="whitespace-pre-wrap opacity-95 leading-relaxed font-medium">
+                          {msg.text}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Error Notification */}
+                  {replyError && (
+                    <div className="flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 p-2.5 text-xs font-medium text-rose-600 dark:text-rose-400">
+                      <AlertCircle size={14} className="shrink-0" />
+                      <span>{replyError}</span>
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
                 </div>
+
+                {/* ── Chat Input Bar (Sticky Footer like /chat) ── */}
+                {selectedTicket.status !== "closed" ? (
+                  <form
+                    onSubmit={handleSendChatMessage}
+                    className="border-t border-[var(--border)] bg-[var(--card)] p-3 sm:p-4"
+                  >
+                    <div className="flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-1.5 pl-3.5 focus-within:border-[var(--btn-primary-bg)] transition">
+                      <input
+                        type="text"
+                        value={userReplyText}
+                        onChange={(e) => setUserReplyText(e.target.value)}
+                        placeholder={tr("Tulis mesej kepada admin…", "Type a message to admin…")}
+                        className="min-w-0 flex-1 bg-transparent py-1.5 text-xs md:text-sm text-[var(--text)] placeholder-[var(--muted)] outline-none"
+                      />
+
+                      <button
+                        type="submit"
+                        disabled={replying || !userReplyText.trim()}
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--btn-primary-bg)] text-white shadow-xs transition active:scale-95 disabled:pointer-events-none disabled:opacity-40"
+                      >
+                        {replying ? (
+                          <Loader2 size={15} className="animate-spin" />
+                        ) : (
+                          <Send size={15} />
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="border-t border-[var(--border)] bg-[var(--card)] p-3.5 text-center text-xs font-medium text-[var(--muted)]">
+                    {tr("Tiket ini telah ditutup oleh admin.", "This ticket has been closed by admin.")}
+                  </div>
+                )}
               </div>
             </div>,
             document.body

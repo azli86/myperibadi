@@ -1637,3 +1637,16 @@ class SupportTicketResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class SupportTicketReplyCreate(BaseModel):
+    body: str
+
+class SupportTicketReplyResponse(BaseModel):
+    id: int
+    ticket_id: int
+    sender: str
+    body: str
+    created_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True

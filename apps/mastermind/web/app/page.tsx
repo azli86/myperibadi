@@ -2341,25 +2341,64 @@ export default function Home() {
 
                     {ticketDetail.kind === "support" && (
                       <div style={{ marginTop: "16px" }}>
-                        <div className="sub-title">Balas Tiket</div>
-                        {ticketDetail.admin_note ? (
+                        <div className="sub-title">Perbualan Tiket</div>
+                        {(ticketDetail.replies || []).length > 0 ? (
                           <div
-                            className="ticket-reply-box"
                             style={{
-                              background: "var(--panel)",
-                              border: "1px solid var(--border)",
-                              borderRadius: "10px",
-                              padding: "10px 12px",
-                              marginBottom: "10px",
-                              whiteSpace: "pre-wrap",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "8px",
+                              maxHeight: "240px",
+                              overflowY: "auto",
+                              marginBottom: "12px",
                             }}
                           >
-                            <div className="muted" style={{ fontSize: 11, marginBottom: 4 }}>
-                              Balasan semasa
-                            </div>
-                            {ticketDetail.admin_note}
+                            {(ticketDetail.replies || []).map((r: any) => (
+                              <div
+                                key={r.id}
+                                style={{
+                                  alignSelf:
+                                    r.sender === "admin" ? "flex-end" : "flex-start",
+                                  background:
+                                    r.sender === "admin"
+                                      ? "var(--accent)"
+                                      : "var(--panel)",
+                                  color:
+                                    r.sender === "admin"
+                                      ? "#fff"
+                                      : "var(--text-main)",
+                                  border: "1px solid var(--border)",
+                                  borderRadius: "12px",
+                                  padding: "8px 12px",
+                                  maxWidth: "85%",
+                                  whiteSpace: "pre-wrap",
+                                  fontSize: 13,
+                                }}
+                              >
+                                <div
+                                  className="muted"
+                                  style={{
+                                    fontSize: 10,
+                                    marginBottom: 3,
+                                    color:
+                                      r.sender === "admin" ? "#e2e8f0" : "inherit",
+                                  }}
+                                >
+                                  {r.sender === "admin" ? "Admin" : "Pengguna"} ·{" "}
+                                  {fmtDate(r.created_at)}
+                                </div>
+                                {r.body}
+                              </div>
+                            ))}
                           </div>
-                        ) : null}
+                        ) : (
+                          <div
+                            className="muted"
+                            style={{ fontSize: 12, marginBottom: 12 }}
+                          >
+                            Tiada balasan lagi.
+                          </div>
+                        )}
                         <textarea
                           value={ticketReply}
                           onChange={(e) => setTicketReply(e.target.value)}

@@ -604,6 +604,9 @@ async def support_ticket_detail(ticket_id: int, db: AsyncSession = Depends(db_se
     item = dict(row)
     item["user_name"] = mask_name(item.get("user_name"))
     item["user_email"] = mask_email(item.get("user_email"))
+    item["replies"] = [dict(r) for r in (await db.execute(text(
+        "SELECT id, sender, body, created_at FROM support_ticket_replies WHERE ticket_id = :id ORDER BY created_at ASC, id ASC"
+    ), {"id": ticket_id})).mappings().all()]
     return item
 
 @app.post("/support/tickets/{ticket_id}/status")
@@ -638,6 +641,11 @@ async def support_ticket_reply(ticket_id: int, request: Request, actor: dict = D
         raise HTTPException(404, "Ticket not found")
     if row["kind"] != "support":
         raise HTTPException(422, "Reply hanya untuk tiket jenis support")
+    # Store as a 2-way conversation reply + mirror latest into admin_note for
+    # backwards-compatible UI.
+    await db.execute(text(
+        "INSERT INTO support_ticket_replies (ticket_id, sender, body, created_at) VALUES (:id, 'admin', :n, now())"
+    ), {"n": reply, "id": ticket_id})
     await db.execute(text(
         "UPDATE support_tickets SET admin_note = :n, status = CASE WHEN status = 'new' THEN 'in_progress' ELSE status END WHERE id = :id"
     ), {"n": reply, "id": ticket_id})

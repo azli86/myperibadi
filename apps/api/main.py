@@ -13901,6 +13901,80 @@ async def my_support_tickets(
     )
     return result.scalars().all()
 
+@app.get("/support/tickets/{ticket_id}/replies", response_model=List[schemas.SupportTicketReplyResponse])
+async def my_support_ticket_replies(
+    ticket_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(database.get_db),
+):
+    """User lists replies on one of their own tickets."""
+    t = await db.get(models.SupportTicket, ticket_id)
+    if not t or t.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Tiket tidak dijumpai")
+    result = await db.execute(
+        select(models.SupportTicketReply)
+        .where(models.SupportTicketReply.ticket_id == ticket_id)
+        .order_by(models.SupportTicketReply.created_at.asc())
+    )
+    return result.scalars().all()
+
+@app.post("/support/tickets/{ticket_id}/replies", response_model=schemas.SupportTicketReplyResponse)
+async def create_support_ticket_reply(
+    ticket_id: int,
+    body: schemas.SupportTicketReplyCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(database.get_db),
+):
+    """User replies to their own support ticket."""
+    t = await db.get(models.SupportTicket, ticket_id)
+    if not t or t.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Tiket tidak dijumpai")
+    text = body.body.strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="Balasan tidak boleh kosong")
+    r = models.SupportTicketReply(ticket_id=ticket_id, sender="user", body=text[:2000])
+    db.add(r)
+    if t.status == "closed":
+        t.status = "in_progress"
+    elif t.status == "resolved":
+        t.status = "in_progress"
+    t.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(r)
+    try:
+        asyncio.create_task(_notify_ticket_admins_telegram(t, current_user.email))
+    except Exception:
+        pass
+    return r
+
+@app.post("/support/tickets/{ticket_id}/reply", response_model=schemas.SupportTicketReplyResponse)
+async def create_support_ticket_user_reply(
+    ticket_id: int,
+    request: Request,
+    current_user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(database.get_db),
+):
+    """Alias endpoint the web UI calls: user replies to their own ticket."""
+    body = await request.json()
+    t = await db.get(models.SupportTicket, ticket_id)
+    if not t or t.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Tiket tidak dijumpai")
+    text = str(body.get("reply") or body.get("body") or "").strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="Balasan tidak boleh kosong")
+    r = models.SupportTicketReply(ticket_id=ticket_id, sender="user", body=text[:2000])
+    db.add(r)
+    if t.status in ("closed", "resolved"):
+        t.status = "in_progress"
+    t.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(r)
+    try:
+        asyncio.create_task(_notify_ticket_admins_telegram(t, current_user.email))
+    except Exception:
+        pass
+    return r
+
 if __name__ == "__main__":
     import uvicorn
     api_host = os.getenv("API_HOST", "0.0.0.0")
