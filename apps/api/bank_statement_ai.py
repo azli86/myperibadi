@@ -54,7 +54,10 @@ async def parse_statement(text: str, page_images: list[str] | None = None) -> li
     async with httpx.AsyncClient(timeout=120) as client:
         response = await client.post(f"{base_url}/chat/completions", headers={"Authorization": f"Bearer {api_key}"}, json=body)
         response.raise_for_status()
-    rows = _json_object(response.json()["choices"][0]["message"]["content"]).get("transactions")
+    content_out = response.json()["choices"][0]["message"]["content"]
+    print(f"[bank-statement-ai] model={model} images={len(images)} img_bytes={sum(len(i) for i in images)} text_chars={len(content)}", flush=True)
+    print(f"[bank-statement-ai] raw_response={content_out[:3000]}", flush=True)
+    rows = _json_object(content_out).get("transactions")
     if not isinstance(rows, list):
         raise ValueError("AI returned invalid transactions")
     result = []

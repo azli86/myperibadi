@@ -4,37 +4,30 @@ import React, { useState, useEffect, useMemo } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import {
-  FileText,
-  UploadCloud,
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-  ArrowRight,
   Plus,
   RefreshCw,
-  Sparkles,
   Search,
-  Filter,
   Check,
   ChevronRight,
-  Layers,
   Wallet,
   ArrowUpRight,
   ArrowDownRight,
   FileSpreadsheet,
   ClipboardPaste,
-  ShieldCheck,
   CheckCheck,
-  Building2,
   Calendar,
-  DollarSign,
-  HelpCircle,
-  Trash2,
   Lock,
   Eye,
   EyeOff,
   KeyRound,
   FileCheck2,
+  AlertCircle,
+  Clock,
+  CheckCircle2,
+  Sparkles,
+  UploadCloud,
+  FileText,
+  ScanLine,
 } from "lucide-react"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
@@ -50,8 +43,8 @@ import {
   AppTransaction,
   reconcileStatements,
   ReconciliationResult,
-  MatchedPair,
 } from "@/lib/reconciliation-matcher"
+import { MoneyAmount } from "@/components/ui/MoneyAmount"
 import {
   DesktopPageAction,
   DesktopPageBody,
@@ -101,13 +94,12 @@ export default function BankReconciliationPage() {
   const [appTransactions, setAppTransactions] = useState<AppTransaction[]>([])
   const [loadingInitial, setLoadingInitial] = useState(true)
 
-  // Reconciliation checks every app transaction. Wallet is chosen only when importing.
-
   // Input Mode (file vs paste)
   const [inputMode, setInputMode] = useState<"file" | "paste">("file")
   const [rawTextContent, setRawTextContent] = useState("")
   const [fileName, setFileName] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [scanStep, setScanStep] = useState<number>(0)
 
   // Password-Protected PDF State
   const [showPasswordModal, setShowPasswordModal] = useState(false)
@@ -122,8 +114,7 @@ export default function BankReconciliationPage() {
   const [bankTxns, setBankTxns] = useState<BankTransactionRow[]>([])
 
   // Active View Tab
-  const [activeTab, setActiveTab] = useState<"all" | "missing_in_app" | "matched" | "missing_in_bank">("missing_in_app")
-  const [searchQuery, setSearchQuery] = useState("")
+  const [activeTab, setActiveTab] = useState<"missing_in_app" | "matched" | "missing_in_bank">("missing_in_app")
 
   // Quick Add State
   const [quickAddTxn, setQuickAddTxn] = useState<BankTransactionRow | null>(null)
@@ -135,6 +126,18 @@ export default function BankReconciliationPage() {
   const [selectedMissingIds, setSelectedMissingIds] = useState<Set<string>>(new Set())
   const [batchImporting, setBatchImporting] = useState(false)
   const [batchWalletId, setBatchWalletId] = useState<number | "">("")
+
+  // Scanning animation steps timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout
+    if (isProcessing) {
+      setScanStep(0)
+      interval = setInterval(() => {
+        setScanStep((prev) => (prev < 3 ? prev + 1 : prev))
+      }, 1000)
+    }
+    return () => clearInterval(interval)
+  }, [isProcessing])
 
   const getAuthHeaders = (): Record<string, string> => {
     const token = getAccessToken()
@@ -157,7 +160,7 @@ export default function BankReconciliationPage() {
       throw new Error((await response.json().catch(() => null))?.detail || tr("AI gagal membaca penyata.", "AI failed to read the statement."))
     }
     const data = await response.json()
-    return { transactions: Array.isArray(data.transactions) ? data.transactions as BankTransactionRow[] : [] }
+    return { transactions: Array.isArray(data.transactions) ? (data.transactions as BankTransactionRow[]) : [] }
   }
 
   // Load Wallets, Categories, Transactions
@@ -225,36 +228,35 @@ export default function BankReconciliationPage() {
     setIsProcessing(true)
 
     if (isPdf) {
-      const buffer = await file.arrayBuffer()
-      const pdfRes = await extractTextFromPdf(buffer)
+      try {
+        const buffer = await file.arrayBuffer()
+        const pdfRes = await extractTextFromPdf(buffer)
 
-      if (pdfRes.needsPassword) {
-        setPendingPdfBuffer(buffer)
-        setPendingPdfName(file.name)
-        setPasswordError(null)
-        setPdfPassword("")
-        setShowPasswordModal(true)
-        setIsProcessing(false)
-        return
-      }
+        if (pdfRes.needsPassword) {
+          setPendingPdfBuffer(buffer)
+          setPendingPdfName(file.name)
+          setPasswordError(null)
+          setPdfPassword("")
+          setShowPasswordModal(true)
+          setIsProcessing(false)
+          return
+        }
 
-      if (pdfRes.text) {
-        try {
+        if (pdfRes.text) {
           const result = await parseStatementWithAi(pdfRes.text, pdfRes.pageImages)
           setBankTxns(result.transactions)
           setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
-        } catch (err: any) {
-          showAlert(tr("Ralat Membaca Penyata", "Statement Reading Error"), err.message, "error")
-        } finally {
-          setIsProcessing(false)
+        } else {
+          showAlert(
+            tr("Ralat Membaca PDF", "Error Reading PDF"),
+            pdfRes.error || tr("Gagal mengekstrak teks dari penyata PDF.", "Failed to extract text from PDF statement."),
+            "error"
+          )
         }
-      } else {
+      } catch (err: any) {
+        showAlert(tr("Ralat Membaca Penyata", "Statement Reading Error"), err.message, "error")
+      } finally {
         setIsProcessing(false)
-        showAlert(
-          tr("Ralat Membaca PDF", "Error Reading PDF"),
-          pdfRes.error || tr("Gagal mengekstrak teks dari penyata PDF.", "Failed to extract text from PDF statement."),
-          "error"
-        )
       }
       return
     }
@@ -296,11 +298,13 @@ export default function BankReconciliationPage() {
         return
       }
 
+      setShowPasswordModal(false)
+      setIsProcessing(true)
+
       if (pdfRes.text) {
         const result = await parseStatementWithAi(pdfRes.text, pdfRes.pageImages)
         setBankTxns(result.transactions)
         setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
-        setShowPasswordModal(false)
         setPendingPdfBuffer(null)
         setPdfPassword("")
       } else {
@@ -310,6 +314,7 @@ export default function BankReconciliationPage() {
       setPasswordError(err.message || tr("Ralat semasa membuka PDF.", "Error unlocking PDF."))
     } finally {
       setUnlockingPdf(false)
+      setIsProcessing(false)
     }
   }
 
@@ -399,7 +404,7 @@ export default function BankReconciliationPage() {
         ...prev,
       ])
 
-      showAlert(tr("Berjaya", "Success"), tr("Transaksi berjaya ditambah ke dalam bajet!", "Transaction successfully added to budget!"), "success")
+      showAlert(tr("Berjaya", "Success"), tr("Transaksi berjaya ditambah ke dalam rekod MyPeribadi!", "Transaction successfully added to MyPeribadi records!"), "success")
       setQuickAddTxn(null)
       setQuickAddCategoryId("")
     } catch (err: any) {
@@ -424,8 +429,8 @@ export default function BankReconciliationPage() {
     showConfirm(
       tr("Sahkan Import", "Confirm Import"),
       tr(
-        `Adakah anda pasti ingin mengimport ${toImport.length} transaksi ini ke dalam bajet?`,
-        `Are you sure you want to import ${toImport.length} transactions into your budget?`
+        `Adakah anda pasti ingin mengimport ${toImport.length} transaksi ini ke dalam akaun bank terpilih?`,
+        `Are you sure you want to import ${toImport.length} transactions into the selected bank account?`
       ),
       async () => {
         setBatchImporting(true)
@@ -484,111 +489,112 @@ export default function BankReconciliationPage() {
     )
   }
 
-  return (
-    <div className="space-y-6 pb-24 md:pb-12">
-      {/* ─── Headers ─── */}
-      <div className="md:hidden">
-        <MobilePageHeader
-          title={tr("Rekonsiliasi Bank", "Bank Reconciliation")}
-          fallbackHref={`/${sessionId}/wallet-settings`}
-          action={
-            bankTxns.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setBankTxns([])
-                  setFileName(null)
-                  setRawTextContent("")
-                }}
-                className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-2 text-xs font-bold text-[var(--muted)]"
-              >
-                <RefreshCw size={14} />
-              </button>
-            ) : null
-          }
-        />
-      </div>
+  const scanSteps = [
+    tr("Mengesahkan fail penyata...", "Verifying statement file..."),
+    tr("AI mengekstrak grid transaksi...", "AI extracting transactions..."),
+    tr("Menganalisis debit & kredit...", "Analyzing debits & credits..."),
+    tr("Memadankan rekod MyPeribadi...", "Matching MyPeribadi records..."),
+  ]
 
-      <div className="hidden md:block">
-        <DesktopPageHeader
-          title={tr("Rekonsiliasi Penyata Bank", "Bank Statement Reconciliation")}
-          homeHref={`/${sessionId}`}
-          actions={
-            bankTxns.length > 0 ? (
-              <DesktopPageAction
-                onClick={() => {
-                  setBankTxns([])
-                  setFileName(null)
-                  setRawTextContent("")
-                }}
-              >
-                <RefreshCw size={14} />
-                {tr("Penyata Baharu", "New Statement")}
-              </DesktopPageAction>
-            ) : null
-          }
-        />
-      </div>
+  // Standard Hero Block
+  const renderHero = (isDesktop = false) => (
+    <div
+      className={cn(
+        "wallet-hero relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] text-white",
+        isDesktop ? "p-6" : "p-5"
+      )}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
+      <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
+      <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.04] blur-2xl" />
 
-      <div className="mx-auto max-w-5xl space-y-6 px-4 md:px-0">
-        {/* ─── Statement Uploader / Input Panel ─── */}
-        {bankTxns.length === 0 ? (
-          <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-            <div className="text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500">
-                <FileSpreadsheet size={28} />
+      <div className="relative flex flex-col justify-between gap-4 md:flex-row md:items-center">
+        <div>
+          <p className="text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-[#cbd5e1]">
+            {tr("Rekonsiliasi Penyata Bank", "Bank Statement Reconciliation")}
+          </p>
+          <p className="mt-1 text-sm font-semibold text-neutral-300">
+            {tr(
+              "Padankan rekod transaksi bank dengan rekod perbelanjaan MyPeribadi anda.",
+              "Match your bank statement transactions with your MyPeribadi spending records."
+            )}
+          </p>
+        </div>
+
+        {bankTxns.length > 0 && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setBankTxns([])
+                setFileName(null)
+                setRawTextContent("")
+              }}
+              className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95"
+            >
+              <RefreshCw size={13} />
+              <span>{tr("Muat Naik Penyata Lain", "Upload Another Statement")}</span>
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  const contentBody = (
+    <div className="space-y-5">
+      {/* ─── Uploader Section (When no statement loaded) ─── */}
+      {bankTxns.length === 0 ? (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
+              <div>
+                <h3 className="text-sm font-black text-[var(--text)]">
+                  {tr("Penyata Bank", "Bank Statement")}
+                </h3>
+                <p className="text-xs font-semibold text-[var(--muted)]">
+                  {tr("Pilih fail penyata atau tampal teks transaksi", "Choose statement file or paste transaction text")}
+                </p>
               </div>
-              <h2 className="mt-3 text-lg font-black text-[var(--text)]">
-                {tr("Muat Naik / Tampal Penyata Bank", "Upload or Paste Bank Statement")}
-              </h2>
-              <p className="mx-auto mt-1 max-w-md text-xs font-semibold text-[var(--muted)]">
-                {tr(
-                  "Sokongan untuk fail PDF Penyata Bank (termasuk yang berkunci kata laluan), fail CSV, Excel atau salin-tampal teks transaksi terus.",
-                  "Supports bank statement PDFs (including password-protected ones), CSV files, or copy-pasted statement text."
-                )}
-              </p>
-            </div>
 
-            {/* Mode Switcher */}
-            <div className="mt-6 flex justify-center">
-              <div className="inline-flex rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-1">
+              {/* Mode Toggle */}
+              <div className="flex gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-1">
                 <button
                   type="button"
                   onClick={() => setInputMode("file")}
                   className={cn(
-                    "flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold transition",
+                    "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition",
                     inputMode === "file" ? "bg-[var(--card)] text-[var(--text)] shadow-xs" : "text-[var(--muted)]"
                   )}
                 >
                   <UploadCloud size={14} />
-                  <span>{tr("Fail PDF / CSV / Excel", "PDF / CSV / Excel File")}</span>
+                  <span>{tr("Fail PDF / CSV", "PDF / CSV File")}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setInputMode("paste")}
                   className={cn(
-                    "flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold transition",
+                    "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition",
                     inputMode === "paste" ? "bg-[var(--card)] text-[var(--text)] shadow-xs" : "text-[var(--muted)]"
                   )}
                 >
                   <ClipboardPaste size={14} />
-                  <span>{tr("Salin & Tampal Teks", "Copy & Paste Text")}</span>
+                  <span>{tr("Salin & Tampal", "Copy & Paste")}</span>
                 </button>
               </div>
             </div>
 
-            {/* File Upload Dropzone */}
             {inputMode === "file" ? (
-              <div className="mt-6">
-                <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 transition hover:border-indigo-400 hover:bg-indigo-500/5">
-                  <div className="flex items-center gap-2 text-indigo-400">
-                    <UploadCloud size={32} />
+              <div className="mt-5">
+                <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 transition hover:border-[var(--border-strong)] active:scale-[0.99]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]">
+                    <FileSpreadsheet size={24} />
                   </div>
-                  <p className="mt-2 text-sm font-bold text-[var(--text)]">
-                    {tr("Ketik atau heret fail PDF / CSV / TSV ke sini", "Click or drag PDF / CSV / TSV file here")}
+                  <p className="mt-3 text-sm font-bold text-[var(--text)]">
+                    {tr("Ketik atau heret fail PDF / CSV penyata bank ke sini", "Click or drag bank PDF / CSV statement here")}
                   </p>
                   <p className="mt-1 text-xs font-medium text-[var(--muted)]">
-                    {tr("Menyokong fail PDF (termasuk dengan kata laluan) & fail CSV", "Supports PDF files (including password-protected) & CSV files")}
+                    {tr("Menyokong PDF (termasuk berkunci kata laluan IC/Tarikh Lahir) & CSV", "Supports PDF (including password protected) & CSV")}
                   </p>
                   <input
                     type="file"
@@ -599,8 +605,7 @@ export default function BankReconciliationPage() {
                 </label>
               </div>
             ) : (
-              /* Paste Statement Textarea */
-              <div className="mt-6 space-y-3">
+              <div className="mt-5 space-y-3">
                 <textarea
                   rows={6}
                   value={rawTextContent}
@@ -609,7 +614,7 @@ export default function BankReconciliationPage() {
                     "Contoh:\n01/08/2026 DUITNOW TO ALI RM 50.00 DR\n03/08/2026 SALARY CREDIT RM 4,500.00 CR\n05/08/2026 MCDONALDS RM 28.50 DR",
                     "Example:\n01/08/2026 DUITNOW TO ALI RM 50.00 DR\n03/08/2026 SALARY CREDIT RM 4,500.00 CR"
                   )}
-                  className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4 font-mono text-xs text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
+                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 font-mono text-xs text-[var(--text)] outline-none placeholder:text-[var(--muted)]/50"
                 />
                 <button
                   type="button"
@@ -623,344 +628,360 @@ export default function BankReconciliationPage() {
               </div>
             )}
 
-            {/* Preset Samples */}
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-2 border-t border-[var(--border)]/60 pt-4">
-              <span className="text-xs font-bold text-[var(--muted)]">{tr("Cuba contoh data:", "Try sample data:")}</span>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-3 text-xs">
+              <span className="font-semibold text-[var(--muted)]">{tr("Format bank lazim:", "Common bank formats:")} Maybank, CIMB, Bank Islam, RHB, TNG</span>
               <button
                 type="button"
                 onClick={loadSample}
-                className="rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-1 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--border)]"
+                className="font-bold text-[var(--text)] underline-offset-4 hover:underline"
               >
-                {tr("Contoh Penyata Maybank", "Sample Maybank Statement")}
+                {tr("Cuba Contoh Data", "Try Sample Data")}
               </button>
             </div>
           </div>
-        ) : (
-          /* ─── Reconciliation Results Dashboard ─── */
-          <div className="space-y-6">
-            {/* Top Metrics Cards */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {/* Match Rate */}
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-xs">
-                <p className="text-[0.625rem] font-black uppercase tracking-wider text-[var(--muted)]">
-                  {tr("Kadar Padanan", "Match Rate")}
-                </p>
-                <div className="mt-1 flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black text-emerald-500">
-                    {reconResult.summary.matchRatePercent}%
-                  </span>
-                  <span className="text-[0.65rem] font-bold text-[var(--muted)]">
-                    ({reconResult.summary.matchedCount}/{reconResult.summary.totalBankTxns})
-                  </span>
-                </div>
-              </div>
-
-              {/* Missing in App */}
-              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 shadow-xs">
-                <p className="text-[0.625rem] font-black uppercase tracking-wider text-amber-500">
-                  {tr("Tertinggal Dlm Bajet", "Missing in App")}
-                </p>
-                <div className="mt-1 flex items-baseline gap-1.5">
-                  <span className="text-2xl font-black text-amber-500">
-                    {reconResult.summary.missingInAppCount}
-                  </span>
-                  <span className="text-[0.65rem] font-bold text-amber-500/70">
-                    {tr("perlu import", "to import")}
-                  </span>
-                </div>
-              </div>
-
-              {/* Total Bank Outflow */}
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-xs">
-                <p className="text-[0.625rem] font-black uppercase tracking-wider text-[var(--muted)]">
-                  {tr("Jumlah Bank Keluar", "Bank Debit Total")}
-                </p>
-                <p className="mt-1 text-lg font-black text-[var(--text)]">
-                  RM {reconResult.summary.bankDebitTotal.toLocaleString("en-MY", { minimumFractionDigits: 2 })}
-                </p>
-              </div>
-
-              {/* Net Variance */}
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-xs">
-                <p className="text-[0.625rem] font-black uppercase tracking-wider text-[var(--muted)]">
-                  {tr("Perbezaan Bersih", "Net Variance")}
-                </p>
-                <p className={cn("mt-1 text-lg font-black", Math.abs(reconResult.summary.netVariance) < 0.01 ? "text-emerald-500" : "text-amber-400")}>
-                  RM {Math.abs(reconResult.summary.netVariance).toLocaleString("en-MY", { minimumFractionDigits: 2 })}
-                </p>
+        </div>
+      ) : (
+        /* ─── Reconciliation Results Section ─── */
+        <div className="space-y-4">
+          {/* Summary Stats Cards */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+              <p className="text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                {tr("Kadar Padanan", "Match Rate")}
+              </p>
+              <div className="mt-1 flex items-baseline gap-1">
+                <span className="text-xl font-black text-emerald-500">
+                  {reconResult.summary.matchRatePercent}%
+                </span>
+                <span className="text-[0.65rem] font-semibold text-[var(--muted)]">
+                  ({reconResult.summary.matchedCount}/{reconResult.summary.totalBankTxns})
+                </span>
               </div>
             </div>
 
-            {/* Tab Filter Navigation */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("missing_in_app")}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition",
-                    activeTab === "missing_in_app"
-                      ? "bg-amber-500 text-white shadow-xs"
-                      : "bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
-                  )}
-                >
-                  <AlertCircle size={14} />
-                  <span>{tr("Tertinggal Dlm Bajet", "Missing in App")}</span>
-                  <span className="rounded-full bg-black/20 px-1.5 py-0.2 text-[0.65rem] font-bold">
-                    {reconResult.summary.missingInAppCount}
-                  </span>
-                </button>
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+              <p className="text-[0.625rem] font-bold uppercase tracking-wider text-amber-500">
+                {tr("Tertinggal Dlm MyPeribadi", "Missing in MyPeribadi")}
+              </p>
+              <p className="mt-1 text-xl font-black text-amber-500">
+                {reconResult.summary.missingInAppCount}
+              </p>
+            </div>
 
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("matched")}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition",
-                    activeTab === "matched"
-                      ? "bg-emerald-500 text-white shadow-xs"
-                      : "bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
-                  )}
-                >
-                  <CheckCheck size={14} />
-                  <span>{tr("Telah Dipadankan", "Matched")}</span>
-                  <span className="rounded-full bg-black/20 px-1.5 py-0.2 text-[0.65rem] font-bold">
-                    {reconResult.summary.matchedCount}
-                  </span>
-                </button>
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+              <p className="text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                {tr("Jumlah Bank Keluar", "Bank Debit Total")}
+              </p>
+              <p className="mt-1 truncate text-lg font-black text-[var(--text)]">
+                <MoneyAmount value={reconResult.summary.bankDebitTotal} size="md" />
+              </p>
+            </div>
 
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("missing_in_bank")}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition",
-                    activeTab === "missing_in_bank"
-                      ? "bg-rose-500 text-white shadow-xs"
-                      : "bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
-                  )}
-                >
-                  <Clock size={14} />
-                  <span>{tr("Tiada Dlm Penyata", "Missing in Bank")}</span>
-                  <span className="rounded-full bg-black/20 px-1.5 py-0.2 text-[0.65rem] font-bold">
-                    {reconResult.summary.missingInBankCount}
-                  </span>
-                </button>
-              </div>
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+              <p className="text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                {tr("Perbezaan Bersih", "Net Variance")}
+              </p>
+              <p className="mt-1 truncate text-lg font-black text-[var(--text)]">
+                <MoneyAmount value={Math.abs(reconResult.summary.netVariance)} size="md" />
+              </p>
+            </div>
+          </div>
 
-              {/* Batch Import Button */}
-              {activeTab === "missing_in_app" && reconResult.summary.missingInAppCount > 0 && (
-                <div className="flex items-center gap-2">
-                  <select
-                    value={batchWalletId}
-                    onChange={(e) => setBatchWalletId(e.target.value ? Number(e.target.value) : "")}
-                    className="h-9 max-w-44 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs font-bold text-[var(--text)] outline-none"
-                  >
-                    <option value="">{tr("Pilih bank...", "Select bank...")}</option>
-                    {wallets.map((w) => <option key={w.id} value={w.id}>{w.label || w.name}</option>)}
-                  </select>
+          {/* Tab Filter Navigation */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("missing_in_app")}
+                className={cn(
+                  "pill-base px-3 py-1.5 text-[0.6875rem] font-black uppercase tracking-[0.1em]",
+                  activeTab === "missing_in_app"
+                    ? "bg-[var(--accent2)] text-[var(--btn-primary-text)]"
+                    : "text-[var(--muted)]"
+                )}
+              >
+                {tr("Tertinggal", "Missing in App")} ({reconResult.summary.missingInAppCount})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("matched")}
+                className={cn(
+                  "pill-base px-3 py-1.5 text-[0.6875rem] font-black uppercase tracking-[0.1em]",
+                  activeTab === "matched"
+                    ? "bg-[var(--accent2)] text-[var(--btn-primary-text)]"
+                    : "text-[var(--muted)]"
+                )}
+              >
+                {tr("Dipadankan", "Matched")} ({reconResult.summary.matchedCount})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("missing_in_bank")}
+                className={cn(
+                  "pill-base px-3 py-1.5 text-[0.6875rem] font-black uppercase tracking-[0.1em]",
+                  activeTab === "missing_in_bank"
+                    ? "bg-[var(--accent2)] text-[var(--btn-primary-text)]"
+                    : "text-[var(--muted)]"
+                )}
+              >
+                {tr("Tiada Dlm Penyata", "Missing in Bank")} ({reconResult.summary.missingInBankCount})
+              </button>
+            </div>
+
+            {/* Batch Import Bar */}
+            {activeTab === "missing_in_app" && reconResult.summary.missingInAppCount > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={batchWalletId}
+                  onChange={(e) => setBatchWalletId(e.target.value ? Number(e.target.value) : "")}
+                  className="h-9 rounded-xl border border-[var(--border)] bg-[var(--card)] px-2.5 text-xs font-bold text-[var(--text)] outline-none"
+                >
+                  <option value="">{tr("Pilih Bank...", "Select Bank...")}</option>
+                  {wallets.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.label || w.name}
+                    </option>
+                  ))}
+                </select>
                 <button
                   type="button"
                   onClick={handleBatchImport}
-                  disabled={batchImporting || selectedMissingIds.size === 0}
-                  className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-black text-white shadow-xs transition hover:bg-amber-600 active:scale-95 disabled:opacity-50"
+                  disabled={batchImporting || selectedMissingIds.size === 0 || !batchWalletId}
+                  className="flex h-9 items-center gap-1.5 rounded-xl bg-[var(--text)] px-3 text-xs font-black text-[var(--bg)] transition active:scale-95 disabled:opacity-50"
                 >
-                  <Plus size={14} strokeWidth={2.5} />
-                  <span>{batchImporting ? tr("Mengimport...", "Importing...") : tr(`Import ${selectedMissingIds.size} Yang Dipilih`, `Import ${selectedMissingIds.size} Selected`)}</span>
+                  <Plus size={13} strokeWidth={2.5} />
+                  <span>
+                    {batchImporting
+                      ? tr("Mengimport...", "Importing...")
+                      : tr(`Import (${selectedMissingIds.size})`, `Import (${selectedMissingIds.size})`)}
+                  </span>
                 </button>
-                </div>
-              )}
-            </div>
-
-            {/* ─── TAB 1: Missing In App (Bank Txns Not in Budget) ─── */}
-            {activeTab === "missing_in_app" && (
-              <div className="space-y-3">
-                {reconResult.missingInApp.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-emerald-500/40 bg-emerald-500/5 p-8 text-center">
-                    <CheckCircle2 size={36} className="mx-auto text-emerald-500" />
-                    <p className="mt-2 text-sm font-bold text-emerald-500">
-                      {tr("Semua transaksi bank telah wujud dalam bajet anda!", "All bank transactions are accounted for in your budget!")}
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex items-center justify-between px-1 text-xs font-bold text-[var(--muted)]">
-                      <span>{tr("Pilih transaksi untuk dimasukkan ke bajet:", "Select transactions to add to budget:")}</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (selectedMissingIds.size === reconResult.missingInApp.length) {
-                            setSelectedMissingIds(new Set())
-                          } else {
-                            setSelectedMissingIds(new Set(reconResult.missingInApp.map((t) => t.id)))
-                          }
-                        }}
-                        className="text-indigo-400 hover:underline"
-                      >
-                        {selectedMissingIds.size === reconResult.missingInApp.length ? tr("Nyahpilih Semua", "Deselect All") : tr("Pilih Semua", "Select All")}
-                      </button>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      {reconResult.missingInApp.map((txn) => {
-                        const isSelected = selectedMissingIds.has(txn.id)
-                        const isExp = txn.type === "expense"
-
-                        return (
-                          <div
-                            key={txn.id}
-                            className={cn(
-                              "flex items-center justify-between gap-3 rounded-2xl border p-4 transition",
-                              isSelected ? "border-amber-500/40 bg-amber-500/5" : "border-[var(--border)] bg-[var(--card)]"
-                            )}
-                          >
-                            <div className="flex items-center gap-3 min-w-0">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={(e) => {
-                                  const next = new Set(selectedMissingIds)
-                                  if (e.target.checked) next.add(txn.id)
-                                  else next.delete(txn.id)
-                                  setSelectedMissingIds(next)
-                                }}
-                                className="h-4 w-4 rounded accent-amber-500"
-                              />
-
-                              <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold", isExp ? "bg-rose-500/10 text-rose-500" : "bg-emerald-500/10 text-emerald-500")}>
-                                {isExp ? <ArrowDownRight size={17} /> : <ArrowUpRight size={17} />}
-                              </div>
-
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-bold text-[var(--text)]">{txn.description}</p>
-                                <p className="text-[0.6875rem] font-semibold text-[var(--muted)]">
-                                  {txn.date} · {isExp ? tr("Perbelanjaan (Debit)", "Expense (Debit)") : tr("Pendapatan (Kredit)", "Income (Credit)")}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-3 shrink-0">
-                              <span className={cn("text-sm font-black tabular-nums", isExp ? "text-rose-500" : "text-emerald-500")}>
-                                {isExp ? "-" : "+"}RM {txn.amount.toFixed(2)}
-                              </span>
-
-                              <button
-                                type="button"
-                                onClick={() => setQuickAddTxn(txn)}
-                                className="flex items-center gap-1 rounded-xl bg-[var(--surface-tint)] px-3 py-1.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--border)] active:scale-95"
-                              >
-                                <Plus size={13} strokeWidth={2.5} />
-                                <span className="hidden sm:inline">{tr("Tambah", "Add")}</span>
-                              </button>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* ─── TAB 2: Matched Pairs ─── */}
-            {activeTab === "matched" && (
-              <div className="space-y-3">
-                {reconResult.matched.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center text-xs font-bold text-[var(--muted)]">
-                    {tr("Tiada padanan ditemui lagi.", "No matched transactions found yet.")}
-                  </div>
-                ) : (
-                  reconResult.matched.map((pair) => (
-                    <div
-                      key={pair.id}
-                      className="overflow-hidden rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4"
-                    >
-                      <div className="flex items-center justify-between border-b border-emerald-500/15 pb-2.5">
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 size={15} className="text-emerald-500" />
-                          <span className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                            {pair.confidence === "exact" ? tr("Padan Tepat (100%)", "Exact Match (100%)") : tr("Padan Tinggi", "High Match")}
-                          </span>
-                          {pair.dateDiffDays > 0 && (
-                            <span className="rounded-md bg-emerald-500/10 px-1.5 py-0.5 text-[0.625rem] font-bold text-emerald-600 dark:text-emerald-400">
-                              Beza {pair.dateDiffDays} hari
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
-                          RM {pair.bankTxn.amount.toFixed(2)}
-                        </span>
-                      </div>
-
-                      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        {/* Bank Record */}
-                        <div className="rounded-xl bg-[var(--card)] p-3 text-xs border border-[var(--border)]/70">
-                          <p className="font-mono text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                            {tr("Penyata Bank", "Bank Statement")}
-                          </p>
-                          <p className="mt-1 font-bold text-[var(--text)]">{pair.bankTxn.description}</p>
-                          <p className="mt-0.5 font-semibold text-[var(--muted)]">{pair.bankTxn.date}</p>
-                        </div>
-
-                        {/* App Record */}
-                        <div className="rounded-xl bg-[var(--card)] p-3 text-xs border border-[var(--border)]/70">
-                          <p className="font-mono text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                            {tr("Rekod Bajet", "App Record")}
-                          </p>
-                          <p className="mt-1 font-bold text-[var(--text)]">{pair.appTxn.description || "Transaksi"}</p>
-                          <p className="mt-0.5 font-semibold text-[var(--muted)]">
-                            {pair.appTxn.date} · {pair.appTxn.category_name || "Kategori"}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
-
-            {/* ─── TAB 3: Missing In Bank ─── */}
-            {activeTab === "missing_in_bank" && (
-              <div className="space-y-3">
-                {reconResult.missingInBank.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-emerald-500/40 bg-emerald-500/5 p-8 text-center text-xs font-bold text-emerald-500">
-                    {tr("Tiada rekod tergantung dalam sistem bajet anda.", "No pending records in your budget app.")}
-                  </div>
-                ) : (
-                  reconResult.missingInBank.map((txn) => {
-                    const isExp = txn.type === "expense"
-                    return (
-                      <div
-                        key={`app-missing-${txn.id}`}
-                        className="flex items-center justify-between gap-3 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold", isExp ? "bg-rose-500/10 text-rose-500" : "bg-emerald-500/10 text-emerald-500")}>
-                            {isExp ? <ArrowDownRight size={17} /> : <ArrowUpRight size={17} />}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-bold text-[var(--text)]">{txn.description || "Transaksi"}</p>
-                            <p className="text-[0.6875rem] font-semibold text-[var(--muted)]">
-                              {txn.date} · {txn.category_name || "Tanpa Kategori"}
-                            </p>
-                          </div>
-                        </div>
-
-                        <span className={cn("text-sm font-black tabular-nums shrink-0", isExp ? "text-rose-500" : "text-emerald-500")}>
-                          {isExp ? "-" : "+"}RM {Number(txn.amount || 0).toFixed(2)}
-                        </span>
-                      </div>
-                    )
-                  })
-                )}
               </div>
             )}
           </div>
-        )}
+
+          {/* ─── TAB 1: Missing In App (Bank Txns Not in Budget) ─── */}
+          {activeTab === "missing_in_app" && (
+            <div className="space-y-3">
+              {reconResult.missingInApp.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center">
+                  <CheckCircle2 size={36} className="mx-auto text-emerald-500" />
+                  <p className="mt-3 text-sm font-bold text-[var(--text)]">
+                    {tr("Semua transaksi bank telah wujud dalam rekod MyPeribadi anda!", "All bank transactions are accounted for in your MyPeribadi records!")}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between px-1 text-xs font-semibold text-[var(--muted)]">
+                    <span>{tr("Pilih transaksi untuk dimasukkan:", "Select transactions to import:")}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedMissingIds.size === reconResult.missingInApp.length) {
+                          setSelectedMissingIds(new Set())
+                        } else {
+                          setSelectedMissingIds(new Set(reconResult.missingInApp.map((t) => t.id)))
+                        }
+                      }}
+                      className="font-bold text-[var(--text)] underline-offset-4 hover:underline"
+                    >
+                      {selectedMissingIds.size === reconResult.missingInApp.length
+                        ? tr("Nyahpilih Semua", "Deselect All")
+                        : tr("Pilih Semua", "Select All")}
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {reconResult.missingInApp.map((txn) => {
+                      const isSelected = selectedMissingIds.has(txn.id)
+                      const isExp = txn.type === "expense"
+
+                      return (
+                        <div
+                          key={txn.id}
+                          className={cn(
+                            "flex items-center justify-between gap-3 rounded-2xl border p-4 transition",
+                            isSelected ? "border-[var(--border-strong)] bg-[var(--card)]" : "border-[var(--border)] bg-[var(--card)]/70 opacity-85"
+                          )}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                const next = new Set(selectedMissingIds)
+                                if (e.target.checked) next.add(txn.id)
+                                else next.delete(txn.id)
+                                setSelectedMissingIds(next)
+                              }}
+                              className="h-4 w-4 rounded accent-[var(--text)] cursor-pointer"
+                            />
+
+                            <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold", isExp ? "bg-rose-500/10 text-rose-500" : "bg-emerald-500/10 text-emerald-500")}>
+                              {isExp ? <ArrowDownRight size={17} /> : <ArrowUpRight size={17} />}
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-black tracking-tight text-[var(--text)]">{txn.description}</p>
+                              <p className="text-[0.6875rem] font-semibold text-[var(--muted)]">
+                                {txn.date} · {isExp ? tr("Perbelanjaan (Debit)", "Expense (Debit)") : tr("Pendapatan (Kredit)", "Income (Credit)")}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className={cn("text-sm font-black tabular-nums", isExp ? "text-rose-500" : "text-emerald-500")}>
+                              {isExp ? "-" : "+"}RM {txn.amount.toFixed(2)}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => setQuickAddTxn(txn)}
+                              className="flex items-center gap-1 rounded-xl bg-[var(--surface-tint)] px-3 py-1.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--border)] active:scale-95"
+                            >
+                              <Plus size={13} strokeWidth={2.5} />
+                              <span className="hidden sm:inline">{tr("Tambah", "Add")}</span>
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ─── TAB 2: Matched Pairs ─── */}
+          {activeTab === "matched" && (
+            <div className="space-y-2.5">
+              {reconResult.matched.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center text-xs font-bold text-[var(--muted)]">
+                  {tr("Tiada padanan ditemui lagi.", "No matched transactions found yet.")}
+                </div>
+              ) : (
+                reconResult.matched.map((pair) => (
+                  <div
+                    key={pair.id}
+                    className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4"
+                  >
+                    <div className="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 size={15} className="text-emerald-500" />
+                        <span className="text-xs font-black uppercase tracking-wider text-emerald-500">
+                          {pair.confidence === "exact" ? tr("Padan Tepat", "Exact Match") : tr("Padan Tinggi", "High Match")}
+                        </span>
+                        {pair.dateDiffDays > 0 && (
+                          <span className="rounded-md bg-[var(--surface-tint)] px-1.5 py-0.5 text-[0.625rem] font-bold text-[var(--muted)]">
+                            Beza {pair.dateDiffDays} hari
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-sm font-black text-[var(--text)]">
+                        RM {pair.bankTxn.amount.toFixed(2)}
+                      </span>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl bg-[var(--surface-tint)]/25 p-3 text-xs">
+                        <p className="font-mono text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                          {tr("Penyata Bank", "Bank Statement")}
+                        </p>
+                        <p className="mt-1 font-bold text-[var(--text)]">{pair.bankTxn.description}</p>
+                        <p className="mt-0.5 font-semibold text-[var(--muted)]">{pair.bankTxn.date}</p>
+                      </div>
+
+                      <div className="rounded-xl bg-[var(--surface-tint)]/25 p-3 text-xs">
+                        <p className="font-mono text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                          {tr("Rekod MyPeribadi", "MyPeribadi Record")}
+                        </p>
+                        <p className="mt-1 font-bold text-[var(--text)]">{pair.appTxn.description || "Transaksi"}</p>
+                        <p className="mt-0.5 font-semibold text-[var(--muted)]">
+                          {pair.appTxn.date} · {pair.appTxn.category_name || "Kategori"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* ─── TAB 3: Missing In Bank ─── */}
+          {activeTab === "missing_in_bank" && (
+            <div className="space-y-2.5">
+              {reconResult.missingInBank.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center text-xs font-bold text-[var(--muted)]">
+                  {tr("Tiada rekod tergantung dalam sistem MyPeribadi anda.", "No pending records in your MyPeribadi app.")}
+                </div>
+              ) : (
+                reconResult.missingInBank.map((txn) => {
+                  const isExp = txn.type === "expense"
+                  return (
+                    <div
+                      key={`app-missing-${txn.id}`}
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold", isExp ? "bg-rose-500/10 text-rose-500" : "bg-emerald-500/10 text-emerald-500")}>
+                          {isExp ? <ArrowDownRight size={17} /> : <ArrowUpRight size={17} />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-bold text-[var(--text)]">{txn.description || "Transaksi"}</p>
+                          <p className="text-[0.6875rem] font-semibold text-[var(--muted)]">
+                            {txn.date} · {txn.category_name || "Tanpa Kategori"}
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className={cn("text-sm font-black tabular-nums shrink-0", isExp ? "text-rose-500" : "text-emerald-500")}>
+                        {isExp ? "-" : "+"}RM {Number(txn.amount || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+
+  return (
+    <div className="space-y-4 pb-24 md:space-y-0 md:pb-0">
+      {/* ─── Mobile ─── */}
+      <div className="space-y-4 md:hidden">
+        <MobilePageHeader
+          title={tr("Rekonsiliasi Bank", "Bank Reconciliation")}
+          fallbackHref={`/${sessionId}/wallet-settings`}
+        />
+
+        <section className="px-1">{renderHero(false)}</section>
+
+        <section className="px-1">{contentBody}</section>
+      </div>
+
+      {/* ─── Desktop ─── */}
+      <div className="hidden md:block">
+        <DesktopPageHeader
+          title={tr("Rekonsiliasi Penyata Bank", "Bank Statement Reconciliation")}
+          homeHref={`/${sessionId}`}
+        />
+
+        <DesktopPageBody className="space-y-5">
+          {renderHero(true)}
+
+          <div>{contentBody}</div>
+        </DesktopPageBody>
       </div>
 
       {/* ─── PDF Password Prompt Modal ─── */}
       {showPasswordModal && (
         <div
-          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/65 p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
           onClick={() => {
             if (!unlockingPdf) {
               setShowPasswordModal(false)
@@ -970,35 +991,31 @@ export default function BankReconciliationPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl space-y-5"
+            className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl space-y-4"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500">
-                <Lock size={22} />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]">
+                <Lock size={20} />
               </div>
-              <div>
+              <div className="min-w-0">
                 <h3 className="text-base font-black text-[var(--text)]">
                   {tr("Penyata PDF Berkunci", "Password-Protected PDF")}
                 </h3>
-                <p className="text-xs font-semibold text-[var(--muted)] truncate max-w-[260px]">
+                <p className="text-xs font-semibold text-[var(--muted)] truncate">
                   {pendingPdfName}
                 </p>
               </div>
             </div>
 
-            <form onSubmit={handleUnlockPdf} className="space-y-4">
-              {/* Hidden username input for browser accessibility compliance */}
-              <input
-                type="text"
-                name="username"
-                autoComplete="username"
-                value="bank-statement-user"
-                className="hidden"
-                readOnly
-                tabIndex={-1}
-                aria-hidden="true"
-              />
-
+            <div
+              className="space-y-4"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !unlockingPdf && pdfPassword.trim()) {
+                  e.preventDefault()
+                  handleUnlockPdf()
+                }
+              }}
+            >
               <div>
                 <label className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">
                   {tr("Kata Laluan Penyata Bank", "Bank Statement Password")}
@@ -1006,17 +1023,29 @@ export default function BankReconciliationPage() {
                 <div className="relative mt-1.5">
                   <KeyRound size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
                   <input
-                    type={showPasswordText ? "text" : "password"}
-                    name="pdf-password"
-                    autoComplete="current-password"
+                    type="text"
+                    inputMode="text"
+                    name="pdf-doc-code"
+                    id="pdf-doc-code"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck={false}
+                    data-lpignore="true"
+                    data-form-type="other"
                     autoFocus
                     value={pdfPassword}
                     onChange={(e) => {
                       setPdfPassword(e.target.value)
                       setPasswordError(null)
                     }}
-                    placeholder={tr("cth: No. IC (901231015555) / Tarikh Lahir", "e.g. IC No. / Birth Date")}
-                    className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-10 pr-10 text-sm font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]/50 focus:border-indigo-500"
+                    placeholder={tr("cth: No. IC / 6-digit Tarikh Lahir", "e.g. IC No. / Birth Date")}
+                    style={
+                      {
+                        WebkitTextSecurity: showPasswordText ? "none" : "disc",
+                      } as React.CSSProperties
+                    }
+                    className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-10 pr-10 text-sm font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]/50 focus:border-[var(--border-strong)]"
                   />
                   <button
                     type="button"
@@ -1035,13 +1064,9 @@ export default function BankReconciliationPage() {
                 )}
               </div>
 
-              <div className="rounded-xl bg-[var(--surface-tint)]/30 p-3 text-[0.6875rem] font-medium text-[var(--muted)] space-y-1 border border-[var(--border)]/50">
-                <p className="font-bold text-[var(--text)]">💡 {tr("Petua Kata Laluan Bank:", "Bank Password Tips:")}</p>
-                <ul className="list-disc list-inside space-y-0.5 opacity-85">
-                  <li><strong>Maybank</strong>: No. IC 12-digit (tanpa -)</li>
-                  <li><strong>CIMB</strong>: 6 digit tarikh lahir (DDMMYY) / No. IC</li>
-                  <li><strong>Bank Islam / RHB</strong>: No. IC atau 6 digit tarikh lahir</li>
-                </ul>
+              <div className="rounded-xl bg-[var(--surface-tint)]/30 p-3 text-[0.6875rem] font-medium text-[var(--muted)] space-y-1 border border-[var(--border)]">
+                <p className="font-bold text-[var(--text)]">💡 {tr("Petua kata laluan bank:", "Bank password tips:")}</p>
+                <p>Maybank / RHB / Bank Islam (No. IC 12-digit) · CIMB (6-digit Tarikh Lahir)</p>
               </div>
 
               <div className="flex gap-2.5 pt-1">
@@ -1057,21 +1082,53 @@ export default function BankReconciliationPage() {
                   {tr("Batal", "Cancel")}
                 </button>
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => handleUnlockPdf()}
                   disabled={unlockingPdf || !pdfPassword.trim()}
                   className="h-11 flex-1 rounded-xl bg-[var(--text)] text-xs font-black text-[var(--bg)] transition active:scale-98 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {unlockingPdf ? (
-                    <span>{tr("Membuka PDF...", "Unlocking PDF...")}</span>
-                  ) : (
-                    <>
-                      <FileCheck2 size={15} />
-                      <span>{tr("Buka & Proses", "Unlock & Process")}</span>
-                    </>
-                  )}
+                  {unlockingPdf ? tr("Membuka...", "Unlocking...") : tr("Buka & Imbas", "Unlock & Scan")}
                 </button>
               </div>
-            </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Statement Scanner Loading Overlay (Clean & Native) ─── */}
+      {isProcessing && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/65 px-4 backdrop-blur-xs" role="status" aria-live="polite">
+          <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 text-center shadow-2xl">
+            {/* Animated Document Scan Box */}
+            <div className="relative mx-auto flex h-28 w-24 flex-col justify-between overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 shadow-inner">
+              <div className="space-y-1.5">
+                <div className="h-2 w-8 rounded bg-[var(--muted)]/40" />
+                <div className="h-1.5 w-full rounded bg-[var(--muted)]/20" />
+                <div className="h-1.5 w-3/4 rounded bg-[var(--muted)]/20" />
+                <div className="h-1.5 w-full rounded bg-[var(--muted)]/20" />
+              </div>
+              <div className="h-1.5 w-1/2 rounded bg-emerald-500/40" />
+              <div className="pointer-events-none absolute inset-x-0 h-1 bg-[var(--text)] opacity-80 shadow-md animate-[scan_1.8s_ease-in-out_infinite]" />
+            </div>
+
+            <p className="mt-4 text-base font-black text-[var(--text)]">
+              {tr("Mengimbas Penyata Bank...", "Scanning Bank Statement...")}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
+              {scanSteps[scanStep]}
+            </p>
+
+            <div className="mx-auto mt-4 flex w-fit gap-1.5">
+              {[0, 1, 2, 3].map((step) => (
+                <span
+                  key={step}
+                  className={cn(
+                    "h-2 w-2 rounded-full transition-all duration-300",
+                    step <= scanStep ? "bg-[var(--text)] scale-110" : "bg-[var(--muted)]/30"
+                  )}
+                />
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -1084,11 +1141,11 @@ export default function BankReconciliationPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-t-3xl sm:rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl space-y-4"
+            className="w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl space-y-4"
           >
             <div className="flex items-center justify-between">
               <h3 className="text-base font-black text-[var(--text)]">
-                {tr("Tambah Transaksi Ke Bajet", "Add Transaction to Budget")}
+                {tr("Tambah Transaksi Ke MyPeribadi", "Add Transaction to MyPeribadi")}
               </h3>
               <button
                 type="button"
@@ -1099,12 +1156,31 @@ export default function BankReconciliationPage() {
               </button>
             </div>
 
-            <div className="rounded-2xl bg-[var(--surface-tint)]/30 p-3.5 text-xs space-y-1">
+            <div className="rounded-xl bg-[var(--surface-tint)]/30 p-3.5 text-xs space-y-1">
               <p className="font-bold text-[var(--text)]">{quickAddTxn.description}</p>
               <div className="flex items-center justify-between text-[var(--muted)]">
                 <span>{quickAddTxn.date}</span>
                 <span className="font-black text-sm text-[var(--text)]">RM {quickAddTxn.amount.toFixed(2)}</span>
               </div>
+            </div>
+
+            {/* Wallet Dropdown */}
+            <div>
+              <label className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">
+                {tr("Dompet / Akaun Bank", "Wallet / Bank Account")} <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={quickAddWalletId}
+                onChange={(e) => setQuickAddWalletId(e.target.value ? Number(e.target.value) : "")}
+                className="mt-1.5 h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-sm font-semibold text-[var(--text)] outline-none"
+              >
+                <option value="">{tr("Pilih Bank / Dompet...", "Select Bank / Wallet...")}</option>
+                {wallets.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.label || w.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Category Dropdown */}
@@ -1128,25 +1204,6 @@ export default function BankReconciliationPage() {
               </select>
             </div>
 
-            {/* Wallet Dropdown */}
-            <div>
-              <label className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">
-                {tr("Dompet / Akaun", "Wallet / Account")}
-              </label>
-              <select
-                value={quickAddWalletId}
-                onChange={(e) => setQuickAddWalletId(e.target.value ? Number(e.target.value) : "")}
-                className="mt-1.5 h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-sm font-semibold text-[var(--text)] outline-none"
-              >
-                <option value="">{tr("Pilih Bank / Dompet...", "Select Bank / Wallet...")}</option>
-                {wallets.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.label || w.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
@@ -1163,19 +1220,6 @@ export default function BankReconciliationPage() {
               >
                 {quickAddSaving ? tr("Menyimpan...", "Saving...") : tr("Simpan Transaksi", "Save Transaction")}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isProcessing && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/55 px-6 backdrop-blur-sm" role="status" aria-live="polite">
-          <div className="w-full max-w-sm rounded-3xl border border-[var(--border)] bg-[var(--card)] p-7 text-center shadow-2xl">
-            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-indigo-500/20 border-t-indigo-500" />
-            <p className="mt-5 text-base font-black text-[var(--text)]">{tr("AI sedang membaca transaksi...", "AI is reading transactions...")}</p>
-            <p className="mt-1 text-xs font-semibold text-[var(--muted)]">{tr("Mengenal pasti tarikh, amaun debit dan kredit", "Identifying dates, debit and credit amounts")}</p>
-            <div className="mx-auto mt-4 flex w-fit gap-1.5">
-              {[0, 1, 2].map((step) => <span key={step} className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" style={{ animationDelay: `${step * 180}ms` }} />)}
             </div>
           </div>
         </div>

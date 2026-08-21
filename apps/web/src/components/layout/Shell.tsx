@@ -813,7 +813,7 @@ function getMobileHeaderMeta(
   if (pathname === `${base}/bank-reconciliation`) {
     return {
       title: "Rekonsiliasi Bank",
-      subtitle: "Padankan penyata bank & rekod bajet",
+      subtitle: "Padankan penyata bank & rekod MyPeribadi",
       eyebrow: "Penyata Bank",
       icon: FileSpreadsheet,
       backHref: `${base}/wallet-settings`,
@@ -1250,8 +1250,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               name: lang === "BM" ? "Rekonsiliasi Bank" : "Bank Reconciliation",
               subtitle:
                 lang === "BM"
-                  ? "Padankan penyata bank & rekod bajet"
-                  : "Reconcile bank statements & budget records",
+                  ? "Padankan penyata bank & rekod MyPeribadi"
+                  : "Reconcile bank statements & MyPeribadi records",
               href: `/${sessionId}/bank-reconciliation`,
               icon: FileSpreadsheet,
             },
