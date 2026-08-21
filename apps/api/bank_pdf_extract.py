@@ -76,6 +76,7 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
     transactions: list[dict] = []
     with pdf:
         print(f"[pdf-scan] pages={len(pdf.pages)}", flush=True)
+        carried_header_x: dict[str, float] = {}
         for page_number, page in enumerate(pdf.pages, 1):
             page_start_count = len(transactions)
             tables = page.extract_tables()
@@ -168,9 +169,19 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                         "selected": True,
                     })
             table_count = len(transactions) - page_start_count
-            # Borderless statements: fallback per page. Earlier parsed pages must not suppress later pages.
+            # Read every page's words: capture header coordinates once, reuse them on continuation pages.
+            words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
+            # Header pages may already succeed via table extraction; still retain their amount x-position.
+            for word in words:
+                token = str(word["text"])
+                if AMOUNT_HEADER.fullmatch(token) and not BALANCE_HEADER.fullmatch(token):
+                    carried_header_x["amount"] = (float(word["x0"]) + float(word["x1"])) / 2
+                if DEBIT_HEADER.fullmatch(token):
+                    carried_header_x["debit"] = (float(word["x0"]) + float(word["x1"])) / 2
+                if CREDIT_HEADER.fullmatch(token):
+                    carried_header_x["credit"] = (float(word["x0"]) + float(word["x1"])) / 2
             if table_count == 0:
-                words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
+
                 lines: dict[int, list[dict]] = {}
                 for word in words:
                     y = round(float(word["top"]) / 3) * 3
@@ -185,7 +196,11 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                         if CREDIT_HEADER.fullmatch(token): header_x["credit"] = center
                         if BALANCE_HEADER.fullmatch(token): header_x["balance"] = center
                         if AMOUNT_HEADER.fullmatch(token) and not BALANCE_HEADER.fullmatch(token): header_x["amount"] = center
-                if "debit" not in header_x and "credit" not in header_x and "amount" not in header_x:
+                if "debit" in header_x or "credit" in header_x or "amount" in header_x:
+                    carried_header_x = header_x.copy()
+                elif carried_header_x:
+                    header_x = carried_header_x.copy()
+                else:
                     sample = " ".join(str(w["text"]) for w in words[:80])[:800]
                     print(f"[pdf-scan] page={page_number}/{len(pdf.pages)} no-header words={len(words)} sample={sample!r}", flush=True)
                 for line in lines.values() if header_x else []:
