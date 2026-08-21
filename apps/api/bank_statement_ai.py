@@ -24,17 +24,23 @@ async def parse_statement(text: str, page_images: list[str] | None = None) -> li
     if not api_key:
         raise RuntimeError("OpenAI OCR is not configured")
     content = text.strip()
-    if (not content and not page_images) or len(content) > 200_000:
-        raise ValueError("Invalid statement input")
     images = [image for image in (page_images or [])[:20] if isinstance(image, str) and image.startswith("data:image/")]
     if sum(len(image) for image in images) > 30_000_000:
         raise ValueError("Statement images too large")
+    if images:
+        # PDF text layer loses debit/credit columns; rely on page images only.
+        content = ""
+    elif not content:
+        raise ValueError("Invalid statement input")
     prompt = (
-        "Extract bank transactions from this Malaysian bank statement text. Return JSON only as "
-        '{"transactions":[{"date":"YYYY-MM-DD","description":"merchant or counterparty","amount":12.34,"type":"expense"}]}. '
-        "Use transaction amount, never running/current/available balance. Debit/DR/withdrawal is expense; credit/CR/deposit is income. "
-        "Ignore opening/closing balance, totals, headers, page numbers, and account metadata. Preserve every real transaction exactly once. "
-        "Do not guess unreadable amounts or dates. Statement text:\n" + content
+        "Read the transaction table from these Malaysian bank statement page images. Return JSON only as "
+        '{"transactions":[{"date":"YYYY-MM-DD","time":"HH:MM","description":"exact description column text","amount":12.34,"type":"expense"}]}. '
+        "For each transaction row take exactly: the DATE column, the TIME column if present, the DESCRIPTION/TRANSACTION DETAILS column, and the TRANSACTION AMOUNT column. "
+        "The transaction amount is the value under the Withdrawal/Debit column or the Deposit/Credit column, NOT the running BALANCE column, NOT the date, NOT a reference number. "
+        "If the row has a value in the debit column set type to expense and amount to that debit value; if it has a value in the credit column set type to income and amount to that credit value. "
+        "Ignore opening/closing balance rows, carried-forward rows, headers, footers, page numbers, and any repeated totals. Include every real transaction exactly once, in statement order. "
+        "If a value is unreadable set that field to null; never guess. "
+        + ("The images follow." if images else "Statement text:\n" + content)
     )
     user_content = [{"type": "text", "text": prompt}]
     user_content.extend({"type": "image_url", "image_url": {"url": image, "detail": "high"}} for image in images)
@@ -58,11 +64,14 @@ async def parse_statement(text: str, page_images: list[str] | None = None) -> li
             amount = Decimal(str(row.get("amount"))).quantize(Decimal("0.01"))
             txn_type = str(row.get("type") or "").lower()
             description = " ".join(str(row.get("description") or "").split())[:300]
+            raw_time = " ".join(str(row.get("time") or "").split())[:8]
         except (ValueError, InvalidOperation, TypeError):
             continue
         if amount <= 0 or txn_type not in {"expense", "income"} or not description:
             continue
-        result.append({"id": f"ai-{index}-{txn_date.isoformat()}-{amount}", "date": txn_date.isoformat(), "rawDate": txn_date.isoformat(), "description": description, "amount": float(amount), "type": txn_type, "selected": True})
+        if not re.fullmatch(r"\d{2}:\d{2}(:\d{2})?", raw_time):
+            raw_time = ""
+        result.append({"id": f"ai-{index}-{txn_date.isoformat()}-{amount}", "date": txn_date.isoformat(), "rawDate": txn_date.isoformat(), "time": raw_time, "description": description, "amount": float(amount), "type": txn_type, "selected": True})
     if not result:
         raise ValueError("AI found no valid transactions")
     return result
