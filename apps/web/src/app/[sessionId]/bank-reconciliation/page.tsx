@@ -726,74 +726,66 @@ export default function BankReconciliationPage() {
             </div>
           </div>
 
-          {/* Summary Stats Cards */}
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] p-3.5">
-              <div className="flex items-center gap-1.5">
-                <CheckCheck size={13} className="text-emerald-500" />
-                <p className="text-[0.625rem] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                  {tr("Kadar Padanan", "Match Rate")}
-                </p>
-              </div>
-              <div className="mt-1.5 flex items-baseline gap-1">
-                <span className="text-2xl font-black tabular-nums text-emerald-600 dark:text-emerald-400">
-                  {reconResult.summary.matchRatePercent}%
+          {/* ─── Overview Bank Card ─── */}
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-600 via-teal-700 to-emerald-800 p-5 text-white shadow-lg sm:p-6">
+            {/* decorative glows */}
+            <div className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
+            <div className="pointer-events-none absolute -bottom-20 -left-10 h-52 w-52 rounded-full bg-emerald-400/20 blur-3xl" />
+
+            <div className="relative">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Landmark size={15} strokeWidth={2.4} />
+                  <span className="text-[0.68rem] font-black uppercase tracking-[0.16em] text-white/80">
+                    {tr("Rekonsiliasi Bank", "Bank Reconciliation")}
+                  </span>
+                </div>
+                <span className="rounded-full bg-white/15 px-2.5 py-1 text-[0.65rem] font-black text-white/90">
+                  {reconResult.summary.matchedCount}/{reconResult.summary.totalBankTxns}
                 </span>
               </div>
-              <p className="text-[0.65rem] font-bold text-[var(--muted)]">
-                {reconResult.summary.matchedCount}/{reconResult.summary.totalBankTxns} {tr("padan", "matched")}
-              </p>
-            </div>
 
-            <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-3.5">
-              <div className="flex items-center gap-1.5">
-                <AlertCircle size={13} className="text-amber-500" />
-                <p className="text-[0.625rem] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                  {tr("Tertinggal", "Missing")}
-                </p>
+              {/* big match rate */}
+              <div className="mt-4 flex items-end gap-2">
+                <span className="text-5xl font-black tabular-nums leading-none tracking-tight">
+                  {reconResult.summary.matchRatePercent}%
+                </span>
+                <span className="mb-1 text-sm font-bold text-white/70">{tr("padanan", "match rate")}</span>
               </div>
-              <p className="mt-1.5 text-2xl font-black tabular-nums text-amber-600 dark:text-amber-400">
-                {reconResult.summary.missingInAppCount}
-              </p>
-              <p className="text-[0.65rem] font-bold text-[var(--muted)]">
-                {tr("tiada dalam app", "not in app")}
-              </p>
-            </div>
 
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3.5">
-              <div className="flex items-center gap-1.5">
-                <ArrowDownRight size={13} className="text-rose-500" />
-                <p className="text-[0.625rem] font-black uppercase tracking-wider text-[var(--muted)]">
-                  {tr("Jumlah Keluar", "Debit Total")}
-                </p>
+              {/* progress bar */}
+              <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/20">
+                <div
+                  className="h-full rounded-full bg-white transition-all duration-700"
+                  style={{ width: `${Math.min(100, reconResult.summary.matchRatePercent)}%` }}
+                />
               </div>
-              <p className="mt-1.5 truncate text-lg font-black tabular-nums text-[var(--text)]">
-                <MoneyAmount value={reconResult.summary.bankDebitTotal} size="md" />
-              </p>
-            </div>
 
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3.5">
-              <div className="flex items-center gap-1.5">
-                <Clock size={13} className="text-[var(--muted)]" />
-                <p className="text-[0.625rem] font-black uppercase tracking-wider text-[var(--muted)]">
-                  {tr("Beza Bersih", "Net Variance")}
-                </p>
+              {/* stat chips */}
+              <div className="mt-5 grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-white/10 p-2.5">
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-white/70">{tr("Tertinggal", "Missing")}</p>
+                  <p className="mt-0.5 text-xl font-black tabular-nums">{reconResult.summary.missingInAppCount}</p>
+                </div>
+                <div className="rounded-xl bg-white/10 p-2.5">
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-white/70">{tr("Jumlah Keluar", "Debit")}</p>
+                  <p className="mt-0.5 truncate text-lg font-black tabular-nums"><MoneyAmount value={reconResult.summary.bankDebitTotal} size="md" /></p>
+                </div>
+                <div className="rounded-xl bg-white/10 p-2.5">
+                  <p className="text-[0.6rem] font-bold uppercase tracking-wider text-white/70">{tr("Beza Bersih", "Variance")}</p>
+                  <p className="mt-0.5 truncate text-lg font-black tabular-nums"><MoneyAmount value={Math.abs(reconResult.summary.netVariance)} size="md" /></p>
+                </div>
               </div>
-              <p className="mt-1.5 truncate text-lg font-black tabular-nums text-[var(--text)]">
-                <MoneyAmount value={Math.abs(reconResult.summary.netVariance)} size="md" />
-              </p>
             </div>
           </div>
 
+          {/* ─── Smart Date Toggle ─── */}
           <button
             type="button"
             role="switch"
             aria-checked={smartDateMatch}
             onClick={() => setSmartDateMatch((v) => !v)}
-            className={cn(
-              "flex w-full items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition sm:p-4",
-              smartDateMatch ? "border-[var(--text)]/30 bg-[var(--surface-tint)]/40" : "border-[var(--border)] bg-[var(--card)]"
-            )}
+            className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3.5 text-left transition sm:p-4"
           >
             <div className="min-w-0">
               <p className="text-xs font-black text-[var(--text)]">{tr("Padanan Tarikh Pintar", "Smart Date Matching")}</p>
@@ -814,50 +806,49 @@ export default function BankReconciliationPage() {
             </span>
           </button>
 
-          {/* Tab Filter Navigation */}
-          <div className="space-y-3">
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+          {/* ─── Tab Segments ─── */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-1.5">
+            <div className="flex gap-1">
               <button
                 type="button"
                 onClick={() => setActiveTab("missing_in_app")}
                 className={cn(
-                  "pill-base shrink-0 px-3 py-2 text-[0.6875rem] font-black uppercase tracking-[0.06em]",
+                  "flex-1 rounded-lg px-2 py-2 text-[0.6875rem] font-black uppercase tracking-[0.04em] transition",
                   activeTab === "missing_in_app"
-                    ? "bg-[var(--accent2)] text-[var(--btn-primary-text)]"
+                    ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
                     : "text-[var(--muted)]"
                 )}
               >
-                {tr("Tertinggal", "Missing in App")} ({reconResult.summary.missingInAppCount})
+                {tr("Tertinggal", "Missing")} {reconResult.summary.missingInAppCount}
               </button>
-
               <button
                 type="button"
                 onClick={() => setActiveTab("matched")}
                 className={cn(
-                  "pill-base shrink-0 px-3 py-2 text-[0.6875rem] font-black uppercase tracking-[0.06em]",
+                  "flex-1 rounded-lg px-2 py-2 text-[0.6875rem] font-black uppercase tracking-[0.04em] transition",
                   activeTab === "matched"
-                    ? "bg-[var(--accent2)] text-[var(--btn-primary-text)]"
+                    ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
                     : "text-[var(--muted)]"
                 )}
               >
-                {tr("Dipadankan", "Matched")} ({reconResult.summary.matchedCount})
+                {tr("Padan", "Matched")} {reconResult.summary.matchedCount}
               </button>
-
               <button
                 type="button"
                 onClick={() => setActiveTab("missing_in_bank")}
                 className={cn(
-                  "pill-base shrink-0 px-3 py-2 text-[0.6875rem] font-black uppercase tracking-[0.06em]",
+                  "flex-1 rounded-lg px-2 py-2 text-[0.6875rem] font-black uppercase tracking-[0.04em] transition",
                   activeTab === "missing_in_bank"
-                    ? "bg-[var(--accent2)] text-[var(--btn-primary-text)]"
+                    ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
                     : "text-[var(--muted)]"
                 )}
               >
-                {tr("Tiada Dlm Penyata", "Missing in Bank")} ({reconResult.summary.missingInBankCount})
+                {tr("Dalam Penyata", "In Bank")} {reconResult.summary.missingInBankCount}
               </button>
             </div>
+          </div>
 
-            {/* Batch Import Bar */}
+          {/* Batch Import Bar */}
             {activeTab === "missing_in_app" && reconResult.summary.missingInAppCount > 0 && (
               <div className="flex items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] p-2">
                 <span className="min-w-0 truncate px-1 text-xs font-bold text-[var(--muted)]">{wallets.find((w) => Number(w.id) === Number(targetWalletId))?.label || wallets.find((w) => Number(w.id) === Number(targetWalletId))?.name}</span>
@@ -876,7 +867,6 @@ export default function BankReconciliationPage() {
                 </button>
               </div>
             )}
-          </div>
 
           {/* ─── TAB 1: Missing In App (Bank Txns Not in Budget) ─── */}
           {activeTab === "missing_in_app" && (
