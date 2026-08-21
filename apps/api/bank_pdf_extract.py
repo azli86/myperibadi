@@ -75,7 +75,8 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
 
     transactions: list[dict] = []
     with pdf:
-        for page in pdf.pages:
+        print(f"[pdf-scan] pages={len(pdf.pages)}", flush=True)
+        for page_number, page in enumerate(pdf.pages, 1):
             page_start_count = len(transactions)
             tables = page.extract_tables()
             for table in tables or []:
@@ -166,8 +167,9 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                         "type": txn_type,
                         "selected": True,
                     })
+            table_count = len(transactions) - page_start_count
             # Borderless statements: fallback per page. Earlier parsed pages must not suppress later pages.
-            if len(transactions) == page_start_count:
+            if table_count == 0:
                 words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
                 lines: dict[int, list[dict]] = {}
                 for word in words:
@@ -217,4 +219,5 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                     if not description:
                         continue
                     transactions.append({"id": f"pdf-{len(transactions)}-{date_str}-{chosen}", "date": date_str, "rawDate": date_str, "time": "", "description": description[:300], "amount": float(chosen), "type": txn_type, "selected": True})
+            print(f"[pdf-scan] page={page_number}/{len(pdf.pages)} table={table_count} added={len(transactions) - page_start_count} total={len(transactions)}", flush=True)
     return transactions

@@ -47,6 +47,17 @@ export type ReconciliationResult = {
 /**
  * Calculates date difference in days (|dateA - dateB|)
  */
+function normalizeDate(value: string): string {
+  return String(value || "").match(/^\d{4}-\d{2}-\d{2}/)?.[0] || ""
+}
+
+function normalizeType(value: string): "expense" | "income" | "" {
+  const type = String(value || "").toLowerCase()
+  if (["expense", "debit", "out", "keluar"].includes(type)) return "expense"
+  if (["income", "credit", "in", "masuk"].includes(type)) return "income"
+  return ""
+}
+
 function getDaysDiff(dateStrA: string, dateStrB: string): number {
   const tA = new Date(dateStrA).getTime()
   const tB = new Date(dateStrB).getTime()
@@ -107,9 +118,9 @@ export function reconcileStatements(
 
     const candidate = inRangeAppTxns.find((appTxn) => {
       if (usedAppTxnIds.has(appTxn.id)) return false
-      const amountMatch = Math.abs(Number(appTxn.amount) - bankTxn.amount) < 0.01
-      const typeMatch = appTxn.type === bankTxn.type
-      const dateMatch = appTxn.date === bankTxn.date
+      const amountMatch = Math.abs(Math.abs(Number(appTxn.amount)) - Math.abs(bankTxn.amount)) < 0.01
+      const typeMatch = normalizeType(appTxn.type) === normalizeType(bankTxn.type)
+      const dateMatch = normalizeDate(appTxn.date) === normalizeDate(bankTxn.date)
       return amountMatch && typeMatch && dateMatch
     })
 
@@ -135,8 +146,8 @@ export function reconcileStatements(
 
     filteredAppTxns.forEach((appTxn) => {
       if (usedAppTxnIds.has(appTxn.id)) return
-      const amountMatch = Math.abs(Number(appTxn.amount) - bankTxn.amount) < 0.01
-      const typeMatch = appTxn.type === bankTxn.type
+      const amountMatch = Math.abs(Math.abs(Number(appTxn.amount)) - Math.abs(bankTxn.amount)) < 0.01
+      const typeMatch = normalizeType(appTxn.type) === normalizeType(bankTxn.type)
       if (!amountMatch || !typeMatch) return
 
       const days = getDaysDiff(bankTxn.date, appTxn.date)
@@ -169,8 +180,8 @@ export function reconcileStatements(
 
     filteredAppTxns.forEach((appTxn) => {
       if (usedAppTxnIds.has(appTxn.id)) return
-      const amountMatch = Math.abs(Number(appTxn.amount) - bankTxn.amount) < 0.01
-      const typeMatch = appTxn.type === bankTxn.type
+      const amountMatch = Math.abs(Math.abs(Number(appTxn.amount)) - Math.abs(bankTxn.amount)) < 0.01
+      const typeMatch = normalizeType(appTxn.type) === normalizeType(bankTxn.type)
       if (!amountMatch || !typeMatch) return
 
       const days = getDaysDiff(bankTxn.date, appTxn.date)
