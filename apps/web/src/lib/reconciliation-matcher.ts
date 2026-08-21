@@ -187,7 +187,7 @@ export function reconcileStatements(
       if (!amountMatch) return
 
       const days = getDaysDiff(bankTxn.date, appTxn.date)
-      if (days <= 7) {
+      if (maxDays > 0 && days <= 7) {
         const textSim = textSimilarity(bankTxn.description, `${appTxn.description || ""} ${appTxn.notes || ""}`)
         if (textSim > 0.15 || days <= 4) {
           const score = (10 - days) + textSim * 5

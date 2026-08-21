@@ -365,7 +365,7 @@ export default function BankReconciliationPage() {
 
   // Compute Reconciliation
   const reconResult: ReconciliationResult = useMemo(() => {
-    return reconcileStatements(bankTxns, filteredAppTransactions, { maxDateToleranceDays: 3 })
+    return reconcileStatements(bankTxns, filteredAppTransactions, { maxDateToleranceDays: 0 })
   }, [bankTxns, filteredAppTransactions])
 
   // Single Add to App

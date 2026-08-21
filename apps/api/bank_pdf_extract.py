@@ -186,8 +186,9 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                         if BALANCE_HEADER.fullmatch(token): header_x["balance"] = center
                         if AMOUNT_HEADER.fullmatch(token) and not BALANCE_HEADER.fullmatch(token): header_x["amount"] = center
                 if "debit" not in header_x and "credit" not in header_x and "amount" not in header_x:
-                    continue
-                for line in lines.values():
+                    sample = " ".join(str(w["text"]) for w in words[:80])[:800]
+                    print(f"[pdf-scan] page={page_number}/{len(pdf.pages)} no-header words={len(words)} sample={sample!r}", flush=True)
+                for line in lines.values() if header_x else []:
                     ordered = sorted(line, key=lambda w: float(w["x0"]))
                     date_word = next((w for w in ordered if DATE_HINT.fullmatch(str(w["text"]))), None)
                     if not date_word:
