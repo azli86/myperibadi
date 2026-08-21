@@ -57,7 +57,7 @@ DATE_HINT = re.compile(r"\b\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b|\b\d{1,2}\s+[A-Za
 BALANCE_HEADER = re.compile(r"\b(balance|baki|ledger)\b", re.I)
 DEBIT_HEADER = re.compile(r"\b(debit|withdrawal|keluar|dr)\b", re.I)
 CREDIT_HEADER = re.compile(r"\b(credit|deposit|masuk|cr)\b", re.I)
-AMOUNT_HEADER = re.compile(r"\b(amount|amaun|jumlah|transaction)\b", re.I)
+AMOUNT_HEADER = re.compile(r"\b(amount|amaun|jumlah)\b", re.I)
 
 
 def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
@@ -103,6 +103,8 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                         break
                 if header_idx is None:
                     continue
+                for ri, row in enumerate(rows[:14]):
+                    print(f"[pdf-table] hdr={header_idx} r{ri}: {row}", flush=True)
                 expanded_rows: list[list[str]] = []
                 for row in rows[header_idx + 1 :]:
                     split_cells = [[part.strip() for part in str(cell or "").splitlines()] for cell in row]
@@ -147,7 +149,8 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                         amount, txn_type = credit_val, "income"
                     elif amount_val is not None and amount_val != 0:
                         amount = abs(amount_val)
-                        txn_type = "expense" if amount_val < 0 else "income"
+                        row_text = " ".join(cells).lower()
+                        txn_type = "expense" if amount_val < 0 or re.search(r"cash out|payment|transfer to|purchase|bayaran|keluar", row_text) else "income"
                     if amount is None or txn_type is None or not description or not date_str:
                         continue
                     if amount <= 0 or amount > Decimal("9999999999"):

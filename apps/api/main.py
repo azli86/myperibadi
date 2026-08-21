@@ -13914,7 +13914,27 @@ async def parse_bank_statement_ai(
                     raise HTTPException(status_code=401, detail="PDF_PASSWORD_REQUIRED") from exc
                 raise
             if not transactions:
+                # Dump raw text for debugging when table extraction fails.
+                import io as _io, pdfplumber
+                try:
+                    pdf = pdfplumber.open(_io.BytesIO(payload), password=password or "")
+                    with pdf:
+                        for pi, page in enumerate(pdf.pages[:3]):
+                            words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
+                            lines: dict[int, list[str]] = {}
+                            for w in words:
+                                y = round(float(w["top"]) / 3) * 3
+                                lines.setdefault(y, []).append(str(w["text"]))
+                            for y in sorted(lines):
+                                print(f"[bank-pdf-extract-debug] p{pi} y{y}: {' '.join(sorted(lines[y], key=lambda _: 0))}", flush=True)
+                            tables = page.extract_tables()
+                            for ti, table in enumerate(tables or []):
+                                for ri, row in enumerate(table[:10]):
+                                    print(f"[bank-pdf-extract-debug] p{pi} t{ti} r{ri}: {row}", flush=True)
+                except Exception as debug_exc:
+                    print(f"[bank-pdf-extract-debug] {debug_exc}", flush=True)
                 raise HTTPException(status_code=422, detail="Jadual transaksi tidak dapat dikenal pasti")
+            print(f"[bank-pdf-extract] txns={len(transactions)} dates={[t['date'] for t in transactions[:12]]}", flush=True)
             return {"transactions": transactions}
 
         body = await request.json()
