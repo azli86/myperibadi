@@ -152,7 +152,7 @@ export default function BankReconciliationPage() {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, page_images: pageImages }),
     })
     if (!response.ok) {
       const fallback = parseTextStatement(text)
@@ -162,6 +162,7 @@ export default function BankReconciliationPage() {
     const data = await response.json()
     return { transactions: Array.isArray(data.transactions) ? (data.transactions as BankTransactionRow[]) : [] }
   }
+
 
   // Load Wallets, Categories, Transactions
   const loadData = async () => {
@@ -231,28 +232,18 @@ export default function BankReconciliationPage() {
       try {
         const buffer = await file.arrayBuffer()
         const pdfRes = await extractTextFromPdf(buffer)
-
         if (pdfRes.needsPassword) {
           setPendingPdfBuffer(buffer)
           setPendingPdfName(file.name)
           setPasswordError(null)
           setPdfPassword("")
           setShowPasswordModal(true)
-          setIsProcessing(false)
           return
         }
-
-        if (pdfRes.text) {
-          const result = await parseStatementWithAi(pdfRes.text, pdfRes.pageImages)
-          setBankTxns(result.transactions)
-          setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
-        } else {
-          showAlert(
-            tr("Ralat Membaca PDF", "Error Reading PDF"),
-            pdfRes.error || tr("Gagal mengekstrak teks dari penyata PDF.", "Failed to extract text from PDF statement."),
-            "error"
-          )
-        }
+        if (!pdfRes.text || !pdfRes.pageImages?.length) throw new Error(pdfRes.error || tr("Gagal membaca PDF.", "Failed to read PDF."))
+        const result = await parseStatementWithAi(pdfRes.text, pdfRes.pageImages)
+        setBankTxns(result.transactions)
+        setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
       } catch (err: any) {
         showAlert(tr("Ralat Membaca Penyata", "Statement Reading Error"), err.message, "error")
       } finally {
@@ -285,31 +276,22 @@ export default function BankReconciliationPage() {
       setPasswordError(tr("Sila masukkan kata laluan PDF.", "Please enter the PDF password."))
       return
     }
-
     setUnlockingPdf(true)
     setPasswordError(null)
-
+    setIsProcessing(true)
     try {
       const pdfRes = await extractTextFromPdf(pendingPdfBuffer, pdfPassword.trim())
-
       if (pdfRes.invalidPassword || pdfRes.needsPassword) {
         setPasswordError(tr("Kata laluan salah. Sila semak No. IC / Tarikh Lahir anda.", "Incorrect password. Please check your IC / Birthdate."))
-        setUnlockingPdf(false)
         return
       }
-
+      if (!pdfRes.text || !pdfRes.pageImages?.length) throw new Error(pdfRes.error || tr("Gagal membaca PDF.", "Failed to read PDF."))
+      const result = await parseStatementWithAi(pdfRes.text, pdfRes.pageImages)
+      setBankTxns(result.transactions)
+      setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
       setShowPasswordModal(false)
-      setIsProcessing(true)
-
-      if (pdfRes.text) {
-        const result = await parseStatementWithAi(pdfRes.text, pdfRes.pageImages)
-        setBankTxns(result.transactions)
-        setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
-        setPendingPdfBuffer(null)
-        setPdfPassword("")
-      } else {
-        setPasswordError(pdfRes.error || tr("Gagal membaca teks penyata selepas dibuka.", "Failed to read statement text after unlock."))
-      }
+      setPendingPdfBuffer(null)
+      setPdfPassword("")
     } catch (err: any) {
       setPasswordError(err.message || tr("Ralat semasa membuka PDF.", "Error unlocking PDF."))
     } finally {

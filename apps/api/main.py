@@ -13894,12 +13894,33 @@ async def parse_bank_statement_ai(
     current_user: models.User = Depends(get_current_user),
 ):
     import bank_statement_ai
+    import bank_pdf_render
 
-    body = await request.json()
-    text_value = str(body.get("text") or "")
-    page_images = body.get("page_images") if isinstance(body.get("page_images"), list) else []
+    content_type = (request.headers.get("content-type") or "").lower()
     try:
+        if "multipart/form-data" in content_type:
+            form = await request.form()
+            upload = form.get("file")
+            password = (str(form.get("password") or "") or None)
+            if not isinstance(upload, UploadFile):
+                raise ValueError("Tiada fail penyata diterima")
+            payload = await upload.read()
+            if len(payload) > 25 * 1024 * 1024:
+                raise ValueError("Fail penyata terlalu besar (maks 25MB)")
+            try:
+                images = await asyncio.to_thread(bank_pdf_render.render_pdf_images, payload, password)
+            except ValueError as exc:
+                if str(exc) == "PDF_PASSWORD_INVALID":
+                    raise HTTPException(status_code=401, detail="PDF_PASSWORD_REQUIRED") from exc
+                raise
+            return {"transactions": await bank_statement_ai.parse_statement("", images)}
+
+        body = await request.json()
+        text_value = str(body.get("text") or "")
+        page_images = body.get("page_images") if isinstance(body.get("page_images"), list) else []
         return {"transactions": await bank_statement_ai.parse_statement(text_value, page_images)}
+    except HTTPException:
+        raise
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
