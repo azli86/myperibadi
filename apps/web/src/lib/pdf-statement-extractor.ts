@@ -10,6 +10,7 @@ export type PdfExtractResult = {
   needsPassword?: boolean
   invalidPassword?: boolean
   error?: string
+  pageImages?: string[]
 }
 
 export async function extractTextFromPdf(
@@ -34,6 +35,7 @@ export async function extractTextFromPdf(
     const pdf = await loadingTask.promise
     const numPages = pdf.numPages
     const pagesText: string[] = []
+    const pageImages: string[] = []
 
     for (let i = 1; i <= numPages; i++) {
       const page = await pdf.getPage(i)
@@ -68,12 +70,24 @@ export async function extractTextFromPdf(
       })
 
       pagesText.push(pageLines.join("\n"))
+
+      // Preserve table layout for Vision; plain PDF text loses debit/credit columns.
+      const viewport = page.getViewport({ scale: 1.5 })
+      const canvas = document.createElement("canvas")
+      canvas.width = Math.ceil(viewport.width)
+      canvas.height = Math.ceil(viewport.height)
+      const context = canvas.getContext("2d")
+      if (context) {
+        await page.render({ canvas, canvasContext: context, viewport }).promise
+        pageImages.push(canvas.toDataURL("image/jpeg", 0.8))
+      }
     }
 
     return {
       text: pagesText.join("\n\n"),
       numPages,
       isPasswordProtected: false,
+      pageImages,
     }
   } catch (err: any) {
     if (err?.name === "PasswordException" || err?.message?.includes("password")) {

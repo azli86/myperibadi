@@ -144,7 +144,7 @@ export default function BankReconciliationPage() {
     return {}
   }
 
-  const parseStatementWithAi = async (text: string) => {
+  const parseStatementWithAi = async (text: string, pageImages: string[] = []) => {
     const response = await fetch("/api/bank-reconciliation/parse", {
       method: "POST",
       credentials: "include",
@@ -240,7 +240,7 @@ export default function BankReconciliationPage() {
 
       if (pdfRes.text) {
         try {
-          const result = await parseStatementWithAi(pdfRes.text)
+          const result = await parseStatementWithAi(pdfRes.text, pdfRes.pageImages)
           setBankTxns(result.transactions)
           setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
         } catch (err: any) {
@@ -297,7 +297,7 @@ export default function BankReconciliationPage() {
       }
 
       if (pdfRes.text) {
-        const result = await parseStatementWithAi(pdfRes.text)
+        const result = await parseStatementWithAi(pdfRes.text, pdfRes.pageImages)
         setBankTxns(result.transactions)
         setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
         setShowPasswordModal(false)

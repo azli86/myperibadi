@@ -17,15 +17,18 @@ def _json_object(text: str) -> dict:
     return json.loads(match.group(0))
 
 
-async def parse_statement(text: str) -> list[dict]:
+async def parse_statement(text: str, page_images: list[str] | None = None) -> list[dict]:
     api_key = (os.getenv("OCR_OPENAI_API_KEY") or "").strip()
     base_url = (os.getenv("OCR_OPENAI_BASE_URL") or "https://api.openai.com/v1").strip().rstrip("/")
     model = (os.getenv("OCR_OPENAI_MODEL") or "gpt-4.1-mini").strip()
     if not api_key:
         raise RuntimeError("OpenAI OCR is not configured")
     content = text.strip()
-    if not content or len(content) > 200_000:
-        raise ValueError("Invalid statement text")
+    if (not content and not page_images) or len(content) > 200_000:
+        raise ValueError("Invalid statement input")
+    images = [image for image in (page_images or [])[:20] if isinstance(image, str) and image.startswith("data:image/")]
+    if sum(len(image) for image in images) > 30_000_000:
+        raise ValueError("Statement images too large")
     prompt = (
         "Extract bank transactions from this Malaysian bank statement text. Return JSON only as "
         '{"transactions":[{"date":"YYYY-MM-DD","description":"merchant or counterparty","amount":12.34,"type":"expense"}]}. '
@@ -33,12 +36,14 @@ async def parse_statement(text: str) -> list[dict]:
         "Ignore opening/closing balance, totals, headers, page numbers, and account metadata. Preserve every real transaction exactly once. "
         "Do not guess unreadable amounts or dates. Statement text:\n" + content
     )
+    user_content = [{"type": "text", "text": prompt}]
+    user_content.extend({"type": "image_url", "image_url": {"url": image, "detail": "high"}} for image in images)
     body = {
         "model": model,
         "temperature": 0,
         "max_tokens": 12000,
         "response_format": {"type": "json_object"},
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": [{"role": "user", "content": user_content}],
     }
     async with httpx.AsyncClient(timeout=120) as client:
         response = await client.post(f"{base_url}/chat/completions", headers={"Authorization": f"Bearer {api_key}"}, json=body)

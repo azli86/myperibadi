@@ -13897,8 +13897,9 @@ async def parse_bank_statement_ai(
 
     body = await request.json()
     text_value = str(body.get("text") or "")
+    page_images = body.get("page_images") if isinstance(body.get("page_images"), list) else []
     try:
-        return {"transactions": await bank_statement_ai.parse_statement(text_value)}
+        return {"transactions": await bank_statement_ai.parse_statement(text_value, page_images)}
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
