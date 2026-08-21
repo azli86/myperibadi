@@ -3136,3 +3136,20 @@ html[data-theme="light"] [class~="border-gray-300"] {
     opacity: 0.8;
   }
 }
+
+/* ─── Wizard slide transitions (bank reconciliation) ─── */
+@keyframes wizard-slide-in-right {
+  0% { opacity: 0; transform: translateX(28px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes wizard-slide-in-left {
+  0% { opacity: 0; transform: translateX(-28px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+@keyframes wizard-fade-up {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-wizard-in-right { animation: wizard-slide-in-right 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-wizard-in-left { animation: wizard-slide-in-left 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-wizard-fade-up { animation: wizard-fade-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }

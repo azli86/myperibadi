@@ -10,6 +10,8 @@ import {
   Check,
   ChevronRight,
   Wallet,
+  ArrowRight,
+  ArrowLeft,
   ArrowUpRight,
   ArrowDownRight,
   FileSpreadsheet,
@@ -129,6 +131,8 @@ export default function BankReconciliationPage() {
   const [batchWalletId, setBatchWalletId] = useState<number | "">("")
   // Wallet chosen before upload; pre-fills import targets and scopes the check
   const [targetWalletId, setTargetWalletId] = useState<number | "">("")
+  // Wizard flow: "wallet" -> "upload" -> results (results shown when bankTxns loaded)
+  const [wizardStep, setWizardStep] = useState<"wallet" | "upload">("wallet")
 
   // Scanning animation steps timer
   useEffect(() => {
@@ -560,6 +564,7 @@ export default function BankReconciliationPage() {
                 setBankTxns([])
                 setFileName(null)
                 setRawTextContent("")
+                setWizardStep("wallet")
               }}
               className="ml-auto flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-black text-[var(--text)] transition hover:bg-[var(--surface-tint)] active:scale-95"
             >
@@ -577,48 +582,24 @@ export default function BankReconciliationPage() {
       {/* ─── Uploader Section (When no statement loaded) ─── */}
       {bankTxns.length === 0 ? (
         <div className="space-y-4">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--text)] text-[0.65rem] font-black text-[var(--bg)]">1</span>
-                <h3 className="text-sm font-black text-[var(--text)]">
-                  {tr("Pilih Wallet Bank", "Select Bank Wallet")}
-                </h3>
+          {/* ─── STEP 1: Wallet Selection ─── */}
+          {wizardStep === "wallet" && (
+            <div className="animate-wizard-in-right rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 text-center sm:p-8">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--text)] text-[var(--bg)]">
+                <Landmark size={26} strokeWidth={2.2} />
               </div>
+              <h2 className="mt-4 text-lg font-black tracking-tight text-[var(--text)]">
+                {tr("Pilih Akaun Bank / Wallet", "Choose Bank Account / Wallet")}
+              </h2>
+              <p className="mt-1 text-xs font-medium text-[var(--muted)]">
+                {tr("Pilih wallet dahulu untuk mula memuat naik penyata.", "Pick a wallet first to start uploading your statement.")}
+              </p>
 
-              {/* Mode Toggle */}
-              <div className="flex gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint)]/40 p-1">
-                <button
-                  type="button"
-                  onClick={() => setInputMode("file")}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition",
-                    inputMode === "file" ? "bg-[var(--card)] text-[var(--text)] shadow-xs" : "text-[var(--muted)]"
-                  )}
-                >
-                  <UploadCloud size={14} />
-                  <span>{tr("Fail PDF / CSV", "PDF / CSV File")}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInputMode("paste")}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition",
-                    inputMode === "paste" ? "bg-[var(--card)] text-[var(--text)] shadow-xs" : "text-[var(--muted)]"
-                  )}
-                >
-                  <ClipboardPaste size={14} />
-                  <span>{tr("Salin & Tampal", "Copy & Paste")}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-4">
               <select
                 value={targetWalletId}
                 onChange={(e) => setTargetWalletId(e.target.value ? Number(e.target.value) : "")}
-                disabled={isProcessing || bankTxns.length > 0}
-                className="h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-sm font-bold text-[var(--text)] outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isProcessing}
+                className="mt-6 h-13 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 text-sm font-bold text-[var(--text)] outline-none focus:border-[var(--text)]/40 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <option value="">{tr("Pilih akaun bank dahulu...", "Select a bank account first...")}</option>
                 {wallets.map((w) => (
@@ -627,70 +608,123 @@ export default function BankReconciliationPage() {
                   </option>
                 ))}
               </select>
-            </div>
 
-            <div className="mt-5 flex items-center gap-2.5 border-t border-[var(--border)] pt-4">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--text)] text-[0.65rem] font-black text-[var(--bg)]">2</span>
-              <h3 className="text-sm font-black text-[var(--text)]">
-                {tr("Muat Naik Penyata", "Upload Statement")}
-              </h3>
+              <button
+                type="button"
+                onClick={() => setWizardStep("upload")}
+                disabled={!targetWalletId}
+                className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--text)] text-sm font-black text-[var(--bg)] transition active:scale-98 disabled:opacity-40"
+              >
+                <span>{tr("Teruskan ke Upload", "Continue to Upload")}</span>
+                <ArrowRight size={16} strokeWidth={2.5} />
+              </button>
             </div>
-            {inputMode === "file" ? (
-              <div className="">
-                <label className={cn("flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)]/15 p-7 text-center transition sm:p-9", targetWalletId ? "cursor-pointer hover:border-[var(--text)]/40 hover:bg-[var(--surface-tint)]/30 active:scale-[0.99]" : "cursor-not-allowed opacity-50")}> 
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--text)] text-[var(--bg)]">
-                    <UploadCloud size={26} strokeWidth={2.2} />
+          )}
+
+          {/* ─── STEP 2: Upload Statement ─── */}
+          {wizardStep === "upload" && (
+            <div className="animate-wizard-in-left rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 sm:p-6">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setWizardStep("wallet")}
+                    className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:bg-[var(--surface-tint)] active:scale-95"
+                    aria-label={tr("Kembali", "Back")}
+                  >
+                    <ArrowLeft size={16} strokeWidth={2.5} />
+                  </button>
+                  <div>
+                    <h2 className="text-sm font-black text-[var(--text)]">
+                      {tr("Muat Naik Penyata", "Upload Statement")}
+                    </h2>
+                    <p className="text-[0.68rem] font-semibold text-[var(--muted)]">
+                      {wallets.find((w) => Number(w.id) === Number(targetWalletId))?.label || wallets.find((w) => Number(w.id) === Number(targetWalletId))?.name}
+                    </p>
                   </div>
-                  <p className="mt-3.5 text-sm font-black text-[var(--text)]">
+                </div>
+
+                {/* Mode Toggle */}
+                <div className="flex gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint)]/40 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setInputMode("file")}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition",
+                      inputMode === "file" ? "bg-[var(--card)] text-[var(--text)] shadow-xs" : "text-[var(--muted)]"
+                    )}
+                  >
+                    <UploadCloud size={14} />
+                    <span className="hidden xs:inline">{tr("Fail", "File")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInputMode("paste")}
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition",
+                      inputMode === "paste" ? "bg-[var(--card)] text-[var(--text)] shadow-xs" : "text-[var(--muted)]"
+                    )}
+                  >
+                    <ClipboardPaste size={14} />
+                    <span className="hidden xs:inline">{tr("Tampal", "Paste")}</span>
+                  </button>
+                </div>
+              </div>
+
+              {inputMode === "file" ? (
+                <label className="mt-5 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)]/15 p-8 text-center transition cursor-pointer hover:border-[var(--text)]/40 hover:bg-[var(--surface-tint)]/30 active:scale-[0.99] sm:p-10">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--text)] text-[var(--bg)]">
+                    <UploadCloud size={28} strokeWidth={2.2} />
+                  </div>
+                  <p className="mt-4 text-base font-black text-[var(--text)]">
                     {tr("Ketik untuk pilih penyata", "Tap to choose statement")}
                   </p>
-                  <p className="mt-1 text-[0.7rem] font-medium text-[var(--muted)]">
+                  <p className="mt-1.5 text-xs font-medium text-[var(--muted)]">
                     {tr("PDF (termasuk berkunci) · CSV · Teks", "PDF (incl. locked) · CSV · Text")}
                   </p>
                   <input
                     type="file"
                     accept=".pdf,.csv,.tsv,.txt"
                     onChange={handleFileUpload}
-                    disabled={!targetWalletId}
                     className="hidden"
                   />
                 </label>
-              </div>
-            ) : (
-              <div className="mt-5 space-y-3">
-                <textarea
-                  rows={6}
-                  value={rawTextContent}
-                  onChange={(e) => setRawTextContent(e.target.value)}
-                  placeholder={tr(
-                    "Contoh:\n01/08/2026 DUITNOW TO ALI RM 50.00 DR\n03/08/2026 SALARY CREDIT RM 4,500.00 CR\n05/08/2026 MCDONALDS RM 28.50 DR",
-                    "Example:\n01/08/2026 DUITNOW TO ALI RM 50.00 DR\n03/08/2026 SALARY CREDIT RM 4,500.00 CR"
-                  )}
-                  className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 font-mono text-xs text-[var(--text)] outline-none placeholder:text-[var(--muted)]/50"
-                />
+              ) : (
+                <div className="mt-5 space-y-3">
+                  <textarea
+                    rows={6}
+                    value={rawTextContent}
+                    onChange={(e) => setRawTextContent(e.target.value)}
+                    placeholder={tr(
+                      "Contoh:\n01/08/2026 DUITNOW TO ALI RM 50.00 DR\n03/08/2026 SALARY CREDIT RM 4,500.00 CR\n05/08/2026 MCDONALDS RM 28.50 DR",
+                      "Example:\n01/08/2026 DUITNOW TO ALI RM 50.00 DR\n03/08/2026 SALARY CREDIT RM 4,500.00 CR"
+                    )}
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 font-mono text-xs text-[var(--text)] outline-none placeholder:text-[var(--muted)]/50"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleProcessText}
+                    disabled={isProcessing}
+                    className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--text)] text-sm font-black uppercase tracking-wider text-[var(--bg)] transition active:scale-98"
+                  >
+                    <Sparkles size={15} />
+                    <span>{tr("Proses Penyata Sekarang", "Process Statement Now")}</span>
+                  </button>
+                </div>
+              )}
+
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-3 text-xs">
+                <span className="font-semibold text-[var(--muted)]">{tr("Format:", "Formats:")} Maybank, CIMB, Bank Islam, RHB, TNG</span>
                 <button
                   type="button"
-                  onClick={handleProcessText}
-                  disabled={isProcessing || !targetWalletId}
-                  className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--text)] text-xs font-black uppercase tracking-wider text-[var(--bg)] transition active:scale-98"
+                  onClick={loadSample}
+                  className="font-bold text-[var(--text)] underline-offset-4 hover:underline"
                 >
-                  <Sparkles size={15} />
-                  <span>{tr("Proses Penyata Sekarang", "Process Statement Now")}</span>
+                  {tr("Cuba Contoh", "Try Sample")}
                 </button>
               </div>
-            )}
-
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-3 text-xs">
-              <span className="font-semibold text-[var(--muted)]">{tr("Format bank lazim:", "Common bank formats:")} Maybank, CIMB, Bank Islam, RHB, TNG</span>
-              <button
-                type="button"
-                onClick={loadSample}
-                className="font-bold text-[var(--text)] underline-offset-4 hover:underline"
-              >
-                {tr("Cuba Contoh Data", "Try Sample Data")}
-              </button>
             </div>
-          </div>
+          )}
         </div>
       ) : (
         /* ─── Reconciliation Results Section ─── */
@@ -709,6 +743,7 @@ export default function BankReconciliationPage() {
                     setBankTxns([])
                     setFileName(null)
                     setRawTextContent("")
+                    setWizardStep("wallet")
                     setTargetWalletId(walletId)
                     setBatchWalletId(walletId)
                     setQuickAddWalletId(walletId)
