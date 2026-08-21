@@ -527,21 +527,33 @@ export default function BankReconciliationPage() {
       )}
     >
 
-      <div className="relative flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <p className="text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-            {tr("Rekonsiliasi Penyata Bank", "Bank Statement Reconciliation")}
-          </p>
-          <p className="mt-1 max-w-2xl text-sm font-semibold text-[var(--muted)]">
-            {tr(
-              "Padankan rekod transaksi bank dengan rekod perbelanjaan MyPeribadi anda.",
-              "Match your bank statement transactions with your MyPeribadi spending records."
-            )}
-          </p>
+      <div className="relative">
+        <div className="flex items-start gap-3.5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--text)] text-[var(--bg)]">
+            <ScanLine size={20} strokeWidth={2.5} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h1 className={cn("font-black tracking-tight text-[var(--text)]", isDesktop ? "text-xl" : "text-lg")}>
+              {tr("Rekonsiliasi Bank", "Bank Reconciliation")}
+            </h1>
+            <p className="mt-0.5 text-[0.8125rem] font-medium leading-snug text-[var(--muted)]">
+              {tr(
+                "Padankan penyata bank dengan rekod MyPeribadi anda.",
+                "Match your bank statement with your MyPeribadi records."
+              )}
+            </p>
+          </div>
         </div>
 
         {bankTxns.length > 0 && (
-          <div className="flex items-center gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-4">
+            <div className="flex items-center gap-1.5 rounded-full bg-[var(--surface-tint)] px-3 py-1.5">
+              <FileCheck2 size={13} className="text-[var(--muted)]" />
+              <span className="max-w-[140px] truncate text-xs font-bold text-[var(--muted)]">{fileName}</span>
+            </div>
+            <span className="rounded-full bg-emerald-500/10 px-3 py-1.5 text-xs font-black text-emerald-600 dark:text-emerald-400">
+              {reconResult.summary.totalBankTxns} {tr("transaksi", "transactions")}
+            </span>
             <button
               type="button"
               onClick={() => {
@@ -549,10 +561,10 @@ export default function BankReconciliationPage() {
                 setFileName(null)
                 setRawTextContent("")
               }}
-              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--text)] px-3 py-2 text-xs font-bold text-[var(--bg)] transition active:scale-95"
+              className="ml-auto flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-black text-[var(--text)] transition hover:bg-[var(--surface-tint)] active:scale-95"
             >
               <RefreshCw size={13} />
-              <span>{tr("Muat Naik Penyata Lain", "Upload Another Statement")}</span>
+              <span>{tr("Penyata Baru", "New Statement")}</span>
             </button>
           </div>
         )}
@@ -566,18 +578,16 @@ export default function BankReconciliationPage() {
       {bankTxns.length === 0 ? (
         <div className="space-y-4">
           <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
-              <div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--text)] text-[0.65rem] font-black text-[var(--bg)]">1</span>
                 <h3 className="text-sm font-black text-[var(--text)]">
-                  {tr("Penyata Bank", "Bank Statement")}
+                  {tr("Pilih Wallet Bank", "Select Bank Wallet")}
                 </h3>
-                <p className="text-xs font-semibold text-[var(--muted)]">
-                  {tr("Pilih fail penyata atau tampal teks transaksi", "Choose statement file or paste transaction text")}
-                </p>
               </div>
 
               {/* Mode Toggle */}
-              <div className="flex gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface-tint)]/40 p-1">
+              <div className="flex gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint)]/40 p-1">
                 <button
                   type="button"
                   onClick={() => setInputMode("file")}
@@ -603,37 +613,39 @@ export default function BankReconciliationPage() {
               </div>
             </div>
 
-            {(
-              <div className="mt-5">
-                <label className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">
-                  {tr("Akaun Bank / Dompet Sasaran", "Target Bank Account / Wallet")}
-                </label>
-                <select
-                  value={targetWalletId}
-                  onChange={(e) => setTargetWalletId(e.target.value ? Number(e.target.value) : "")}
-                  disabled={isProcessing || bankTxns.length > 0}
-                  className="mt-1.5 mb-4 h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-sm font-semibold text-[var(--text)] outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <option value="">{tr("Pilih akaun bank dahulu...", "Select a bank account first...")}</option>
-                  {wallets.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.label || w.name} ({w.type?.toUpperCase() || "BANK"})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div className="mt-4">
+              <select
+                value={targetWalletId}
+                onChange={(e) => setTargetWalletId(e.target.value ? Number(e.target.value) : "")}
+                disabled={isProcessing || bankTxns.length > 0}
+                className="h-12 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-sm font-bold text-[var(--text)] outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="">{tr("Pilih akaun bank dahulu...", "Select a bank account first...")}</option>
+                {wallets.map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.label || w.name} ({w.type?.toUpperCase() || "BANK"})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mt-5 flex items-center gap-2.5 border-t border-[var(--border)] pt-4">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--text)] text-[0.65rem] font-black text-[var(--bg)]">2</span>
+              <h3 className="text-sm font-black text-[var(--text)]">
+                {tr("Muat Naik Penyata", "Upload Statement")}
+              </h3>
+            </div>
             {inputMode === "file" ? (
               <div className="">
-                <label className={cn("flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)]/20 p-6 text-center transition sm:p-8", targetWalletId ? "cursor-pointer hover:bg-[var(--surface-tint)]/40 active:scale-[0.99]" : "cursor-not-allowed opacity-50")}> 
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--text)]">
-                    <FileSpreadsheet size={24} />
+                <label className={cn("flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)]/15 p-7 text-center transition sm:p-9", targetWalletId ? "cursor-pointer hover:border-[var(--text)]/40 hover:bg-[var(--surface-tint)]/30 active:scale-[0.99]" : "cursor-not-allowed opacity-50")}> 
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--text)] text-[var(--bg)]">
+                    <UploadCloud size={26} strokeWidth={2.2} />
                   </div>
-                  <p className="mt-3 text-sm font-bold text-[var(--text)]">
-                    {tr("Ketik atau heret fail PDF / CSV penyata bank ke sini", "Click or drag bank PDF / CSV statement here")}
+                  <p className="mt-3.5 text-sm font-black text-[var(--text)]">
+                    {tr("Ketik untuk pilih penyata", "Tap to choose statement")}
                   </p>
-                  <p className="mt-1 text-xs font-medium text-[var(--muted)]">
-                    {tr("Menyokong PDF (termasuk berkunci kata laluan IC/Tarikh Lahir) & CSV", "Supports PDF (including password protected) & CSV")}
+                  <p className="mt-1 text-[0.7rem] font-medium text-[var(--muted)]">
+                    {tr("PDF (termasuk berkunci) · CSV · Teks", "PDF (incl. locked) · CSV · Text")}
                   </p>
                   <input
                     type="file"
@@ -685,11 +697,11 @@ export default function BankReconciliationPage() {
         <div className="space-y-4">
           <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]">
-                <Landmark size={19} />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--text)] text-[var(--bg)]">
+                <Landmark size={18} strokeWidth={2.2} />
               </div>
               <div className="min-w-0 flex-1">
-                <label className="text-[0.65rem] font-black uppercase tracking-wider text-[var(--muted)]">{tr("Akaun Bank / Wallet", "Bank Account / Wallet")}</label>
+                <label className="text-[0.625rem] font-black uppercase tracking-widest text-[var(--muted)]">{tr("Rekod Bank", "Bank Record")}</label>
                 <select
                   value={targetWalletId}
                   onChange={(e) => {
@@ -706,65 +718,101 @@ export default function BankReconciliationPage() {
                   <option value="">{tr("Pilih wallet...", "Select wallet...")}</option>
                   {wallets.map((w) => <option key={w.id} value={w.id}>{w.label || w.name}</option>)}
                 </select>
-                <p className="mt-1 truncate text-[0.68rem] font-semibold text-[var(--muted)]">{fileName}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-[0.625rem] font-black uppercase tracking-widest text-[var(--muted)]">{tr("Fail", "File")}</p>
+                <p className="mt-1 max-w-[120px] truncate text-xs font-bold text-[var(--text)]">{fileName || "—"}</p>
               </div>
             </div>
-            <p className="mt-3 border-t border-[var(--border)] pt-3 text-[0.68rem] font-semibold text-[var(--muted)]">
-              {tr("Menukar wallet akan mengosongkan penyata semasa untuk mengelakkan padanan bank yang salah.", "Changing wallet clears the current statement to prevent incorrect bank matching.")}
-            </p>
           </div>
 
           {/* Summary Stats Cards */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
-              <p className="text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                {tr("Kadar Padanan", "Match Rate")}
-              </p>
-              <div className="mt-1 flex items-baseline gap-1">
-                <span className="text-xl font-black text-emerald-500">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] p-3.5">
+              <div className="flex items-center gap-1.5">
+                <CheckCheck size={13} className="text-emerald-500" />
+                <p className="text-[0.625rem] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  {tr("Kadar Padanan", "Match Rate")}
+                </p>
+              </div>
+              <div className="mt-1.5 flex items-baseline gap-1">
+                <span className="text-2xl font-black tabular-nums text-emerald-600 dark:text-emerald-400">
                   {reconResult.summary.matchRatePercent}%
                 </span>
-                <span className="text-[0.65rem] font-semibold text-[var(--muted)]">
-                  ({reconResult.summary.matchedCount}/{reconResult.summary.totalBankTxns})
-                </span>
               </div>
+              <p className="text-[0.65rem] font-bold text-[var(--muted)]">
+                {reconResult.summary.matchedCount}/{reconResult.summary.totalBankTxns} {tr("padan", "matched")}
+              </p>
             </div>
 
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
-              <p className="text-[0.625rem] font-bold uppercase tracking-wider text-amber-500">
-                {tr("Tertinggal Dlm MyPeribadi", "Missing in MyPeribadi")}
-              </p>
-              <p className="mt-1 text-xl font-black text-amber-500">
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-3.5">
+              <div className="flex items-center gap-1.5">
+                <AlertCircle size={13} className="text-amber-500" />
+                <p className="text-[0.625rem] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                  {tr("Tertinggal", "Missing")}
+                </p>
+              </div>
+              <p className="mt-1.5 text-2xl font-black tabular-nums text-amber-600 dark:text-amber-400">
                 {reconResult.summary.missingInAppCount}
               </p>
+              <p className="text-[0.65rem] font-bold text-[var(--muted)]">
+                {tr("tiada dalam app", "not in app")}
+              </p>
             </div>
 
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
-              <p className="text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                {tr("Jumlah Bank Keluar", "Bank Debit Total")}
-              </p>
-              <p className="mt-1 truncate text-lg font-black text-[var(--text)]">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3.5">
+              <div className="flex items-center gap-1.5">
+                <ArrowDownRight size={13} className="text-rose-500" />
+                <p className="text-[0.625rem] font-black uppercase tracking-wider text-[var(--muted)]">
+                  {tr("Jumlah Keluar", "Debit Total")}
+                </p>
+              </div>
+              <p className="mt-1.5 truncate text-lg font-black tabular-nums text-[var(--text)]">
                 <MoneyAmount value={reconResult.summary.bankDebitTotal} size="md" />
               </p>
             </div>
 
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
-              <p className="text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                {tr("Perbezaan Bersih", "Net Variance")}
-              </p>
-              <p className="mt-1 truncate text-lg font-black text-[var(--text)]">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3.5">
+              <div className="flex items-center gap-1.5">
+                <Clock size={13} className="text-[var(--muted)]" />
+                <p className="text-[0.625rem] font-black uppercase tracking-wider text-[var(--muted)]">
+                  {tr("Beza Bersih", "Net Variance")}
+                </p>
+              </div>
+              <p className="mt-1.5 truncate text-lg font-black tabular-nums text-[var(--text)]">
                 <MoneyAmount value={Math.abs(reconResult.summary.netVariance)} size="md" />
               </p>
             </div>
           </div>
 
-          <label className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 sm:p-4">
-            <div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={smartDateMatch}
+            onClick={() => setSmartDateMatch((v) => !v)}
+            className={cn(
+              "flex w-full items-center justify-between gap-3 rounded-xl border p-3.5 text-left transition sm:p-4",
+              smartDateMatch ? "border-[var(--text)]/30 bg-[var(--surface-tint)]/40" : "border-[var(--border)] bg-[var(--card)]"
+            )}
+          >
+            <div className="min-w-0">
               <p className="text-xs font-black text-[var(--text)]">{tr("Padanan Tarikh Pintar", "Smart Date Matching")}</p>
-              <p className="text-[0.68rem] font-semibold text-[var(--muted)]">{tr("Amaun sama, tarikh berbeza sehingga 2 hari", "Same amount, statement date within 2 days")}</p>
+              <p className="text-[0.68rem] font-semibold text-[var(--muted)]">{tr("Amaun sama, tarikh ±2 hari", "Same amount, date within ±2 days")}</p>
             </div>
-            <input type="checkbox" checked={smartDateMatch} onChange={(e) => setSmartDateMatch(e.target.checked)} className="h-5 w-5 accent-[var(--text)]" />
-          </label>
+            <span
+              className={cn(
+                "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+                smartDateMatch ? "bg-emerald-500" : "bg-[var(--muted)]/30"
+              )}
+            >
+              <span
+                className={cn(
+                  "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all",
+                  smartDateMatch ? "left-[1.375rem]" : "left-0.5"
+                )}
+              />
+            </span>
+          </button>
 
           {/* Tab Filter Navigation */}
           <div className="space-y-3">
