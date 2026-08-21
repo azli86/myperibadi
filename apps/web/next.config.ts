@@ -119,7 +119,7 @@ const nextConfig: NextConfig = {
         },
         {
           source: "/api/bank-reconciliation/parse",
-          destination: `${apiInternalOrigin}/bank-reconciliation/parse`, // exact multipart upload proxy
+          destination: `${apiInternalOrigin}/api/bank-reconciliation/parse`, // exact multipart upload proxy
         },
         {
           source: "/api/whatsapp/webhook",

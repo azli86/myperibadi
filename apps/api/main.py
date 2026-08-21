@@ -13888,7 +13888,7 @@ async def create_support_ticket(
         pass
     return t
 
-@app.post("/bank-reconciliation/parse")
+@app.post("/api/bank-reconciliation/parse")
 async def parse_bank_statement_ai(
     request: Request,
     current_user: models.User = Depends(get_current_user),
@@ -13902,7 +13902,7 @@ async def parse_bank_statement_ai(
             form = await request.form()
             upload = form.get("file")
             password = (str(form.get("password") or "") or None)
-            if not isinstance(upload, UploadFile):
+            if upload is None or not hasattr(upload, "read"):
                 raise ValueError("Tiada fail penyata diterima")
             payload = await upload.read()
             if len(payload) > 25 * 1024 * 1024:

@@ -69,7 +69,7 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
         pdf = pdfplumber.open(_io.BytesIO(payload), password=password or "")
     except Exception as exc:
         msg = str(exc)
-        if "password" in msg.lower() or "encrypt" in msg.lower():
+        if not password or "password" in msg.lower() or "encrypt" in msg.lower():
             raise ValueError("PDF_PASSWORD_INVALID") from exc
         raise ValueError(f"PDF could not be opened: {msg[:150]}") from exc
 
