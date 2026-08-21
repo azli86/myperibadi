@@ -7,7 +7,8 @@ from decimal import Decimal, InvalidOperation
 
 def _parse_amount(raw: str) -> Decimal | None:
     cleaned = (raw or "").replace(",", "").replace("RM", "").replace("rm", "").strip()
-    negative = cleaned.startswith("-") or cleaned.startswith("(")
+    # Maybank prints debit as trailing minus (`22.53-`) and credit as trailing plus (`30.00+`).
+    negative = cleaned.startswith("-") or cleaned.endswith("-") or cleaned.startswith("(")
     cleaned = cleaned.strip("()-+").strip()
     if not re.fullmatch(r"\d{1,3}(,\d{3})*(\.\d{1,2})?|\d+(\.\d{1,2})?", cleaned.replace(",", "")):
         if not re.fullmatch(r"\d+(\.\d{1,2})?", cleaned):
