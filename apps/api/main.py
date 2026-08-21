@@ -13888,6 +13888,23 @@ async def create_support_ticket(
         pass
     return t
 
+@app.post("/bank-reconciliation/parse")
+async def parse_bank_statement_ai(
+    request: Request,
+    current_user: models.User = Depends(get_current_user),
+):
+    import bank_statement_ai
+
+    body = await request.json()
+    text_value = str(body.get("text") or "")
+    try:
+        return {"transactions": await bank_statement_ai.parse_statement(text_value)}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        print(f"[bank-statement-ai] {type(exc).__name__}: {exc}", flush=True)
+        raise HTTPException(status_code=502, detail="AI gagal membaca penyata bank") from exc
+
 @app.get("/support/tickets/mine", response_model=List[schemas.SupportTicketResponse])
 async def my_support_tickets(
     current_user: models.User = Depends(get_current_user),

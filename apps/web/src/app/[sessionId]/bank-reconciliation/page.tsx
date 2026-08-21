@@ -144,6 +144,18 @@ export default function BankReconciliationPage() {
     return {}
   }
 
+  const parseStatementWithAi = async (text: string) => {
+    const response = await fetch("/api/bank-reconciliation/parse", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify({ text }),
+    })
+    if (!response.ok) throw new Error((await response.json().catch(() => null))?.detail || tr("AI gagal membaca penyata.", "AI failed to read the statement."))
+    const data = await response.json()
+    return { transactions: Array.isArray(data.transactions) ? data.transactions as BankTransactionRow[] : [] }
+  }
+
   // Load Wallets, Categories, Transactions
   const loadData = async () => {
     setLoadingInitial(true)
@@ -223,13 +235,15 @@ export default function BankReconciliationPage() {
       }
 
       if (pdfRes.text) {
-        let result = parseTextStatement(pdfRes.text)
-        if (result.transactions.length === 0) {
-          result = parseCsvStatement(pdfRes.text)
+        try {
+          const result = await parseStatementWithAi(pdfRes.text)
+          setBankTxns(result.transactions)
+          setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
+        } catch (err: any) {
+          showAlert(tr("Ralat Membaca Penyata", "Statement Reading Error"), err.message, "error")
+        } finally {
+          setIsProcessing(false)
         }
-        setBankTxns(result.transactions)
-        setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
-        setIsProcessing(false)
       } else {
         setIsProcessing(false)
         showAlert(
@@ -242,15 +256,17 @@ export default function BankReconciliationPage() {
     }
 
     const reader = new FileReader()
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = (event.target?.result as string) || ""
-      let result = parseCsvStatement(content)
-      if (result.transactions.length === 0) {
-        result = parseTextStatement(content)
+      try {
+        const result = await parseStatementWithAi(content)
+        setBankTxns(result.transactions)
+        setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
+      } catch (err: any) {
+        showAlert(tr("Ralat Membaca Penyata", "Statement Reading Error"), err.message, "error")
+      } finally {
+        setIsProcessing(false)
       }
-      setBankTxns(result.transactions)
-      setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
-      setIsProcessing(false)
     }
     reader.readAsText(file)
   }
@@ -277,10 +293,7 @@ export default function BankReconciliationPage() {
       }
 
       if (pdfRes.text) {
-        let result = parseTextStatement(pdfRes.text)
-        if (result.transactions.length === 0) {
-          result = parseCsvStatement(pdfRes.text)
-        }
+        const result = await parseStatementWithAi(pdfRes.text)
         setBankTxns(result.transactions)
         setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
         setShowPasswordModal(false)
@@ -297,20 +310,22 @@ export default function BankReconciliationPage() {
   }
 
   // Process Pasted Text
-  const handleProcessText = () => {
+  const handleProcessText = async () => {
     if (!rawTextContent.trim()) {
       showAlert(tr("Perhatian", "Notice"), tr("Sila tampal teks penyata bank terlebih dahulu.", "Please paste bank statement text first."), "warning")
       return
     }
     setIsProcessing(true)
-    let result = parseTextStatement(rawTextContent)
-    if (result.transactions.length === 0) {
-      result = parseCsvStatement(rawTextContent)
+    try {
+      const result = await parseStatementWithAi(rawTextContent)
+      setBankTxns(result.transactions)
+      setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
+      setFileName("Teks Penyata Bank")
+    } catch (err: any) {
+      showAlert(tr("Ralat Membaca Penyata", "Statement Reading Error"), err.message, "error")
+    } finally {
+      setIsProcessing(false)
     }
-    setBankTxns(result.transactions)
-    setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
-    setIsProcessing(false)
-    setFileName("Teks Penyata Bank")
   }
 
   // Load Sample
