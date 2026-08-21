@@ -21,6 +21,17 @@ def _parse_amount(raw: str) -> Decimal | None:
     return value
 
 
+def _type_from_text(raw: str, amount: Decimal) -> str:
+    text = raw.lower().replace("_", " ")
+    expense = r"cash out|cashout|payment|transfer to|duitnow qr|rfid|purchase|sale debit|cardissuance.*payment|go\+ cash in"
+    income = r"receive|reload|cashback|refund|reversal|cash in|daily earnings|transfer from"
+    if re.search(expense, text):
+        return "expense"
+    if re.search(income, text):
+        return "income"
+    return "expense" if amount < 0 else "income"
+
+
 def _parse_date(raw: str) -> str | None:
     raw = (raw or "").strip()
     # DD/MM/YYYY or DD-MM-YYYY
@@ -152,8 +163,7 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                         amount, txn_type = credit_val, "income"
                     elif amount_val is not None and amount_val != 0:
                         amount = abs(amount_val)
-                        row_text = " ".join(cells).lower()
-                        txn_type = "expense" if amount_val < 0 or re.search(r"cash out|payment|transfer to|purchase|bayaran|keluar", row_text) else "income"
+                        txn_type = _type_from_text(" ".join(cells), amount_val)
                     if amount is None or txn_type is None or not description or not date_str:
                         continue
                     if amount <= 0 or amount > Decimal("9999999999"):
@@ -226,7 +236,7 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                             distance, value = min(candidates)
                             if distance < 55:
                                 chosen = abs(value)
-                                txn_type = "expense" if kind == "debit" or (kind == "amount" and value < 0) else "income"
+                                txn_type = "expense" if kind == "debit" else "income" if kind == "credit" else _type_from_text(" ".join(str(w["text"]) for w in ordered), value)
                                 break
                     if chosen is None or chosen <= 0:
                         continue
