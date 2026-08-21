@@ -114,6 +114,10 @@ const nextConfig: NextConfig = {
           destination: `${apiInternalOrigin}/mcp`,
         },
         {
+          source: "/api/events",
+          destination: `${apiInternalOrigin}/api/events`, // SSE realtime (keep /api prefix)
+        },
+        {
           source: "/api/whatsapp/webhook",
           destination: "/_not-found",
         },
