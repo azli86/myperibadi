@@ -293,8 +293,10 @@ export function parseTextStatement(text: string): ParseStatementResult {
     const amountMatches = Array.from(lineRest.matchAll(/(?:RM\s*)?([+-]?\d{1,3}(?:,\d{3})*\.\d{2})(?:\s*(DR|CR|Debit|Credit))?/gi))
     if (amountMatches.length === 0) return
 
-    // Usually the transaction amount is the first or second amount in line
-    const match = amountMatches[0]
+    // Bank PDF rows commonly end with `transaction amount · running balance`.
+    // The balance can repeat across extracted rows; never treat it as the transaction.
+    const markedMatch = amountMatches.find((m) => m[2])
+    const match = markedMatch || (amountMatches.length > 1 ? amountMatches[amountMatches.length - 2] : amountMatches[0])
     const numStr = match[1]
     const indicator = (match[2] || "").toUpperCase()
 
