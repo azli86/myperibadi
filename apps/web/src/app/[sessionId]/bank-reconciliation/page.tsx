@@ -715,7 +715,7 @@ export default function BankReconciliationPage() {
           </div>
 
           {/* Summary Stats Cards */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
             <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
               <p className="text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
                 {tr("Kadar Padanan", "Match Rate")}
@@ -758,7 +758,7 @@ export default function BankReconciliationPage() {
             </div>
           </div>
 
-          <label className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
+          <label className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 sm:p-4">
             <div>
               <p className="text-xs font-black text-[var(--text)]">{tr("Padanan Tarikh Pintar", "Smart Date Matching")}</p>
               <p className="text-[0.68rem] font-semibold text-[var(--muted)]">{tr("Amaun sama, tarikh berbeza sehingga 2 hari", "Same amount, statement date within 2 days")}</p>
@@ -767,13 +767,13 @@ export default function BankReconciliationPage() {
           </label>
 
           {/* Tab Filter Navigation */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap gap-1">
+          <div className="space-y-3">
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
               <button
                 type="button"
                 onClick={() => setActiveTab("missing_in_app")}
                 className={cn(
-                  "pill-base px-3 py-1.5 text-[0.6875rem] font-black uppercase tracking-[0.1em]",
+                  "pill-base shrink-0 px-3 py-2 text-[0.6875rem] font-black uppercase tracking-[0.06em]",
                   activeTab === "missing_in_app"
                     ? "bg-[var(--accent2)] text-[var(--btn-primary-text)]"
                     : "text-[var(--muted)]"
@@ -786,7 +786,7 @@ export default function BankReconciliationPage() {
                 type="button"
                 onClick={() => setActiveTab("matched")}
                 className={cn(
-                  "pill-base px-3 py-1.5 text-[0.6875rem] font-black uppercase tracking-[0.1em]",
+                  "pill-base shrink-0 px-3 py-2 text-[0.6875rem] font-black uppercase tracking-[0.06em]",
                   activeTab === "matched"
                     ? "bg-[var(--accent2)] text-[var(--btn-primary-text)]"
                     : "text-[var(--muted)]"
@@ -799,7 +799,7 @@ export default function BankReconciliationPage() {
                 type="button"
                 onClick={() => setActiveTab("missing_in_bank")}
                 className={cn(
-                  "pill-base px-3 py-1.5 text-[0.6875rem] font-black uppercase tracking-[0.1em]",
+                  "pill-base shrink-0 px-3 py-2 text-[0.6875rem] font-black uppercase tracking-[0.06em]",
                   activeTab === "missing_in_bank"
                     ? "bg-[var(--accent2)] text-[var(--btn-primary-text)]"
                     : "text-[var(--muted)]"
@@ -811,24 +811,13 @@ export default function BankReconciliationPage() {
 
             {/* Batch Import Bar */}
             {activeTab === "missing_in_app" && reconResult.summary.missingInAppCount > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={batchWalletId}
-                  onChange={(e) => setBatchWalletId(e.target.value ? Number(e.target.value) : "")}
-                  className="h-9 rounded-xl border border-[var(--border)] bg-[var(--card)] px-2.5 text-xs font-bold text-[var(--text)] outline-none"
-                >
-                  <option value="">{tr("Pilih Bank...", "Select Bank...")}</option>
-                  {wallets.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.label || w.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="flex items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] p-2">
+                <span className="min-w-0 truncate px-1 text-xs font-bold text-[var(--muted)]">{wallets.find((w) => Number(w.id) === Number(targetWalletId))?.label || wallets.find((w) => Number(w.id) === Number(targetWalletId))?.name}</span>
                 <button
                   type="button"
                   onClick={handleBatchImport}
                   disabled={batchImporting || selectedMissingIds.size === 0 || !batchWalletId}
-                  className="flex h-9 items-center gap-1.5 rounded-xl bg-[var(--text)] px-3 text-xs font-black text-[var(--bg)] transition active:scale-95 disabled:opacity-50"
+                  className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-[var(--text)] px-3 text-xs font-black text-[var(--bg)] transition active:scale-95 disabled:opacity-50"
                 >
                   <Plus size={13} strokeWidth={2.5} />
                   <span>
@@ -881,7 +870,7 @@ export default function BankReconciliationPage() {
                         <div
                           key={txn.id}
                           className={cn(
-                            "flex items-center justify-between gap-3 rounded-2xl border p-4 transition",
+                            "grid grid-cols-[auto_1fr] gap-3 rounded-xl border p-3 transition sm:flex sm:items-center sm:justify-between sm:p-4",
                             isSelected ? "border-[var(--border-strong)] bg-[var(--card)]" : "border-[var(--border)] bg-[var(--card)]/70 opacity-85"
                           )}
                         >
@@ -910,7 +899,7 @@ export default function BankReconciliationPage() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3 shrink-0">
+                          <div className="col-start-2 flex items-center justify-between gap-3 sm:col-auto sm:shrink-0">
                             <span className={cn("text-sm font-black tabular-nums", isExp ? "text-rose-500" : "text-emerald-500")}>
                               {isExp ? "-" : "+"}RM {txn.amount.toFixed(2)}
                             </span>
