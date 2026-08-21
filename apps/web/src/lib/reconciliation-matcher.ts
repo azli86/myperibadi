@@ -112,16 +112,16 @@ export function reconcileStatements(
     return rangeStart !== null && rangeEnd !== null && t >= rangeStart && t <= rangeEnd
   })
 
-  // 1. Pass 1: Exact amount, same type, same date (0 days)
+  // 1. Primary identity: wallet (pre-filtered), absolute amount, exact date.
+  // Bank direction remains authoritative for importing; it is not an identity field.
   bankTxns.forEach((bankTxn) => {
     if (usedBankTxnIds.has(bankTxn.id)) return
 
     const candidate = inRangeAppTxns.find((appTxn) => {
       if (usedAppTxnIds.has(appTxn.id)) return false
       const amountMatch = Math.abs(Math.abs(Number(appTxn.amount)) - Math.abs(bankTxn.amount)) < 0.01
-      const typeMatch = normalizeType(appTxn.type) === normalizeType(bankTxn.type)
       const dateMatch = normalizeDate(appTxn.date) === normalizeDate(bankTxn.date)
-      return amountMatch && typeMatch && dateMatch
+      return amountMatch && dateMatch
     })
 
     if (candidate) {
@@ -137,23 +137,26 @@ export function reconcileStatements(
     }
   })
 
-  // 2. Pass 2: Exact amount, same type, date within maxDays tolerance (1 to maxDays)
+  // 2. Exact amount within settlement-date tolerance. Text breaks equal candidates.
   bankTxns.forEach((bankTxn) => {
     if (usedBankTxnIds.has(bankTxn.id)) return
 
     let bestCandidate: AppTransaction | null = null
     let bestDaysDiff = 999
+    let bestScore = -1
 
-    filteredAppTxns.forEach((appTxn) => {
+    inRangeAppTxns.forEach((appTxn) => {
       if (usedAppTxnIds.has(appTxn.id)) return
       const amountMatch = Math.abs(Math.abs(Number(appTxn.amount)) - Math.abs(bankTxn.amount)) < 0.01
-      const typeMatch = normalizeType(appTxn.type) === normalizeType(bankTxn.type)
-      if (!amountMatch || !typeMatch) return
+      if (!amountMatch) return
 
       const days = getDaysDiff(bankTxn.date, appTxn.date)
-      if (days <= maxDays && days < bestDaysDiff) {
+      const similarity = textSimilarity(bankTxn.description, `${appTxn.description || ""} ${appTxn.notes || ""}`)
+      const score = days <= maxDays ? (maxDays - days + 1) * 10 + similarity : -1
+      if (score > bestScore) {
         bestCandidate = appTxn
         bestDaysDiff = days
+        bestScore = score
       }
     })
     if (bestCandidate) {
@@ -170,7 +173,7 @@ export function reconcileStatements(
     }
   })
 
-  // 3. Pass 3: Exact amount, wider date tolerance up to 7 days if text has similarity
+  // 3. Wider settlement window requires description evidence
   bankTxns.forEach((bankTxn) => {
     if (usedBankTxnIds.has(bankTxn.id)) return
 
@@ -178,11 +181,10 @@ export function reconcileStatements(
     let bestScore = 0
     let bestDays = 999
 
-    filteredAppTxns.forEach((appTxn) => {
+    inRangeAppTxns.forEach((appTxn) => {
       if (usedAppTxnIds.has(appTxn.id)) return
       const amountMatch = Math.abs(Math.abs(Number(appTxn.amount)) - Math.abs(bankTxn.amount)) < 0.01
-      const typeMatch = normalizeType(appTxn.type) === normalizeType(bankTxn.type)
-      if (!amountMatch || !typeMatch) return
+      if (!amountMatch) return
 
       const days = getDaysDiff(bankTxn.date, appTxn.date)
       if (days <= 7) {
