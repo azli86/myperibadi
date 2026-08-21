@@ -197,7 +197,7 @@ export default function BankReconciliationPage() {
       const [walletsRes, catsRes, txnsRes] = await Promise.allSettled([
         fetch("/api/wallets", { credentials: "include", headers }),
         fetch("/api/categories", { credentials: "include", headers }),
-        fetch(`/api/transactions?limit=500`, { credentials: "include", headers }),
+        fetch(`/api/transactions?limit=5000`, { credentials: "include", headers }),
       ])
 
       if (walletsRes.status === "fulfilled" && walletsRes.value.ok) {
