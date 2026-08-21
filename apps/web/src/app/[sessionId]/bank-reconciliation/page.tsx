@@ -38,7 +38,6 @@ import {
   parseCsvStatement,
   parseTextStatement,
 } from "@/lib/bank-statement-parser"
-import { extractTextFromPdf } from "@/lib/pdf-statement-extractor"
 import {
   AppTransaction,
   reconcileStatements,
@@ -105,7 +104,7 @@ export default function BankReconciliationPage() {
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [pdfPassword, setPdfPassword] = useState("")
   const [showPasswordText, setShowPasswordText] = useState(false)
-  const [pendingPdfBuffer, setPendingPdfBuffer] = useState<ArrayBuffer | null>(null)
+  const [pendingPdfBuffer, setPendingPdfBuffer] = useState<File | null>(null)
   const [pendingPdfName, setPendingPdfName] = useState<string>("")
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [unlockingPdf, setUnlockingPdf] = useState(false)
@@ -148,27 +147,42 @@ export default function BankReconciliationPage() {
   }
 
   const parseStatementWithAi = async (text: string, pageImages: string[] = []) => {
-    const batches = pageImages.length ? Array.from({ length: Math.ceil(pageImages.length / 2) }, (_, i) => pageImages.slice(i * 2, i * 2 + 2)) : [[]]
-    const transactions: BankTransactionRow[] = []
-    for (const images of batches) {
-      const response = await fetch("/api/bank-reconciliation/parse", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({ text: images.length ? "" : text, page_images: images }),
-      })
-      if (!response.ok) {
-        const detail = (await response.json().catch(() => null))?.detail
-        if (!pageImages.length) {
-          const fallback = parseTextStatement(text)
-          if (fallback.transactions.length) return fallback
-        }
-        throw new Error(detail || tr("AI gagal membaca penyata.", "AI failed to read the statement."))
-      }
-      const data = await response.json()
-      if (Array.isArray(data.transactions)) transactions.push(...data.transactions)
+    const response = await fetch("/api/bank-reconciliation/parse", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+      body: JSON.stringify({ text, page_images: pageImages }),
+    })
+    if (!response.ok) {
+      const fallback = parseTextStatement(text)
+      if (fallback.transactions.length) return fallback
+      throw new Error((await response.json().catch(() => null))?.detail || tr("Gagal membaca penyata.", "Failed to read the statement."))
     }
-    return { transactions }
+    const data = await response.json()
+    return { transactions: Array.isArray(data.transactions) ? (data.transactions as BankTransactionRow[]) : [] }
+  }
+
+  const parsePdfWithServer = async (file: File, password?: string): Promise<BankTransactionRow[]> => {
+    const formData = new FormData()
+    formData.append("file", file)
+    if (password) formData.append("password", password)
+    const response = await fetch("/api/bank-reconciliation/parse", {
+      method: "POST",
+      credentials: "include",
+      headers: { ...getAuthHeaders() },
+      body: formData,
+    })
+    if (response.status === 401) {
+      const detail = (await response.json().catch(() => null))?.detail
+      if (detail === "PDF_PASSWORD_REQUIRED") {
+        throw new Error("PDF_PASSWORD_REQUIRED")
+      }
+    }
+    if (!response.ok) {
+      throw new Error((await response.json().catch(() => null))?.detail || tr("Gagal membaca penyata.", "Failed to read the statement."))
+    }
+    const data = await response.json()
+    return Array.isArray(data.transactions) ? (data.transactions as BankTransactionRow[]) : []
   }
 
 
@@ -238,22 +252,19 @@ export default function BankReconciliationPage() {
 
     if (isPdf) {
       try {
-        const buffer = await file.arrayBuffer()
-        const pdfRes = await extractTextFromPdf(buffer)
-        if (pdfRes.needsPassword) {
-          setPendingPdfBuffer(buffer)
+        const transactions = await parsePdfWithServer(file)
+        setBankTxns(transactions)
+        setSelectedMissingIds(new Set(transactions.map((t) => t.id)))
+      } catch (err: any) {
+        if (err.message === "PDF_PASSWORD_REQUIRED") {
+          setPendingPdfBuffer(file)
           setPendingPdfName(file.name)
           setPasswordError(null)
           setPdfPassword("")
           setShowPasswordModal(true)
-          return
+        } else {
+          showAlert(tr("Ralat Membaca Penyata", "Statement Reading Error"), err.message, "error")
         }
-        if (!pdfRes.text || !pdfRes.pageImages?.length) throw new Error(pdfRes.error || tr("Gagal membaca PDF.", "Failed to read PDF."))
-        const result = await parseStatementWithAi(pdfRes.text, pdfRes.pageImages)
-        setBankTxns(result.transactions)
-        setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
-      } catch (err: any) {
-        showAlert(tr("Ralat Membaca Penyata", "Statement Reading Error"), err.message, "error")
       } finally {
         setIsProcessing(false)
       }
@@ -288,20 +299,18 @@ export default function BankReconciliationPage() {
     setPasswordError(null)
     setIsProcessing(true)
     try {
-      const pdfRes = await extractTextFromPdf(pendingPdfBuffer, pdfPassword.trim())
-      if (pdfRes.invalidPassword || pdfRes.needsPassword) {
-        setPasswordError(tr("Kata laluan salah. Sila semak No. IC / Tarikh Lahir anda.", "Incorrect password. Please check your IC / Birthdate."))
-        return
-      }
-      if (!pdfRes.text || !pdfRes.pageImages?.length) throw new Error(pdfRes.error || tr("Gagal membaca PDF.", "Failed to read PDF."))
-      const result = await parseStatementWithAi(pdfRes.text, pdfRes.pageImages)
-      setBankTxns(result.transactions)
-      setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
+      const transactions = await parsePdfWithServer(pendingPdfBuffer, pdfPassword.trim())
+      setBankTxns(transactions)
+      setSelectedMissingIds(new Set(transactions.map((t) => t.id)))
       setShowPasswordModal(false)
       setPendingPdfBuffer(null)
       setPdfPassword("")
     } catch (err: any) {
-      setPasswordError(err.message || tr("Ralat semasa membuka PDF.", "Error unlocking PDF."))
+      if (err.message === "PDF_PASSWORD_REQUIRED") {
+        setPasswordError(tr("Kata laluan salah. Sila semak No. IC / Tarikh Lahir anda.", "Incorrect password. Please check your IC / Birthdate."))
+      } else {
+        setPasswordError(err.message || tr("Ralat semasa membuka PDF.", "Error unlocking PDF."))
+      }
     } finally {
       setUnlockingPdf(false)
       setIsProcessing(false)
