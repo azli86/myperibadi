@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useEffect, useMemo, useState } from "react"
-import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import {
   CheckCircle2,
@@ -548,8 +547,9 @@ export default function AccountPage() {
                   </button>
                 )
               })}
-              <Link
-                href={`/${sessionId}/login`}
+              <button
+                type="button"
+                onClick={() => setShowAddAccountModal(true)}
                 className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[var(--surface-tint)]/80 active:scale-[0.99]"
               >
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)]">
@@ -560,7 +560,7 @@ export default function AccountPage() {
                   <p className="truncate text-[0.68rem] text-[var(--muted)]">{tr("Log masuk akaun kedua atau perniagaan", "Sign in to a second personal or business account")}</p>
                 </div>
                 <ChevronRight size={16} className="shrink-0 text-[var(--muted)]" />
-              </Link>
+              </button>
             </div>
           </div>
 
