@@ -683,31 +683,35 @@ export default function BankReconciliationPage() {
       ) : (
         /* ─── Reconciliation Results Section ─── */
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]">
                 <Landmark size={19} />
               </div>
-              <div>
-                <p className="text-[0.65rem] font-black uppercase tracking-wider text-[var(--muted)]">{tr("Wallet Dikunci", "Wallet Locked")}</p>
-                <p className="text-sm font-black text-[var(--text)]">{wallets.find((w) => Number(w.id) === Number(targetWalletId))?.label || wallets.find((w) => Number(w.id) === Number(targetWalletId))?.name || "—"}</p>
-                <p className="text-[0.68rem] font-semibold text-[var(--muted)]">{fileName}</p>
+              <div className="min-w-0 flex-1">
+                <label className="text-[0.65rem] font-black uppercase tracking-wider text-[var(--muted)]">{tr("Akaun Bank / Wallet", "Bank Account / Wallet")}</label>
+                <select
+                  value={targetWalletId}
+                  onChange={(e) => {
+                    const walletId = e.target.value ? Number(e.target.value) : ""
+                    setBankTxns([])
+                    setFileName(null)
+                    setRawTextContent("")
+                    setTargetWalletId(walletId)
+                    setBatchWalletId(walletId)
+                    setQuickAddWalletId(walletId)
+                  }}
+                  className="mt-1 h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--bg)] px-3 text-sm font-bold text-[var(--text)] outline-none"
+                >
+                  <option value="">{tr("Pilih wallet...", "Select wallet...")}</option>
+                  {wallets.map((w) => <option key={w.id} value={w.id}>{w.label || w.name}</option>)}
+                </select>
+                <p className="mt-1 truncate text-[0.68rem] font-semibold text-[var(--muted)]">{fileName}</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setBankTxns([])
-                setFileName(null)
-                setRawTextContent("")
-                setTargetWalletId("")
-                setBatchWalletId("")
-                setQuickAddWalletId("")
-              }}
-              className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-black text-[var(--text)]"
-            >
-              {tr("Tukar Wallet", "Change Wallet")}
-            </button>
+            <p className="mt-3 border-t border-[var(--border)] pt-3 text-[0.68rem] font-semibold text-[var(--muted)]">
+              {tr("Menukar wallet akan mengosongkan penyata semasa untuk mengelakkan padanan bank yang salah.", "Changing wallet clears the current statement to prevent incorrect bank matching.")}
+            </p>
           </div>
 
           {/* Summary Stats Cards */}
