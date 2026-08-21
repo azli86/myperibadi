@@ -118,6 +118,10 @@ const nextConfig: NextConfig = {
           destination: `${apiInternalOrigin}/api/events`, // SSE realtime (keep /api prefix)
         },
         {
+          source: "/api/bank-reconciliation/parse",
+          destination: `${apiInternalOrigin}/bank-reconciliation/parse`, // exact multipart upload proxy
+        },
+        {
           source: "/api/whatsapp/webhook",
           destination: "/_not-found",
         },

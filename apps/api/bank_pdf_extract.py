@@ -88,15 +88,18 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                 for i, row in enumerate(rows[:12]):
                     cells = [(str(c) if c else "") for c in row]
                     joined = " ".join(cells)
-                    if DEBIT_HEADER.search(joined) or CREDIT_HEADER.search(joined):
+                    if DEBIT_HEADER.search(joined) or CREDIT_HEADER.search(joined) or AMOUNT_HEADER.search(joined):
                         header_idx = i
+                        amount_col = None
                         for col, cell in enumerate(cells):
-                            if DEBIT_HEADER.search(cell) and not debit_col:
+                            if DEBIT_HEADER.search(cell) and debit_col is None:
                                 debit_col = col
-                            if CREDIT_HEADER.search(cell) and not credit_col:
+                            if CREDIT_HEADER.search(cell) and credit_col is None:
                                 credit_col = col
-                            if BALANCE_HEADER.search(cell) and not balance_col:
+                            if BALANCE_HEADER.search(cell) and balance_col is None:
                                 balance_col = col
+                            if AMOUNT_HEADER.search(cell) and not BALANCE_HEADER.search(cell) and amount_col is None:
+                                amount_col = col
                         break
                 if header_idx is None:
                     continue
@@ -116,8 +119,9 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                         continue
                     debit_val = _parse_amount(cells[debit_col]) if debit_col is not None and debit_col < len(cells) else None
                     credit_val = _parse_amount(cells[credit_col]) if credit_col is not None and credit_col < len(cells) else None
+                    amount_val = _parse_amount(cells[amount_col]) if amount_col is not None and amount_col < len(cells) else None
                     # description = all cells except date/debit/credit/balance columns
-                    skip_cols = {date_col, debit_col, credit_col, balance_col}
+                    skip_cols = {date_col, debit_col, credit_col, balance_col, amount_col}
                     desc_parts = [c for idx, c in enumerate(cells) if idx not in skip_cols and c]
                     description = " ".join(desc_parts)[:300]
                     # strip trailing running-balance-like numbers from description
@@ -128,6 +132,9 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                         amount, txn_type = debit_val, "expense"
                     elif credit_val is not None and credit_val != 0:
                         amount, txn_type = credit_val, "income"
+                    elif amount_val is not None and amount_val != 0:
+                        amount = abs(amount_val)
+                        txn_type = "expense" if amount_val < 0 else "income"
                     if amount is None or txn_type is None or not description:
                         continue
                     if amount <= 0 or amount > Decimal("9999999999"):
@@ -158,7 +165,8 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                         if DEBIT_HEADER.fullmatch(token): header_x["debit"] = center
                         if CREDIT_HEADER.fullmatch(token): header_x["credit"] = center
                         if BALANCE_HEADER.fullmatch(token): header_x["balance"] = center
-                if "debit" not in header_x and "credit" not in header_x:
+                        if AMOUNT_HEADER.fullmatch(token) and not BALANCE_HEADER.fullmatch(token): header_x["amount"] = center
+                if "debit" not in header_x and "credit" not in header_x and "amount" not in header_x:
                     continue
                 for line in lines.values():
                     ordered = sorted(line, key=lambda w: float(w["x0"]))
@@ -175,15 +183,15 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                             numeric.append((word, value, (float(word["x0"]) + float(word["x1"])) / 2))
                     chosen = None
                     txn_type = None
-                    for kind in ("debit", "credit"):
+                    for kind in ("debit", "credit", "amount"):
                         if kind not in header_x:
                             continue
                         candidates = [(abs(x - header_x[kind]), value) for _, value, x in numeric]
                         if candidates:
                             distance, value = min(candidates)
-                            if distance < 45:
-                                chosen = value
-                                txn_type = "expense" if kind == "debit" else "income"
+                            if distance < 55:
+                                chosen = abs(value)
+                                txn_type = "expense" if kind == "debit" or (kind == "amount" and value < 0) else "income"
                                 break
                     if chosen is None or chosen <= 0:
                         continue
