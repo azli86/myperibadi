@@ -242,9 +242,13 @@ export default function BankReconciliationPage() {
     loadData()
   }, [])
 
-  // Compare against all app transactions. Legacy entries may have no wallet_id;
-  // the selected wallet is only the destination for newly imported rows.
-  const filteredAppTransactions = appTransactions
+  // A statement belongs to the selected wallet. Never compare another bank's rows.
+  const filteredAppTransactions = useMemo(
+    () => targetWalletId
+      ? appTransactions.filter((tx) => Number(tx.wallet_id) === Number(targetWalletId))
+      : [],
+    [appTransactions, targetWalletId]
+  )
 
   // Process File Upload (CSV, TSV, TXT, PDF)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
