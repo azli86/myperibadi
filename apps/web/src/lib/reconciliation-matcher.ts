@@ -90,11 +90,22 @@ export function reconcileStatements(
   // Filter out internal transfers from app txns if desired
   const filteredAppTxns = appTxns.filter((tx) => !tx.is_wallet_transfer && !tx.is_debt_movement)
 
+  // Scope the reverse check ("missing in bank") to the statement's date range.
+  // App transactions outside the statement period are irrelevant, not missing.
+  const bankDates = bankTxns.map((t) => new Date(t.date).getTime()).filter((t) => !isNaN(t))
+  const rangeStart = bankDates.length ? Math.min(...bankDates) - maxDays * 86400000 : null
+  const rangeEnd = bankDates.length ? Math.max(...bankDates) + maxDays * 86400000 : null
+  const inRangeAppTxns = rangeStart === null ? [] : filteredAppTxns.filter((tx) => {
+    const t = new Date(tx.date).getTime()
+    if (isNaN(t)) return false
+    return rangeStart !== null && rangeEnd !== null && t >= rangeStart && t <= rangeEnd
+  })
+
   // 1. Pass 1: Exact amount, same type, same date (0 days)
   bankTxns.forEach((bankTxn) => {
     if (usedBankTxnIds.has(bankTxn.id)) return
 
-    const candidate = filteredAppTxns.find((appTxn) => {
+    const candidate = inRangeAppTxns.find((appTxn) => {
       if (usedAppTxnIds.has(appTxn.id)) return false
       const amountMatch = Math.abs(Number(appTxn.amount) - bankTxn.amount) < 0.01
       const typeMatch = appTxn.type === bankTxn.type
@@ -134,7 +145,6 @@ export function reconcileStatements(
         bestDaysDiff = days
       }
     })
-
     if (bestCandidate) {
       const cand = bestCandidate as AppTransaction
       usedBankTxnIds.add(bankTxn.id)
@@ -194,21 +204,21 @@ export function reconcileStatements(
   // Unmatched bank transactions (Missing in App)
   const missingInApp = bankTxns.filter((b) => !usedBankTxnIds.has(b.id))
 
-  // Unmatched app transactions (Missing in Statement)
-  const missingInBank = filteredAppTxns.filter((a) => !usedAppTxnIds.has(a.id))
+  // Unmatched app transactions (Missing in Statement) — statement period only
+  const missingInBank = inRangeAppTxns.filter((a) => !usedAppTxnIds.has(a.id))
 
   // Calculate totals
   const bankDebitTotal = bankTxns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0)
   const bankCreditTotal = bankTxns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0)
-  const appExpenseTotal = filteredAppTxns.filter((t) => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
-  const appIncomeTotal = filteredAppTxns.filter((t) => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
+  const appExpenseTotal = inRangeAppTxns.filter((t) => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
+  const appIncomeTotal = inRangeAppTxns.filter((t) => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
 
   const bankNet = bankCreditTotal - bankDebitTotal
   const appNet = appIncomeTotal - appExpenseTotal
   const netVariance = bankNet - appNet
 
   const totalBankTxns = bankTxns.length
-  const totalAppTxns = filteredAppTxns.length
+  const totalAppTxns = inRangeAppTxns.length
   const matchedCount = matched.length
   const matchRatePercent = totalBankTxns > 0 ? Math.round((matchedCount / totalBankTxns) * 100) : 0
 
