@@ -114,6 +114,7 @@ export default function BankReconciliationPage() {
 
   // Active View Tab
   const [activeTab, setActiveTab] = useState<"missing_in_app" | "matched" | "missing_in_bank">("missing_in_app")
+  const [smartDateMatch, setSmartDateMatch] = useState(true)
 
   // Quick Add State
   const [quickAddTxn, setQuickAddTxn] = useState<BankTransactionRow | null>(null)
@@ -365,8 +366,8 @@ export default function BankReconciliationPage() {
 
   // Compute Reconciliation
   const reconResult: ReconciliationResult = useMemo(() => {
-    return reconcileStatements(bankTxns, filteredAppTransactions, { maxDateToleranceDays: 0 })
-  }, [bankTxns, filteredAppTransactions])
+    return reconcileStatements(bankTxns, filteredAppTransactions, { maxDateToleranceDays: smartDateMatch ? 2 : 0 })
+  }, [bankTxns, filteredAppTransactions, smartDateMatch])
 
   // Single Add to App
   const handleQuickAdd = async () => {
@@ -719,6 +720,14 @@ export default function BankReconciliationPage() {
               </p>
             </div>
           </div>
+
+          <label className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3">
+            <div>
+              <p className="text-xs font-black text-[var(--text)]">{tr("Padanan Tarikh Pintar", "Smart Date Matching")}</p>
+              <p className="text-[0.68rem] font-semibold text-[var(--muted)]">{tr("Amaun sama, tarikh berbeza sehingga 2 hari", "Same amount, statement date within 2 days")}</p>
+            </div>
+            <input type="checkbox" checked={smartDateMatch} onChange={(e) => setSmartDateMatch(e.target.checked)} className="h-5 w-5 accent-[var(--text)]" />
+          </label>
 
           {/* Tab Filter Navigation */}
           <div className="flex flex-wrap items-center justify-between gap-3">
