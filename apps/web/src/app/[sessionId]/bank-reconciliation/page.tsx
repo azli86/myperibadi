@@ -507,7 +507,7 @@ export default function BankReconciliationPage() {
 
   const scanSteps = [
     tr("Mengesahkan fail penyata...", "Verifying statement file..."),
-    tr("AI mengekstrak grid transaksi...", "AI extracting transactions..."),
+    tr("Mengekstrak transaksi PDF...", "Extracting PDF transactions..."),
     tr("Menganalisis debit & kredit...", "Analyzing debits & credits..."),
     tr("Memadankan rekod MyPeribadi...", "Matching MyPeribadi records..."),
   ]
@@ -516,20 +516,17 @@ export default function BankReconciliationPage() {
   const renderHero = (isDesktop = false) => (
     <div
       className={cn(
-        "wallet-hero relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] text-white",
+        "relative overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--text)]",
         isDesktop ? "p-6" : "p-5"
       )}
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-      <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-      <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.04] blur-2xl" />
 
       <div className="relative flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <p className="text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-[#cbd5e1]">
+          <p className="text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
             {tr("Rekonsiliasi Penyata Bank", "Bank Statement Reconciliation")}
           </p>
-          <p className="mt-1 text-sm font-semibold text-neutral-300">
+          <p className="mt-1 max-w-2xl text-sm font-semibold text-[var(--muted)]">
             {tr(
               "Padankan rekod transaksi bank dengan rekod perbelanjaan MyPeribadi anda.",
               "Match your bank statement transactions with your MyPeribadi spending records."
@@ -546,7 +543,7 @@ export default function BankReconciliationPage() {
                 setFileName(null)
                 setRawTextContent("")
               }}
-              className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/20 active:scale-95"
+              className="flex items-center gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--text)] px-3 py-2 text-xs font-bold text-[var(--bg)] transition active:scale-95"
             >
               <RefreshCw size={13} />
               <span>{tr("Muat Naik Penyata Lain", "Upload Another Statement")}</span>
@@ -562,7 +559,7 @@ export default function BankReconciliationPage() {
       {/* ─── Uploader Section (When no statement loaded) ─── */}
       {bankTxns.length === 0 ? (
         <div className="space-y-4">
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] pb-4">
               <div>
                 <h3 className="text-sm font-black text-[var(--text)]">
@@ -574,7 +571,7 @@ export default function BankReconciliationPage() {
               </div>
 
               {/* Mode Toggle */}
-              <div className="flex gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-1">
+              <div className="flex gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface-tint)]/40 p-1">
                 <button
                   type="button"
                   onClick={() => setInputMode("file")}
@@ -621,8 +618,8 @@ export default function BankReconciliationPage() {
             )}
             {inputMode === "file" ? (
               <div className="">
-                <label className={cn("flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 transition", targetWalletId ? "cursor-pointer hover:border-[var(--border-strong)] active:scale-[0.99]" : "cursor-not-allowed opacity-50")}> 
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]">
+                <label className={cn("flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)]/20 p-6 text-center transition sm:p-8", targetWalletId ? "cursor-pointer hover:bg-[var(--surface-tint)]/40 active:scale-[0.99]" : "cursor-not-allowed opacity-50")}> 
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--text)]">
                     <FileSpreadsheet size={24} />
                   </div>
                   <p className="mt-3 text-sm font-bold text-[var(--text)]">
@@ -681,7 +678,7 @@ export default function BankReconciliationPage() {
         <div className="space-y-4">
           {/* Summary Stats Cards */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
               <p className="text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
                 {tr("Kadar Padanan", "Match Rate")}
               </p>
@@ -695,7 +692,7 @@ export default function BankReconciliationPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
               <p className="text-[0.625rem] font-bold uppercase tracking-wider text-amber-500">
                 {tr("Tertinggal Dlm MyPeribadi", "Missing in MyPeribadi")}
               </p>
@@ -704,7 +701,7 @@ export default function BankReconciliationPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
               <p className="text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
                 {tr("Jumlah Bank Keluar", "Bank Debit Total")}
               </p>
@@ -713,7 +710,7 @@ export default function BankReconciliationPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
               <p className="text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
                 {tr("Perbezaan Bersih", "Net Variance")}
               </p>
@@ -802,7 +799,7 @@ export default function BankReconciliationPage() {
           {activeTab === "missing_in_app" && (
             <div className="space-y-3">
               {reconResult.missingInApp.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center">
+                <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center">
                   <CheckCircle2 size={36} className="mx-auto text-emerald-500" />
                   <p className="mt-3 text-sm font-bold text-[var(--text)]">
                     {tr("Semua transaksi bank telah wujud dalam rekod MyPeribadi anda!", "All bank transactions are accounted for in your MyPeribadi records!")}
@@ -894,14 +891,14 @@ export default function BankReconciliationPage() {
           {activeTab === "matched" && (
             <div className="space-y-2.5">
               {reconResult.matched.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center text-xs font-bold text-[var(--muted)]">
+                <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center text-xs font-bold text-[var(--muted)]">
                   {tr("Tiada padanan ditemui lagi.", "No matched transactions found yet.")}
                 </div>
               ) : (
                 reconResult.matched.map((pair) => (
                   <div
                     key={pair.id}
-                    className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4"
+                    className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] p-4"
                   >
                     <div className="flex items-center justify-between border-b border-[var(--border)] pb-2.5">
                       <div className="flex items-center gap-2">
@@ -949,7 +946,7 @@ export default function BankReconciliationPage() {
           {activeTab === "missing_in_bank" && (
             <div className="space-y-2.5">
               {reconResult.missingInBank.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center text-xs font-bold text-[var(--muted)]">
+                <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center text-xs font-bold text-[var(--muted)]">
                   {tr("Tiada rekod tergantung dalam sistem MyPeribadi anda.", "No pending records in your MyPeribadi app.")}
                 </div>
               ) : (
@@ -958,7 +955,7 @@ export default function BankReconciliationPage() {
                   return (
                     <div
                       key={`app-missing-${txn.id}`}
-                      className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold", isExp ? "bg-rose-500/10 text-rose-500" : "bg-emerald-500/10 text-emerald-500")}>
