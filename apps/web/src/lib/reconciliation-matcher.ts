@@ -94,6 +94,24 @@ export function reconcileStatements(
 ): ReconciliationResult {
   const maxDays = options.maxDateToleranceDays ?? 3
 
+  // Maybank pre-authorisation is temporary: pair debit + refund first, then ignore both.
+  const cancelledPreAuthIds = new Set<string>()
+  bankTxns.forEach((debit) => {
+    if (cancelledPreAuthIds.has(debit.id) || debit.type !== "expense" || !/pre[- ]?auth/i.test(debit.description)) return
+    const refund = bankTxns.find((credit) =>
+      !cancelledPreAuthIds.has(credit.id) &&
+      credit.type === "income" &&
+      /pre[- ]?auth refund/i.test(credit.description) &&
+      Math.abs(credit.amount - debit.amount) < 0.01 &&
+      getDaysDiff(credit.date, debit.date) <= 7
+    )
+    if (refund) {
+      cancelledPreAuthIds.add(debit.id)
+      cancelledPreAuthIds.add(refund.id)
+    }
+  })
+  const effectiveBankTxns = bankTxns.filter((tx) => !cancelledPreAuthIds.has(tx.id))
+
   const matched: MatchedPair[] = []
   const usedAppTxnIds = new Set<string | number>()
   const usedBankTxnIds = new Set<string>()
@@ -103,7 +121,7 @@ export function reconcileStatements(
 
   // Scope the reverse check ("missing in bank") to the statement's date range.
   // App transactions outside the statement period are irrelevant, not missing.
-  const bankDates = bankTxns.map((t) => new Date(t.date).getTime()).filter((t) => !isNaN(t))
+  const bankDates = effectiveBankTxns.map((t) => new Date(t.date).getTime()).filter((t) => !isNaN(t))
   const rangeStart = bankDates.length ? Math.min(...bankDates) - maxDays * 86400000 : null
   const rangeEnd = bankDates.length ? Math.max(...bankDates) + maxDays * 86400000 : null
   const inRangeAppTxns = rangeStart === null ? [] : filteredAppTxns.filter((tx) => {
@@ -114,7 +132,7 @@ export function reconcileStatements(
 
   // 1. Primary identity: wallet (pre-filtered), absolute amount, exact date.
   // Bank direction remains authoritative for importing; it is not an identity field.
-  bankTxns.forEach((bankTxn) => {
+  effectiveBankTxns.forEach((bankTxn) => {
     if (usedBankTxnIds.has(bankTxn.id)) return
 
     const candidate = inRangeAppTxns.find((appTxn) => {
@@ -138,7 +156,7 @@ export function reconcileStatements(
   })
 
   // 2. Exact amount within settlement-date tolerance. Text breaks equal candidates.
-  bankTxns.forEach((bankTxn) => {
+  effectiveBankTxns.forEach((bankTxn) => {
     if (usedBankTxnIds.has(bankTxn.id)) return
 
     let bestCandidate: AppTransaction | null = null
@@ -174,7 +192,7 @@ export function reconcileStatements(
   })
 
   // 3. Wider settlement window requires description evidence
-  bankTxns.forEach((bankTxn) => {
+  effectiveBankTxns.forEach((bankTxn) => {
     if (usedBankTxnIds.has(bankTxn.id)) return
 
     let bestCandidate: AppTransaction | null = null
@@ -215,14 +233,14 @@ export function reconcileStatements(
   })
 
   // Unmatched bank transactions (Missing in App)
-  const missingInApp = bankTxns.filter((b) => !usedBankTxnIds.has(b.id))
+  const missingInApp = effectiveBankTxns.filter((b) => !usedBankTxnIds.has(b.id))
 
   // Unmatched app transactions (Missing in Statement) — statement period only
   const missingInBank = inRangeAppTxns.filter((a) => !usedAppTxnIds.has(a.id))
 
   // Calculate totals
-  const bankDebitTotal = bankTxns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0)
-  const bankCreditTotal = bankTxns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0)
+  const bankDebitTotal = effectiveBankTxns.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0)
+  const bankCreditTotal = effectiveBankTxns.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0)
   const appExpenseTotal = inRangeAppTxns.filter((t) => t.type === "expense").reduce((s, t) => s + Number(t.amount || 0), 0)
   const appIncomeTotal = inRangeAppTxns.filter((t) => t.type === "income").reduce((s, t) => s + Number(t.amount || 0), 0)
 
@@ -230,7 +248,7 @@ export function reconcileStatements(
   const appNet = appIncomeTotal - appExpenseTotal
   const netVariance = bankNet - appNet
 
-  const totalBankTxns = bankTxns.length
+  const totalBankTxns = effectiveBankTxns.length
   const totalAppTxns = inRangeAppTxns.length
   const matchedCount = matched.length
   const matchRatePercent = totalBankTxns > 0 ? Math.round((matchedCount / totalBankTxns) * 100) : 0
