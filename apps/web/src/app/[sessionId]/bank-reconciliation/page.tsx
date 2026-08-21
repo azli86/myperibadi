@@ -101,12 +101,7 @@ export default function BankReconciliationPage() {
   const [appTransactions, setAppTransactions] = useState<AppTransaction[]>([])
   const [loadingInitial, setLoadingInitial] = useState(true)
 
-  // Filters & Setup
-  const [selectedWalletId, setSelectedWalletId] = useState<number | "all">("all")
-  const [selectedMonth, setSelectedMonth] = useState<string>(() => {
-    const now = new Date()
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
-  })
+  // Reconciliation checks every app transaction. Wallet is chosen only when importing.
 
   // Input Mode (file vs paste)
   const [inputMode, setInputMode] = useState<"file" | "paste">("file")
@@ -139,6 +134,7 @@ export default function BankReconciliationPage() {
   // Batch Selection
   const [selectedMissingIds, setSelectedMissingIds] = useState<Set<string>>(new Set())
   const [batchImporting, setBatchImporting] = useState(false)
+  const [batchWalletId, setBatchWalletId] = useState<number | "">("")
 
   const getAuthHeaders = (): Record<string, string> => {
     const token = getAccessToken()
@@ -201,20 +197,7 @@ export default function BankReconciliationPage() {
     loadData()
   }, [])
 
-  // Filter app transactions according to selected wallet and month
-  const filteredAppTransactions = useMemo(() => {
-    return appTransactions.filter((tx) => {
-      if (selectedWalletId !== "all" && tx.wallet_id !== selectedWalletId) {
-        return false
-      }
-      if (selectedMonth && tx.date) {
-        if (!tx.date.startsWith(selectedMonth)) {
-          return false
-        }
-      }
-      return true
-    })
-  }, [appTransactions, selectedWalletId, selectedMonth])
+  const filteredAppTransactions = appTransactions
 
   // Process File Upload (CSV, TSV, TXT, PDF)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -348,6 +331,10 @@ export default function BankReconciliationPage() {
   // Single Add to App
   const handleQuickAdd = async () => {
     if (!quickAddTxn) return
+    if (!quickAddWalletId) {
+      showAlert(tr("Pilih Bank", "Select Bank"), tr("Pilih dompet atau akaun bank sebelum menyimpan.", "Select a wallet or bank account before saving."), "warning")
+      return
+    }
     setQuickAddSaving(true)
 
     try {
@@ -359,7 +346,7 @@ export default function BankReconciliationPage() {
         notes: `Rekonsiliasi Bank: ${quickAddTxn.description}`,
         txn_date: quickAddTxn.date,
         category_id: quickAddCategoryId ? Number(quickAddCategoryId) : null,
-        wallet_id: quickAddWalletId ? Number(quickAddWalletId) : selectedWalletId !== "all" ? Number(selectedWalletId) : null,
+        wallet_id: Number(quickAddWalletId),
       }
 
       const res = await fetch("/api/transactions", {
@@ -406,6 +393,10 @@ export default function BankReconciliationPage() {
   // Batch Import Selected Missing Transactions
   const handleBatchImport = () => {
     const toImport = reconResult.missingInApp.filter((t) => selectedMissingIds.has(t.id))
+    if (!batchWalletId) {
+      showAlert(tr("Pilih Bank", "Select Bank"), tr("Pilih dompet atau akaun bank untuk transaksi yang akan diimport.", "Select the wallet or bank account for imported transactions."), "warning")
+      return
+    }
     if (toImport.length === 0) {
       showAlert(tr("Perhatian", "Notice"), tr("Tiada transaksi yang dipilih untuk diimport.", "No transactions selected for import."), "warning")
       return
@@ -432,7 +423,7 @@ export default function BankReconciliationPage() {
               notes: `Import Penyata: ${item.description}`,
               txn_date: item.date,
               category_id: null,
-              wallet_id: selectedWalletId !== "all" ? Number(selectedWalletId) : null,
+              wallet_id: Number(batchWalletId),
             }
 
             const res = await fetch("/api/transactions", {
@@ -521,53 +512,6 @@ export default function BankReconciliationPage() {
       </div>
 
       <div className="mx-auto max-w-5xl space-y-6 px-4 md:px-0">
-        {/* ─── Setup Controls Card ─── */}
-        <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-xs">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-            {/* Wallet Selection */}
-            <div>
-              <label className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">
-                {tr("Dompet / Bank Sasaran", "Target Wallet / Bank")}
-              </label>
-              <select
-                value={selectedWalletId}
-                onChange={(e) => setSelectedWalletId(e.target.value === "all" ? "all" : Number(e.target.value))}
-                className="mt-1.5 h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-sm font-semibold text-[var(--text)] outline-none"
-              >
-                <option value="all">{tr("Semua Dompet", "All Wallets")}</option>
-                {wallets.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.label || w.name} ({w.type?.toUpperCase() || "BANK"})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Month Range Selection */}
-            <div>
-              <label className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">
-                {tr("Bulan Transaksi", "Transaction Month")}
-              </label>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                className="mt-1.5 h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-sm font-semibold text-[var(--text)] outline-none"
-              />
-            </div>
-
-            {/* Active App Txns Info */}
-            <div className="flex flex-col justify-end">
-              <div className="flex h-11 items-center justify-between rounded-xl bg-[var(--surface-tint)]/30 px-3.5 text-xs font-bold text-[var(--muted)]">
-                <span>{tr("Rekod Bajet Dijumpai", "App Records Loaded")}:</span>
-                <span className="rounded-md bg-[var(--card)] px-2 py-0.5 font-mono text-[var(--text)]">
-                  {filteredAppTransactions.length} {tr("rekod", "txns")}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* ─── Statement Uploader / Input Panel ─── */}
         {bankTxns.length === 0 ? (
           <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
@@ -785,6 +729,15 @@ export default function BankReconciliationPage() {
 
               {/* Batch Import Button */}
               {activeTab === "missing_in_app" && reconResult.summary.missingInAppCount > 0 && (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={batchWalletId}
+                    onChange={(e) => setBatchWalletId(e.target.value ? Number(e.target.value) : "")}
+                    className="h-9 max-w-44 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs font-bold text-[var(--text)] outline-none"
+                  >
+                    <option value="">{tr("Pilih bank...", "Select bank...")}</option>
+                    {wallets.map((w) => <option key={w.id} value={w.id}>{w.label || w.name}</option>)}
+                  </select>
                 <button
                   type="button"
                   onClick={handleBatchImport}
@@ -794,6 +747,7 @@ export default function BankReconciliationPage() {
                   <Plus size={14} strokeWidth={2.5} />
                   <span>{batchImporting ? tr("Mengimport...", "Importing...") : tr(`Import ${selectedMissingIds.size} Yang Dipilih`, `Import ${selectedMissingIds.size} Selected`)}</span>
                 </button>
+                </div>
               )}
             </div>
 
@@ -1165,7 +1119,7 @@ export default function BankReconciliationPage() {
                 onChange={(e) => setQuickAddWalletId(e.target.value ? Number(e.target.value) : "")}
                 className="mt-1.5 h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-sm font-semibold text-[var(--text)] outline-none"
               >
-                <option value="">{tr("Guna Dompet Lalai", "Use Default Wallet")}</option>
+                <option value="">{tr("Pilih Bank / Dompet...", "Select Bank / Wallet...")}</option>
                 {wallets.map((w) => (
                   <option key={w.id} value={w.id}>
                     {w.label || w.name}
@@ -1185,7 +1139,7 @@ export default function BankReconciliationPage() {
               <button
                 type="button"
                 onClick={handleQuickAdd}
-                disabled={quickAddSaving}
+                disabled={quickAddSaving || !quickAddWalletId}
                 className="h-11 flex-1 rounded-xl bg-[var(--text)] text-xs font-black text-[var(--bg)] transition active:scale-98 disabled:opacity-50"
               >
                 {quickAddSaving ? tr("Menyimpan...", "Saving...") : tr("Simpan Transaksi", "Save Transaction")}
