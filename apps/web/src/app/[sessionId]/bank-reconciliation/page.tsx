@@ -125,6 +125,8 @@ export default function BankReconciliationPage() {
   const [selectedMissingIds, setSelectedMissingIds] = useState<Set<string>>(new Set())
   const [batchImporting, setBatchImporting] = useState(false)
   const [batchWalletId, setBatchWalletId] = useState<number | "">("")
+  // Wallet chosen before upload; pre-fills import targets and scopes the check
+  const [targetWalletId, setTargetWalletId] = useState<number | "">("")
 
   // Scanning animation steps timer
   useEffect(() => {
@@ -239,15 +241,25 @@ export default function BankReconciliationPage() {
     loadData()
   }, [])
 
-  const filteredAppTransactions = appTransactions
+  const filteredAppTransactions = useMemo(
+    () => targetWalletId ? appTransactions.filter((tx) => Number(tx.wallet_id) === Number(targetWalletId)) : [],
+    [appTransactions, targetWalletId]
+  )
 
   // Process File Upload (CSV, TSV, TXT, PDF)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    if (!targetWalletId) {
+      showAlert(tr("Pilih Bank", "Select Bank"), tr("Pilih akaun bank sebelum memuat naik penyata.", "Select the bank account before uploading a statement."), "warning")
+      e.target.value = ""
+      return
+    }
 
     const isPdf = file.name.toLowerCase().endsWith(".pdf")
     setFileName(file.name)
+    setBatchWalletId(targetWalletId)
+    setQuickAddWalletId(targetWalletId)
     setIsProcessing(true)
 
     if (isPdf) {
@@ -319,6 +331,10 @@ export default function BankReconciliationPage() {
 
   // Process Pasted Text
   const handleProcessText = async () => {
+    if (!targetWalletId) {
+      showAlert(tr("Pilih Bank", "Select Bank"), tr("Pilih akaun bank sebelum memproses penyata.", "Select the bank account before processing a statement."), "warning")
+      return
+    }
     if (!rawTextContent.trim()) {
       showAlert(tr("Perhatian", "Notice"), tr("Sila tampal teks penyata bank terlebih dahulu.", "Please paste bank statement text first."), "warning")
       return
@@ -329,6 +345,8 @@ export default function BankReconciliationPage() {
       setBankTxns(result.transactions)
       setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
       setFileName("Teks Penyata Bank")
+      setBatchWalletId(targetWalletId)
+      setQuickAddWalletId(targetWalletId)
     } catch (err: any) {
       showAlert(tr("Ralat Membaca Penyata", "Statement Reading Error"), err.message, "error")
     } finally {
@@ -583,9 +601,28 @@ export default function BankReconciliationPage() {
               </div>
             </div>
 
-            {inputMode === "file" ? (
+            {(
               <div className="mt-5">
-                <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 transition hover:border-[var(--border-strong)] active:scale-[0.99]">
+                <label className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">
+                  {tr("Akaun Bank / Dompet Sasaran", "Target Bank Account / Wallet")}
+                </label>
+                <select
+                  value={targetWalletId}
+                  onChange={(e) => setTargetWalletId(e.target.value ? Number(e.target.value) : "")}
+                  className="mt-1.5 mb-4 h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-sm font-semibold text-[var(--text)] outline-none"
+                >
+                  <option value="">{tr("Pilih akaun bank dahulu...", "Select a bank account first...")}</option>
+                  {wallets.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.label || w.name} ({w.type?.toUpperCase() || "BANK"})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {inputMode === "file" ? (
+              <div className="">
+                <label className={cn("flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 transition", targetWalletId ? "cursor-pointer hover:border-[var(--border-strong)] active:scale-[0.99]" : "cursor-not-allowed opacity-50")}> 
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]">
                     <FileSpreadsheet size={24} />
                   </div>
@@ -599,6 +636,7 @@ export default function BankReconciliationPage() {
                     type="file"
                     accept=".pdf,.csv,.tsv,.txt"
                     onChange={handleFileUpload}
+                    disabled={!targetWalletId}
                     className="hidden"
                   />
                 </label>
@@ -618,7 +656,7 @@ export default function BankReconciliationPage() {
                 <button
                   type="button"
                   onClick={handleProcessText}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !targetWalletId}
                   className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--text)] text-xs font-black uppercase tracking-wider text-[var(--bg)] transition active:scale-98"
                 >
                   <Sparkles size={15} />
