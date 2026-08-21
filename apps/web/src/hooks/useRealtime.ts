@@ -11,46 +11,40 @@ import { getAccessToken } from "@/lib/auth-session"
  * Mount this ONCE in the Shell layout so every page under it receives updates.
  * The auth cookie is same-origin so EventSource sends it automatically.
  */
-export function useRealtime({ enabled = true }: { enabled?: boolean } = {}) {
+export function useRealtime({ enabled = false }: { enabled?: boolean } = {}) {
   useEffect(() => {
     if (!enabled) return
     let source: EventSource | null = null
-    let retryTimer: ReturnType<typeof setTimeout> | null = null
     let closed = false
 
-    const connect = () => {
-      if (closed) return
-      try {
-        source = new EventSource(`/api/events?access_token=${encodeURIComponent(getAccessToken() || "")}`)
-        source.addEventListener("ready", () => {})
-        source.onmessage = (evt) => {
-          try {
-            const payload = JSON.parse(evt.data)
-            const resource = payload?.resource || ""
-            window.dispatchEvent(
-              new CustomEvent("app:data-changed", { detail: { resource, event: payload?.event, data: payload?.data } }),
-            )
-          } catch {}
-        }
-        source.onerror = () => {
-          source?.close()
-          source = null
-          // Auto-reconnect with backoff.
-          if (!closed) {
-            retryTimer = setTimeout(connect, 5000)
-          }
-        }
-      } catch {
-        retryTimer = setTimeout(connect, 5000)
+    // If an SSE endpoint is implemented in the future, connect with strict failure cutoff
+    const token = getAccessToken()
+    if (!token) return
+
+    try {
+      source = new EventSource(`/api/events?access_token=${encodeURIComponent(token)}`)
+      source.onmessage = (evt) => {
+        try {
+          const payload = JSON.parse(evt.data)
+          const resource = payload?.resource || ""
+          window.dispatchEvent(
+            new CustomEvent("app:data-changed", { detail: { resource, event: payload?.event, data: payload?.data } }),
+          )
+        } catch {}
       }
+      source.onerror = () => {
+        // Disconnect immediately on failure and do not reconnect in a loop
+        source?.close()
+        source = null
+      }
+    } catch {
+      // Do not retry in loop if not supported
     }
 
-    connect()
     return () => {
       closed = true
       source?.close()
       source = null
-      if (retryTimer) clearTimeout(retryTimer)
     }
   }, [enabled])
 }
