@@ -870,11 +870,11 @@ export default function BankReconciliationPage() {
                         <div
                           key={txn.id}
                           className={cn(
-                            "grid grid-cols-[auto_1fr] gap-3 rounded-xl border p-3 transition sm:flex sm:items-center sm:justify-between sm:p-4",
-                            isSelected ? "border-[var(--border-strong)] bg-[var(--card)]" : "border-[var(--border)] bg-[var(--card)]/70 opacity-85"
+                            "rounded-xl border p-3.5 transition",
+                            isSelected ? "border-[var(--border-strong)] bg-[var(--card)]" : "border-[var(--border)] bg-[var(--card)]/70"
                           )}
                         >
-                          <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex items-center gap-3">
                             <input
                               type="checkbox"
                               checked={isSelected}
@@ -884,33 +884,33 @@ export default function BankReconciliationPage() {
                                 else next.delete(txn.id)
                                 setSelectedMissingIds(next)
                               }}
-                              className="h-4 w-4 rounded accent-[var(--text)] cursor-pointer"
+                              className="h-5 w-5 shrink-0 cursor-pointer rounded-md accent-[var(--text)]"
                             />
 
-                            <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold", isExp ? "bg-rose-500/10 text-rose-500" : "bg-emerald-500/10 text-emerald-500")}>
-                              {isExp ? <ArrowDownRight size={17} /> : <ArrowUpRight size={17} />}
+                            <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold", isExp ? "bg-rose-500/10 text-rose-500" : "bg-emerald-500/10 text-emerald-500")}>
+                              {isExp ? <ArrowDownRight size={18} /> : <ArrowUpRight size={18} />}
                             </div>
 
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-black tracking-tight text-[var(--text)]">{txn.description}</p>
-                              <p className="text-[0.6875rem] font-semibold text-[var(--muted)]">
-                                {txn.date} · {isExp ? tr("Perbelanjaan (Debit)", "Expense (Debit)") : tr("Pendapatan (Kredit)", "Income (Credit)")}
+                            <div className="min-w-0 flex-1">
+                              <p className="line-clamp-2 text-[0.8125rem] font-bold leading-tight text-[var(--text)]">{txn.description}</p>
+                              <p className="mt-0.5 text-[0.6875rem] font-semibold text-[var(--muted)]">
+                                {txn.date} · {isExp ? tr("Debit", "Debit") : tr("Kredit", "Credit")}
                               </p>
                             </div>
                           </div>
 
-                          <div className="col-start-2 flex items-center justify-between gap-3 sm:col-auto sm:shrink-0">
-                            <span className={cn("text-sm font-black tabular-nums", isExp ? "text-rose-500" : "text-emerald-500")}>
+                          <div className="mt-2.5 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-2.5">
+                            <span className={cn("text-base font-black tabular-nums", isExp ? "text-rose-500" : "text-emerald-500")}>
                               {isExp ? "-" : "+"}RM {txn.amount.toFixed(2)}
                             </span>
 
                             <button
                               type="button"
                               onClick={() => setQuickAddTxn(txn)}
-                              className="flex items-center gap-1 rounded-xl bg-[var(--surface-tint)] px-3 py-1.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--border)] active:scale-95"
+                              className="flex h-8 items-center gap-1 rounded-lg bg-[var(--text)] px-3 text-xs font-black text-[var(--bg)] transition active:scale-95"
                             >
                               <Plus size={13} strokeWidth={2.5} />
-                              <span className="hidden sm:inline">{tr("Tambah", "Add")}</span>
+                              <span>{tr("Tambah", "Add")}</span>
                             </button>
                           </div>
                         </div>
@@ -952,7 +952,7 @@ export default function BankReconciliationPage() {
                       </span>
                     </div>
 
-                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="mt-3 space-y-2 sm:grid sm:grid-cols-2 sm:gap-3 sm:space-y-0">
                       <div className="rounded-xl bg-[var(--surface-tint)]/25 p-3 text-xs">
                         <p className="font-mono text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
                           {tr("Penyata Bank", "Bank Statement")}
@@ -990,23 +990,24 @@ export default function BankReconciliationPage() {
                   return (
                     <div
                       key={`app-missing-${txn.id}`}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4"
+                      className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3.5"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-bold", isExp ? "bg-rose-500/10 text-rose-500" : "bg-emerald-500/10 text-emerald-500")}>
-                          {isExp ? <ArrowDownRight size={17} /> : <ArrowUpRight size={17} />}
+                      <div className="flex items-center gap-3">
+                        <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold", isExp ? "bg-rose-500/10 text-rose-500" : "bg-emerald-500/10 text-emerald-500")}>
+                          {isExp ? <ArrowDownRight size={18} /> : <ArrowUpRight size={18} />}
                         </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-[var(--text)]">{txn.description || "Transaksi"}</p>
-                          <p className="text-[0.6875rem] font-semibold text-[var(--muted)]">
-                            {txn.date} · {txn.category_name || "Tanpa Kategori"}
+                        <div className="min-w-0 flex-1">
+                          <p className="line-clamp-2 text-[0.8125rem] font-bold leading-tight text-[var(--text)]">{txn.description || "Transaksi"}</p>
+                          <p className="mt-0.5 text-[0.6875rem] font-semibold text-[var(--muted)]">
+                            {txn.date} · {txn.category_name || tr("Tanpa Kategori", "No Category")}
                           </p>
                         </div>
                       </div>
-
-                      <span className={cn("text-sm font-black tabular-nums shrink-0", isExp ? "text-rose-500" : "text-emerald-500")}>
-                        {isExp ? "-" : "+"}RM {Number(txn.amount || 0).toFixed(2)}
-                      </span>
+                      <div className="mt-2.5 flex items-center justify-end border-t border-[var(--border)] pt-2.5">
+                        <span className={cn("text-base font-black tabular-nums", isExp ? "text-rose-500" : "text-emerald-500")}>
+                          {isExp ? "-" : "+"}RM {Number(txn.amount || 0).toFixed(2)}
+                        </span>
+                      </div>
                     </div>
                   )
                 })
