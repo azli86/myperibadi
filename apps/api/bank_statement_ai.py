@@ -51,7 +51,7 @@ async def parse_statement(text: str, page_images: list[str] | None = None) -> li
         "response_format": {"type": "json_object"},
         "messages": [{"role": "user", "content": user_content}],
     }
-    async with httpx.AsyncClient(timeout=120) as client:
+    async with httpx.AsyncClient(timeout=300) as client:
         response = await client.post(f"{base_url}/chat/completions", headers={"Authorization": f"Bearer {api_key}"}, json=body)
         response.raise_for_status()
     content_out = response.json()["choices"][0]["message"]["content"]

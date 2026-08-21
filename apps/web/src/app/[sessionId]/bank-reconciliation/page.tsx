@@ -148,19 +148,27 @@ export default function BankReconciliationPage() {
   }
 
   const parseStatementWithAi = async (text: string, pageImages: string[] = []) => {
-    const response = await fetch("/api/bank-reconciliation/parse", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-      body: JSON.stringify({ text, page_images: pageImages }),
-    })
-    if (!response.ok) {
-      const fallback = parseTextStatement(text)
-      if (fallback.transactions.length) return fallback
-      throw new Error((await response.json().catch(() => null))?.detail || tr("AI gagal membaca penyata.", "AI failed to read the statement."))
+    const batches = pageImages.length ? Array.from({ length: Math.ceil(pageImages.length / 2) }, (_, i) => pageImages.slice(i * 2, i * 2 + 2)) : [[]]
+    const transactions: BankTransactionRow[] = []
+    for (const images of batches) {
+      const response = await fetch("/api/bank-reconciliation/parse", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ text: images.length ? "" : text, page_images: images }),
+      })
+      if (!response.ok) {
+        const detail = (await response.json().catch(() => null))?.detail
+        if (!pageImages.length) {
+          const fallback = parseTextStatement(text)
+          if (fallback.transactions.length) return fallback
+        }
+        throw new Error(detail || tr("AI gagal membaca penyata.", "AI failed to read the statement."))
+      }
+      const data = await response.json()
+      if (Array.isArray(data.transactions)) transactions.push(...data.transactions)
     }
-    const data = await response.json()
-    return { transactions: Array.isArray(data.transactions) ? (data.transactions as BankTransactionRow[]) : [] }
+    return { transactions }
   }
 
 

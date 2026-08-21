@@ -72,14 +72,14 @@ export async function extractTextFromPdf(
       pagesText.push(pageLines.join("\n"))
 
       // Preserve table layout for Vision; plain PDF text loses debit/credit columns.
-      const viewport = page.getViewport({ scale: 2.5 })
+      const viewport = page.getViewport({ scale: 1.6 })
       const canvas = document.createElement("canvas")
       canvas.width = Math.ceil(viewport.width)
       canvas.height = Math.ceil(viewport.height)
       const context = canvas.getContext("2d")
       if (context) {
         await page.render({ canvas, canvasContext: context, viewport }).promise
-        pageImages.push(canvas.toDataURL("image/jpeg", 0.8))
+        pageImages.push(canvas.toDataURL("image/jpeg", 0.6))
       }
     }
 
