@@ -28,6 +28,7 @@ import {
   UploadCloud,
   FileText,
   ScanLine,
+  Landmark,
 } from "lucide-react"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
@@ -610,7 +611,8 @@ export default function BankReconciliationPage() {
                 <select
                   value={targetWalletId}
                   onChange={(e) => setTargetWalletId(e.target.value ? Number(e.target.value) : "")}
-                  className="mt-1.5 mb-4 h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-sm font-semibold text-[var(--text)] outline-none"
+                  disabled={isProcessing || bankTxns.length > 0}
+                  className="mt-1.5 mb-4 h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-sm font-semibold text-[var(--text)] outline-none disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <option value="">{tr("Pilih akaun bank dahulu...", "Select a bank account first...")}</option>
                   {wallets.map((w) => (
@@ -681,6 +683,33 @@ export default function BankReconciliationPage() {
       ) : (
         /* ─── Reconciliation Results Section ─── */
         <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]">
+                <Landmark size={19} />
+              </div>
+              <div>
+                <p className="text-[0.65rem] font-black uppercase tracking-wider text-[var(--muted)]">{tr("Wallet Dikunci", "Wallet Locked")}</p>
+                <p className="text-sm font-black text-[var(--text)]">{wallets.find((w) => Number(w.id) === Number(targetWalletId))?.label || wallets.find((w) => Number(w.id) === Number(targetWalletId))?.name || "—"}</p>
+                <p className="text-[0.68rem] font-semibold text-[var(--muted)]">{fileName}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setBankTxns([])
+                setFileName(null)
+                setRawTextContent("")
+                setTargetWalletId("")
+                setBatchWalletId("")
+                setQuickAddWalletId("")
+              }}
+              className="rounded-lg border border-[var(--border)] px-3 py-2 text-xs font-black text-[var(--text)]"
+            >
+              {tr("Tukar Wallet", "Change Wallet")}
+            </button>
+          </div>
+
           {/* Summary Stats Cards */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4">
