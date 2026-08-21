@@ -103,18 +103,31 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                         break
                 if header_idx is None:
                     continue
+                expanded_rows: list[list[str]] = []
                 for row in rows[header_idx + 1 :]:
-                    cells = [(str(c).strip() if c else "") for c in row]
+                    split_cells = [[part.strip() for part in str(cell or "").splitlines()] for cell in row]
+                    line_count = max((len(parts) for parts in split_cells), default=0)
+                    for line_index in range(line_count):
+                        expanded_rows.append([parts[line_index] if line_index < len(parts) else "" for parts in split_cells])
+                previous_date: str | None = None
+                for cells in expanded_rows:
                     if len(cells) < 3:
                         continue
-                    # locate date cell
+                    # Statements often print the date once, followed by same-day transaction rows.
                     date_str = None
                     date_col = None
                     for col, cell in enumerate(cells):
-                        if cell and DATE_HINT.fullmatch(cell.strip()):
-                            date_str = _parse_date(cell.strip())
+                        match = DATE_HINT.search(cell)
+                        if match:
+                            date_str = _parse_date(match.group(0))
                             date_col = col
                             break
+                    if date_str:
+                        previous_date = date_str
+                    else:
+                        date_str = previous_date
+                    if not date_str:
+                        continue
                     if not date_str:
                         continue
                     debit_val = _parse_amount(cells[debit_col]) if debit_col is not None and debit_col < len(cells) else None
@@ -135,7 +148,7 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                     elif amount_val is not None and amount_val != 0:
                         amount = abs(amount_val)
                         txn_type = "expense" if amount_val < 0 else "income"
-                    if amount is None or txn_type is None or not description:
+                    if amount is None or txn_type is None or not description or not date_str:
                         continue
                     if amount <= 0 or amount > Decimal("9999999999"):
                         continue
