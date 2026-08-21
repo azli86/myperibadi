@@ -3,6 +3,7 @@
 import { getAccessToken } from "@/lib/auth-session"
 import { currentCycleKey, cycleMonthBounds, categoryCycleKeyForRef, categoryCycleMonthBounds } from "@/lib/cycle"
 import React, { useState, useEffect, useRef, useMemo } from "react"
+import { createPortal } from "react-dom"
 import {
  Search,
  Banknote,
@@ -18,6 +19,9 @@ import {
  ArrowDown,
  ChevronUp,
  X,
+ Trash2,
+ AlertTriangle,
+ Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Doughnut, Bar } from "react-chartjs-2"
@@ -268,6 +272,196 @@ function getTransferSummaryLabel(amount: number) {
  return `↔ RM ${formatCurrencyAmount(amount)}`
 }
 
+function SwipeableTransactionItem({
+  tx,
+  isLight,
+  timeFormat,
+  timezone,
+  lang,
+  langT,
+  showDataSkeleton,
+  walletText,
+  onClick,
+  onSwipeDelete,
+}: {
+  tx: TransactionRecord
+  isLight: boolean
+  timeFormat: string
+  timezone: string
+  lang: string
+  langT: any
+  showDataSkeleton: boolean
+  walletText: string
+  onClick: () => void
+  onSwipeDelete: () => void
+}) {
+  const [dragOffset, setDragOffset] = useState(0)
+  const [isSwiping, setIsSwiping] = useState(false)
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null)
+  const swipedRef = useRef(false)
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      time: Date.now(),
+    }
+    swipedRef.current = false
+    setIsSwiping(false)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return
+    const dx = e.touches[0].clientX - touchStartRef.current.x
+    const dy = e.touches[0].clientY - touchStartRef.current.y
+
+    // If scrolling mostly vertically, do not swipe
+    if (Math.abs(dy) > Math.abs(dx) && !isSwiping) return
+
+    // Require slight initial movement before starting horizontal swipe
+    if (dx < -8) {
+      const clamped = Math.max(dx, -100)
+      setDragOffset(clamped)
+      setIsSwiping(true)
+      if (dx < -30) {
+        swipedRef.current = true
+      }
+    } else if (dx >= 0) {
+      setDragOffset(0)
+      setIsSwiping(false)
+    }
+  }
+
+  const handleTouchEnd = () => {
+    // Only open popup if slided all the way to reveal full delete button (>= 82px)
+    if (dragOffset <= -82) {
+      onSwipeDelete()
+    }
+    setDragOffset(0)
+    setIsSwiping(false)
+    touchStartRef.current = null
+  }
+
+  const handleClick = () => {
+    if (swipedRef.current) {
+      swipedRef.current = false
+      return
+    }
+    onClick()
+  }
+
+  return (
+    <div className="relative overflow-hidden bg-[var(--card)]">
+      <div
+        onClick={onSwipeDelete}
+        className="absolute inset-y-0 right-0 flex w-24 cursor-pointer items-center justify-center gap-1.5 bg-rose-500 px-3 text-white transition-opacity active:bg-rose-600"
+        style={{
+          opacity: dragOffset < -15 ? Math.min(1, Math.abs(dragOffset) / 60) : 0,
+        }}
+      >
+        <Trash2 size={16} strokeWidth={2.5} />
+        <span className="text-[0.6875rem] font-black uppercase tracking-wider">
+          {lang === "EN" ? "Delete" : "Padam"}
+        </span>
+      </div>
+
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        style={{
+          transform: `translateX(${dragOffset}px)`,
+          transition: isSwiping ? "none" : "transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
+        className="relative bg-[var(--card)]"
+      >
+        <button
+          type="button"
+          onClick={handleClick}
+          className="flex w-full items-start gap-2.5 px-4 py-4 text-left transition active:opacity-80 select-none"
+        >
+          <div
+            className={cn(
+              "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center transition-transform active:scale-95",
+              isTransferTransaction(tx)
+                ? (isLight ? TRANSFER_LIGHT_TEXT : TRANSFER_DARK_TEXT)
+                : tx.type === "income"
+                ? (isLight ? "text-emerald-500" : "text-emerald-400/80")
+                : (isLight ? "text-rose-500" : "text-rose-400/80"),
+            )}
+          >
+            {tx.category_name || tx.category_icon_name ? (
+              <CategoryIconGlyph
+                iconName={tx.category_icon_name}
+                categoryName={tx.category_name}
+                kind={tx.type}
+                size={22}
+                brandScale={1}
+                brandFramed={false}
+                brandFill
+              />
+            ) : tx.type === "income" ? (
+              <Banknote size={19} />
+            ) : (
+              <Receipt size={19} />
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[0.86rem] font-bold text-[var(--text)]">
+              {getTransactionCategoryLabel(tx, langT.uncategorized)}
+            </p>
+            <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
+              {splitWalletTaggedDescription(tx.vendor_or_source || "", tx.wallet_name).title || tx.vendor_or_source || langT.noDescription}
+            </p>
+            <div className="mt-1">
+              <span className={cn("text-[0.5625rem] font-medium", isLight ? "text-slate-500" : "text-[var(--muted)]/60")}>
+                {(() => {
+                  try {
+                    if (tx.txn_time) {
+                      const [h, m] = tx.txn_time.split(':').map(Number)
+                      if (!isNaN(h) && !isNaN(m)) {
+                        return new Date(Date.UTC(1970, 0, 1, h, m)).toLocaleTimeString(lang === 'EN' ? 'en-MY' : 'ms-MY', { hour: '2-digit', minute: '2-digit', hour12: timeFormat === '12h', timeZone: 'UTC' })
+                      }
+                    }
+                    const rawDate = tx.created_at || tx.txn_date;
+                    if (!rawDate) return ""
+                    const dateStr = rawDate.includes('Z') || rawDate.includes('+') ? rawDate : (rawDate.includes('T') || rawDate.includes(' ') ? `${rawDate.replace(' ', 'T')}Z` : `${rawDate}T00:00:00Z`);
+                    const dateObj = new Date(dateStr);
+                    return dateObj.toLocaleTimeString(lang === 'EN' ? 'en-MY' : 'ms-MY', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      hour12: timeFormat === '12h',
+                      timeZone: timezone
+                    });
+                  } catch { return "" }
+                })()}
+              </span>
+            </div>
+          </div>
+
+          <div
+            className={cn(
+              "shrink-0 text-right text-[0.86rem] font-medium tabular-nums",
+              isTransferTransaction(tx)
+                ? (isLight ? TRANSFER_LIGHT_TEXT : TRANSFER_DARK_TEXT)
+                : tx.type === "income"
+                ? (isLight ? "text-emerald-500" : "text-emerald-400/80")
+                : (isLight ? "text-rose-500" : "text-rose-400/80"),
+            )}
+          >
+            {showDataSkeleton ? <AmountSkeleton className="h-3 w-20" /> : getTransactionAmountLabel(tx)}
+            <span className="mt-0.5 block truncate text-[0.625rem] font-medium text-[var(--muted)]">
+              {walletText}
+            </span>
+          </div>
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function TransactionsPage() {
  const params = useParams()
  const router = useRouter()
@@ -306,6 +500,68 @@ export default function TransactionsPage() {
  const [activeDailyBarIndex, setActiveDailyBarIndex] = useState<number | null>(null)
  const [isMobileViewport, setIsMobileViewport] = useState(false)
  const [mobileDetailId, setMobileDetailId] = useState<string | number | null>(null)
+ const [mounted, setMounted] = useState(false)
+ const [txnToDelete, setTxnToDelete] = useState<TransactionRecord | null>(null)
+ const [deletingTxn, setDeletingTxn] = useState(false)
+
+ useEffect(() => {
+   setMounted(true)
+ }, [])
+
+ useEffect(() => {
+   if (!txnToDelete) return
+   const hidden = true
+   document.body.style.overflow = "hidden"
+   window.dispatchEvent(
+     new CustomEvent("portal:mobile-bottom-nav-visibility", {
+       detail: { hidden }
+     })
+   )
+   return () => {
+     document.body.style.overflow = ""
+     window.dispatchEvent(
+       new CustomEvent("portal:mobile-bottom-nav-visibility", {
+         detail: { hidden: false }
+       })
+     )
+   }
+ }, [txnToDelete])
+
+ const confirmDeleteTxn = async () => {
+   if (!txnToDelete) return
+   setDeletingTxn(true)
+   try {
+     const token = getAccessToken()
+     const deleteId = txnToDelete.id
+     const res = await fetch(`/api/transactions/${deleteId}`, {
+       credentials: "include",
+       method: "DELETE",
+       headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+     })
+     if (res.ok) {
+       setTransactions(prev => prev.filter(t => t.id !== txnToDelete.id && t.reference_id !== txnToDelete.reference_id))
+       setTxnToDelete(null)
+       showAlert(
+         lang === "EN" ? "Deleted" : "Berjaya Dipadam",
+         lang === "EN" ? "Transaction deleted successfully." : "Transaksi berjaya dipadam.",
+         "success"
+       )
+     } else {
+       const errorData = await res.json().catch(() => ({}))
+       throw new Error(errorData?.detail || (lang === "EN" ? "Failed to delete transaction." : "Gagal padam transaksi."))
+     }
+   } catch (err) {
+     console.error("Delete txn error:", err)
+     showAlert(
+       lang === "EN" ? "Delete Failed" : "Padam Gagal",
+       err instanceof Error ? err.message : (lang === "EN" ? "Failed to delete transaction." : "Gagal padam transaksi."),
+       "error"
+     )
+   } finally {
+     setDeletingTxn(false)
+   }
+ }
+
  const detailHistoryArmedRef = useRef(false)
  const openTransaction = (id: string | number) => {
    detailHistoryArmedRef.current = false
@@ -2113,90 +2369,19 @@ const currentCycleKeyStr = useMemo(
 
  <div className="divide-y divide-[var(--border)]">
  {groupTxns.map((tx) => (
- <button
- key={tx.id}
- type="button"
- onClick={() => openTransaction(tx.reference_id || tx.id)}
- className="flex w-full items-start gap-2.5 px-4 py-4 text-left transition active:opacity-80"
- >
- <div
-   className={cn(
- "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center transition-transform active:scale-95",
- isTransferTransaction(tx)
- ? (isLight ? TRANSFER_LIGHT_TEXT : TRANSFER_DARK_TEXT)
- : tx.type === "income"
- ? (isLight ? "text-emerald-500" : "text-emerald-400/80")
- : (isLight ? "text-rose-500" : "text-rose-400/80"),
- )}
- >
- {tx.category_name || tx.category_icon_name ? (
- <CategoryIconGlyph
- iconName={tx.category_icon_name}
- categoryName={tx.category_name}
- kind={tx.type}
- size={22}
- brandScale={1}
- brandFramed={false}
- brandFill
- />
- ) : tx.type === "income" ? (
- <Banknote size={19} />
- ) : (
- <Receipt size={19} />
- )}
- </div>
-
- <div className="min-w-0 flex-1">
- <p className="truncate text-[0.86rem] font-bold text-[var(--text)]">
- {getTransactionCategoryLabel(tx, langT.uncategorized)}
- </p>
- <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
- {splitWalletTaggedDescription(tx.vendor_or_source || "", tx.wallet_name).title || tx.vendor_or_source || langT.noDescription}
- </p>
- <div className="mt-1">
- <span className={cn("text-[0.5625rem] font-medium", isLight ? "text-slate-500" : "text-[var(--muted)]/60")}>
- {(() => {
- try {
- if (tx.txn_time) {
- const [h, m] = tx.txn_time.split(':').map(Number)
- if (!isNaN(h) && !isNaN(m)) {
- return new Date(Date.UTC(1970, 0, 1, h, m)).toLocaleTimeString(lang === 'EN' ? 'en-MY' : 'ms-MY', { hour: '2-digit', minute: '2-digit', hour12: timeFormat === '12h', timeZone: 'UTC' })
- }
- }
- const rawDate = tx.created_at || tx.txn_date;
- if (!rawDate) return ""
- const dateStr = rawDate.includes('Z') || rawDate.includes('+') ? rawDate : (rawDate.includes('T') || rawDate.includes(' ') ? `${rawDate.replace(' ', 'T')}Z` : `${rawDate}T00:00:00Z`);
- const dateObj = new Date(dateStr);
- return dateObj.toLocaleTimeString(lang === 'EN' ? 'en-MY' : 'ms-MY', {
- hour: '2-digit',
- minute: '2-digit',
- hour12: timeFormat === '12h',
- timeZone: timezone
- });
- } catch { return "" }
- })()}
- </span>
- </div>
- </div>
-
- <div
-   className={cn(
- "shrink-0 text-right text-[0.86rem] font-medium tabular-nums",
- isTransferTransaction(tx)
- ? (isLight ? TRANSFER_LIGHT_TEXT : TRANSFER_DARK_TEXT)
- : tx.type === "income"
- ? (isLight ? "text-emerald-500" : "text-emerald-400/80")
- : (isLight ? "text-rose-500" : "text-rose-400/80"),
- )}
- >
- {showDataSkeleton ? <AmountSkeleton className="h-3 w-20" /> : getTransactionAmountLabel(tx)}
- <span
- className="mt-0.5 block truncate text-[0.625rem] font-medium text-[var(--muted)]"
- >
- {walletLabel(tx)}
- </span>
- </div>
- </button>
+   <SwipeableTransactionItem
+     key={tx.id}
+     tx={tx}
+     isLight={isLight}
+     timeFormat={timeFormat}
+     timezone={timezone}
+     lang={lang}
+     langT={langT}
+     showDataSkeleton={showDataSkeleton}
+     walletText={walletLabel(tx)}
+     onClick={() => openTransaction(tx.reference_id || tx.id)}
+     onSwipeDelete={() => setTxnToDelete(tx)}
+   />
  ))}
  </div>
  </div>
@@ -2291,12 +2476,114 @@ const currentCycleKeyStr = useMemo(
  </>
  )}
  </div>
- </section>
+</section>
  </>
  )}
  </div>
  </DesktopPageBody>
- {alertModal}
+  {mounted && txnToDelete && createPortal(
+    <div
+      className="fixed inset-0 z-[600] flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-black/60 backdrop-blur-xs p-0 sm:items-center sm:p-4"
+      onClick={() => !deletingTxn && setTxnToDelete(null)}
+      onTouchMove={(e) => e.preventDefault()}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ transform: "translateZ(0)" }}
+        data-prevent-pull-refresh="true"
+        className="w-full max-h-[90dvh] overflow-y-auto rounded-t-3xl border border-[var(--border)] bg-[var(--sheet-bg)] p-5 shadow-2xl pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-w-[24rem] sm:rounded-3xl sm:p-6"
+      >
+        <div className="flex flex-col items-center text-center">
+          <div className="mb-3.5 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500 ring-8 ring-rose-500/5">
+            <Trash2 size={26} strokeWidth={2.2} />
+          </div>
+          <h3 className="mb-1.5 text-lg font-black text-[var(--text)]">
+            {lang === "EN" ? "Delete Transaction?" : "Padam Transaksi?"}
+          </h3>
+          <p className="mb-4 text-xs font-medium leading-relaxed text-[var(--muted)]">
+            {lang === "EN"
+              ? "Are you sure you want to delete this transaction? This action cannot be undone."
+              : "Adakah anda pasti mahu memadam transaksi ini? Tindakan ini tidak boleh diundur."}
+          </p>
+
+          <div className="mb-5 flex w-full items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-3.5 text-left">
+            <div className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--card)]",
+              isTransferTransaction(txnToDelete)
+                ? (isLight ? TRANSFER_LIGHT_TEXT : TRANSFER_DARK_TEXT)
+                : txnToDelete.type === "income"
+                ? "text-emerald-500"
+                : "text-rose-500"
+            )}>
+              {txnToDelete.category_name || txnToDelete.category_icon_name ? (
+                <CategoryIconGlyph
+                  iconName={txnToDelete.category_icon_name}
+                  categoryName={txnToDelete.category_name}
+                  kind={txnToDelete.type}
+                  size={20}
+                />
+              ) : txnToDelete.type === "income" ? (
+                <Banknote size={18} />
+              ) : (
+                <Receipt size={18} />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-black text-[var(--text)]">
+                {getTransactionCategoryLabel(txnToDelete, langT.uncategorized)}
+              </p>
+              <p className="truncate text-[0.6875rem] font-medium text-[var(--muted)]">
+                {splitWalletTaggedDescription(txnToDelete.vendor_or_source || "", txnToDelete.wallet_name).title || txnToDelete.vendor_or_source || langT.noDescription}
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className={cn(
+                "text-xs font-black tabular-nums",
+                isTransferTransaction(txnToDelete)
+                  ? (isLight ? TRANSFER_LIGHT_TEXT : TRANSFER_DARK_TEXT)
+                  : txnToDelete.type === "income"
+                  ? "text-emerald-500"
+                  : "text-rose-500"
+              )}>
+                {getTransactionAmountLabel(txnToDelete)}
+              </p>
+              <p className="text-[0.625rem] font-medium text-[var(--muted)]">
+                {walletLabel(txnToDelete)}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid w-full grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setTxnToDelete(null)}
+              disabled={deletingTxn}
+              className="flex h-12 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-sm font-bold text-[var(--text)] transition active:scale-[0.98] disabled:opacity-50"
+            >
+              {lang === "EN" ? "No, Cancel" : "Batal (No)"}
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeleteTxn}
+              disabled={deletingTxn}
+              className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-rose-500 text-sm font-black text-white shadow-lg shadow-rose-500/25 transition active:scale-[0.98] disabled:opacity-50"
+            >
+              {deletingTxn ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <>
+                  <Trash2 size={15} />
+                  <span>{lang === "EN" ? "Yes, Delete" : "Ya, Padam (Yes)"}</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )}
+  {alertModal}
  </div>
  )
 }

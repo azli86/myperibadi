@@ -42,6 +42,7 @@ import {
   Grid2X2,
   Boxes,
   Wallet,
+  FileSpreadsheet,
   Menu,
   X,
   Check,
@@ -809,6 +810,16 @@ function getMobileHeaderMeta(
     };
   }
 
+  if (pathname === `${base}/bank-reconciliation`) {
+    return {
+      title: "Rekonsiliasi Bank",
+      subtitle: "Padankan penyata bank & rekod bajet",
+      eyebrow: "Penyata Bank",
+      icon: FileSpreadsheet,
+      backHref: `${base}/wallet-settings`,
+    };
+  }
+
   if (pathname === `${base}/security`) {
     return {
       title: t.security,
@@ -971,6 +982,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       href: `/${sessionId}/wallet-settings`,
       icon: CreditCard,
     },
+    {
+      name: lang === "BM" ? "Rekonsiliasi Bank" : "Bank Reconciliation",
+      href: `/${sessionId}/bank-reconciliation`,
+      icon: FileSpreadsheet,
+    },
     { name: t.categories, href: `/${sessionId}/categories`, icon: Settings },
     { name: t.chat, href: `/${sessionId}/chat`, icon: MessageSquare },
   ];
@@ -984,6 +1000,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       name: t.walletSettings,
       href: `/${sessionId}/wallet-settings`,
       icon: CreditCard,
+    },
+    {
+      name: lang === "BM" ? "Rekonsiliasi Bank" : "Bank Reconciliation",
+      href: `/${sessionId}/bank-reconciliation`,
+      icon: FileSpreadsheet,
     },
     { name: t.categories, href: `/${sessionId}/categories`, icon: Settings },
   ];
@@ -1224,6 +1245,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   : "Wallets, balances and structure",
               href: `/${sessionId}/wallet-settings`,
               icon: CreditCard,
+            },
+            {
+              name: lang === "BM" ? "Rekonsiliasi Bank" : "Bank Reconciliation",
+              subtitle:
+                lang === "BM"
+                  ? "Padankan penyata bank & rekod bajet"
+                  : "Reconcile bank statements & budget records",
+              href: `/${sessionId}/bank-reconciliation`,
+              icon: FileSpreadsheet,
             },
             {
               name: t.categories,

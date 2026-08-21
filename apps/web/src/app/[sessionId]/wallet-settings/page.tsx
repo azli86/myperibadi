@@ -24,7 +24,14 @@ import {
   CreditCard,
   Coins,
   Eye,
+  Layers,
+  LayoutGrid,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+  FileSpreadsheet,
 } from "lucide-react"
+import Link from "next/link"
 import { useLang } from "@/lib/lang"
 import { usePageAlert } from "@/hooks/usePageAlert"
 import { cn } from "@/lib/utils"
@@ -293,8 +300,7 @@ export default function WalletSettingsPage() {
   const [mounted, setMounted] = useState(false)
   const [showCreateWalletModal, setShowCreateWalletModal] = useState(false)
   const [createWalletStep, setCreateWalletStep] = useState<1 | 2 | 3>(1)
-  const [filterTab, setFilterTab] = useState<FilterTab>("all")
-  const [query, setQuery] = useState("")
+  const [focusedCardIndex, setFocusedCardIndex] = useState<number | null>(null)
 
   const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
 
@@ -565,21 +571,11 @@ export default function WalletSettingsPage() {
     : tr("Tiada", "None")
 
   const filteredWallets = useMemo(() => {
-    let list = [...wallets]
-    if (filterTab !== "all") list = list.filter((w) => w.type === filterTab)
-    const needle = query.trim().toLowerCase()
-    if (needle) {
-      list = list.filter(
-        (w) =>
-          w.label.toLowerCase().includes(needle) ||
-          w.name.toLowerCase().includes(needle),
-      )
-    }
-    return list.sort((a, b) => {
+    return [...wallets].sort((a, b) => {
       if (a.is_bot_default !== b.is_bot_default) return a.is_bot_default ? -1 : 1
       return Math.abs(b.balance) - Math.abs(a.balance)
     })
-  }, [wallets, filterTab, query])
+  }, [wallets])
 
   const draftAccent = getWalletAccent({ id: wallets.length + 1, card_color: draft.card_color })
   const selectedDraftAccent = CARD_ACCENTS.find((accent) => accent.key === draft.card_color) || draftAccent
@@ -590,37 +586,6 @@ export default function WalletSettingsPage() {
   ]
   const canContinueCreateWallet =
     createWalletStep !== 2 || (draft.label.trim().length > 0 && draft.name.trim().length > 0)
-
-  const filterToggle = (
-    <div className="flex max-w-full flex-wrap gap-1">
-      {(
-        [
-          { key: "all" as const, label: tr("Semua", "All"), count: wallets.length },
-          { key: "cash" as const, label: tr("Tunai", "Cash"), count: cashCount },
-          { key: "bank" as const, label: tr("Bank", "Bank"), count: bankCount },
-          { key: "bank_digital" as const, label: tr("Digital", "Digital"), count: bankDigitalCount },
-          { key: "ewallet" as const, label: tr("E-Wallet", "E-Wallet"), count: ewalletCount },
-          { key: "credit_card" as const, label: tr("Kredit", "Credit"), count: creditCardCount },
-          ...(sharedCount > 0
-            ? [{ key: "shared" as const, label: tr("Bersama", "Shared"), count: sharedCount }]
-            : []),
-        ] as const
-      ).map((chip) => (
-        <button
-          key={chip.key}
-          type="button"
-          onClick={() => setFilterTab(chip.key)}
-          className={cn(
-            "pill-base px-3 py-1.5 text-[0.55rem] font-black uppercase tracking-[0.1em]",
-            filterTab === chip.key ? "bg-[var(--accent2)] text-[var(--btn-primary-text)]" : "text-[var(--muted)]",
-          )}
-        >
-          {chip.label}
-          <span className="ml-1 opacity-70">({chip.count})</span>
-        </button>
-      ))}
-    </div>
-  )
 
   const heroBlock = (desktop = false) => (
     <div
@@ -668,7 +633,6 @@ export default function WalletSettingsPage() {
           <>
             <img src={wallet.image_url} alt="" className="absolute -right-5 -top-8 h-[135%] w-[62%] rotate-[9deg] object-cover opacity-55 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_55%)]" />
             <div className="absolute inset-0 bg-gradient-to-r from-[var(--card)] from-30% via-[var(--card)] via-52% to-transparent to-90%" />
-            
           </>
         )}
         <div
@@ -724,22 +688,376 @@ export default function WalletSettingsPage() {
     <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center">
       <Wallet size={36} className="mx-auto text-[var(--muted)]/40" />
       <p className="mt-3 text-sm font-bold text-[var(--muted)]">
-        {query || filterTab !== "all"
-          ? tr("Tiada dompet dalam penapis ini.", "No wallets in this filter.")
-          : tr("Belum ada dompet.", "No wallets yet.")}
+        {tr("Belum ada dompet.", "No wallets yet.")}
       </p>
-      {!query && filterTab === "all" && (
-        <button
-          type="button"
-          onClick={openCreateWalletModal}
-          className="mt-4 rounded-full bg-[var(--text)] px-4 py-2 text-[0.6875rem] font-black uppercase tracking-wider text-[var(--bg)] transition active:scale-95"
-        >
-          <Plus size={14} className="mr-1 inline" />
-          {tr("Tambah Dompet", "Add Wallet")}
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={openCreateWalletModal}
+        className="mt-4 rounded-full bg-[var(--text)] px-4 py-2 text-[0.6875rem] font-black uppercase tracking-wider text-[var(--bg)] transition active:scale-95"
+      >
+        <Plus size={14} className="mr-1 inline" />
+        {tr("Tambah Dompet", "Add Wallet")}
+      </button>
     </div>
   )
+
+  const renderWalletCardsSection = (isMobile: boolean) => {
+    if (showDataSkeleton) {
+      return (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              style={{ marginTop: i === 0 ? 0 : "-128px" }}
+              className="h-[196px] animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-md"
+            />
+          ))}
+        </div>
+      )
+    }
+
+    if (filteredWallets.length === 0) {
+      return emptyState
+    }
+
+    // ─── Mobile View: Vertical Stacked Deck ───
+    if (isMobile) {
+      return (
+        <div className="mx-auto w-full max-w-[440px] space-y-3">
+          {/* Deck Header Bar */}
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--surface-tint)] text-[var(--text)] shadow-xs">
+                <Layers size={14} className="text-indigo-400" />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider text-[var(--text)]">
+                  {tr("Koleksi Dompet", "Wallet Stack")}
+                </span>
+                <span className="rounded-full bg-[var(--surface-tint)] px-2 py-0.5 text-[0.625rem] font-bold text-[var(--muted)]">
+                  {filteredWallets.length} {tr("Kad", "Cards")}
+                </span>
+              </div>
+            </div>
+
+            <span className="text-[0.6875rem] font-semibold text-[var(--muted)]">
+              {focusedCardIndex !== null
+                ? tr("Ketik kad untuk sunting", "Tap card to edit")
+                : tr("Ketik/hover kad untuk lihat penuh", "Tap/hover card to reveal full")}
+            </span>
+          </div>
+
+          {/* Vertical Stacked Cards Deck */}
+          <div
+            onMouseLeave={() => setFocusedCardIndex(null)}
+            style={{
+              paddingBottom: focusedCardIndex !== null && focusedCardIndex < filteredWallets.length - 1 ? "158px" : "16px",
+              transition: "padding-bottom 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+            className="relative mx-auto w-full pt-1"
+          >
+            {filteredWallets.map((wallet, index) => {
+              const accent = getWalletAccent(wallet)
+              const walletName = wallet.label || wallet.name
+              const walletType = walletTypeLabel(wallet.type, isBm)
+              const isTopCard = index === 0
+              const isFocused = focusedCardIndex === index
+              const isBefore = focusedCardIndex !== null && index < focusedCardIndex
+              const isAfter = focusedCardIndex !== null && index > focusedCardIndex
+
+              let translateY = 0
+              let scale = 1
+              let zIndex = index + 1
+              let opacity = 1
+              let boxShadow = "0 -6px 22px rgba(0,0,0,0.18)"
+
+              if (isFocused) {
+                translateY = -34
+                scale = 1.025
+                zIndex = 40
+                opacity = 1
+                boxShadow = "0 24px 48px -10px rgba(0,0,0,0.52), 0 0 0 1.5px var(--border-strong)"
+              } else if (isBefore) {
+                translateY = -12
+                scale = 0.985
+                zIndex = index + 1
+                opacity = 0.88
+              } else if (isAfter) {
+                translateY = 152
+                scale = 0.985
+                zIndex = index + 1
+                opacity = 0.85
+              }
+
+              return (
+                <div
+                  key={wallet.id}
+                  onClick={() => {
+                    if (focusedCardIndex === index || filteredWallets.length === 1) {
+                      openWalletModal(wallet)
+                    } else {
+                      setFocusedCardIndex(index)
+                    }
+                  }}
+                  style={{
+                    marginTop: isTopCard ? 0 : "-145px",
+                    transform: `translateY(${translateY}px) scale(${scale})`,
+                    zIndex,
+                    opacity,
+                    boxShadow,
+                    background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 18%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 10%, var(--card)) 100%)`,
+                    transition: "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease, z-index 0.35s ease",
+                  }}
+                  className={cn(
+                    "group relative flex h-[218px] w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 p-5 pb-5 text-left select-none will-change-transform",
+                    isFocused && "border-[var(--border-strong)] ring-1 ring-white/25",
+                  )}
+                >
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-white/[0.12] via-transparent to-white/[0.04]" />
+                  {wallet.image_url && (
+                    <>
+                      <img src={wallet.image_url} alt="" className="absolute -right-5 -top-8 h-[135%] w-[62%] rotate-[9deg] object-cover opacity-50 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_55%)]" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-[var(--card)] from-30% via-[var(--card)] via-52% to-transparent to-90%" />
+                    </>
+                  )}
+                  <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full opacity-15 blur-2xl" style={{ backgroundColor: accent.color }} />
+
+                  <div className="relative flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="relative shrink-0">
+                        <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm border border-[var(--border)]">
+                          {wallet.image_url ? <img src={wallet.image_url} alt="" className="h-full w-full object-cover" /> : <Wallet size={19} />}
+                        </div>
+                        {wallet.is_bot_default && (
+                          <span className="absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[0.5rem] font-black leading-none text-white shadow-sm ring-2 ring-[var(--card)]">
+                            B
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-black tracking-tight text-[var(--text)]">{walletName}</p>
+                        <p className="mt-0.5 truncate text-[0.58rem] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+                          {walletType}
+                          {wallet.is_saving ? ` · ${tr("Saving", "Saving")}` : ""}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="relative h-7 w-9 shrink-0 overflow-hidden rounded-md border border-amber-300/60 bg-gradient-to-br from-amber-200 via-amber-300 to-amber-500 shadow-inner">
+                        <div className="absolute inset-0 grid grid-cols-2 gap-0.5 p-0.5 opacity-35">
+                          <div className="border border-amber-950/60 rounded-[2px]" />
+                          <div className="border border-amber-950/60 rounded-[2px]" />
+                          <div className="border border-amber-950/60 rounded-[2px]" />
+                          <div className="border border-amber-950/60 rounded-[2px]" />
+                        </div>
+                      </div>
+                      <svg className="h-4 w-4 rotate-90 text-[var(--muted)]/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                        <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+                        <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  <div className="relative mt-4">
+                    <p className="text-[0.62rem] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
+                      {tr("Baki Semasa", "Current Balance")}
+                    </p>
+                    <p className="mt-1 truncate text-[var(--text)]">
+                      <MoneyAmount value={wallet.balance} currency={wallet.currency} size="lg" className="text-[var(--text)]" />
+                    </p>
+                  </div>
+
+                  <div className="relative mt-auto flex items-center justify-between border-t border-[var(--border)]/80 pt-3">
+                    <div className="flex items-center gap-1.5 font-mono text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                      <span className="opacity-40">•••• ••••</span>
+                      <span className="text-[var(--text)]">{wallet.name}</span>
+                      {wallet.transaction_count > 0 ? (
+                        <span className="font-sans text-[0.6rem] font-semibold text-[var(--muted)]/70">
+                          ({wallet.transaction_count} {tr("rekod", "txns")})
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="flex items-center gap-1 text-[var(--muted)] opacity-70 group-hover:opacity-100 transition">
+                      <span className="text-[0.6rem] font-bold uppercase tracking-wider">{tr("Sunting", "Edit")}</span>
+                      <ChevronRight size={15} />
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Add Wallet Action */}
+          <button
+            type="button"
+            onClick={openCreateWalletModal}
+            className="mt-2 flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-tint)]/20 text-[var(--muted)] transition active:scale-[0.98] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-tint)]">
+              <Plus size={15} strokeWidth={2.5} />
+            </div>
+            <span className="text-xs font-black uppercase tracking-wider">{tr("Tambah Dompet", "Add Wallet")}</span>
+          </button>
+        </div>
+      )
+    }
+
+    // ─── Desktop View: Horizontal Fanned Stack Deck ───
+    return (
+      <div className="w-full space-y-4">
+        {/* Deck Header Bar */}
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--surface-tint)] text-[var(--text)] shadow-xs">
+              <Layers size={14} className="text-indigo-400" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black uppercase tracking-wider text-[var(--text)]">
+                {tr("Koleksi Dompet", "Wallet Stack")}
+              </span>
+              <span className="rounded-full bg-[var(--surface-tint)] px-2 py-0.5 text-[0.625rem] font-bold text-[var(--muted)]">
+                {filteredWallets.length} {tr("Kad", "Cards")}
+              </span>
+            </div>
+          </div>
+
+          <span className="text-xs font-semibold text-[var(--muted)]">
+            {tr("Arahkan tetikus (hover) pada kad untuk lihat penuh", "Hover over any card to reveal full details")}
+          </span>
+        </div>
+
+        {/* Horizontal Stack Deck */}
+        <div
+          onMouseLeave={() => setFocusedCardIndex(null)}
+          className="flex items-center overflow-x-auto pt-8 pb-10 px-6 custom-scrollbar"
+        >
+          {filteredWallets.map((wallet, index) => {
+            const accent = getWalletAccent(wallet)
+            const walletName = wallet.label || wallet.name
+            const walletType = walletTypeLabel(wallet.type, isBm)
+            const isTopCard = index === 0
+            const isFocused = focusedCardIndex === index
+            const isBefore = focusedCardIndex !== null && index < focusedCardIndex
+            const isAfter = focusedCardIndex !== null && index > focusedCardIndex
+
+            let translateX = 0
+            let translateY = 0
+            let scale = 1
+            let zIndex = index + 1
+            let opacity = 1
+            let boxShadow = "0 8px 24px rgba(0,0,0,0.22)"
+
+            if (isFocused) {
+              translateY = -24
+              scale = 1.03
+              zIndex = 50
+              boxShadow = "0 28px 50px -12px rgba(0,0,0,0.55), 0 0 0 1.5px var(--border-strong)"
+            } else if (isBefore) {
+              translateX = -18
+              scale = 0.985
+              zIndex = index + 1
+              opacity = 0.88
+            } else if (isAfter) {
+              translateX = 196
+              scale = 0.985
+              zIndex = index + 1
+              opacity = 0.88
+            }
+
+            return (
+              <div
+                key={wallet.id}
+                onMouseEnter={() => setFocusedCardIndex(index)}
+                onClick={() => openWalletModal(wallet)}
+                style={{
+                  marginLeft: isTopCard ? 0 : "-190px",
+                  transform: `translate(${translateX}px, ${translateY}px) scale(${scale})`,
+                  zIndex,
+                  opacity,
+                  boxShadow,
+                  background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 18%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 10%, var(--card)) 100%)`,
+                  transition: "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease, z-index 0.35s ease",
+                }}
+                className={cn(
+                  "group relative flex h-[206px] w-[320px] shrink-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 p-5 pb-5 text-left select-none will-change-transform",
+                  isFocused && "border-[var(--border-strong)] ring-1 ring-white/25",
+                )}
+              >
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-white/[0.12] via-transparent to-white/[0.04]" />
+                {wallet.image_url && (
+                  <>
+                    <img src={wallet.image_url} alt="" className="absolute -right-5 -top-8 h-[135%] w-[62%] rotate-[9deg] object-cover opacity-50 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_55%)]" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[var(--card)] from-30% via-[var(--card)] via-52% to-transparent to-90%" />
+                  </>
+                )}
+                <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full opacity-15 blur-2xl" style={{ backgroundColor: accent.color }} />
+
+                <div className="relative flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="relative shrink-0">
+                      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm border border-[var(--border)]">
+                        {wallet.image_url ? <img src={wallet.image_url} alt="" className="h-full w-full object-cover" /> : <Wallet size={18} />}
+                      </div>
+                      {wallet.is_bot_default && (
+                        <span className="absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[0.5rem] font-black leading-none text-white shadow-sm ring-2 ring-[var(--card)]">
+                          B
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-black tracking-tight text-[var(--text)]">{walletName}</p>
+                      <p className="mt-0.5 truncate text-[0.56rem] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+                        {walletType}
+                        {wallet.is_saving ? ` · ${tr("Saving", "Saving")}` : ""}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <div className="relative h-6 w-8 shrink-0 overflow-hidden rounded-md border border-amber-300/60 bg-gradient-to-br from-amber-200 via-amber-300 to-amber-500 shadow-inner">
+                      <div className="absolute inset-0 grid grid-cols-2 gap-0.5 p-0.5 opacity-35">
+                        <div className="border border-amber-950/60 rounded-[2px]" />
+                        <div className="border border-amber-950/60 rounded-[2px]" />
+                        <div className="border border-amber-950/60 rounded-[2px]" />
+                        <div className="border border-amber-950/60 rounded-[2px]" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative mt-3.5">
+                  <p className="text-[0.58rem] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
+                    {tr("Baki Semasa", "Current Balance")}
+                  </p>
+                  <p className="mt-0.5 truncate text-[var(--text)]">
+                    <MoneyAmount value={wallet.balance} currency={wallet.currency} size="lg" className="text-[var(--text)]" />
+                  </p>
+                </div>
+
+                <div className="relative mt-auto flex items-center justify-between border-t border-[var(--border)]/80 pt-2.5">
+                  <div className="flex items-center gap-1.5 font-mono text-[0.62rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                    <span className="opacity-40">••••</span>
+                    <span className="text-[var(--text)]">{wallet.name}</span>
+                    {wallet.transaction_count > 0 ? (
+                      <span className="font-sans text-[0.58rem] font-semibold text-[var(--muted)]/70">
+                        ({wallet.transaction_count} {tr("rekod", "txns")})
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex items-center gap-1 text-[var(--muted)] opacity-70 group-hover:opacity-100 transition">
+                    <span className="text-[0.58rem] font-bold uppercase tracking-wider">{tr("Sunting", "Edit")}</span>
+                    <ChevronRight size={14} />
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
@@ -763,47 +1081,33 @@ export default function WalletSettingsPage() {
 
         <section className="px-1">{heroBlock(false)}</section>
 
-        <div className="flex items-center justify-center gap-2 px-1">{filterToggle}</div>
-
-        <div className="px-1">
-          <div className="relative">
-            <Search size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={tr("Cari dompet...", "Search wallet...")}
-              className="h-11 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] pl-10 pr-4 text-sm font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]/50"
-            />
-          </div>
-        </div>
+        {/* Bank Reconciliation Quick Action */}
+        <section className="px-1">
+          <Link
+            href={`/${sessionId}/bank-reconciliation`}
+            className="flex items-center justify-between gap-3 rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent p-4 transition hover:border-indigo-500/50 active:scale-[0.99]"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500 text-white shadow-sm">
+                <FileSpreadsheet size={18} />
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-wider text-[var(--text)]">
+                  {tr("Rekonsiliasi Penyata Bank", "Bank Statement Reconciliation")}
+                </p>
+                <p className="text-[0.6875rem] font-semibold text-[var(--muted)]">
+                  {tr("Upload & padankan transaksi penyata bank", "Upload & auto-match bank statements")}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 text-xs font-bold text-indigo-400">
+              <ChevronRight size={16} />
+            </div>
+          </Link>
+        </section>
 
         <section className="px-1">
-          {showDataSkeleton ? (
-            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-[196px] animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]"
-                />
-              ))}
-            </div>
-          ) : filteredWallets.length === 0 ? (
-            emptyState
-          ) : (
-            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-              {filteredWallets.map(renderWalletCard)}
-              <button
-                type="button"
-                onClick={openCreateWalletModal}
-                className="flex h-[196px] w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-tint)]/20 text-[var(--muted)] transition active:scale-[0.98] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
-              >
-                <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)]">
-                  <Plus size={20} strokeWidth={2} />
-                </div>
-                <span className="text-xs font-black uppercase tracking-wider">{tr("Tambah Dompet", "Add Wallet")}</span>
-              </button>
-            </div>
-          )}
+          {renderWalletCardsSection(true)}
         </section>
       </div>
 
@@ -813,57 +1117,52 @@ export default function WalletSettingsPage() {
           title={tr("Papan Dompet", "Wallet Board")}
           homeHref={`/${sessionId}`}
           actions={
-            <DesktopPageAction onClick={openCreateWalletModal}>
-              <Plus strokeWidth={2.5} />
-              {tr("Tambah Dompet", "Add Wallet")}
-            </DesktopPageAction>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/${sessionId}/bank-reconciliation`}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-2 text-xs font-bold text-indigo-400 transition hover:bg-indigo-500/20 active:scale-95"
+              >
+                <FileSpreadsheet size={15} />
+                <span>{tr("Rekonsiliasi Bank", "Bank Reconciliation")}</span>
+              </Link>
+              <DesktopPageAction onClick={openCreateWalletModal}>
+                <Plus strokeWidth={2.5} />
+                {tr("Tambah Dompet", "Add Wallet")}
+              </DesktopPageAction>
+            </div>
           }
         />
 
         <DesktopPageBody className="space-y-5">
-        {heroBlock(true)}
+          {heroBlock(true)}
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {filterToggle}
-          <div className="relative min-w-[220px] max-w-xs flex-1">
-            <Search size={14} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={tr("Cari dompet...", "Search wallet...")}
-              className="h-10 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--card)] pl-10 pr-4 text-sm font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]/50"
-            />
+          {/* Desktop Banner */}
+          <Link
+            href={`/${sessionId}/bank-reconciliation`}
+            className="flex items-center justify-between gap-4 rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent p-4 transition hover:border-indigo-500/50 active:scale-[0.99]"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-500 text-white shadow-sm">
+                <FileSpreadsheet size={20} />
+              </div>
+              <div>
+                <p className="text-sm font-black text-[var(--text)]">
+                  {tr("Rekonsiliasi Penyata Bank", "Bank Statement Reconciliation")}
+                </p>
+                <p className="text-xs font-semibold text-[var(--muted)]">
+                  {tr("Upload fail CSV atau salin-tampal penyata untuk menyemak dan memadankan baki akaun bank anda secara automatik.", "Upload CSV or copy-paste statement text to auto-match and reconcile your bank accounts.")}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-xl bg-indigo-500 px-3.5 py-2 text-xs font-black text-white shadow-xs">
+              <span>{tr("Mula Semak", "Reconcile Now")}</span>
+              <ChevronRight size={15} />
+            </div>
+          </Link>
+
+          <div>
+            {renderWalletCardsSection(false)}
           </div>
-        </div>
-
-        <div>
-          {showDataSkeleton ? (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-[196px] animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]"
-                />
-              ))}
-            </div>
-          ) : filteredWallets.length === 0 ? (
-            emptyState
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {filteredWallets.map(renderWalletCard)}
-              <button
-                type="button"
-                onClick={openCreateWalletModal}
-                className="flex h-[196px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-tint)]/20 text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--text)] active:scale-[0.98]"
-              >
-                <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)]">
-                  <Plus size={20} />
-                </div>
-                <span className="text-xs font-black uppercase tracking-wider">{tr("Tambah Dompet", "Add Wallet")}</span>
-              </button>
-            </div>
-          )}
-        </div>
         </DesktopPageBody>
       </div>
 

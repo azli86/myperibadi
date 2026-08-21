@@ -339,8 +339,8 @@ export default function CategoriesPage() {
     })
   }
   const [order, setOrder] = useState<number[] | null>(null)
-  const [dragId, setDragId] = useState<number | null>(null)
-  const [dropTargetId, setDropTargetId] = useState<string | null>(null)
+  const [mainGroupCategory, setMainGroupCategory] = useState<Category | null>(null)
+  const [newGroupNameForCat, setNewGroupNameForCat] = useState("")
 
   const [kwPhrase, setKwPhrase] = useState("")
   const [kwMatchType, setKwMatchType] = useState("contains")
@@ -588,10 +588,18 @@ export default function CategoriesPage() {
     isOpen: groupModalOpen,
     onClose: () => setGroupModalOpen(false),
   })
+  const { requestClose: requestMainGroupClose } = useOverlayBackClose({
+    id: "category-main-group-sheet",
+    isOpen: Boolean(mainGroupCategory),
+    onClose: () => {
+      setMainGroupCategory(null)
+      setNewGroupNameForCat("")
+    },
+  })
   const sheetSwipe = useSwipeDownToClose(requestModalClose)
 
   useEffect(() => {
-    const hidden = Boolean(modal)
+    const hidden = Boolean(modal) || groupModalOpen || Boolean(mainGroupCategory)
 
     if (hidden) {
       document.body.style.overflow = "hidden"
@@ -613,7 +621,7 @@ export default function CategoriesPage() {
         })
       )
     }
-  }, [modal])
+  }, [modal, groupModalOpen, mainGroupCategory])
 
   async function uploadCategoryIcon(file: File, onChange: (url: string) => void) {
     if (file.size > 256 * 1024) {
@@ -1216,160 +1224,234 @@ export default function CategoriesPage() {
     setGroupModalOpen(false)
   }
 
-  const renderStandaloneCard = (id: number, c: Category) => {
-    const isDragging = dragId === id
-    const isDropTarget = dropTargetId === String(id) && !isDragging
-    return (
+  function SwipeableCategoryCard({
+  category,
+  groupName,
+  onClick,
+  onOpenMainGroup,
+  onMoveUp,
+  onMoveDown,
+  onRemoveFromGroup,
+  isMember = false,
+  lang,
+}: {
+  category: Category
+  groupName?: string
+  onClick: () => void
+  onOpenMainGroup: () => void
+  onMoveUp?: () => void
+  onMoveDown?: () => void
+  onRemoveFromGroup?: () => void
+  isMember?: boolean
+  lang: string
+}) {
+  const [dragOffset, setDragOffset] = useState(0)
+  const [isSwiping, setIsSwiping] = useState(false)
+  const touchStartRef = React.useRef<{ x: number; y: number; time: number } | null>(null)
+  const swipedRef = React.useRef(false)
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      time: Date.now(),
+    }
+    swipedRef.current = false
+    setIsSwiping(false)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return
+    const dx = e.touches[0].clientX - touchStartRef.current.x
+    const dy = e.touches[0].clientY - touchStartRef.current.y
+
+    if (Math.abs(dy) > Math.abs(dx) && !isSwiping) return
+
+    if (dx < 0) {
+      const clamped = Math.max(dx, -96)
+      setDragOffset(clamped)
+      setIsSwiping(true)
+      if (dx < -25) {
+        swipedRef.current = true
+      }
+    } else {
+      setDragOffset(0)
+      setIsSwiping(false)
+    }
+  }
+
+  const handleTouchEnd = () => {
+    if (dragOffset < -45) {
+      onOpenMainGroup()
+    }
+    setDragOffset(0)
+    setIsSwiping(false)
+    touchStartRef.current = null
+  }
+
+  const handleClick = () => {
+    if (swipedRef.current) {
+      swipedRef.current = false
+      return
+    }
+    onClick()
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-[var(--card-radius-lg)] border border-[var(--border)] bg-[var(--card)] transition-colors">
       <div
-        key={`cat-${id}`}
-        draggable
-        onDragStart={(e) => {
-          setDragId(id)
-          e.dataTransfer.effectAllowed = "move"
-          try {
-            e.dataTransfer.setData("text/plain", String(id))
-          } catch {
-            /* ignore */
-          }
+        onClick={onOpenMainGroup}
+        className="absolute inset-y-0 right-0 flex w-24 cursor-pointer items-center justify-center gap-1.5 bg-[var(--surface-tint-strong)] px-3 text-[var(--text)] transition-opacity active:bg-[var(--text)] active:text-[var(--bg)]"
+        style={{
+          opacity: dragOffset < 0 ? Math.min(1, Math.abs(dragOffset) / 35) : 0,
         }}
-        onDragEnd={() => {
-          setDragId(null)
-          setDropTargetId(null)
-        }}
-        onDragOver={(e) => {
-          if (dragId === null || dragId === id) return
-          e.preventDefault()
-          e.dataTransfer.dropEffect = "move"
-          setDropTargetId(String(id))
-        }}
-        onDragLeave={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTargetId(null)
-        }}
-        onDrop={(e) => {
-          e.preventDefault()
-          setDragId(null)
-          setDropTargetId(null)
+      >
+        <FolderTree size={16} strokeWidth={2.5} />
+        <span className="text-[0.625rem] font-black uppercase tracking-wider">
+          {lang === "EN" ? "Group" : "Kumpulan"}
+        </span>
+      </div>
+
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        style={{
+          transform: `translateX(${dragOffset}px)`,
+          transition: isSwiping ? "none" : "transform 0.22s cubic-bezier(0.16, 1, 0.3, 1)",
         }}
         className={cn(
-          "flex items-stretch gap-2 rounded-[var(--card-radius-lg)] border border-[var(--border)] bg-[var(--card)] transition",
-          isDragging && "opacity-40",
-          isDropTarget && "border-[var(--accent2)] ring-2 ring-[var(--accent2)]/30",
+          "relative flex items-center justify-between gap-2 bg-[var(--card)] px-3 py-3 select-none",
+          isMember && "bg-[var(--card)]/90"
         )}
       >
-        <span
-          aria-hidden
-          className="flex w-7 shrink-0 cursor-grab touch-none select-none items-center justify-center text-[var(--muted)]/60 active:cursor-grabbing"
-        >
-          <GripVertical size={16} />
-        </span>
         <button
           type="button"
-          onClick={() => openCategoryDetail(id)}
-          className="flex min-w-0 flex-1 items-center gap-3 py-3 pr-3 text-left active:scale-[0.99]"
+          onClick={handleClick}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.99]"
         >
           <span
             aria-hidden
             className={cn(
               "h-2 w-2 shrink-0 rounded-full",
-              c.kind === "expense" ? "bg-rose-500" : c.kind === "income" ? "bg-emerald-500" : "bg-[var(--muted)]",
+              category.kind === "expense" ? "bg-rose-500" : category.kind === "income" ? "bg-emerald-500" : "bg-[var(--muted)]"
             )}
           />
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[var(--border)] text-[var(--text)]">
-            <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind={c.kind} size={17} />
+            <CategoryIconGlyph iconName={category.icon_name} categoryName={category.name} kind={category.kind} size={17} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium leading-tight text-[var(--text)]">{c.name}</p>
+            <p className="truncate text-sm font-medium leading-tight text-[var(--text)]">{category.name}</p>
+            {groupName && (
+              <p className="flex items-center gap-1 truncate text-[0.5625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                <FolderTree size={10} className="shrink-0" />
+                <span>{groupName}</span>
+              </p>
+            )}
           </div>
-          <ChevronRight size={15} className="shrink-0 text-[var(--muted)] opacity-50" />
         </button>
-        <span className="flex shrink-0 flex-col justify-center gap-0.5 pr-1.5">
+
+        <div className="flex shrink-0 items-center gap-1.5">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation()
-              moveItem(id, -1)
+              onOpenMainGroup()
             }}
-            aria-label={lang === "EN" ? "Move up" : "Naik"}
-            className="flex h-5 w-5 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+            aria-label={lang === "EN" ? "Main Group" : "Kumpulan Utama"}
+            title={lang === "EN" ? "Assign Main Group (Slide left)" : "Pilih Kumpulan Utama (Slide ke kiri)"}
+            className="flex h-7 items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface-tint)]/40 px-2 text-[0.625rem] font-bold text-[var(--muted)] transition hover:border-[var(--border-strong)] hover:text-[var(--text)] active:scale-95"
           >
-            <MoveUp size={13} />
+            <FolderTree size={12} />
+            <span className="hidden xs:inline sm:inline">{lang === "EN" ? "Group" : "Kumpulan"}</span>
           </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              moveItem(id, 1)
-            }}
-            aria-label={lang === "EN" ? "Move down" : "Turun"}
-            className="flex h-5 w-5 items-center justify-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
-          >
-            <MoveDown size={13} />
-          </button>
-        </span>
+
+          {isMember && onRemoveFromGroup ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onRemoveFromGroup()
+              }}
+              aria-label={lang === "EN" ? "Remove from group" : "Buang dari kumpulan"}
+              title={lang === "EN" ? "Remove from group" : "Buang dari kumpulan"}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--muted)] transition hover:bg-rose-500/10 hover:text-rose-500 active:scale-90"
+            >
+              <X size={13} />
+            </button>
+          ) : (
+            (onMoveUp || onMoveDown) && (
+              <span className="flex flex-col justify-center gap-0.5">
+                {onMoveUp && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onMoveUp()
+                    }}
+                    aria-label={lang === "EN" ? "Move up" : "Naik"}
+                    className="flex h-4 w-5 items-center justify-center rounded text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+                  >
+                    <MoveUp size={11} />
+                  </button>
+                )}
+                {onMoveDown && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onMoveDown()
+                    }}
+                    aria-label={lang === "EN" ? "Move down" : "Turun"}
+                    className="flex h-4 w-5 items-center justify-center rounded text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+                  >
+                    <MoveDown size={11} />
+                  </button>
+                )}
+              </span>
+            )
+          )}
+        </div>
       </div>
+    </div>
+  )
+}
+
+  const renderStandaloneCard = (id: number, c: Category) => {
+    return (
+      <SwipeableCategoryCard
+        key={`cat-${id}`}
+        category={c}
+        onClick={() => openCategoryDetail(id)}
+        onOpenMainGroup={() => setMainGroupCategory(c)}
+        onMoveUp={() => moveItem(id, -1)}
+        onMoveDown={() => moveItem(id, 1)}
+        lang={lang}
+      />
     )
   }
 
   const renderMemberCard = (g: Group, id: number, c: Category) => (
-    <div key={`mem-${id}`} className="flex items-stretch gap-2 rounded-xl border border-[var(--border)]/60 bg-[var(--card)]">
-      <button
-        type="button"
-        onClick={() => openCategoryDetail(id)}
-        className="flex min-w-0 flex-1 items-center gap-2.5 py-2 pl-2.5 pr-2 text-left active:scale-[0.99]"
-      >
-        <span
-          aria-hidden
-          className={cn(
-            "h-2 w-2 shrink-0 rounded-full",
-            c.kind === "expense" ? "bg-rose-500" : c.kind === "income" ? "bg-emerald-500" : "bg-[var(--muted)]",
-          )}
-        />
-        <div className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-[var(--border)] text-[var(--text)]">
-          <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind={c.kind} size={15} />
-        </div>
-        <p className="truncate text-sm font-medium leading-tight text-[var(--text)]">{c.name}</p>
-      </button>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          removeFromGroup(g.id, id)
-        }}
-        aria-label={lang === "EN" ? "Remove from group" : "Buang dari kumpulan"}
-        title={lang === "EN" ? "Remove from group" : "Buang dari kumpulan"}
-        className="flex h-6 w-6 shrink-0 items-center justify-center self-center rounded-md text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-rose-500"
-      >
-        <X size={13} />
-      </button>
-    </div>
+    <SwipeableCategoryCard
+      key={`mem-${id}`}
+      category={c}
+      groupName={g.name}
+      isMember={true}
+      onClick={() => openCategoryDetail(id)}
+      onOpenMainGroup={() => setMainGroupCategory(c)}
+      onRemoveFromGroup={() => removeFromGroup(g.id, id)}
+      lang={lang}
+    />
   )
 
   const renderGroupCard = (g: Group) => {
     const members = orderedMembers(g).map((m) => catById.get(m)).filter((cc): cc is Category => !!cc)
-    const isDropTarget = dropTargetId === `g:${g.id}`
     const collapsed = !collapsedGroupIds.has(g.id)
     return (
       <div
         key={g.id}
-        onDragOver={(e) => {
-          if (dragId === null) return
-          e.preventDefault()
-          e.dataTransfer.dropEffect = "move"
-          setDropTargetId(`g:${g.id}`)
-        }}
-        onDragLeave={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTargetId(null)
-        }}
-        onDrop={(e) => {
-          e.preventDefault()
-          if (dragId !== null) addToGroup(g.id, dragId)
-          setDragId(null)
-          setDropTargetId(null)
-        }}
-        className={cn(
-          "rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-2 transition",
-          isDropTarget && "border-[var(--accent2)] ring-2 ring-[var(--accent2)]/30",
-        )}
+        className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-2 transition"
       >
         <div
           role="button"
@@ -1446,7 +1528,7 @@ export default function CategoriesPage() {
           </div>
         ) : (
           <p className="mt-1 rounded-xl border border-dashed border-[var(--border)] px-3 py-3 text-center text-[0.6rem] font-semibold text-[var(--muted)]">
-            {lang === "EN" ? "Drag categories here" : "Seret kategori ke sini"}
+            {lang === "EN" ? "No categories in this group. Slide any category left to assign." : "Tiada kategori dalam kumpulan ini. Slide kategori ke kiri untuk masukkan."}
           </p>
         ))}
       </div>
@@ -1464,10 +1546,10 @@ export default function CategoriesPage() {
   ) : (
     <div>
       <p className="mb-2 flex items-center gap-1.5 text-[0.6rem] font-semibold text-[var(--muted)]">
-        <GripVertical size={12} />
+        <FolderTree size={12} />
         {lang === "EN"
-          ? "Create a group, then drag categories into its card to organize."
-          : "Buat kumpulan, kemudian seret kategori masuk ke dalam kad untuk susun."}
+          ? "Slide any category left (or tap Group) to assign its main group."
+          : "Slide kategori ke kiri (atau tekan Kumpulan) untuk tetapkan kumpulan utama."}
       </p>
       <button
         type="button"
@@ -1479,40 +1561,11 @@ export default function CategoriesPage() {
       </button>
       <div className="space-y-2">
         {orderedGroups.map((g) => renderGroupCard(g))}
-        {standaloneEntries.map((e, idx) => {
-          const strip = dragId !== null && dragId !== e.id ? (
-            <div
-              key={`strip-${e.id}`}
-              onDragOver={(e2) => {
-                if (dragId === null) return
-                e2.preventDefault()
-                e2.dataTransfer.dropEffect = "move"
-              }}
-              onDrop={(e2) => {
-                e2.preventDefault()
-                if (dragId === null) return
-                const from = dragId
-                setOrder((prev) => {
-                  const base = prev || renderIds
-                  const arr = [...base]
-                  const fromIdx = arr.indexOf(from)
-                  if (fromIdx >= 0) arr.splice(fromIdx, 1)
-                  arr.splice(idx, 0, from)
-                  return arr
-                })
-                setDragId(null)
-                setDropTargetId(null)
-              }}
-              className="h-1.5 rounded-full transition"
-            />
-          ) : null
-          return (
-            <div key={`wrap-${e.id}`}>
-              {strip}
-              {renderStandaloneCard(e.id, e.c)}
-            </div>
-          )
-        })}
+        {standaloneEntries.map((e) => (
+          <div key={`wrap-${e.id}`}>
+            {renderStandaloneCard(e.id, e.c)}
+          </div>
+        ))}
         {addCategoryTile}
       </div>
     </div>
@@ -1965,6 +2018,201 @@ export default function CategoriesPage() {
                     >
                       {lang === "EN" ? (editingGroupId ? "Save" : "Create") : editingGroupId ? "Simpan" : "Cipta"}
                     </button>
+                  </div>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
+
+      {mounted && mainGroupCategory
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-50 flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-black/50 backdrop-blur-xs p-0 md:items-center"
+              onClick={requestMainGroupClose}
+              onTouchMove={(e) => e.preventDefault()}
+            >
+              <div
+                onClick={(e) => e.stopPropagation()}
+                style={{ transform: "translateZ(0)" }}
+                data-prevent-pull-refresh="true"
+                className="app-sheet-panel app-sheet-panel--lg max-h-[90dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] will-change-transform md:max-w-md md:max-h-[85vh]"
+              >
+                <AppSheetHeader
+                  title={lang === "EN" ? "Main Group" : "Kumpulan Utama"}
+                  onClose={requestMainGroupClose}
+                />
+                <div className="space-y-4 px-4 py-4 text-[var(--text)] md:px-6 md:py-5">
+                  {/* Category preview pill */}
+                  <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-3">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--text)] shadow-xs">
+                      <CategoryIconGlyph
+                        iconName={mainGroupCategory.icon_name}
+                        categoryName={mainGroupCategory.name}
+                        kind={mainGroupCategory.kind}
+                        size={20}
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={cn(
+                            "h-2 w-2 shrink-0 rounded-full",
+                            mainGroupCategory.kind === "expense" ? "bg-rose-500" : "bg-emerald-500"
+                          )}
+                        />
+                        <p className="truncate text-sm font-black text-[var(--text)]">{mainGroupCategory.name}</p>
+                      </div>
+                      <p className="truncate text-[0.625rem] font-bold text-[var(--muted)]">
+                        {(() => {
+                          const cur = groups.find((g) => g.members.includes(mainGroupCategory.id))
+                          if (cur) return lang === "EN" ? `Current Group: ${cur.name}` : `Kumpulan Semasa: ${cur.name}`
+                          return lang === "EN" ? "Standalone (No group)" : "Kategori Bebas (Tiada Kumpulan)"
+                        })()}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Group list */}
+                  <div className="space-y-2">
+                    <label className="block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)] opacity-70">
+                      {lang === "EN" ? "Assign to Group" : "Pilih Kumpulan"}
+                    </label>
+
+                    <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-0.5 scrollbar-thin">
+                      {/* Standalone (No Group) */}
+                      {(() => {
+                        const currentGroup = groups.find((g) => g.members.includes(mainGroupCategory.id))
+                        const isStandalone = !currentGroup
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (currentGroup) {
+                                removeFromGroup(currentGroup.id, mainGroupCategory.id)
+                              }
+                              setMainGroupCategory(null)
+                            }}
+                            className={cn(
+                              "flex w-full items-center justify-between gap-2.5 rounded-2xl border p-3 text-left transition-all active:scale-[0.99]",
+                              isStandalone
+                                ? "border-[var(--text)] bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold shadow-xs"
+                                : "border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[var(--surface-tint)]"
+                            )}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/50 text-[var(--muted)]">
+                                <Tag size={15} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-semibold">
+                                  {lang === "EN" ? "None (Standalone Category)" : "Tiada Kumpulan (Kategori Bebas)"}
+                                </p>
+                                <p className="text-[0.6rem] font-medium text-[var(--muted)]">
+                                  {lang === "EN" ? "Show directly in category list" : "Papar terus dalam senarai kategori"}
+                                </p>
+                              </div>
+                            </div>
+                            {isStandalone && (
+                              <div className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--text)] text-[var(--bg)]">
+                                <Check size={12} strokeWidth={3} />
+                              </div>
+                            )}
+                          </button>
+                        )
+                      })()}
+
+                      {/* Existing groups */}
+                      {groups.map((g) => {
+                        const isAssigned = g.members.includes(mainGroupCategory.id)
+                        return (
+                          <button
+                            key={g.id}
+                            type="button"
+                            onClick={() => {
+                              addToGroup(g.id, mainGroupCategory.id)
+                              setMainGroupCategory(null)
+                            }}
+                            className={cn(
+                              "flex w-full items-center justify-between gap-2.5 rounded-2xl border p-3 text-left transition-all active:scale-[0.99]",
+                              isAssigned
+                                ? "border-[var(--text)] bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold shadow-xs"
+                                : "border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[var(--surface-tint)]"
+                            )}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)]">
+                                <FolderTree size={15} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-bold">{g.name}</p>
+                                <p className="text-[0.6rem] font-medium text-[var(--muted)]">
+                                  {g.members.length} {lang === "EN" ? "categories" : "kategori"}
+                                </p>
+                              </div>
+                            </div>
+                            {isAssigned && (
+                              <div className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--text)] text-[var(--bg)]">
+                                <Check size={12} strokeWidth={3} />
+                              </div>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Create New Group & Assign */}
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/25 p-3.5 space-y-2">
+                    <label className="block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)] opacity-70">
+                      {lang === "EN" ? "+ Create New Group" : "+ Cipta Kumpulan Baru"}
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        value={newGroupNameForCat}
+                        onChange={(e) => setNewGroupNameForCat(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && newGroupNameForCat.trim()) {
+                            const trimmed = newGroupNameForCat.trim()
+                            const newId = `g${Date.now()}`
+                            setGroups((prev) => [
+                              ...prev.map((g) => ({
+                                ...g,
+                                members: g.members.filter((m) => m !== mainGroupCategory.id),
+                              })),
+                              { id: newId, name: trimmed, members: [mainGroupCategory.id] },
+                            ])
+                            setNewGroupNameForCat("")
+                            setMainGroupCategory(null)
+                          }
+                        }}
+                        placeholder={lang === "EN" ? "e.g. Bills & Utilities" : "cth. Bil & Utiliti"}
+                        className="min-w-0 flex-1 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-xs font-medium text-[var(--text)] focus:outline-none focus:border-[var(--border-strong)]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const trimmed = newGroupNameForCat.trim()
+                          if (!trimmed) return
+                          const newId = `g${Date.now()}`
+                          setGroups((prev) => [
+                            ...prev.map((g) => ({
+                              ...g,
+                              members: g.members.filter((m) => m !== mainGroupCategory.id),
+                            })),
+                            { id: newId, name: trimmed, members: [mainGroupCategory.id] },
+                          ])
+                          setNewGroupNameForCat("")
+                          setMainGroupCategory(null)
+                        }}
+                        disabled={!newGroupNameForCat.trim()}
+                        className="flex shrink-0 items-center gap-1 rounded-xl bg-[var(--text)] px-3.5 py-2.5 text-xs font-bold text-[var(--bg)] shadow-sm transition-all active:scale-95 disabled:opacity-40"
+                      >
+                        <Plus size={14} />
+                        <span>{lang === "EN" ? "Create & Set" : "Cipta & Set"}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

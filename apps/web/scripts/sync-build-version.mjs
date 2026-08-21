@@ -28,3 +28,15 @@ mkdirSync(dirname(outputTsPath), { recursive: true })
 mkdirSync(dirname(outputJsonPath), { recursive: true })
 writeFileSync(outputTsPath, tsFileContents, "utf8")
 writeFileSync(outputJsonPath, jsonFileContents, "utf8")
+
+// Ensure pdf.worker.min.mjs is available in public/ for self-hosted CSP compliance
+try {
+  const { copyFileSync, existsSync } = await import("node:fs")
+  const workerSrcPath = resolve(projectRoot, "node_modules/pdfjs-dist/build/pdf.worker.min.mjs")
+  const workerDestPath = resolve(projectRoot, "public/pdf.worker.min.mjs")
+  if (existsSync(workerSrcPath)) {
+    copyFileSync(workerSrcPath, workerDestPath)
+  }
+} catch (e) {
+  // best effort
+}
