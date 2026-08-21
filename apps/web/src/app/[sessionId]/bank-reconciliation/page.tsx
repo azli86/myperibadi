@@ -151,7 +151,11 @@ export default function BankReconciliationPage() {
       headers: { "Content-Type": "application/json", ...getAuthHeaders() },
       body: JSON.stringify({ text }),
     })
-    if (!response.ok) throw new Error((await response.json().catch(() => null))?.detail || tr("AI gagal membaca penyata.", "AI failed to read the statement."))
+    if (!response.ok) {
+      const fallback = parseTextStatement(text)
+      if (fallback.transactions.length) return fallback
+      throw new Error((await response.json().catch(() => null))?.detail || tr("AI gagal membaca penyata.", "AI failed to read the statement."))
+    }
     const data = await response.json()
     return { transactions: Array.isArray(data.transactions) ? data.transactions as BankTransactionRow[] : [] }
   }
@@ -1159,6 +1163,19 @@ export default function BankReconciliationPage() {
               >
                 {quickAddSaving ? tr("Menyimpan...", "Saving...") : tr("Simpan Transaksi", "Save Transaction")}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isProcessing && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/55 px-6 backdrop-blur-sm" role="status" aria-live="polite">
+          <div className="w-full max-w-sm rounded-3xl border border-[var(--border)] bg-[var(--card)] p-7 text-center shadow-2xl">
+            <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-indigo-500/20 border-t-indigo-500" />
+            <p className="mt-5 text-base font-black text-[var(--text)]">{tr("AI sedang membaca transaksi...", "AI is reading transactions...")}</p>
+            <p className="mt-1 text-xs font-semibold text-[var(--muted)]">{tr("Mengenal pasti tarikh, amaun debit dan kredit", "Identifying dates, debit and credit amounts")}</p>
+            <div className="mx-auto mt-4 flex w-fit gap-1.5">
+              {[0, 1, 2].map((step) => <span key={step} className="h-2 w-2 animate-pulse rounded-full bg-indigo-500" style={{ animationDelay: `${step * 180}ms` }} />)}
             </div>
           </div>
         </div>
