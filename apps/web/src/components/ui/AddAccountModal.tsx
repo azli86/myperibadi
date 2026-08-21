@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useState } from "react"
+import { createPortal } from "react-dom"
 import { X, Loader2 } from "lucide-react"
 import { useLang } from "@/lib/lang"
 import { addAccount } from "@/lib/multi-account"
@@ -143,9 +144,9 @@ export function AddAccountModal({ open, onClose, onAdded }: AddAccountModalProps
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-transparent p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) reset()
       }}
@@ -292,6 +293,7 @@ export function AddAccountModal({ open, onClose, onAdded }: AddAccountModalProps
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
