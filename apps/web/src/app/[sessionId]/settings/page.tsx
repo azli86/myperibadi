@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 import {
-  User,
   Shield,
   Bot,
   ScrollText,
@@ -24,6 +23,7 @@ import {
 } from "lucide-react"
 import BadgeOverviewModal from "@/components/badges/BadgeOverviewModal"
 import CycleResetCalendar from "@/components/settings/CycleResetCalendar"
+import { AccountContent } from "../account/page"
 import { DesktopPageBody, DesktopPageChip, DesktopPageHeader, MobilePageHeader } from "@/components/layout/PageHeader"
 import { useLang, Lang } from "@/lib/lang"
 import { usePageAlert } from "@/hooks/usePageAlert"
@@ -133,7 +133,6 @@ export default function LagiPage() {
   }
 
   const systemLinks = [
-    { icon: User, label: t.myAccount, href: `/${sessionId}/account` },
     { icon: Shield, label: t.security, href: `/${sessionId}/security` },
     { icon: Bot, label: lang === "BM" ? "Command Bot" : "Bot Command", href: `/${sessionId}/bot-command` },
     { icon: ScrollText, label: t.changelog, href: `/${sessionId}/whatsnew` },
@@ -556,6 +555,11 @@ export default function LagiPage() {
           </div>
         )}
       
+
+      {/* ─── Account & Security (merged from /account) ─── */}
+      <section className={cn("space-y-4", "md:px-0")}>
+        <AccountContent embedded />
+      </section>
 
       {alertModal}
       <BadgeOverviewModal open={showBadgeModal} onClose={() => setShowBadgeModal(false)} sessionId={sessionId} lang={lang} />

@@ -52,7 +52,7 @@ type TokenResponse = {
   token_type: string
 }
 
-export default function AccountPage() {
+export function AccountContent({ embedded = false }: { embedded?: boolean }) {
   const params = useParams()
   const sessionId = (params.sessionId as string) || ""
   const { lang, t } = useLang()
@@ -432,14 +432,16 @@ export default function AccountPage() {
     : null
 
   return (
-    <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
+    <div className={cn("space-y-4 md:space-y-0", embedded ? "" : "pb-20 md:pb-0")}>
       {/* ─── Mobile View ─── */}
       <div className="space-y-5 md:hidden">
-        <MobilePageHeader
-          title={tr("Akaun Saya", "My Account")}
-          fallbackHref={`/${sessionId}/settings`}
-          backPreferHistory
-        />
+        {!embedded && (
+          <MobilePageHeader
+            title={tr("Akaun Saya", "My Account")}
+            fallbackHref={`/${sessionId}/settings`}
+            backPreferHistory
+          />
+        )}
 
         <section className="px-1 space-y-4">
           {/* Profile Overview Card */}
@@ -589,16 +591,18 @@ export default function AccountPage() {
 
       {/* ─── Desktop View ─── */}
       <div className="hidden md:block">
-        <DesktopPageHeader
-          title={tr("Akaun & Keselamatan", "Account & Security")}
-          homeHref={`/${sessionId}`}
-          breadcrumbs={[
-            { label: tr("Tetapan", "Settings"), href: `/${sessionId}/settings` },
-            { label: tr("Akaun", "Account") },
-          ]}
-        />
+        {!embedded && (
+          <DesktopPageHeader
+            title={tr("Akaun & Keselamatan", "Account & Security")}
+            homeHref={`/${sessionId}`}
+            breadcrumbs={[
+              { label: tr("Tetapan", "Settings"), href: `/${sessionId}/settings` },
+              { label: tr("Akaun", "Account") },
+            ]}
+          />
+        )}
 
-        <DesktopPageBody className="space-y-6 pt-6">
+        <DesktopPageBody className={cn("space-y-6", embedded ? "" : "pt-6")}>
           {/* Hero Profile Overview Bar */}
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -1395,4 +1399,24 @@ function SuccessBox({ children }: { children: React.ReactNode }) {
 
 function normalizePersonalityInput(value: string) {
   return value.replace(/\s+/g, " ").trim()
+}
+
+
+// /account now merged into /settings — redirect to keep old links working
+export default function AccountRedirect() {
+  const params = useParams()
+  const sessionId = (params.sessionId as string) || ""
+  const router = useRouter()
+  return (
+    <RedirectToSettings sessionId={sessionId} router={router} />
+  )
+}
+
+function RedirectToSettings({ sessionId, router }: { sessionId: string; router: ReturnType<typeof useRouter> }) {
+  const [done, setDone] = useState(false)
+  useEffect(() => {
+    router.replace(`/${sessionId}/settings`)
+    setDone(true)
+  }, [sessionId, router])
+  return null
 }
