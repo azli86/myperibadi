@@ -14,7 +14,6 @@ import {
   Check,
   X,
   Award,
-  Sparkles,
   Palette,
   Globe,
   CalendarDays,
@@ -190,6 +189,11 @@ export default function LagiPage() {
 
   return (
     <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
+      {/* ─── Profile Header (big avatar, name, editable email) ─── */}
+      <div className="md:px-0">
+        <AccountContent embedded />
+      </div>
+
       {/* ─── Mobile View ─── */}
       <div className="space-y-5 md:hidden">
         <MobilePageHeader
@@ -260,29 +264,6 @@ export default function LagiPage() {
           }
         />
         <DesktopPageBody className="space-y-6">
-        {/* Profile Hero Card */}
-        <Link href={`/${sessionId}/account`} className="block">
-          <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-gradient-to-br from-[var(--card)] to-[var(--surface-tint)] p-6 shadow-sm transition-all hover:shadow-md">
-            <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full bg-[var(--accent)]/8 blur-3xl" />
-            <div className="relative flex items-center gap-4">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--text)] ring-1 ring-[var(--accent)]/15">
-                <Sparkles size={28} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="truncate text-xl font-black tracking-tight text-[var(--text)]">{userProfile.name}</h2>
-                <p className="mt-0.5 truncate text-sm font-semibold text-[var(--muted)]">{userProfile.email}</p>
-                <div className="mt-2 flex items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent)]/12 px-2.5 py-0.5 text-[0.625rem] font-black uppercase tracking-wider text-[var(--accent)]">
-                    <Sparkles size={10} />
-                    {tr("Bot Aktif", "Bot Active")}
-                  </span>
-                </div>
-              </div>
-              <ChevronRight size={20} className="relative shrink-0 text-[var(--muted)]" />
-            </div>
-          </div>
-        </Link>
-
         {/* Desktop Grid */}
 
         <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
@@ -555,11 +536,6 @@ export default function LagiPage() {
           </div>
         )}
       
-
-      {/* ─── Account & Security (merged from /account) ─── */}
-      <section className={cn("space-y-4", "md:px-0")}>
-        <AccountContent embedded />
-      </section>
 
       {alertModal}
       <BadgeOverviewModal open={showBadgeModal} onClose={() => setShowBadgeModal(false)} sessionId={sessionId} lang={lang} />

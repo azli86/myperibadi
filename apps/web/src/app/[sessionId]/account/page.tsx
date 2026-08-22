@@ -444,30 +444,47 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
         )}
 
         <section className="px-1 space-y-4">
-          {/* Profile Overview Card */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+          {/* Profile Overview Card (big round avatar header) */}
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm text-center">
+            <div className="relative mx-auto w-fit">
+              <UserAvatar name={name || profile?.name} size={96} src={profile?.avatar_url} />
+              <button
+                type="button"
+                onClick={() => setActiveMobileSheet("profile")}
+                className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--text)] border-2 border-[var(--card)] text-[var(--bg)] shadow active:scale-95 transition"
+                aria-label={tr("Tukar Gambar", "Change Picture")}
+              >
+                <Camera size={14} />
+              </button>
+            </div>
+
+            <h2 className="mt-3 text-lg font-black tracking-tight text-[var(--text)]">
+              {profile?.name || tr("Memuatkan…", "Loading…")}
+            </h2>
+            <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[0.65rem] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <Sparkles size={9} />
+              <span>{normalizePersonalityInput(botPersonality) || tr("Personaliti Standard", "Standard Personality")}</span>
+            </span>
+
+            {/* Email row with edit button */}
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <span className="truncate text-sm font-medium text-[var(--muted)]">{profile?.email || "—"}</span>
+              <button
+                type="button"
+                onClick={() => setActiveMobileSheet("email")}
+                className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-3 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95"
+              >
+                <MailCheck size={13} />
+                <span>{tr("Tukar E-mel", "Change Email")}</span>
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={() => setActiveMobileSheet("profile")}
-              className="flex w-full items-center gap-3 text-left active:scale-[0.99] transition"
+              className="mt-5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 py-2.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint)] active:scale-[0.99]"
             >
-              <div className="relative shrink-0">
-                <UserAvatar name={name || profile?.name} size={52} src={profile?.avatar_url} />
-                <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] border border-[var(--border)] text-[var(--text)]">
-                  <Camera size={10} />
-                </div>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-extrabold text-[var(--text)]">
-                  {profile?.name || tr("Memuatkan…", "Loading…")}
-                </p>
-                <p className="truncate text-xs font-medium text-[var(--muted)]">{profile?.email || "—"}</p>
-                <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  <Sparkles size={9} />
-                  <span>{normalizePersonalityInput(botPersonality) || tr("Personaliti Standard", "Standard Personality")}</span>
-                </span>
-              </div>
-              <ChevronRight size={18} className="shrink-0 text-[var(--muted)]" />
+              {tr("Edit Profil", "Edit Profile")}
             </button>
           </div>
 
@@ -603,49 +620,54 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
         )}
 
         <DesktopPageBody className={cn("space-y-6", embedded ? "" : "pt-6")}>
-          {/* Hero Profile Overview Bar */}
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <div className="relative shrink-0">
-                  <UserAvatar name={name || profile?.name} size={64} src={profile?.avatar_url} />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-xl font-black tracking-tight text-[var(--text)]">
-                      {profile?.name || tr("Memuatkan Profil…", "Loading Profile…")}
-                    </h1>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      <ShieldCheck size={12} />
-                      <span>{tr("Disahkan", "Verified")}</span>
-                    </span>
-                  </div>
-                  <p className="text-xs font-medium text-[var(--muted)]">{profile?.email || "—"}</p>
-                </div>
-              </div>
-
-              {/* Avatar Uploader Button */}
-              <div className="flex items-center gap-2">
-                <label
-                  htmlFor="desktop-avatar-upload"
-                  className={cn(
-                    "inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-2 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-[0.98]",
-                    avatarUploading && "pointer-events-none opacity-60"
-                  )}
-                >
-                  {avatarUploading ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
-                  <span>{avatarUploading ? tr("Memuat naik…", "Uploading…") : tr("Tukar Gambar Profil", "Change Picture")}</span>
-                </label>
-                <input
-                  id="desktop-avatar-upload"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  className="hidden"
-                  onChange={handleAvatarUpload}
-                  disabled={avatarUploading}
-                />
-              </div>
+          {/* Hero Profile Overview Bar (big round avatar) */}
+          <div className="rounded-2xl border border-[var(--border)] bg-gradient-to-br from-[var(--card)] to-[var(--surface-tint)] p-8 shadow-sm text-center">
+            <div className="relative mx-auto w-fit">
+              <UserAvatar name={name || profile?.name} size={112} src={profile?.avatar_url} />
+              <label
+                htmlFor="desktop-avatar-upload"
+                className={cn(
+                  "absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--text)] border-2 border-[var(--card)] text-[var(--bg)] shadow cursor-pointer active:scale-95 transition",
+                  avatarUploading && "pointer-events-none opacity-60"
+                )}
+                aria-label={tr("Tukar Gambar", "Change Picture")}
+              >
+                {avatarUploading ? <Loader2 size={15} className="animate-spin" /> : <Camera size={15} />}
+              </label>
             </div>
+
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <h1 className="text-2xl font-black tracking-tight text-[var(--text)]">
+                {profile?.name || tr("Memuatkan Profil…", "Loading Profile…")}
+              </h1>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <ShieldCheck size={12} />
+                <span>{tr("Disahkan", "Verified")}</span>
+              </span>
+            </div>
+
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <span className="truncate text-sm font-medium text-[var(--muted)]">{profile?.email || "—"}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  document.getElementById("account-change-email")?.scrollIntoView({ behavior: "smooth", block: "center" })
+                }}
+                className="flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-3 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95"
+              >
+                <MailCheck size={13} />
+                <span>{tr("Tukar E-mel", "Change Email")}</span>
+              </button>
+            </div>
+
+            <input
+              id="desktop-avatar-upload"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleAvatarUpload}
+              disabled={avatarUploading}
+            />
           </div>
 
           {/* 2-Column Responsive Layout */}
@@ -746,7 +768,7 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
               </section>
 
               {/* Form 2: Change Email */}
-              <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-5">
+              <section id="account-change-email" className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-5">
                 <div className="flex items-center justify-between border-b border-[var(--divider)] pb-4">
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
