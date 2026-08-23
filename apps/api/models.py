@@ -1493,3 +1493,250 @@ class SupportTicketReply(Base):
     sender: Mapped[str] = mapped_column(String(20), nullable=False, default="user")  # user | admin
     body: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# Income Tax Module
+# ════════════════════════════════════════════════════════════════════════════
+
+class TaxRule(Base):
+    """Versioned, per-assessment-year tax rules (brackets, reliefs, rebates).
+    Global table — not per-user. Seeded from tax_rules_data."""
+    __tablename__ = "tax_rules"
+    __table_args__ = (
+        UniqueConstraint("assessment_year", "rule_type", "rule_code", name="uq_tax_rules_year_type_code"),
+        Index("ix_tax_rules_year_active", "assessment_year", "active"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    assessment_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    rule_type: Mapped[str] = mapped_column(String(20), nullable=False)  # bracket | relief | rebate | residency
+    rule_code: Mapped[str] = mapped_column(String(60), nullable=False)  # e.g. 'relief_lifestyle', 'rebate_zakat'
+    name: Mapped[str] = mapped_column(String(190), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    limit_amount: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)  # max claimable
+    calculation_rule: Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # JSON (brackets)
+    eligibility_rule: Mapped[Optional[str]] = mapped_column(Text, nullable=True)   # JSON / text
+    document_requirement: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    source_reference: Mapped[Optional[str]] = mapped_column(String(190), nullable=True)  # e.g. HASiL LHDN
+    effective_from: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    effective_to: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class TaxProfile(Base):
+    """Per-user, per-assessment-year tax situation."""
+    __tablename__ = "tax_profiles"
+    __table_args__ = (
+        UniqueConstraint("user_id", "assessment_year", name="uq_tax_profile_user_year"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    assessment_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    residency_status: Mapped[str] = mapped_column(String(20), default="resident")  # resident | non_resident
+    marital_status: Mapped[str] = mapped_column(String(20), default="single")      # single | married | divorced | widowed
+    income_source: Mapped[str] = mapped_column(String(20), default="employment")   # employment | business | both
+    disabled_status: Mapped[bool] = mapped_column(Boolean, default=False)
+    spouse_income_status: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # has_income | no_income
+    assessment_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)       # separate | joint
+    tax_identifier_encrypted: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # TIN (encrypted)
+    zakat_tracking_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    review_status: Mapped[str] = mapped_column(String(20), default="incomplete")  # incomplete | in_review | complete
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class TaxEmployer(Base):
+    """Employer for a given assessment year (supports multiple employers)."""
+    __tablename__ = "tax_employers"
+    __table_args__ = (Index("ix_tax_employers_user_year", "user_id", "assessment_year"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    assessment_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    employer_name: Mapped[str] = mapped_column(String(190), nullable=False)
+    employer_tax_number: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
+    employment_start: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    employment_end: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class TaxEAForm(Base):
+    """An EA/EC form — raw OCR extraction must be reviewed/confirmed before use."""
+    __tablename__ = "tax_ea_forms"
+    __table_args__ = (Index("ix_tax_ea_user_year", "user_id", "assessment_year"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    assessment_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    employer_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("tax_employers.id"), nullable=True)
+    document_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("tax_documents.id"), nullable=True)
+    document_type: Mapped[str] = mapped_column(String(10), default="EA")  # EA | EC
+    ocr_status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | extracting | extracted | failed
+    review_status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | in_review | confirmed
+    confidence: Mapped[Optional[float]] = mapped_column(DECIMAL(5, 2), nullable=True)
+    employer_name: Mapped[Optional[str]] = mapped_column(String(190), nullable=True)
+    employer_tax_number: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
+    employee_name: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    employee_ic: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
+    salary: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    bonus: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    commission: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    allowances: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    benefits: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    perquisites: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    benefit_in_kind: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    living_accommodation: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    total_employment_income: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    pcb_amount: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    cp38_amount: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    epf_amount: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    socso_amount: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    zakat_amount: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    raw_extraction_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    confirmed_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class TaxIncome(Base):
+    """Income record (employment / business) linked to EA, manual entry or transaction."""
+    __tablename__ = "tax_income"
+    __table_args__ = (Index("ix_tax_income_user_year", "user_id", "assessment_year"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    tax_profile_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("tax_profiles.id"), nullable=True)
+    assessment_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    income_type: Mapped[str] = mapped_column(String(20), nullable=False)  # employment | business
+    source_type: Mapped[str] = mapped_column(String(20), default="manual")  # ea | manual | transaction
+    source_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)  # ea_form_id / transaction id
+    employer_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("tax_employers.id"), nullable=True)
+    employer_name: Mapped[Optional[str]] = mapped_column(String(190), nullable=True)
+    gross_amount: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    taxable_amount: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    business_name: Mapped[Optional[str]] = mapped_column(String(190), nullable=True)
+    business_expenses: Mapped[Optional[float]] = mapped_column(DECIMAL(12, 2), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="draft")  # draft | confirmed
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class TaxDependant(Base):
+    """Child/dependant record for children relief (privacy-first, no names needed)."""
+    __tablename__ = "tax_dependants"
+    __table_args__ = (Index("ix_tax_dependants_profile", "tax_profile_id"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    tax_profile_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("tax_profiles.id", ondelete="CASCADE"), nullable=False)
+    dependant_type: Mapped[str] = mapped_column(String(30), nullable=False)  # under18 | education18plus | disabled_child | disabled_education
+    relief_percentage: Mapped[int] = mapped_column(Integer, default=100)  # 50 | 100
+    eligibility_status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | eligible | not_eligible
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class TaxRelief(Base):
+    """A relief claim for a user+year, tied to a relief rule."""
+    __tablename__ = "tax_reliefs"
+    __table_args__ = (Index("ix_tax_reliefs_user_year", "user_id", "assessment_year"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    assessment_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    relief_rule_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("tax_rules.id"), nullable=True)
+    relief_code: Mapped[str] = mapped_column(String(60), nullable=False)
+    name: Mapped[str] = mapped_column(String(190), nullable=False)
+    claimed_amount: Mapped[float] = mapped_column(DECIMAL(12, 2), default=0)
+    eligible_amount: Mapped[float] = mapped_column(DECIMAL(12, 2), default=0)
+    source: Mapped[str] = mapped_column(String(20), default="manual")  # manual | transaction | ea
+    status: Mapped[str] = mapped_column(String(20), default="claimed")  # suggested | claimed | reviewed
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class TaxReliefItem(Base):
+    """A supporting item (transaction/document) under a relief claim."""
+    __tablename__ = "tax_relief_items"
+    __table_args__ = (Index("ix_tax_relief_items_relief", "tax_relief_id"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    tax_relief_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("tax_reliefs.id", ondelete="CASCADE"), nullable=False)
+    transaction_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("transactions.id", ondelete="SET NULL"), nullable=True)
+    document_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("tax_documents.id", ondelete="SET NULL"), nullable=True)
+    amount: Mapped[float] = mapped_column(DECIMAL(12, 2), default=0)
+    eligible_amount: Mapped[float] = mapped_column(DECIMAL(12, 2), default=0)
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | eligible | not_eligible
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class TaxRebate(Base):
+    """Tax rebate (reduces tax, not chargeable income) — e.g. Zakat."""
+    __tablename__ = "tax_rebates"
+    __table_args__ = (Index("ix_tax_rebates_user_year", "user_id", "assessment_year"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    assessment_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    rebate_rule_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("tax_rules.id"), nullable=True)
+    rebate_code: Mapped[str] = mapped_column(String(60), nullable=False)
+    name: Mapped[str] = mapped_column(String(190), nullable=False)
+    amount: Mapped[float] = mapped_column(DECIMAL(12, 2), default=0)
+    source: Mapped[str] = mapped_column(String(20), default="manual")  # manual | transaction | ea
+    transaction_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("transactions.id", ondelete="SET NULL"), nullable=True)
+    document_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("tax_documents.id", ondelete="SET NULL"), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="claimed")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class TaxDocument(Base):
+    """Supporting document stored securely (EA, receipts, statements)."""
+    __tablename__ = "tax_documents"
+    __table_args__ = (Index("ix_tax_documents_user_year", "user_id", "assessment_year"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    assessment_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    document_type: Mapped[str] = mapped_column(String(40), nullable=False)  # ea | receipt | insurance | epf | education | medical | zakat | business | other
+    storage_reference: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # object key
+    original_filename: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    mime_type: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    document_date: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    linked_entity_type: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)  # ea_form | relief | rebate | transaction
+    linked_entity_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    ocr_status: Mapped[str] = mapped_column(String(20), default="none")  # none | pending | done
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class TaxCalculation(Base):
+    """Persisted estimate result for a user+year."""
+    __tablename__ = "tax_calculations"
+    __table_args__ = (Index("ix_tax_calculations_user_year", "user_id", "assessment_year"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    assessment_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    rule_version: Mapped[str] = mapped_column(String(20), default="2026")
+    income_total: Mapped[float] = mapped_column(DECIMAL(12, 2), default=0)
+    relief_total: Mapped[float] = mapped_column(DECIMAL(12, 2), default=0)
+    chargeable_income: Mapped[float] = mapped_column(DECIMAL(12, 2), default=0)
+    gross_tax: Mapped[float] = mapped_column(DECIMAL(12, 2), default=0)
+    rebate_total: Mapped[float] = mapped_column(DECIMAL(12, 2), default=0)
+    net_tax: Mapped[float] = mapped_column(DECIMAL(12, 2), default=0)
+    pcb_total: Mapped[float] = mapped_column(DECIMAL(12, 2), default=0)
+    estimated_balance: Mapped[float] = mapped_column(DECIMAL(12, 2), default=0)  # + = overpayment, - = tax to pay
+    calculation_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    calculated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class TaxTransactionLink(Base):
+    """Links an existing MyPeribadi transaction to a tax item.
+    claim_amount may differ from transaction amount."""
+    __tablename__ = "tax_transaction_links"
+    __table_args__ = (
+        Index("ix_tax_txn_links_user_year", "user_id", "tax_year"),
+        UniqueConstraint("transaction_id", "tax_year", "tax_type", "tax_category_id", name="uq_tax_txn_link"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    transaction_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("transactions.id", ondelete="CASCADE"), nullable=False)
+    tax_year: Mapped[int] = mapped_column(Integer, nullable=False)
+    tax_type: Mapped[str] = mapped_column(String(20), nullable=False)  # relief | rebate | income
+    tax_category_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    claim_amount: Mapped[float] = mapped_column(DECIMAL(12, 2), default=0)
+    status: Mapped[str] = mapped_column(String(20), default="suggested")  # suggested | reviewed | accepted | rejected
+    document_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("tax_documents.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

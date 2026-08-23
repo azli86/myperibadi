@@ -1170,6 +1170,15 @@ async def sync_telegram_bot_commands_on_startup():
     await _sync_telegram_bot_commands()
 
 @app.on_event("startup")
+async def seed_tax_rules_on_startup():
+    try:
+        async with database.SessionLocal() as session:
+            from modules.tax.seed import seed_tax_rules
+            await seed_tax_rules(session)
+    except Exception as exc:  # never block startup on tax seeding
+        print(f"WARN:  tax rules seeding skipped: {exc}", flush=True)
+
+@app.on_event("startup")
 async def start_chat_cleanup_task():
     """Background task: delete chat messages older than 24 hours every hour."""
     async def _cleanup_loop():
@@ -13838,6 +13847,9 @@ app.include_router(
         send_worker_message=_send_worker_message,
     )
 )
+
+from modules.tax import create_tax_router
+app.include_router(create_tax_router(get_current_user=get_current_user, publish_realtime=publish_realtime))
 
 # Vehicle ↔ Transaction link (same pattern as loan-link)
 @app.get("/transactions/{txn_id}/vehicle-link")
