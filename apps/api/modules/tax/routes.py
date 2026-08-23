@@ -1144,4 +1144,41 @@ def create_tax_router(*, get_current_user: Callable[..., Any], publish_realtime:
         _publish(current_user.id)
         return {"detail": f"Data cukai YA {assessment_year} dipadam. Transaksi asal tidak disentuh."}
 
+    # ── export tax pack ─────────────────────────────────────────────────────
+    @router.get("/export")
+    async def export_tax_pack(
+        assessment_year: int = Query(default=0),
+        db: AsyncSession = Depends(database.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        if assessment_year == 0:
+            assessment_year = 2026
+        from modules.tax.tax_export import build_tax_pack_pdf
+        calc = await tax_engine.calculate(db, current_user.id, assessment_year)
+        profile = await service.get_profile_or_create(db, current_user.id, assessment_year)
+        await db.commit()
+        positive = (calc["estimated_balance"] or 0) >= 0
+        lines = [
+            ("", f"MyPeribadi Tax Pack — YA {assessment_year}", "header"),
+            ("", f"Profile: {profile.residency_status} · {profile.income_source}", ""),
+            ("", "", "hr"),
+            ("Pendapatan", f"RM {calc['income_total']:,.2f}", ""),
+            ("Relief", f"RM {calc['relief_total']:,.2f}", ""),
+            ("Pendapatan Bercukai", f"RM {calc['chargeable_income']:,.2f}", ""),
+            ("Cukai Kasar", f"RM {calc['gross_tax']:,.2f}", ""),
+            ("Rebat", f"RM {calc['rebate_total']:,.2f}", ""),
+            ("Cukai Kena Bayar", f"RM {calc['net_tax']:,.2f}", ""),
+            ("PCB Dibayar", f"RM {calc['pcb_total']:,.2f}", ""),
+            ("", "", "hr"),
+            ("Anggaran Hasil", ("Lebihan " if positive else "Belum Bayar ") + f"RM {abs(calc['estimated_balance']):,.2f}", "big"),
+            ("", "Anggaran sahaja — tertakluk kepada keperluan HASiL.", ""),
+        ]
+        pdf = build_tax_pack_pdf("Tax Pack", lines)
+        filename = f"myperibadi-taxpack-YA{assessment_year}.pdf"
+        return Response(
+            content=pdf,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
     return router

@@ -1199,6 +1199,12 @@ function SummaryTab({ year, tr, api }: any) {
           <p className="text-sm font-extrabold text-[var(--text)]">{tr("Bersedia untuk e-Filing", "Ready for e-Filing")}</p>
         </div>
         <p className="mt-2 text-xs text-[var(--muted)]">{tr("Penyertaan muktamad dilakukan oleh anda melalui MyTax / HASiL.", "Final submission is done by you via MyTax / HASiL.")}</p>
+        <a
+          href={`/api/tax/export?assessment_year=${year}`}
+          className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] py-2.5 text-xs font-bold text-[var(--btn-primary-text)]"
+        >
+          <Download size={14} /> {tr("Eksport Tax Pack (PDF)", "Export Tax Pack (PDF)")}
+        </a>
       </Card>
       {loading && <Skeleton />}
     </div>
