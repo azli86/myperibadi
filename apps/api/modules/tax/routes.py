@@ -1048,6 +1048,35 @@ def create_tax_router(*, get_current_user: Callable[..., Any], publish_realtime:
     def _profile_looks_complete(p: models.TaxProfile) -> bool:
         return bool(p.residency_status and p.marital_status and p.income_source)
 
+    # ── history of past calculations ────────────────────────────────────────
+    @router.get("/history")
+    async def calculation_history(
+        assessment_year: int = Query(default=0),
+        db: AsyncSession = Depends(database.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        q = select(models.TaxCalculation).where(models.TaxCalculation.user_id == current_user.id)
+        if assessment_year:
+            q = q.where(models.TaxCalculation.assessment_year == assessment_year)
+        q = q.order_by(models.TaxCalculation.id.desc()).limit(20)
+        res = await db.execute(q)
+        rows = []
+        for c in res.scalars().all():
+            rows.append({
+                "id": c.id,
+                "assessment_year": c.assessment_year,
+                "income_total": c.income_total,
+                "relief_total": c.relief_total,
+                "chargeable_income": c.chargeable_income,
+                "gross_tax": c.gross_tax,
+                "rebate_total": c.rebate_total,
+                "net_tax": c.net_tax,
+                "pcb_total": c.pcb_total,
+                "estimated_balance": c.estimated_balance,
+                "created_at": c.calculated_at.isoformat() if c.calculated_at else None,
+            })
+        return rows
+
     # ── delete tax year (does NOT delete original transactions) ─────────────
     @router.delete("/year")
     async def delete_tax_year(

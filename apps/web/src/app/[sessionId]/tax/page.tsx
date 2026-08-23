@@ -490,6 +490,8 @@ function ProfileTab({ year, tr, api, profile, setProfile, showNotice }: any) {
         </>
       )}
 
+      <DependantsSection year={year} tr={tr} api={api} showNotice={showNotice} />
+
       <SectionLabel>{tr("Zakat", "Zakat")}</SectionLabel>
       <Card>
         <div className="flex items-center justify-between">
@@ -522,6 +524,94 @@ function ProfileTab({ year, tr, api, profile, setProfile, showNotice }: any) {
         {tr("Simpan Profil Cukai", "Save Tax Profile")}
       </PrimaryButton>
     </div>
+  )
+}
+
+function DependantsSection({ year, tr, api, showNotice }: any) {
+  const [rows, setRows] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showAdd, setShowAdd] = useState(false)
+  const [draft, setDraft] = useState<any>({ dependant_type: "under18", relief_percentage: 100 })
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try { setRows(await api(`/dependants?assessment_year=${year}`)) } catch (e) { } finally { setLoading(false) }
+  }, [api, year])
+  useEffect(() => { load() }, [load])
+
+  const LABELS: Record<string, string> = {
+    under18: tr("Anak Bawah 18", "Child under 18"),
+    education18plus: tr("Anak 18+ (Pendidikan)", "Child 18+ (Education)"),
+    disabled_child: tr("Anak OKU", "Disabled Child"),
+    disabled_education: tr("Anak OKU (Pendidikan)", "Disabled Child (Education)"),
+  }
+
+  async function add() {
+    try {
+      await api("/dependants", { method: "POST", body: JSON.stringify({
+        assessment_year: year, dependant_type: draft.dependant_type, relief_percentage: draft.relief_percentage,
+      }) })
+      setShowAdd(false)
+      setDraft({ dependant_type: "under18", relief_percentage: 100 })
+      load()
+      showNotice(tr("Tanggungan ditambah", "Dependant added"))
+    } catch (e: any) { showNotice(e.message || "Ralat") }
+  }
+
+  async function remove(id: number) {
+    try { await api(`/dependants/${id}`, { method: "DELETE" }); load(); showNotice(tr("Dipadam", "Deleted")) } catch (e: any) { showNotice(e.message || "Ralat") }
+  }
+
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <SectionLabel>{tr("Tanggungan / Anak", "Dependants / Children")}</SectionLabel>
+        <button onClick={() => setShowAdd(true)} className="flex items-center gap-1 rounded-full bg-[var(--btn-primary-bg)] px-3 py-1.5 text-xs font-bold text-[var(--btn-primary-text)]">
+          <Plus size={13} /> {tr("Tambah", "Add")}
+        </button>
+      </div>
+      {loading ? (
+        <div className="h-16 animate-pulse rounded-2xl bg-[var(--surface-tint)]" />
+      ) : rows.length === 0 ? (
+        <Card className="text-center text-xs text-[var(--muted)]">{tr("Tiada tanggungan. Tambah anak untuk melepasan anak.", "No dependants. Add children for child relief.")}</Card>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((d) => (
+            <Card key={d.id} className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-extrabold text-[var(--text)]">{LABELS[d.dependant_type] || d.dependant_type}</p>
+                <p className="text-xs text-[var(--muted)]">{tr("Relief", "Relief")}: {d.relief_percentage}% · {d.eligibility_status || "pending"}</p>
+              </div>
+              <button onClick={() => remove(d.id)} className="rounded-full p-2 text-red-500"><Trash2 size={15} /></button>
+            </Card>
+          ))}
+        </div>
+      )}
+      {showAdd && (
+        <Card className="space-y-3">
+          <Field label={tr("Jenis Tanggungan", "Dependant Type")}>
+            <select value={draft.dependant_type} onChange={(e) => setDraft({ ...draft, dependant_type: e.target.value })}
+              className="mt-1 w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3.5 py-2.5 text-xs text-[var(--text)] outline-none">
+              {Object.keys(LABELS).map((k) => <option key={k} value={k}>{LABELS[k]}</option>)}
+            </select>
+          </Field>
+          <Field label={tr("Peratus Relief", "Relief Percentage")}>
+            <div className="mt-1.5 flex gap-1.5">
+              {[100, 50].map((p) => (
+                <button key={p} onClick={() => setDraft({ ...draft, relief_percentage: p })}
+                  className={cn("flex-1 rounded-xl border px-3 py-2 text-xs font-bold", draft.relief_percentage === p ? "border-[var(--btn-primary-bg)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]")}>
+                  {p}%
+                </button>
+              ))}
+            </div>
+          </Field>
+          <div className="flex gap-2">
+            <GhostButton onClick={() => setShowAdd(false)}>{tr("Batal", "Cancel")}</GhostButton>
+            <PrimaryButton onClick={add}><Check size={14} /> {tr("Simpan", "Save")}</PrimaryButton>
+          </div>
+        </Card>
+      )}
+    </>
   )
 }
 
@@ -1155,17 +1245,31 @@ function BreakRow({ label, value, negative, positive }: { label: string; value: 
 function SummaryTab({ year, tr, api }: any) {
   const [calc, setCalc] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
+  const [history, setHistory] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true)
-      try {
-        const [c, p] = await Promise.all([api(`/dashboard?assessment_year=${year}`), api(`/profile?assessment_year=${year}`)])
-        setCalc(c); setProfile(p)
-      } catch (e) { } finally { setLoading(false) }
-    })()
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [c, p, h] = await Promise.all([
+        api(`/dashboard?assessment_year=${year}`),
+        api(`/profile?assessment_year=${year}`),
+        api(`/history?assessment_year=${year}`),
+      ])
+      setCalc(c); setProfile(p); setHistory(h)
+    } catch (e) { } finally { setLoading(false) }
   }, [api, year])
+  useEffect(() => { load() }, [load])
+
+  async function saveCalc() {
+    setSaving(true)
+    try {
+      await api(`/calculate?assessment_year=${year}`, { method: "POST", body: "{}" })
+      await load()
+    } catch (e) { } finally { setSaving(false) }
+  }
 
   const positive = (calc?.estimated_balance ?? 0) >= 0
 
@@ -1192,6 +1296,10 @@ function SummaryTab({ year, tr, api }: any) {
           </p>
           <p className="text-xs font-bold text-[var(--muted)]">{positive ? tr("Anggaran Lebihan", "Estimated Overpayment") : tr("Anggaran Cukai Belum Bayar", "Estimated Tax To Pay")}</p>
         </div>
+        <button onClick={saveCalc} disabled={saving} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] py-2.5 text-xs font-bold text-[var(--btn-primary-text)] disabled:opacity-50">
+          {saving ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+          {tr("Simpan Pengiraan", "Save Calculation")}
+        </button>
       </Card>
       <Card>
         <div className="flex items-center gap-2">
@@ -1206,6 +1314,30 @@ function SummaryTab({ year, tr, api }: any) {
           <Download size={14} /> {tr("Eksport Tax Pack (PDF)", "Export Tax Pack (PDF)")}
         </a>
       </Card>
+
+      <SectionLabel>{tr("Sejarah Pengiraan", "Calculation History")}</SectionLabel>
+      <button onClick={() => setShowHistory(!showHistory)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] py-2.5 text-xs font-bold text-[var(--text)]">
+        {tr("Lihat Sejarah", "View History")} <ChevronDown size={14} className={cn("transition", showHistory && "rotate-180")} />
+      </button>
+      {showHistory && (
+        history.length === 0 ? (
+          <Card className="text-center text-xs text-[var(--muted)]">{tr("Tiada pengiraan disimpan.", "No saved calculations.")}</Card>
+        ) : (
+          <div className="space-y-2">
+            {history.map((h) => (
+              <Card key={h.id} className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-[var(--text)]">YA {h.assessment_year} · {new Date(h.created_at).toLocaleString()}</p>
+                  <p className="text-xs text-[var(--muted)]">{tr("Cukai", "Tax")}: <RM value={h.net_tax} /> · PCB: <RM value={h.pcb_total} /></p>
+                </div>
+                <p className={cn("text-sm font-black", (h.estimated_balance ?? 0) >= 0 ? "text-emerald-500" : "text-amber-500")}>
+                  {(h.estimated_balance ?? 0) >= 0 ? "+" : ""}<RM value={Math.abs(h.estimated_balance)} />
+                </p>
+              </Card>
+            ))}
+          </div>
+        )
+      )}
       {loading && <Skeleton />}
     </div>
   )
