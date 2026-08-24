@@ -1253,20 +1253,51 @@ function DocsTab({ year, tr, api, showNotice }: any) {
 
 function EstimateTab({ year, tr, api }: any) {
   const [calc, setCalc] = useState<any>(null)
+  const [income, setIncome] = useState<any[]>([])
+  const [eaForms, setEaForms] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showBreakdown, setShowBreakdown] = useState(false)
 
   useEffect(() => {
     (async () => {
       setLoading(true)
-      try { setCalc(await api(`/dashboard?assessment_year=${year}`)) } catch (e) { } finally { setLoading(false) }
+      try {
+        const [c, i, e] = await Promise.all([
+          api(`/dashboard?assessment_year=${year}`),
+          api(`/income?assessment_year=${year}`),
+          api(`/ea-forms?assessment_year=${year}`),
+        ])
+        setCalc(c); setIncome(i || []); setEaForms(e || [])
+      } catch (err) { } finally { setLoading(false) }
     })()
   }, [api, year])
 
   const positive = (calc?.estimated_balance ?? 0) >= 0
 
+  // duplicate warning: manual employment income + EA-derived income both present
+  const eaEmployers = new Set((eaForms || []).map((f) => (f.employer_name || "").trim().toLowerCase()).filter(Boolean))
+  const manualEmployment = (income || []).filter((i) => i.source_type !== "ea" && i.income_type === "employment")
+  const duplicateWarnings = manualEmployment.filter((i) => eaEmployers.has((i.employer_name || "").trim().toLowerCase()))
+
   return (
     <div className="space-y-4">
+      {duplicateWarnings.length > 0 && (
+        <Card className="border-amber-500/30 bg-amber-500/10">
+          <div className="flex items-start gap-2">
+            <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-500" />
+            <div>
+              <p className="text-sm font-extrabold text-[var(--text)]">{tr("Pendapatan mungkin berganda", "Possible duplicate income")}</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                {tr("Pendapatan pekerjaan manual wujud untuk majikan yang sama dengan Borang EA yang disahkan. Ini boleh menyebabkan pengiraan dua kali.", "Manual employment income exists for the same employer as a confirmed EA Form. This may double-count.")}
+              </p>
+              {duplicateWarnings.map((i) => (
+                <p key={i.id} className="mt-1 text-xs font-bold text-[var(--text)]">• {i.employer_name}: <RM value={i.gross_amount} /></p>
+              ))}
+            </div>
+          </div>
+        </Card>
+      )}
+
       <Card className="relative overflow-hidden bg-gradient-to-br from-indigo-600/25 to-emerald-600/10">
         <p className="relative text-xs font-bold uppercase tracking-wider text-[var(--muted)]">{tr("Anggaran Cukai", "Tax Estimate")} — YA {year}</p>
         {loading ? <p className="mt-2 h-8 animate-pulse rounded bg-[var(--surface-tint)]" /> : (
