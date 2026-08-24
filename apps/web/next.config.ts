@@ -22,7 +22,7 @@ const cspDirectives = [
   isProdSecure
     ? "connect-src 'self' https: wss: blob: data:"
     : "connect-src 'self' http: https: ws: wss: blob: data:",
-  "frame-src 'self' https://challenges.cloudflare.com https://www.google.com https://www.recaptcha.net https://www.openstreetmap.org https://*.firebaseapp.com",
+  "frame-src 'self' blob: data: https://challenges.cloudflare.com https://www.google.com https://www.recaptcha.net https://www.openstreetmap.org https://*.firebaseapp.com https:",
   "child-src 'self' blob: https://challenges.cloudflare.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
@@ -79,6 +79,15 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        source: "/assets/videos/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
         source: "/:path*",
         headers: [
           ...securityHeaders,
@@ -114,8 +123,8 @@ const nextConfig: NextConfig = {
           destination: `${apiInternalOrigin}/mcp`,
         },
         {
-          source: "/api/events",
-          destination: `${apiInternalOrigin}/api/events`, // SSE realtime (keep /api prefix)
+          source: "/api/realtime",
+          destination: `${apiInternalOrigin}/api/realtime`, // SSE realtime (keep /api prefix)
         },
         {
           source: "/api/bank-reconciliation/parse",

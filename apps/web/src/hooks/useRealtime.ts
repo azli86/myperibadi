@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import { getAccessToken } from "@/lib/auth-session"
 
 /**
- * Opens a single SSE connection to `/api/events` for the signed-in user.
+ * Opens a single SSE connection to `/api/realtime` for the signed-in user.
  * On any server event it dispatches a window-level CustomEvent `app:data-changed`
  * with `{ resource }` so mounted pages can refetch their data without manual refresh.
  *
@@ -22,7 +22,7 @@ export function useRealtime({ enabled = false }: { enabled?: boolean } = {}) {
     if (!token) return
 
     try {
-      source = new EventSource(`/api/events?access_token=${encodeURIComponent(token)}`)
+      source = new EventSource(`/api/realtime?access_token=${encodeURIComponent(token)}`)
       source.onmessage = (evt) => {
         try {
           const payload = JSON.parse(evt.data)

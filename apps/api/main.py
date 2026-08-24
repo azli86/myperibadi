@@ -1769,7 +1769,7 @@ async def get_current_user_realtime(
     return user
 
 
-@app.get("/api/events")
+@app.get("/api/realtime")
 async def realtime_events(
     request: Request,
     current_user: models.User = Depends(get_current_user_realtime),
