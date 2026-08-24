@@ -1043,6 +1043,11 @@ function RebatesTab({ year, tr, api, showNotice }: any) {
 function TxTab({ year, tr, api, showNotice }: any) {
   const [links, setLinks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [showAdd, setShowAdd] = useState(false)
+  const [txs, setTxs] = useState<any[]>([])
+  const [txLoading, setTxLoading] = useState(false)
+  const [draft, setDraft] = useState<any>({ transaction_id: "", tax_type: "relief", claim_amount: "" })
+  const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -1050,21 +1055,114 @@ function TxTab({ year, tr, api, showNotice }: any) {
   }, [api, year])
   useEffect(() => { load() }, [load])
 
+  const STATUS: Record<string, string> = {
+    suggested: tr("Cadangan", "Suggested"),
+    reviewed: tr("Disemak", "Reviewed"),
+    accepted: tr("Diterima", "Accepted"),
+    rejected: tr("Ditolak", "Rejected"),
+  }
+
+  async function openAdd() {
+    setShowAdd(true)
+    setTxLoading(true)
+    try {
+      const token = getAccessToken()
+      const h: Record<string, string> = {}
+      if (token && !isCookieAuthSentinel(token)) h["Authorization"] = `Bearer ${token}`
+      const res = await fetch(`/api/transactions?limit=50`, { credentials: "include", headers: h })
+      const data = await res.json()
+      setTxs((data.transactions || data || []).slice(0, 50))
+    } catch (e) { setTxs([]) } finally { setTxLoading(false) }
+  }
+
+  async function add() {
+    setBusy(true)
+    try {
+      await api("/transaction-links", { method: "POST", body: JSON.stringify({
+        transaction_id: Number(draft.transaction_id),
+        tax_year: year,
+        tax_type: draft.tax_type,
+        claim_amount: draft.claim_amount ? Number(draft.claim_amount) : null,
+        status: "reviewed",
+      }) })
+      setShowAdd(false)
+      setDraft({ transaction_id: "", tax_type: "relief", claim_amount: "" })
+      load()
+      showNotice(tr("Transaksi dikaitkan", "Transaction linked"))
+    } catch (e: any) { showNotice(e.message || "Ralat") } finally { setBusy(false) }
+  }
+
+  async function setStatus(id: number, status: string) {
+    try {
+      await api(`/transaction-links/${id}`, { method: "PATCH", body: JSON.stringify({ status }) })
+      load()
+    } catch (e: any) { showNotice(e.message || "Ralat") }
+  }
+
   return (
     <div className="space-y-4">
-      <SectionLabel>{tr("Transaksi Cukai", "Tax Transactions")}</SectionLabel>
+      <div className="flex items-center justify-between">
+        <SectionLabel>{tr("Transaksi Cukai", "Tax Transactions")}</SectionLabel>
+        <button onClick={openAdd} className="flex items-center gap-1 rounded-full bg-[var(--btn-primary-bg)] px-3 py-1.5 text-xs font-bold text-[var(--btn-primary-text)]">
+          <Plus size={13} /> {tr("Pautkan", "Link")}
+        </button>
+      </div>
       <Card className="text-xs text-[var(--muted)]">
-        {tr("Transaksi MyPeribadi boleh dikaitkan dengan pelepasan. Gunakan halaman Transaksi untuk menandakan item sebagai Potential Relief, kemudian ia muncul di sini.", "MyPeribadi transactions can be linked to reliefs. Use the Transactions page to flag items as Potential Relief, then they appear here.")}
+        {tr("Kaitkan transaksi MyPeribadi (contoh: insurans, perubatan, pendidikan) dengan cukai untuk mengira pelepasan dan menyokong tuntutan anda.", "Link a MyPeribadi transaction (e.g. insurance, medical, education) to tax to support your claim.")}
       </Card>
+
+      {showAdd && (
+        <Card className="space-y-3">
+          <Field label={tr("Transaksi", "Transaction")}>
+            <select value={draft.transaction_id} onChange={(e) => setDraft({ ...draft, transaction_id: e.target.value })}
+              className="mt-1 w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3.5 py-2.5 text-xs text-[var(--text)] outline-none">
+              <option value="">{txLoading ? tr("Memuat…", "Loading…") : tr("Pilih transaksi", "Select transaction")}</option>
+              {txs.map((tx) => (
+                <option key={tx.id} value={tx.id}>#{tx.id} · RM {Number(tx.amount || 0).toLocaleString("en-MY")} · {tx.category || tx.wallet_name || ""}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label={tr("Jenis Cukai", "Tax Type")}>
+            <div className="mt-1.5 flex gap-1.5">
+              {["relief", "rebate", "income"].map((t) => (
+                <button key={t} onClick={() => setDraft({ ...draft, tax_type: t })}
+                  className={cn("flex-1 rounded-xl border px-3 py-2 text-xs font-bold capitalize", draft.tax_type === t ? "border-[var(--btn-primary-bg)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]")}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </Field>
+          <Field label={tr("Amaun Tuntutan (RM)", "Claim Amount (RM)")}>
+            <NumInput value={draft.claim_amount} onChange={(v) => setDraft({ ...draft, claim_amount: v })} />
+          </Field>
+          <div className="flex gap-2">
+            <GhostButton onClick={() => setShowAdd(false)}>{tr("Batal", "Cancel")}</GhostButton>
+            <PrimaryButton onClick={add} disabled={busy || !draft.transaction_id}>
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} {tr("Simpan", "Save")}
+            </PrimaryButton>
+          </div>
+        </Card>
+      )}
+
       {loading ? <Skeleton /> : links.length === 0 ? (
         <Card className="text-center text-sm text-[var(--muted)]">{tr("Belum ada transaksi dikaitkan.", "No linked transactions yet.")}</Card>
       ) : links.map((l) => (
-        <Card key={l.id} className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-extrabold text-[var(--text)]">#{l.transaction_id} · {l.tax_type}</p>
-            <p className="text-xs text-[var(--muted)]">{l.status}</p>
+        <Card key={l.id} className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-extrabold text-[var(--text)]">#{l.transaction_id} · {l.tax_type}</p>
+              <p className="text-xs text-[var(--muted)]">{STATUS[l.status] || l.status}</p>
+            </div>
+            <p className="text-sm font-black text-[var(--text)]"><RM value={l.claim_amount} /></p>
           </div>
-          <p className="text-sm font-black text-[var(--text)]"><RM value={l.claim_amount} /></p>
+          <div className="flex gap-1.5">
+            {["accepted", "reviewed", "rejected"].map((s) => (
+              <button key={s} onClick={() => setStatus(l.id, s)}
+                className={cn("flex-1 rounded-lg border px-2 py-1.5 text-[0.65rem] font-bold capitalize", l.status === s ? "border-[var(--btn-primary-bg)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]")}>
+                {s}
+              </button>
+            ))}
+          </div>
         </Card>
       ))}
     </div>
