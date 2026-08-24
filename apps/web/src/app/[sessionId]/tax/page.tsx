@@ -1043,12 +1043,6 @@ function RebatesTab({ year, tr, api, showNotice }: any) {
 function TxTab({ year, tr, api, showNotice }: any) {
   const [links, setLinks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [showAdd, setShowAdd] = useState(false)
-  const [wallets, setWallets] = useState<any[]>([])
-  const [txs, setTxs] = useState<any[]>([])
-  const [selectedWalletId, setSelectedWalletId] = useState<number | null>(null)
-  const [draft, setDraft] = useState<any>({ transaction_id: "", tax_type: "relief", claim_amount: "" })
-  const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -1063,44 +1057,6 @@ function TxTab({ year, tr, api, showNotice }: any) {
     rejected: tr("Ditolak", "Rejected"),
   }
 
-  async function openAdd() {
-    setShowAdd(true)
-    setSelectedWalletId(null)
-    setDraft({ transaction_id: "", tax_type: "relief", claim_amount: "" })
-    try {
-      const token = getAccessToken()
-      const h: Record<string, string> = {}
-      if (token && !isCookieAuthSentinel(token)) h["Authorization"] = `Bearer ${token}`
-      const [wres, tres] = await Promise.all([
-        fetch(`/api/wallets`, { credentials: "include", headers: h }),
-        fetch(`/api/transactions?limit=5000`, { credentials: "include", headers: h }),
-      ])
-      const wdata = await wres.json()
-      const tdata = await tres.json()
-      setWallets(Array.isArray(wdata) ? wdata : [])
-      setTxs(Array.isArray(tdata.transactions) ? tdata.transactions : Array.isArray(tdata) ? tdata : [])
-    } catch (e) { setWallets([]); setTxs([]) }
-  }
-
-  const walletTxns = selectedWalletId == null ? [] : txs.filter((tx) => tx.wallet_id === selectedWalletId)
-
-  async function add() {
-    setBusy(true)
-    try {
-      await api("/transaction-links", { method: "POST", body: JSON.stringify({
-        transaction_id: Number(draft.transaction_id),
-        tax_year: year,
-        tax_type: draft.tax_type,
-        claim_amount: draft.claim_amount ? Number(draft.claim_amount) : null,
-        status: "reviewed",
-      }) })
-      setShowAdd(false)
-      setDraft({ transaction_id: "", tax_type: "relief", claim_amount: "" })
-      load()
-      showNotice(tr("Transaksi dikaitkan", "Transaction linked"))
-    } catch (e: any) { showNotice(e.message || "Ralat") } finally { setBusy(false) }
-  }
-
   async function setStatus(id: number, status: string) {
     try {
       await api(`/transaction-links/${id}`, { method: "PATCH", body: JSON.stringify({ status }) })
@@ -1110,97 +1066,16 @@ function TxTab({ year, tr, api, showNotice }: any) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <SectionLabel>{tr("Transaksi Cukai", "Tax Transactions")}</SectionLabel>
-        <button onClick={openAdd} className="flex items-center gap-1 rounded-full bg-[var(--btn-primary-bg)] px-3 py-1.5 text-xs font-bold text-[var(--btn-primary-text)]">
-          <Plus size={13} /> {tr("Pautkan", "Link")}
-        </button>
-      </div>
-      <Card className="text-xs text-[var(--muted)]">
-        {tr("Kaitkan transaksi MyPeribadi (contoh: insurans, perubatan, pendidikan) dengan cukai untuk mengira pelepasan dan menyokong tuntutan anda.", "Link a MyPeribadi transaction (e.g. insurance, medical, education) to tax to support your claim.")}
+      <SectionLabel>{tr("Transaksi Cukai", "Tax Transactions")}</SectionLabel>
+      <Card className="flex items-start gap-2 text-xs text-[var(--muted)]">
+        <BadgePercent size={15} className="mt-0.5 shrink-0 text-[var(--accent)]" />
+        <p>
+          {tr("Kaitkan transaksi dengan cukai terus dari halaman butiran transaksi. Buka sebarang transaksi dan tekan butang Cukai di sebelah Edit untuk memilih jenis pelepasan.", "Link a transaction to tax directly from its detail page. Open any transaction and tap the Tax button next to Edit to choose the relief type.")}
+        </p>
       </Card>
 
-      {showAdd && (
-        <Card className="space-y-3">
-          {/* wallet picker */}
-          <Field label={tr("Pilih Wallet", "Select Wallet")}>
-            <div className="mt-1.5 flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {wallets.length === 0 ? (
-                <span className="text-xs text-[var(--muted)]">{tr("Tiada wallet.", "No wallets.")}</span>
-              ) : wallets.map((w) => (
-                <button key={w.id} onClick={() => setSelectedWalletId(w.id)}
-                  className={cn("shrink-0 rounded-xl border px-3 py-2 text-xs font-bold",
-                    selectedWalletId === w.id ? "border-[var(--btn-primary-bg)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
-                      : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]")}>
-                  {w.name}
-                </button>
-              ))}
-            </div>
-          </Field>
-
-          {/* transaction list by wallet */}
-          {selectedWalletId != null && (
-            <div>
-              <p className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                {tr("Transaksi", "Transactions")} ({walletTxns.length})
-              </p>
-              {walletTxns.length === 0 ? (
-                <p className="mt-1 text-xs text-[var(--muted)]">{tr("Tiada transaksi dalam wallet ini.", "No transactions in this wallet.")}</p>
-              ) : (
-                <div className="mt-1 max-h-64 space-y-1.5 overflow-y-auto pr-0.5">
-                  {walletTxns.map((tx) => {
-                    const selected = draft.transaction_id === String(tx.id)
-                    const isExpense = tx.type === "expense"
-                    return (
-                      <button key={tx.id} type="button" onClick={() => setDraft({ ...draft, transaction_id: String(tx.id), claim_amount: isExpense ? String(tx.amount || "") : draft.claim_amount })}
-                        className={cn("flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition",
-                          selected ? "border-[var(--btn-primary-bg)] bg-[var(--btn-primary-bg)]/10" : "border-[var(--border)] bg-[var(--surface-tint)]")}>
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-bold text-[var(--text)]">{tx.category_name || tx.category || `#${tx.id}`}</p>
-                          <p className="text-[0.65rem] text-[var(--muted)]">{tx.txn_date || ""} · #{tx.id}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={cn("text-xs font-black", isExpense ? "text-red-500" : "text-emerald-500")}>
-                            {isExpense ? "-" : "+"}RM {Number(tx.amount || 0).toLocaleString("en-MY", { minimumFractionDigits: 2 })}
-                          </span>
-                          {selected && <Check size={15} className="shrink-0 text-[var(--accent)]" />}
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {draft.transaction_id && (
-            <>
-              <Field label={tr("Jenis Cukai", "Tax Type")}>
-                <div className="mt-1.5 flex gap-1.5">
-                  {["relief", "rebate", "income"].map((t) => (
-                    <button key={t} onClick={() => setDraft({ ...draft, tax_type: t })}
-                      className={cn("flex-1 rounded-xl border px-3 py-2 text-xs font-bold capitalize", draft.tax_type === t ? "border-[var(--btn-primary-bg)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]")}>
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </Field>
-              <Field label={tr("Amaun Tuntutan (RM)", "Claim Amount (RM)")}>
-                <NumInput value={draft.claim_amount} onChange={(v) => setDraft({ ...draft, claim_amount: v })} />
-              </Field>
-              <div className="flex gap-2">
-                <GhostButton onClick={() => setShowAdd(false)}>{tr("Batal", "Cancel")}</GhostButton>
-                <PrimaryButton onClick={add} disabled={busy || !draft.transaction_id}>
-                  {busy ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} {tr("Simpan", "Save")}
-                </PrimaryButton>
-              </div>
-            </>
-          )}
-        </Card>
-      )}
-
       {loading ? <Skeleton /> : links.length === 0 ? (
-        <Card className="text-center text-sm text-[var(--muted)]">{tr("Belum ada transaksi dikaitkan.", "No linked transactions yet.")}</Card>
+        <Card className="text-center text-sm text-[var(--muted)]">{tr("Belum ada transaksi dikaitkan dengan cukai.", "No transactions linked to tax yet.")}</Card>
       ) : links.map((l) => (
         <Card key={l.id} className="space-y-2">
           <div className="flex items-center justify-between">
