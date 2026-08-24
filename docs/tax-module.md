@@ -42,3 +42,15 @@ Income → applicable adjustments → aggregate income → eligible reliefs → 
 
 - API: `./restart_api.sh`
 - Web: `./build_web.sh && ./restart_web.sh`
+
+## Phase 2 additions
+
+- **Dependants UI** — Tax Profile tab lets users add children (under18, 18+ education,
+  disabled child/education) with 50%/100% relief percentage to drive child relief.
+- **Calculation History** — `GET /tax/history` lists past persisted calculations
+  (via the "Simpan Pengiraan" button on Summary tab, backed by `POST /tax/calculate`).
+- **Tax Transaction linking** — Tax Transactions tab lets users pick a recent MyPeribadi
+  transaction, choose tax type (relief/rebate/income) + claim amount, and set
+  suggested/reviewed/accepted/rejected status.
+- **Duplicate income warning** — Estimate tab warns when manual employment income exists
+  for the same employer as a confirmed EA Form (potential double-count).
