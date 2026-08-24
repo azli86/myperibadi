@@ -4,6 +4,7 @@ import { getAccessToken } from "@/lib/auth-session"
 import React, { useState, useEffect, useRef } from "react"
 import {
   AlertTriangle,
+  BadgePercent,
   Car,
   ChevronRight,
   Download,
@@ -28,6 +29,7 @@ import TxnAttachmentsPanel from "./sections/TxnAttachmentsPanel"
 import TxnDeleteModal from "./sections/TxnDeleteModal"
 import TxnRefundModal from "./sections/TxnRefundModal"
 import TxnEditSheet from "./sections/TxnEditSheet"
+import TaxLinkSheet from "./sections/TaxLinkSheet"
 import type {
   TransactionDetail,
   CategoryOption,
@@ -294,6 +296,7 @@ export default function TransactionDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showRefundModal, setShowRefundModal] = useState(false)
+  const [showTaxModal, setShowTaxModal] = useState(false)
   const [refundAmount, setRefundAmount] = useState("")
   const [refunding, setRefunding] = useState(false)
   const [attachmentToDelete, setAttachmentToDelete] = useState<NonNullable<TransactionDetail["attachments"]>[number] | null>(null)
@@ -394,8 +397,17 @@ export default function TransactionDetailPage() {
     setAttachmentObjectUrls({ ...attachmentObjectUrlRef.current })
   }
 
-  const isImageAttachment = (mimeType: string | null) => !!mimeType && mimeType.startsWith("image/")
-  const isPdfAttachment = (mimeType: string | null) => !!mimeType && mimeType === "application/pdf"
+  const isImageAttachment = (mimeType?: string | null, fileName?: string | null) => {
+    const mime = (mimeType || "").toLowerCase()
+    const name = (fileName || "").toLowerCase()
+    return mime.startsWith("image/") || /\.(jpg|jpeg|png|webp|gif|heic)$/i.test(name)
+  }
+
+  const isPdfAttachment = (mimeType?: string | null, fileName?: string | null) => {
+    const mime = (mimeType || "").toLowerCase()
+    const name = (fileName || "").toLowerCase()
+    return mime.includes("pdf") || name.endsWith(".pdf")
+  }
 
   const waitForImageUrl = (url: string) =>
     new Promise<void>((resolve, reject) => {
@@ -410,7 +422,34 @@ export default function TransactionDetailPage() {
     if (cached) return cached
 
     const token = getAccessToken()
-    const isImage = isImageAttachment(attachment.mime_type)
+    const isImage = isImageAttachment(attachment.mime_type, attachment.file_name)
+    const isPdf = isPdfAttachment(attachment.mime_type, attachment.file_name)
+
+    // For PDF files: fetch the high-resolution rendered first-page image preview
+    if (isPdf) {
+      for (let attempt = 0; attempt <= ATTACHMENT_PREVIEW_RETRY_DELAYS_MS.length; attempt += 1) {
+        try {
+          const previewUrl = `/api/attachments/${attachment.id}/pdf-preview`
+          const retryUrl = attempt > 0 ? `${previewUrl}?_retry=${attempt}` : previewUrl
+          const res = await fetch(retryUrl, {
+            credentials: "include",
+            cache: "no-store",
+            headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+          })
+          if (res.ok) {
+            const blob = await res.blob()
+            const objectUrl = URL.createObjectURL(blob)
+            attachmentObjectUrlRef.current[attachment.id] = objectUrl
+            setAttachmentObjectUrls({ ...attachmentObjectUrlRef.current })
+            return objectUrl
+          }
+        } catch {
+          if (attempt < ATTACHMENT_PREVIEW_RETRY_DELAYS_MS.length) {
+            await sleep(ATTACHMENT_PREVIEW_RETRY_DELAYS_MS[attempt])
+          }
+        }
+      }
+    }
 
     // Attempt 1: R2 direct_url — actually probe image load (HEAD no-cors always "succeeds")
     if (attachment.direct_url) {
@@ -434,9 +473,11 @@ export default function TransactionDetailPage() {
         try {
           const res = await fetch(attachment.direct_url, { method: "GET", mode: "cors", cache: "no-store" })
           if (res.ok) {
-            attachmentObjectUrlRef.current[attachment.id] = attachment.direct_url
+            const blob = await res.blob()
+            const objectUrl = URL.createObjectURL(blob)
+            attachmentObjectUrlRef.current[attachment.id] = objectUrl
             setAttachmentObjectUrls({ ...attachmentObjectUrlRef.current })
-            return attachment.direct_url
+            return objectUrl
           }
         } catch {
           // fall through to proxy
@@ -477,7 +518,7 @@ export default function TransactionDetailPage() {
 
   const preloadImagePreviews = async (attachments: NonNullable<TransactionDetail["attachments"]>) => {
     const previewableAttachments = attachments.filter(
-      (att) => isImageAttachment(att.mime_type) || isPdfAttachment(att.mime_type)
+      (att) => isImageAttachment(att.mime_type, att.file_name) || isPdfAttachment(att.mime_type, att.file_name)
     )
     await Promise.all(
       previewableAttachments.map(async (att) => {
@@ -1005,6 +1046,26 @@ export default function TransactionDetailPage() {
   const openAttachment = async (attachment: NonNullable<TransactionDetail["attachments"]>[number]) => {
     setOpeningAttachmentId(attachment.id)
     try {
+      const isPdf = isPdfAttachment(attachment.mime_type, attachment.file_name)
+      if (isPdf) {
+        if (attachment.direct_url) {
+          window.open(attachment.direct_url, "_blank", "noopener,noreferrer")
+          return
+        }
+        const token = getAccessToken()
+        const proxyUrl = normalizeAttachmentProxyUrl(attachment.proxy_url)
+        const res = await fetch(proxyUrl, {
+          credentials: "include",
+          headers: { ...(token ? { "Authorization": `Bearer ${token}` } : {}) },
+        })
+        if (res.ok) {
+          const blob = await res.blob()
+          const pdfBlob = new Blob([blob], { type: "application/pdf" })
+          const blobUrl = URL.createObjectURL(pdfBlob)
+          window.open(blobUrl, "_blank", "noopener,noreferrer")
+          return
+        }
+      }
       const objectUrl = await getAttachmentBlobUrl(attachment)
       window.open(objectUrl, "_blank", "noopener,noreferrer")
     } catch (err) {
@@ -1495,6 +1556,16 @@ export default function TransactionDetailPage() {
       <span className="h-3.5 w-px bg-white/15" aria-hidden />
       <button
         type="button"
+        onClick={() => setShowTaxModal(true)}
+        disabled={saving || !txn}
+        className="inline-flex items-center gap-1.5 text-sm font-bold text-[#d4d4d4] underline-offset-4 transition hover:text-[#f5f5f5] hover:underline disabled:opacity-40"
+      >
+        <BadgePercent size={15} />
+        {lang === "BM" ? "Cukai" : "Tax"}
+      </button>
+      <span className="h-3.5 w-px bg-white/15" aria-hidden />
+      <button
+        type="button"
         onClick={() => setShowDeleteModal(true)}
         disabled={saving || !txn}
         className="inline-flex items-center gap-1.5 text-sm font-bold text-rose-400 underline-offset-4 transition hover:text-rose-300 hover:underline disabled:opacity-40"
@@ -1518,6 +1589,13 @@ export default function TransactionDetailPage() {
       </DesktopPageAction>
       <DesktopPageAction onClick={() => setShowEditModal(true)} aria-label={langT.editTransaction} className="sm:px-2.5">
         <Edit3 size={16} />
+      </DesktopPageAction>
+      <DesktopPageAction
+        onClick={() => setShowTaxModal(true)}
+        aria-label={lang === "BM" ? "Kaitkan dengan cukai" : "Link to tax"}
+        className="sm:px-2.5"
+      >
+        <BadgePercent size={16} />
       </DesktopPageAction>
       {refundButtonState !== "hidden" ? (
         <button
@@ -1754,6 +1832,15 @@ export default function TransactionDetailPage() {
         }}
         onClose={() => setShowRefundModal(false)}
         onConfirm={handleRefund}
+      />
+
+      <TaxLinkSheet
+        open={showTaxModal}
+        transactionId={txn?.id ?? 0}
+        transactionAmount={txn?.amount ?? 0}
+        categoryLabel={getTransactionCategoryLabel(txn, "")}
+        onClose={() => setShowTaxModal(false)}
+        onSaved={() => {}}
       />
 
       <TxnEditSheet
