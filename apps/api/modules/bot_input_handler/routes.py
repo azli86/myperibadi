@@ -526,6 +526,7 @@ async def process_bot_input_route(
             force_category_prompt=bool(ocr_summary),
             txn_time=draft.txn_time if ocr_summary else None,
             receipt_user_note=receipt_user_note,
+            is_voice=voice_transcribed,
         )
         # Keep the transaction confirmation together with the later receipt-upload reply.
         if txt_reply:
@@ -620,6 +621,7 @@ async def process_bot_input_route(
             show_expense_amount=show_expense_amount,
             show_income_amount=show_income_amount,
             allow_llm_fallback=True,
+            is_voice=voice_transcribed,
         )
         if txt_reply:
             replies.append(txt_reply)

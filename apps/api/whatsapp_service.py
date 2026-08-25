@@ -6,6 +6,7 @@ import hashlib
 import math
 import secrets
 import sys
+import difflib
 from pathlib import Path
 from typing import Optional, Tuple, List, Any
 from datetime import datetime, date, timedelta
@@ -516,6 +517,55 @@ def _wallet_choice_from_text(wallets: list[models.Wallet], text: str) -> Optiona
         if 0 <= index < len(wallets):
             return wallets[index]
     return next((wallet for wallet in wallets if _wallet_matches_text(wallet, normalized)), None)
+
+
+def _fuzzy_wallet_from_text(wallets: list[models.Wallet], text: str, threshold: float = 0.75) -> Optional[models.Wallet]:
+    """Best-effort wallet match for slightly mis-transcribed wallet names.
+
+    Voice notes may spell a wallet name differently ("cash" -> "cas",
+    "maybank" -> "mai ban", "tng" -> "tng").  When an exact whole-word
+    match fails, try to fuzzy-match the last word (or trailing words) of
+    ``text`` against each wallet's name/label.
+    """
+    if not text or not wallets:
+        return None
+    tail = (text or "").strip().lower()
+    tail = re.sub(r"[^a-z0-9 ]", " ", tail)
+    candidates = [w for w in tail.split() if w and not w.replace(".", "").isdigit() and len(w) >= 2]
+    if not candidates:
+        return None
+    # Try the last 1–2 words as a combined candidate (e.g. "mai ban" -> maybank).
+    tails = [candidates[-1]]
+    if len(candidates) >= 2:
+        tails.insert(0, candidates[-2] + " " + candidates[-1])
+    best = None
+    best_score = 0.0
+    for cand in tails:
+        cand_nospace = cand.replace(" ", "") if " " in cand else cand
+        for w in wallets:
+            names = {
+                (getattr(w, "name", None) or "").strip().lower(),
+                (getattr(w, "label", None) or "").strip().lower(),
+                wallet_display_name(w).strip().lower(),
+            }
+            names = {n for n in names if n}
+            for name in names:
+                score = max(
+                    difflib.SequenceMatcher(None, cand, name).ratio(),
+                    difflib.SequenceMatcher(None, cand_nospace, name.replace(" ", "")).ratio(),
+                )
+                # Also compare against the first word of a multi-word wallet so a
+                # short "tng" can match "TNG E-Wallet".
+                first_word = name.split()[0]
+                if len(name.split()) > 1:
+                    score = max(score, difflib.SequenceMatcher(None, cand, first_word).ratio())
+                # Short names need higher confidence to avoid false positives.
+                if len(name) <= 3 and score < 0.85:
+                    continue
+                if score > best_score and score >= threshold:
+                    best = w
+                    best_score = score
+    return best
 
 
 async def _apply_recent_wallet_selection(
@@ -3621,6 +3671,7 @@ async def _process_whatsapp_message_impl(
     force_category_prompt: bool = False,
     receipt_user_note: str | None = None,
     txn_time: Optional[str] = None,
+    is_voice: bool = False,
 ) -> Tuple[str, Optional[models.Transaction]]:
     try:
         # 1. Fetch the user directly from the multi-tenant hook
@@ -4585,6 +4636,15 @@ async def _process_whatsapp_message_impl(
                     selected_wallet = w
                     used_explicit_wallet_prefix = True
                     break
+
+        # Voice notes may transcribe a wallet name slightly differently — try a
+        # fuzzy match on the trailing word(s) before falling back to defaults.
+        # Only apply to voice input to avoid false positives on typed messages.
+        if not selected_wallet and is_voice:
+            fuzzy_wallet = _fuzzy_wallet_from_text(user_wallets, text)
+            if fuzzy_wallet:
+                selected_wallet = fuzzy_wallet
+                used_explicit_wallet_prefix = True
 
         if not selected_wallet:
             # Priority 1: Check if user has explicitly set a bot default wallet in portal
