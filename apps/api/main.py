@@ -13961,6 +13961,38 @@ async def parse_bank_statement_ai(
         print(f"[bank-statement-ai] {type(exc).__name__}: {exc}", flush=True)
         raise HTTPException(status_code=502, detail="AI gagal membaca penyata bank") from exc
 
+
+@app.post("/api/transcribe")
+async def transcribe_voice_route(
+    request: Request,
+    current_user: models.User = Depends(get_current_user),
+):
+    """Transcribe an uploaded voice/audio clip into text (voice transactions).
+
+    Multipart form: `file` (audio bytes). Returns `{text, language}`.
+    """
+    import audio_transcription_service
+
+    content_type = (request.headers.get("content-type") or "").lower()
+    if "multipart/form-data" not in content_type:
+        raise HTTPException(status_code=400, detail="Multipart form diperlukan")
+    form = await request.form()
+    upload = form.get("file")
+    if upload is None or not hasattr(upload, "read"):
+        raise HTTPException(status_code=400, detail="Tiada fail audio diterima")
+    payload = await upload.read()
+    if len(payload) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Fail audio terlalu besar (maks 25MB)")
+    mime_type = (upload.content_type or "audio/ogg") if isinstance(upload.content_type, str) else "audio/ogg"
+    if not audio_transcription_service.is_transcribable(mime_type):
+        # Accept raw voice uploads even without a precise mime by forcing audio/ogg.
+        mime_type = "audio/ogg"
+    result = await audio_transcription_service.transcribe_audio(payload, mime_type)
+    if result is None or not result.text:
+        raise HTTPException(status_code=422, detail="Audio tidak dapat ditranskripsi. Sila cuba audio yang lebih jelas.")
+    return {"text": result.text, "language": result.language}
+
+
 @app.get("/support/tickets/mine", response_model=List[schemas.SupportTicketResponse])
 async def my_support_tickets(
     current_user: models.User = Depends(get_current_user),

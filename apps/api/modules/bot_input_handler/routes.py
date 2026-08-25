@@ -15,6 +15,7 @@ import models
 import whatsapp_service
 import receipt_ocr_service
 import storage_service
+import audio_transcription_service
 
 
 # Remember recently-processed inventory images (hash -> unix ts) so an echoed/second
@@ -183,6 +184,44 @@ async def process_bot_input_route(
     ocr_forced_kind = None
     receipt_user_note = None
 
+    # ── Voice / audio: transcribe to text, then process as a normal message ──
+    is_voice_media = audio_transcription_service.is_transcribable(media_mime_type)
+    voice_transcribed = False
+    if has_media and is_voice_media and not text:
+        try:
+            user_res = await db.execute(select(models.User).where(models.User.id == user_id))
+            voice_user = user_res.scalar_one_or_none()
+            voice_lang = getattr(voice_user, "language", "BM") if voice_user else "BM"
+            voice_payload = media_payload
+            if not voice_payload and media_object_key:
+                voice_payload, stored_mime = await asyncio.to_thread(storage_service.download_receipt_object, media_object_key)
+                media_mime_type = media_mime_type or stored_mime
+            result = await audio_transcription_service.transcribe_audio(
+                voice_payload or b"",
+                media_mime_type or "audio/ogg",
+                language_hint=voice_lang,
+            )
+            if result and result.text:
+                text = result.text.strip()
+                has_amount = False
+                if text:
+                    text_without_txn_ref = txn_ref_pattern.sub("", text).strip()
+                    has_amount = bool(
+                        text_without_txn_ref
+                        and (
+                            whatsapp_service.extract_amount(text_without_txn_ref) is not None
+                            or whatsapp_service.parse_multi_item_transaction(text_without_txn_ref) is not None
+                            or whatsapp_service.parse_one_line_item_transaction(text_without_txn_ref) is not None
+                        )
+                    )
+                voice_transcribed = True
+                print(f"[voice] user={user_id} channel={source_channel} transcribed={text!r} mime={media_mime_type}")
+        except Exception as exc:
+            print(f"[voice] transcription failed user={user_id} channel={source_channel}: {type(exc).__name__}: {exc}")
+            is_voice_media = False
+    # For voice media we never run receipt OCR (audio is not an image receipt).
+    _skip_receipt_ocr = is_voice_media
+
     # Barang Saya image flow: caption is an inventory add command (`stuff ...` /
     # `tambah barang ...`), so skip OCR/receipt handling entirely and let the
     # image hook below attach the photo to the item.
@@ -217,7 +256,7 @@ async def process_bot_input_route(
                     else "Upload lampiran gagal. Mesej yang direply tiada rujukan transaksi yang sah. Sila reply mesej transaksi yang ada TXN."
                 )
             }
-        if not normalized_target_txn_ref and not _inv_img and not _inventory_img_seen(media_payload, media_object_key):
+        if not normalized_target_txn_ref and not _inv_img and not _inventory_img_seen(media_payload, media_object_key) and not _skip_receipt_ocr:
             try:
                 ocr_payload = media_payload
                 if not ocr_payload and media_object_key:
@@ -321,7 +360,10 @@ async def process_bot_input_route(
             else:
                 storage_service.validate_receipt_metadata(media_file_name, media_mime_type)
         except storage_service.StorageValidationError as exc:
-            return {"reply": f"Receipt rejected: {exc}" if is_en else f"Resit ditolak: {exc}"}
+            if _skip_receipt_ocr:
+                pass
+            else:
+                return {"reply": f"Receipt rejected: {exc}" if is_en else f"Resit ditolak: {exc}"}
     is_reference_only_caption = bool(text) and bool(txn_ref_pattern.fullmatch(text))
 
     # ---- Split Bill bot commands (create `<cat> <wallet> split N` and
@@ -521,7 +563,7 @@ async def process_bot_input_route(
         flush=True,
     )
 
-    if has_media and not category_prompt_pending:
+    if has_media and not category_prompt_pending and not _skip_receipt_ocr:
         print(
             f"[WA][media-timing] route_start user={user_id} channel={source_channel} file={media_file_name or '-'} mime={media_mime_type or '-'} has_text={'yes' if bool(text) else 'no'} target_ref={target_txn_ref or '-'} total_ms={(datetime.utcnow() - started_at).total_seconds() * 1000:.1f}"
         )
@@ -575,6 +617,21 @@ async def process_bot_input_route(
     if replies and source_channel not in {"whatsapp", "whatsapp_group", "telegram"}:
         delay = random.uniform(1.2, 2.8)
         await asyncio.sleep(delay)
+
+    # Voice that transcribed but produced no actionable text (e.g. "hi") → hint.
+    if is_voice_media and not replies:
+        if voice_transcribed:
+            replies.append(
+                "Saya tak dapat faham transaksi dari audio itu. Cuba sebut seperti `makan 12.50` atau `gaji 2000`."
+                if is_en
+                else "Saya tak dapat faham transaksi dari audio itu. Cuba sebut seperti `makan 12.50` atau `gaji 2000`."
+            )
+        else:
+            replies.append(
+                "Voice note could not be transcribed right now. Please type your transaction like `lunch 12.50`."
+                if is_en
+                else "Nota suara tidak dapat dibaca buat masa ini. Sila taip transaksi anda seperti `makan 12.50`."
+            )
 
     final_reply = "\n\n".join(replies) if replies else None
     if has_media:

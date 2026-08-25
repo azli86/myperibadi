@@ -99,6 +99,24 @@ async def handle_telegram_webhook_payload_route(
         media_mime_type = (document.get("mime_type") or "").strip() or None
         media_file_name = (document.get("file_name") or f"telegram-document-{message_id or media_file_id}").strip()
         media_size_bytes = int(document.get("file_size") or 0) or None
+    elif isinstance(message.get("voice"), dict):
+        voice = message.get("voice") or {}
+        media_file_id = str(voice.get("file_id") or "").strip() or None
+        media_mime_type = "audio/ogg"
+        media_file_name = f"telegram-voice-{message_id or media_file_id}.ogg"
+        media_size_bytes = int(voice.get("file_size") or 0) or None
+    elif isinstance(message.get("audio"), dict):
+        audio = message.get("audio") or {}
+        media_file_id = str(audio.get("file_id") or "").strip() or None
+        media_mime_type = (audio.get("mime_type") or "audio/mpeg").strip() or None
+        media_file_name = (audio.get("file_name") or f"telegram-audio-{message_id or media_file_id}").strip()
+        media_size_bytes = int(audio.get("file_size") or 0) or None
+    elif isinstance(message.get("video"), dict):
+        video = message.get("video") or {}
+        media_file_id = str(video.get("file_id") or "").strip() or None
+        media_mime_type = (video.get("mime_type") or "video/mp4").strip() or None
+        media_file_name = f"telegram-video-{message_id or media_file_id}.mp4"
+        media_size_bytes = int(video.get("file_size") or 0) or None
 
     if not chat_id or not telegram_user_id:
         return {"ok": True}

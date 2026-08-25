@@ -26,6 +26,8 @@ import {
   Bot,
   Settings,
   Sparkle,
+  Mic,
+  Square,
   type LucideIcon,
 } from "lucide-react"
 import { motion } from "framer-motion"
@@ -287,6 +289,10 @@ export default function ChatPage() {
   const [txnFxKind, setTxnFxKind] = useState<TxnFxKind | null>(null)
   const [isLocating, setIsLocating] = useState(false)
   const [errorText, setErrorText] = useState("")
+  const [isVoiceRecording, setIsVoiceRecording] = useState(false)
+  const [voiceBusy, setVoiceBusy] = useState(false)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const voiceChunksRef = useRef<Blob[]>([])
   const { showAlert, alertModal } = usePageAlert(lang)
 
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -968,6 +974,86 @@ export default function ChatPage() {
     })
   }
 
+  // ── Voice input: record → transcribe → fill composer ──
+  const toggleVoiceRecording = async () => {
+    if (isVoiceRecording) {
+      try {
+        mediaRecorderRef.current?.stop()
+      } catch {}
+      return
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      showAlert(
+        lang === "EN" ? "Voice unsupported" : "Suara tidak disokong",
+        lang === "EN" ? "Voice recording is not supported on this browser." : "Rakaman suara tidak disokong pada pelayar ini.",
+        "error",
+      )
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      voiceChunksRef.current = []
+      mediaRecorderRef.current = recorder
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) voiceChunksRef.current.push(e.data)
+      }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((tr) => tr.stop())
+        setIsVoiceRecording(false)
+        const blob = new Blob(voiceChunksRef.current, { type: recorder.mimeType || "audio/webm" })
+        voiceChunksRef.current = []
+        if (blob.size < 200) {
+          showAlert(lang === "EN" ? "Too short" : "Terlalu pendek", lang === "EN" ? "Audio was too short." : "Audio terlalu pendek.", "error")
+          return
+        }
+        await transcribeVoiceBlob(blob)
+      }
+      recorder.start()
+      setIsVoiceRecording(true)
+    } catch {
+      showAlert(
+        lang === "EN" ? "Mic denied" : "Mikrofon dinafikan",
+        lang === "EN" ? "Cannot access microphone. Please grant permission." : "Tidak dapat akses mikrofon. Sila beri kebenaran.",
+        "error",
+      )
+    }
+  }
+
+  const transcribeVoiceBlob = async (blob: Blob) => {
+    setVoiceBusy(true)
+    try {
+      const token = getAccessToken()
+      const formData = new FormData()
+      formData.append("file", blob, "voice.webm")
+      const res = await fetch("/api/transcribe", {
+        credentials: "include",
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: formData,
+      })
+      if (!res.ok) {
+        throw new Error(lang === "EN" ? "Failed to read audio." : "Gagal membaca audio.")
+      }
+      const data = await res.json()
+      const spoken = String(data?.text || "").trim()
+      if (!spoken) {
+        showAlert(lang === "EN" ? "No text" : "Tiada teks", lang === "EN" ? "No text detected in audio." : "Tiada teks dikesan dalam audio.", "error")
+        return
+      }
+      setInput(spoken)
+      setIsAttachmentMenuOpen(false)
+      window.requestAnimationFrame(() => {
+        textareaRef.current?.focus()
+        resizeComposerTextarea()
+      })
+    } catch {
+      showAlert(lang === "EN" ? "Error" : "Ralat", lang === "EN" ? "Error reading audio. Try again." : "Ralat membaca audio. Cuba lagi.", "error")
+    } finally {
+      setVoiceBusy(false)
+    }
+  }
+
   const pageBg = "bg-[var(--page-bg)]"
   const sectionBg = "bg-[var(--page-bg)]"
   const surfaceBg = "bg-[var(--card)]"
@@ -1437,6 +1523,26 @@ export default function ChatPage() {
                       <span className={cn("block truncate text-[0.6875rem]", subtleText)}>{lang === "EN" ? "Send current location" : "Hantar lokasi semasa"}</span>
                     </span>
                   </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={voiceBusy || isLocating}
+                    onClick={() => {
+                      setIsAttachmentMenuOpen(false)
+                      void toggleVoiceRecording()
+                    }}
+                    className="flex w-full items-center gap-3 rounded-full px-3 py-2.5 text-left transition-colors hover:bg-[color:var(--surface-tint)] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", composerIconBg)}>
+                      {voiceBusy ? <Loader2 size={16} className="animate-spin" /> : isVoiceRecording ? <Square size={14} fill="currentColor" /> : <Mic size={16} />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className={cn("block truncate text-sm font-semibold", titleText)}>{lang === "EN" ? "Voice" : "Suara"}</span>
+                      <span className={cn("block truncate text-[0.6875rem]", subtleText)}>
+                        {lang === "EN" ? "Record a transaction by voice" : "Rakam transaksi dengan suara"}
+                      </span>
+                    </span>
+                  </button>
                 </div>
               )}
             </div>
@@ -1459,6 +1565,22 @@ export default function ChatPage() {
                   style={{ overflowWrap: "anywhere" }}
                 />
               </div>
+
+              <button
+                type="button"
+                aria-label={lang === "EN" ? "Add by voice" : "Tambah dengan suara"}
+                title={lang === "EN" ? "Add by voice" : "Tambah dengan suara"}
+                disabled={voiceBusy || isLocating}
+                onClick={toggleVoiceRecording}
+                className={cn(
+                  "chatgpt-composer-control flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                  isVoiceRecording
+                    ? "border-[#f87171]/40 bg-[#f87171]/15 text-[#f87171] animate-pulse"
+                    : mobileControlButton
+                )}
+              >
+                {voiceBusy ? <Loader2 size={14} className="animate-spin" /> : isVoiceRecording ? <Square size={13} fill="currentColor" /> : <Mic size={15} />}
+              </button>
 
               <button
                 type="button"

@@ -131,6 +131,10 @@ const nextConfig: NextConfig = {
           destination: `${apiInternalOrigin}/api/bank-reconciliation/parse`, // exact multipart upload proxy
         },
         {
+          source: "/api/transcribe",
+          destination: `${apiInternalOrigin}/api/transcribe`, // voice transcription proxy (keep /api prefix)
+        },
+        {
           source: "/api/whatsapp/webhook",
           destination: "/_not-found",
         },

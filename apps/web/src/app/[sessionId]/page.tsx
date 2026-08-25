@@ -30,7 +30,9 @@ import {
   MinusCircle,
   HeartHandshake,
   Coins,
-  Layers
+  Layers,
+  Mic,
+  Square,
 } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
@@ -427,6 +429,11 @@ export default function Dashboard() {
   const [addItems, setAddItems] = useState<AddItemState[]>(() => createDefaultAddItems())
   const [saving, setSaving] = useState(false)
   const [addSuccess, setAddSuccess] = useState(false)
+  const [voiceRecording, setVoiceRecording] = useState(false)
+  const [voiceBusy, setVoiceBusy] = useState(false)
+  const [voiceError, setVoiceError] = useState("")
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const voiceChunksRef = useRef<Blob[]>([])
   const [chartView, setChartView] = useState<"monthly" | "daily">("monthly")
   const [showChartModal, setShowChartModal] = useState(false)
   const [activeMonthlyBarIndex, setActiveMonthlyBarIndex] = useState<number | null>(null)
@@ -726,6 +733,108 @@ export default function Dashboard() {
   const removeAddItem = (index: number) => {
     setAddItems(items => items.length <= 1 ? createDefaultAddItems() : items.filter((_, itemIndex) => itemIndex !== index))
   }
+
+  async function toggleVoiceAdd() {
+    setVoiceError("")
+    if (voiceRecording) {
+      // Stop recording and transcribe.
+      try {
+        mediaRecorderRef.current?.stop()
+      } catch {}
+      return
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setVoiceError(lang === "BM" ? "Rakaman suara tidak disokong pada pelayar ini." : "Voice recording is not supported on this browser.")
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      voiceChunksRef.current = []
+      mediaRecorderRef.current = recorder
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) voiceChunksRef.current.push(e.data)
+      }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((tr) => tr.stop())
+        setVoiceRecording(false)
+        const blob = new Blob(voiceChunksRef.current, { type: recorder.mimeType || "audio/webm" })
+        voiceChunksRef.current = []
+        if (blob.size < 200) {
+          setVoiceError(lang === "BM" ? "Audio terlalu pendek." : "Audio too short.")
+          return
+        }
+        await submitVoiceBlob(blob)
+      }
+      recorder.start()
+      setVoiceRecording(true)
+    } catch {
+      setVoiceError(lang === "BM" ? "Tidak dapat akses mikrofon. Sila beri kebenaran." : "Cannot access microphone. Please grant permission.")
+    }
+  }
+
+  async function submitVoiceBlob(blob: Blob) {
+    setVoiceBusy(true)
+    setVoiceError("")
+    try {
+      const token = getAccessToken()
+      const formData = new FormData()
+      formData.append("file", blob, "voice.webm")
+      const res = await fetch("/api/transcribe", {
+        credentials: "include",
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: formData,
+      })
+      if (!res.ok) {
+        throw new Error(lang === "BM" ? "Gagal membaca audio." : "Failed to read audio.")
+      }
+      const data = await res.json()
+      const spoken = String(data?.text || "").trim()
+      if (!spoken) {
+        setVoiceError(lang === "BM" ? "Tiada teks dikesan dalam audio." : "No text detected in audio.")
+        return
+      }
+      applyVoiceToAddForm(spoken)
+    } catch {
+      setVoiceError(lang === "BM" ? "Ralat membaca audio. Cuba lagi." : "Error reading audio. Try again.")
+    } finally {
+      setVoiceBusy(false)
+    }
+  }
+
+  function applyVoiceToAddForm(spoken: string) {
+    const lower = spoken.toLowerCase()
+    const isIncome =
+      lower.includes("gaji") ||
+      lower.includes("salary") ||
+      lower.includes("income") ||
+      lower.includes("terima") ||
+      lower.includes("receive") ||
+      lower.includes("masuk") ||
+      lower.includes("duit masuk")
+    // Extract the first money amount (supporting both "12.50" and "12 50" style speech).
+    const amounts = spoken.match(/(?:rm\s*)?([0-9]+(?:[.,][0-9]+)?)/gi) || []
+    let amount = ""
+    let description = spoken
+    if (amounts.length) {
+      const first = amounts[0] || ""
+      const cleaned = first.replace(/rm/gi, "").replace(/\s/g, "").replace(/,/g, ".").trim()
+      const num = parseFloat(cleaned)
+      if (!isNaN(num) && num > 0) {
+        amount = String(num)
+        description = spoken.replace(first, "").replace(/rm/gi, "").replace(/\s+/g, " ").trim()
+      }
+    }
+    description = description.replace(/\.$/g, "").trim()
+    setAddForm((f) => ({
+      ...f,
+      type: isIncome ? "income" : "expense",
+      description: description || f.description,
+      amount: amount || f.amount,
+    }))
+  }
+
 
   async function handleAddRecord(e: React.FormEvent) {
     e.preventDefault()
@@ -2995,6 +3104,37 @@ export default function Dashboard() {
                     </button>
                   ))}
                 </div>
+
+                {/* Voice input: record a transaction by voice */}
+                <button
+                  type="button"
+                  onClick={toggleVoiceAdd}
+                  disabled={voiceBusy}
+                  className={cn(
+                    "flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-bold transition active:scale-[0.98] disabled:opacity-50",
+                    voiceRecording
+                      ? "border-[#f87171]/40 bg-[#f87171]/15 text-[#f87171] animate-pulse"
+                      : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)]"
+                  )}
+                >
+                  {voiceBusy ? (
+                    <Loader2 size={15} className="animate-spin" />
+                  ) : voiceRecording ? (
+                    <Square size={14} fill="currentColor" />
+                  ) : (
+                    <Mic size={15} />
+                  )}
+                  <span>
+                    {voiceBusy
+                      ? (lang === "BM" ? "Membaca audio…" : "Reading audio…")
+                      : voiceRecording
+                        ? (lang === "BM" ? "Sedang merakam — tekan untuk henti" : "Recording — tap to stop")
+                        : (lang === "BM" ? "Tambah dengan suara" : "Add by voice")}
+                  </span>
+                </button>
+                {voiceError ? (
+                  <p className="-mt-1 text-center text-[0.68rem] font-bold text-rose-500">{voiceError}</p>
+                ) : null}
 
                 {addForm.type === "expense" ? (
                   <div className="space-y-3 rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-3">

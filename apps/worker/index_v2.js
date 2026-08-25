@@ -253,6 +253,22 @@ function getMediaDescriptor(innerMsg) {
       fileName: img.fileName || "whatsapp-image.jpg",
     };
   }
+  const audio = innerMsg.audioMessage || (innerMsg.mimetype?.startsWith("audio/") ? innerMsg : null);
+  if (audio) {
+    const isVoiceNote = Boolean(audio.ptt);
+    return {
+      mimeType: audio.mimetype || (isVoiceNote ? "audio/ogg" : "audio/mpeg"),
+      fileName: audio.fileName || (isVoiceNote ? "whatsapp-voice.ogg" : "whatsapp-audio.m4a"),
+      isVoice: true,
+    };
+  }
+  const video = innerMsg.videoMessage || (innerMsg.mimetype?.startsWith("video/") ? innerMsg : null);
+  if (video) {
+    return {
+      mimeType: video.mimetype || "video/mp4",
+      fileName: video.fileName || "whatsapp-video.mp4",
+    };
+  }
   const doc = innerMsg.documentMessage || (innerMsg.mimetype ? innerMsg : null);
   if (doc) {
     return {
