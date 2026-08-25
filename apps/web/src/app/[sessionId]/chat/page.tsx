@@ -985,11 +985,27 @@ export default function ChatPage() {
     if (!navigator.mediaDevices?.getUserMedia) {
       showAlert(
         lang === "EN" ? "Voice unsupported" : "Suara tidak disokong",
-        lang === "EN" ? "Voice recording is not supported on this browser." : "Rakaman suara tidak disokong pada pelayar ini.",
+        lang === "EN" ? "Voice recording is not supported on this browser. Please open the app in Chrome or Safari." : "Rakaman suara tidak disokong pada pelayar ini. Sila buka aplikasi dalam Chrome atau Safari.",
         "error",
       )
       return
     }
+    // If browser exposes permission state and it is already denied, guide the user.
+    try {
+      const perm = (navigator.permissions as any)?.query
+        ? await (navigator.permissions as any).query({ name: "microphone" as any })
+        : null
+      if (perm?.state === "denied") {
+        showAlert(
+          lang === "EN" ? "Mic blocked" : "Mikrofon disekat",
+          lang === "EN"
+            ? "Microphone permission was blocked. Tap the lock/site icon in the address bar and allow microphone, then try again."
+            : "Kebenaran mikrofon telah disekat. Ketik ikon kunci/laman di bar alamat dan benarkan mikrofon, kemudian cuba lagi.",
+          "error",
+        )
+        return
+      }
+    } catch {}
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const recorder = new MediaRecorder(stream)
@@ -1011,10 +1027,20 @@ export default function ChatPage() {
       }
       recorder.start()
       setIsVoiceRecording(true)
-    } catch {
+    } catch (err: any) {
+      const denied =
+        err?.name === "NotAllowedError" ||
+        err?.name === "PermissionDeniedError" ||
+        err?.name === "SecurityError"
       showAlert(
-        lang === "EN" ? "Mic denied" : "Mikrofon dinafikan",
-        lang === "EN" ? "Cannot access microphone. Please grant permission." : "Tidak dapat akses mikrofon. Sila beri kebenaran.",
+        denied ? (lang === "EN" ? "Mic denied" : "Mikrofon dinafikan") : (lang === "EN" ? "Mic error" : "Ralat mikrofon"),
+        denied
+          ? (lang === "EN"
+              ? "Microphone access was not granted. Tap the lock/site icon in the address bar, allow microphone, then try again."
+              : "Akses mikrofon tidak dibenarkan. Ketik ikon kunci/laman di bar alamat, benarkan mikrofon, kemudian cuba lagi.")
+          : (lang === "EN"
+              ? "Could not start microphone. Please try again."
+              : "Tidak dapat memulakan mikrofon. Sila cuba lagi."),
         "error",
       )
     }

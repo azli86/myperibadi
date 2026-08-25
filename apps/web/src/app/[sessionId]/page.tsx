@@ -744,9 +744,23 @@ export default function Dashboard() {
       return
     }
     if (!navigator.mediaDevices?.getUserMedia) {
-      setVoiceError(lang === "BM" ? "Rakaman suara tidak disokong pada pelayar ini." : "Voice recording is not supported on this browser.")
+      setVoiceError(lang === "BM" ? "Rakaman suara tidak disokong pada pelayar ini. Sila buka aplikasi dalam Chrome atau Safari." : "Voice recording is not supported on this browser. Please open the app in Chrome or Safari.")
       return
     }
+    // If browser exposes permission state and it is already denied, guide the user.
+    try {
+      const perm = (navigator.permissions as any)?.query
+        ? await (navigator.permissions as any).query({ name: "microphone" as any })
+        : null
+      if (perm?.state === "denied") {
+        setVoiceError(
+          lang === "BM"
+            ? "Kebenaran mikrofon telah disekat. Ketik ikon kunci/laman di bar alamat dan benarkan mikrofon, kemudian cuba lagi."
+            : "Microphone permission was blocked. Tap the lock/site icon in the address bar and allow microphone, then try again."
+        )
+        return
+      }
+    } catch {}
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const recorder = new MediaRecorder(stream)
@@ -768,8 +782,20 @@ export default function Dashboard() {
       }
       recorder.start()
       setVoiceRecording(true)
-    } catch {
-      setVoiceError(lang === "BM" ? "Tidak dapat akses mikrofon. Sila beri kebenaran." : "Cannot access microphone. Please grant permission.")
+    } catch (err: any) {
+      const denied =
+        err?.name === "NotAllowedError" ||
+        err?.name === "PermissionDeniedError" ||
+        err?.name === "SecurityError"
+      setVoiceError(
+        denied
+          ? (lang === "BM"
+              ? "Akses mikrofon tidak dibenarkan. Ketik ikon kunci/laman di bar alamat, benarkan mikrofon, kemudian cuba lagi."
+              : "Microphone access was not granted. Tap the lock/site icon in the address bar, allow microphone, then try again.")
+          : (lang === "BM"
+              ? "Tidak dapat memulakan mikrofon. Sila cuba lagi."
+              : "Could not start microphone. Please try again.")
+      )
     }
   }
 
