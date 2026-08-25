@@ -59,8 +59,12 @@ async def transcribe_audio(
         "file": ("voice" + ext, payload, mime_type or "application/octet-stream"),
     }
     data: dict[str, str] = {"model": model, "response_format": "json"}
-    if language_hint and language_hint.lower() not in {"auto", "none", ""}:
-        data["language"] = language_hint
+    # Only send a language hint when it looks like a valid ISO-639-1 code.
+    # User profiles may store "BM"/"EN" which Whisper does not understand —
+    # sending those breaks transcription, so map them or fall back to auto-detect.
+    lang_code = _normalize_language_hint(language_hint)
+    if lang_code:
+        data["language"] = lang_code
 
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
@@ -87,6 +91,37 @@ async def transcribe_audio(
     if not text:
         return None
     return TranscriptionResult(text=text, language=body.get("language"))
+
+
+def _normalize_language_hint(language_hint: str | None) -> str | None:
+    """Map app-facing language values to ISO-639-1 codes Whisper accepts.
+
+    Returns None when no safe hint can be derived so the caller can let
+    Whisper auto-detect the language instead of sending an invalid code.
+    """
+    if not language_hint:
+        return None
+    raw = language_hint.strip().lower()
+    if raw in {"", "auto", "none", "null"}:
+        return None
+    alias = {
+        "bm": "ms",
+        "malay": "ms",
+        "malaysia": "ms",
+        "ms": "ms",
+        "melayu": "ms",
+        "en": "en",
+        "english": "en",
+        "bi": "en",
+        "indonesian": "id",
+        "id": "id",
+    }
+    if raw in alias:
+        return alias[raw]
+    # Fall back to allowing only short ISO-ish codes (2 letters, or zh/ja/etc.)
+    if len(raw) == 2 and raw.isalpha():
+        return raw
+    return None
 
 
 def _guess_extension(mime_type: str) -> str:
