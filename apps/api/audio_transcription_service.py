@@ -53,10 +53,12 @@ async def transcribe_audio(
         return None
 
     model = (os.getenv("WHISPER_MODEL") or "whisper-1").strip()
-    # Extension is optional but helps some providers sniff the codec.
-    ext = _guess_extension(mime_type)
+    # Mime may carry parameters like "audio/ogg; codecs=opus" which OpenAI
+    # rejects and which break our extension lookup — use the base mime only.
+    base_mime = (mime_type or "").split(";", 1)[0].strip().lower()
+    ext = _guess_extension(base_mime)
     files = {
-        "file": ("voice" + ext, payload, mime_type or "application/octet-stream"),
+        "file": ("voice" + ext, payload, base_mime or "application/octet-stream"),
     }
     data: dict[str, str] = {"model": model, "response_format": "json"}
     # Only send a language hint when it looks like a valid ISO-639-1 code.
@@ -144,4 +146,5 @@ def _guess_extension(mime_type: str) -> str:
         "video/3gpp": ".3gp",
         "video/3gpp2": ".3g2",
     }
-    return mapping.get((mime_type or "").strip().lower(), "")
+    clean = (mime_type or "").split(";", 1)[0].strip().lower()
+    return mapping.get(clean, "")
