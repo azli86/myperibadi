@@ -2804,6 +2804,205 @@ async def ensure_personal_wallet(db: AsyncSession, user_id: str) -> models.Walle
 AMOUNT_PATTERN = re.compile(r"(?:^|\s|[Rr][Mm])\s?(\d+(?:\.\d{1,2})?)(?![A-Za-z])\b")
 
 
+# ── Spoken-number support for voice notes ─────────────────────────────
+# Maps Malay/English number words to digits so spoken amounts can be read,
+# e.g. "makan dua ringgit" -> "makan 2", "gaji dua ribu" -> "gaji 2000".
+_NUM_WORDS = {
+    "satu": 1, "dua": 2, "tiga": 3, "empat": 4, "lima": 5, "enam": 6,
+    "tujuh": 7, "lapan": 8, "sembilan": 9, "sepuluh": 10,
+    "sebelas": 11, "dua belas": 12, "tiga belas": 13, "empat belas": 14,
+    "lima belas": 15, "enam belas": 16, "tujuh belas": 17, "lapan belas": 18,
+    "sembilan belas": 19,
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+    "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+    "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+    "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18,
+    "nineteen": 19,
+}
+_NUM_TENS = {
+    "dua puluh": 20, "tiga puluh": 30, "empat puluh": 40, "lima puluh": 50,
+    "enam puluh": 60, "tujuh puluh": 70, "lapan puluh": 80, "sembilan puluh": 90,
+    "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50,
+    "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90,
+}
+_NUM_SCALE = {
+    "ratus": 100, "ribu": 1000, "juta": 1_000_000, "belas": 10,
+    "seratus": 100, "seribu": 1000, "sejuta": 1_000_000,
+    "hundred": 100, "thousand": 1000, "million": 1_000_000,
+}
+_NUM_TOKENS = set(_NUM_WORDS) | set(_NUM_TENS) | set(_NUM_SCALE)
+_CURRENCY_MARK = {"ringgit", "dollar", "dollars", "sen", "cent", "cents"}
+
+
+def normalize_spoken_amounts(text: str) -> str:
+    """Rewrite spoken Malay/English amounts in ``text`` into digit form."""
+    if not text:
+        return text
+    words = text.split()
+    out: list[str] = []
+    i = 0
+    while i < len(words):
+        low = words[i].strip().lower()
+        if low in _NUM_TOKENS or low in _CURRENCY_MARK:
+            val, nxt = _parse_spoken_number(words, i)
+            if val is not None:
+                out.append(_fmt_num(val))
+                i = nxt
+                continue
+        out.append(words[i])
+        i += 1
+    return " ".join(out)
+
+
+def _fmt_num(value: float) -> str:
+    """Format a numeric value without a trailing '.0' when it is integral."""
+    if abs(value - round(value)) < 1e-9:
+        return str(int(round(value)))
+    return f"{value:.2f}".rstrip("0").rstrip(".")
+
+
+def _parse_spoken_number(words: list[str], start: int) -> tuple[float | None, int]:
+    """Parse a spoken amount from ``words[start:]`` (word list, no spaces).
+
+    Returns (value, next_index) or (None, start) if no number is found.
+    Handles "dua ribu lima ratus" -> 2500, "dua ringgit" -> 2,
+    "tiga ringgit lima puluh sen" -> 3.50, "two thousand" -> 2000.
+    """
+    value = 0.0
+    unit_acc = 0.0
+    cents = 0.0
+    saw_number = False
+    idx = start
+
+    def _w(i: int) -> str:
+        return words[i].strip().lower() if i < len(words) else ""
+
+    while idx < len(words):
+        w = _w(idx)
+        if not w:
+            idx += 1
+            continue
+
+        matched_tens = None
+        for ph in sorted(_NUM_TENS, key=len, reverse=True):
+            pt = ph.split()
+            ok = True
+            j = idx
+            for p in pt:
+                if _w(j) != p:
+                    ok = False
+                    break
+                j += 1
+            if ok:
+                matched_tens = ph
+                break
+        if matched_tens:
+            val = _NUM_TENS[matched_tens]
+            if cents:
+                cents += val
+            else:
+                unit_acc += val
+            saw_number = True
+            idx += len(matched_tens.split())
+            continue
+
+        if w in _NUM_WORDS:
+            val = _NUM_WORDS[w]
+            if cents:
+                cents = cents * 10 + val
+            else:
+                unit_acc += val
+            saw_number = True
+            idx += 1
+            continue
+
+        if w in _NUM_SCALE:
+            scale = _NUM_SCALE[w]
+            if w == "belas":
+                unit_acc += 10
+            elif scale >= 100:
+                value += (unit_acc if unit_acc else 1) * scale
+                unit_acc = 0.0
+            else:
+                unit_acc += scale
+            saw_number = True
+            idx += 1
+            continue
+
+        if w in ("ringgit", "dollar", "dollars"):
+            value += unit_acc
+            unit_acc = 0.0
+            # Look ahead for a bare cents phrase like "lima puluh sen".
+            cents_val, nxt, cents_found = _parse_cents_phrase(words, idx + 1)
+            if cents_found:
+                cents += cents_val
+                idx = nxt
+                continue
+            idx += 1
+            continue
+
+        if w in ("sen", "cent", "cents"):
+            value += unit_acc
+            unit_acc = 0.0
+            cents = cents or 0.0
+            idx += 1
+            continue
+
+        break
+
+    if not saw_number and value == 0 and cents == 0 and unit_acc == 0:
+        return None, start
+
+    final_value = value + unit_acc + (cents / 100.0)
+    return final_value, idx
+
+
+def _parse_cents_phrase(words: list[str], start: int) -> tuple[float, int, bool]:
+    """Parse cents after a main currency word, e.g. 'lima puluh sen' -> 50.
+
+    Returns (cents, next_index, found)."""
+    if start >= len(words):
+        return 0.0, start, False
+    total = 0.0
+    idx = start
+
+    def _w(i: int) -> str:
+        return words[i].strip().lower() if i < len(words) else ""
+
+    while idx < len(words):
+        w = _w(idx)
+        if not w:
+            idx += 1
+            continue
+        matched_tens = None
+        for ph in sorted(_NUM_TENS, key=len, reverse=True):
+            pt = ph.split()
+            ok = True
+            j = idx
+            for p in pt:
+                if _w(j) != p:
+                    ok = False
+                    break
+                j += 1
+            if ok:
+                matched_tens = ph
+                break
+        if matched_tens:
+            total += _NUM_TENS[matched_tens]
+            idx += len(matched_tens.split())
+            continue
+        if w in _NUM_WORDS:
+            total = total * 10 + _NUM_WORDS[w]
+            idx += 1
+            continue
+        if w in ("sen", "cent", "cents"):
+            return total, idx + 1, True
+        break
+    if total > 0 and idx > start:
+        return total, idx, True
+    return 0.0, start, False
+
+
 def extract_amount(text: str) -> Optional[float]:
     # Require space/start/RM before number, and reject numbers attached to letters like `7e`.
     match = AMOUNT_PATTERN.search(text)

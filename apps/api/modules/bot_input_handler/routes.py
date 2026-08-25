@@ -187,6 +187,7 @@ async def process_bot_input_route(
     # ── Voice / audio: transcribe to text, then process as a normal message ──
     is_voice_media = audio_transcription_service.is_transcribable(media_mime_type)
     voice_transcribed = False
+    print(f"[voice-dbg] has_media={has_media} mime={media_mime_type!r} is_transcribable={is_voice_media} has_text={bool(text)} payload_len={len(media_payload) if media_payload else 0} obj_key={bool(media_object_key)}")
     if has_media and is_voice_media and not text:
         try:
             user_res = await db.execute(select(models.User).where(models.User.id == user_id))
@@ -203,6 +204,9 @@ async def process_bot_input_route(
             )
             if result and result.text:
                 text = result.text.strip()
+                # Convert spoken Malay/English amounts to digits so the standard
+                # parsers can read amounts said aloud ("makan dua ringgit" -> "makan 2").
+                text = whatsapp_service.normalize_spoken_amounts(text)
                 has_amount = False
                 if text:
                     text_without_txn_ref = txn_ref_pattern.sub("", text).strip()
@@ -216,6 +220,13 @@ async def process_bot_input_route(
                     )
                 voice_transcribed = True
                 print(f"[voice] user={user_id} channel={source_channel} transcribed={text!r} mime={media_mime_type}")
+                # A transcribed voice note is a spoken transaction, so process it as
+                # a plain text message (create/command) rather than an audio media
+                # message that waits for a category keyword. Drop the media flag so
+                # the text path creates the transaction directly.
+                has_media = False
+                media_payload = None
+                media_object_key = None
         except Exception as exc:
             print(f"[voice] transcription failed user={user_id} channel={source_channel}: {type(exc).__name__}: {exc}")
             is_voice_media = False
