@@ -11,6 +11,9 @@ caller treats the media as unsupported) rather than crashing the bot flow.
 from __future__ import annotations
 
 import os
+import shutil
+import subprocess
+import tempfile
 from dataclasses import dataclass
 
 import httpx
@@ -56,9 +59,15 @@ async def transcribe_audio(
     # Mime may carry parameters like "audio/ogg; codecs=opus" which OpenAI
     # rejects and which break our extension lookup — use the base mime only.
     base_mime = (mime_type or "").split(";", 1)[0].strip().lower()
-    ext = _guess_extension(base_mime)
+
+    # Telegram voice notes are OGG Opus, which Whisper accepts but sometimes
+    # transcribes less accurately than a decoded WAV. Convert to 16 kHz mono
+    # WAV first (best format for Whisper) and fall back to the original bytes
+    # if ffmpeg is unavailable or conversion fails.
+    payload, ext, content_mime = _maybe_convert_to_wav(payload, base_mime)
+
     files = {
-        "file": ("voice" + ext, payload, base_mime or "application/octet-stream"),
+        "file": ("voice" + ext, payload, content_mime or "application/octet-stream"),
     }
     data: dict[str, str] = {"model": model, "response_format": "json"}
     # Only send a language hint when it looks like a valid ISO-639-1 code.
@@ -124,6 +133,52 @@ def _normalize_language_hint(language_hint: str | None) -> str | None:
     if len(raw) == 2 and raw.isalpha():
         return raw
     return None
+
+
+def _maybe_convert_to_wav(payload: bytes, mime_type: str) -> tuple[bytes, str, str | None]:
+    """Decode OGG Opus voice notes to 16 kHz mono WAV for more accurate Whisper
+    transcription. Falls back to the original bytes on any error.
+
+    Returns (payload, extension, content_type)."""
+    base = (mime_type or "").lower()
+    # Only convert OGG (and optionally webm) voice; leave mp3/wav/m4a as-is
+    # since they're already well supported.
+    if base not in ("audio/ogg", "audio/webm", "audio/opus"):
+        return payload, _guess_extension(base) or ".bin", base or "application/octet-stream"
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg or not payload:
+        return payload, _guess_extension(base) or ".bin", base or "application/octet-stream"
+    in_ext = _guess_extension(base) or ".ogg"
+    try:
+        with tempfile.NamedTemporaryFile(suffix=in_ext, delete=False) as fin:
+            fin.write(payload)
+            in_path = fin.name
+        out_path = in_path + ".wav"
+        try:
+            result = subprocess.run(
+                [
+                    ffmpeg, "-y", "-i", in_path,
+                    "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", out_path,
+                ],
+                capture_output=True,
+                timeout=30,
+            )
+            if result.returncode == 0 and os.path.exists(out_path):
+                with open(out_path, "rb") as fout:
+                    wav_bytes = fout.read()
+                if wav_bytes:
+                    print(f"[voice-dbg] converted {base} to wav bytes={len(wav_bytes)}")
+                    return wav_bytes, ".wav", "audio/wav"
+        finally:
+            for p in (in_path, out_path):
+                try:
+                    if p and os.path.exists(p):
+                        os.unlink(p)
+                except OSError:
+                    pass
+    except Exception as exc:
+        print(f"[voice-dbg] ffmpeg conversion failed: {type(exc).__name__}: {exc}")
+    return payload, _guess_extension(base) or ".bin", base or "application/octet-stream"
 
 
 def _guess_extension(mime_type: str) -> str:
