@@ -532,6 +532,7 @@ async def process_bot_input_route(
             txn_time=draft.txn_time if ocr_summary else None,
             receipt_user_note=receipt_user_note,
             is_voice=voice_transcribed,
+            skip_category_prompt=voice_transcribed,
         )
         # Keep the transaction confirmation together with the later receipt-upload reply.
         if txt_reply:
