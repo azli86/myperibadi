@@ -205,6 +205,10 @@ async def process_bot_input_route(
                 # wrong hint (e.g. forcing "ms" for an English note) can produce
                 # gibberish like "There is a little maybe".
                 language_hint=None,
+                # Guide Whisper toward common transaction words for more accurate
+                # spelling of short, accented voice notes ("direct", "ringgit",
+                # "sen", wallet names).
+                prompt="direct ringgit sen maybank cash tng gaji belanja makan nasi lemak topup transfer tambah keluar",
             )
             print(f"[voice-dbg] lang_hint={voice_lang!r} -> auto-detect; payload_bytes={len(voice_payload or b'')}")
             if result and result.text:

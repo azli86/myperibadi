@@ -40,6 +40,7 @@ async def transcribe_audio(
     mime_type: str,
     *,
     language_hint: str | None = None,
+    prompt: str | None = None,
     timeout: float = 60.0,
 ) -> TranscriptionResult | None:
     """Transcribe audio bytes to text.
@@ -70,6 +71,10 @@ async def transcribe_audio(
         "file": ("voice" + ext, payload, content_mime or "application/octet-stream"),
     }
     data: dict[str, str] = {"model": model, "response_format": "json"}
+    # Guide Whisper toward common money/transaction words so short, accented
+    # voice notes are spelled more accurately ("direct", "ringgit", wallet names).
+    if prompt and prompt.strip():
+        data["prompt"] = prompt.strip()
     # Only send a language hint when it looks like a valid ISO-639-1 code.
     # User profiles may store "BM"/"EN" which Whisper does not understand —
     # sending those breaks transcription, so map them or fall back to auto-detect.
@@ -158,7 +163,9 @@ def _maybe_convert_to_wav(payload: bytes, mime_type: str) -> tuple[bytes, str, s
             result = subprocess.run(
                 [
                     ffmpeg, "-y", "-i", in_path,
-                    "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", out_path,
+                    "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le",
+                    "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
+                    out_path,
                 ],
                 capture_output=True,
                 timeout=30,
