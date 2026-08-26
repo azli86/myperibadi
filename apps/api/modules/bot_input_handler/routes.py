@@ -200,8 +200,13 @@ async def process_bot_input_route(
             result = await audio_transcription_service.transcribe_audio(
                 voice_payload or b"",
                 media_mime_type or "audio/ogg",
-                language_hint=voice_lang,
+                # Let Whisper auto-detect the language so both English and
+                # Bahasa Melayu voice notes are transcribed correctly. Passing a
+                # wrong hint (e.g. forcing "ms" for an English note) can produce
+                # gibberish like "There is a little maybe".
+                language_hint=None,
             )
+            print(f"[voice-dbg] lang_hint={voice_lang!r} -> auto-detect; payload_bytes={len(voice_payload or b'')}")
             if result and result.text:
                 text = result.text.strip()
                 # Convert spoken Malay/English amounts to digits so the standard
