@@ -35,8 +35,15 @@ try {
   console.error("[sw.js] Firebase init failed:", e)
 }
 
-const CACHE_NAME = "budget-by-digitalport-shell-v39"
-const APP_SHELL = ["/offline", "/manifest.webmanifest", "/icon-192-v3.png", "/icon-512-v3.png", "/assets/lock/keypadbanner-v5.png"]
+const CACHE_NAME = "budget-by-digitalport-shell-v42"
+const APP_SHELL = [
+  "/offline",
+  "/manifest.webmanifest",
+  "/icon-192-v3.png",
+  "/icon-512-v3.png",
+  "/assets/lock/keypadbanner-v5.png",
+  "/assets/videos/myperibadivideointro.mp4",
+]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

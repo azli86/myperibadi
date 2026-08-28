@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { signInWithGoogle } from "../lib/firebase";
 import {
   LayoutDashboard,
@@ -45,6 +45,13 @@ import {
   Sparkles,
   ArrowUpRight,
   ArrowDownRight,
+  Send,
+  Headphones,
+  User,
+  Loader2,
+  Lightbulb,
+  LifeBuoy,
+  Bug,
 } from "lucide-react";
 
 function GoogleIcon() {
@@ -206,6 +213,15 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [ticketReply, setTicketReply] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (ticketDetail) {
+      setTimeout(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
+  }, [ticketDetail?.id, ticketDetail?.replies?.length]);
 
   const [txnStats, setTxnStats] = useState<any[]>([]);
   const [userGrowth, setUserGrowth] = useState<any[]>([]);
@@ -2251,219 +2267,471 @@ export default function Home() {
                 )}
               </div>
 
-              {/* Ticket Detail Modal */}
+              {/* Ticket Detail Popup Chat Modal */}
               {ticketDetail && (
                 <div
                   className="overlay"
+                  style={{
+                    position: "fixed",
+                    inset: 0,
+                    zIndex: 9999,
+                    background: "rgba(0, 0, 0, 0.78)",
+                    backdropFilter: "blur(6px)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "16px",
+                  }}
                   onClick={() => setTicketDetail(null)}
                 >
-                  <div className="modal" onClick={(e) => e.stopPropagation()}>
-                    <div className="modal-head">
-                      <h2>
-                        #{ticketDetail.id} · {ticketDetail.title}
-                      </h2>
+                  <div
+                    className="modal"
+                    style={{
+                      width: "100%",
+                      maxWidth: "680px",
+                      height: "85vh",
+                      maxHeight: "820px",
+                      display: "flex",
+                      flexDirection: "column",
+                      borderRadius: "20px",
+                      background: "var(--bg-shell, #0a0e1a)",
+                      border: "1px solid var(--border-card)",
+                      boxShadow: "0 25px 60px -10px rgba(0,0,0,0.8)",
+                      overflow: "hidden",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* ── 1. Chat Header ── */}
+                    <div
+                      style={{
+                        padding: "14px 18px",
+                        borderBottom: "1px solid var(--border-subtle)",
+                        background: "var(--bg-surface)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "12px",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
+                        <div
+                          style={{
+                            position: "relative",
+                            width: "42px",
+                            height: "42px",
+                            borderRadius: "14px",
+                            background: "rgba(99, 102, 241, 0.15)",
+                            border: "1px solid rgba(99, 102, 241, 0.3)",
+                            color: "var(--primary-light)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <Headphones size={20} />
+                          <span
+                            style={{
+                              position: "absolute",
+                              bottom: -2,
+                              right: -2,
+                              width: "10px",
+                              height: "10px",
+                              borderRadius: "50%",
+                              background: "#10b981",
+                              border: "2px solid var(--bg-surface)",
+                            }}
+                          />
+                        </div>
+
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <h3
+                              style={{
+                                margin: 0,
+                                fontSize: "15px",
+                                fontWeight: 800,
+                                color: "var(--text-main)",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              #{ticketDetail.id} · {ticketDetail.title}
+                            </h3>
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              fontSize: "12px",
+                              color: "var(--text-muted)",
+                              marginTop: "2px",
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <span style={{ fontWeight: 600, color: "var(--text-sub)" }}>
+                              {ticketDetail.user_name} ({ticketDetail.user_email})
+                            </span>
+                            <span>•</span>
+                            <span
+                              style={{
+                                padding: "1px 8px",
+                                borderRadius: "6px",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                textTransform: "uppercase",
+                                background:
+                                  ticketDetail.kind === "bug"
+                                    ? "rgba(244, 63, 94, 0.15)"
+                                    : ticketDetail.kind === "feature"
+                                    ? "rgba(245, 158, 11, 0.15)"
+                                    : "rgba(6, 182, 212, 0.15)",
+                                color:
+                                  ticketDetail.kind === "bug"
+                                    ? "#fda4af"
+                                    : ticketDetail.kind === "feature"
+                                    ? "#fde047"
+                                    : "#67e8f9",
+                                border:
+                                  ticketDetail.kind === "bug"
+                                    ? "1px solid rgba(244, 63, 94, 0.3)"
+                                    : ticketDetail.kind === "feature"
+                                    ? "1px solid rgba(245, 158, 11, 0.3)"
+                                    : "1px solid rgba(6, 182, 212, 0.3)",
+                              }}
+                            >
+                              {ticketDetail.kind}
+                            </span>
+                            <span
+                              style={{
+                                padding: "1px 8px",
+                                borderRadius: "6px",
+                                fontSize: "11px",
+                                fontWeight: 700,
+                                background:
+                                  ticketDetail.priority === "urgent"
+                                    ? "rgba(244, 63, 94, 0.2)"
+                                    : "rgba(255, 255, 255, 0.08)",
+                                color:
+                                  ticketDetail.priority === "urgent"
+                                    ? "#fda4af"
+                                    : "var(--text-sub)",
+                              }}
+                            >
+                              {ticketDetail.priority}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
                       <button
                         className="ghost"
                         onClick={() => setTicketDetail(null)}
+                        style={{
+                          width: "34px",
+                          height: "34px",
+                          borderRadius: "10px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: 0,
+                          cursor: "pointer",
+                        }}
                       >
-                        <X size={16} />
+                        <X size={18} />
                       </button>
                     </div>
 
-                    <div className="kv-grid">
-                      <div className="kv">
-                        <span>Jenis Tiket</span>
-                        <b>{ticketDetail.kind}</b>
-                      </div>
-                      <div className="kv">
-                        <span>Pengguna</span>
-                        <b>
-                          {ticketDetail.user_name} ({ticketDetail.user_email})
-                        </b>
-                      </div>
-                      <div className="kv">
-                        <span>Tahap Prioriti</span>
-                        <b>{ticketDetail.priority}</b>
-                      </div>
-                      <div className="kv">
-                        <span>Status Semasa</span>
-                        <b>{ticketDetail.status}</b>
-                      </div>
-                      <div className="kv">
-                        <span>Tarikh Dihantar</span>
-                        <b>{fmtDate(ticketDetail.created_at)}</b>
-                      </div>
-                      {ticketDetail.resolved_at && (
-                        <div className="kv">
-                          <span>Tarikh Selesai</span>
-                          <b>{fmtDate(ticketDetail.resolved_at)}</b>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="sub-title">Kandungan Keterangan</div>
+                    {/* ── 2. Quick Status Action Bar ── */}
                     <div
                       style={{
-                        padding: "14px",
-                        background: "rgba(0,0,0,0.3)",
-                        borderRadius: "var(--radius-md)",
-                        border: "1px solid var(--border-subtle)",
-                        fontSize: "14px",
-                        lineHeight: "1.6",
-                        whiteSpace: "pre-wrap",
+                        padding: "8px 18px",
+                        borderBottom: "1px solid var(--border-subtle)",
+                        background: "rgba(0, 0, 0, 0.25)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "8px",
+                        flexWrap: "wrap",
                       }}
                     >
-                      {ticketDetail.description || "Tiada keterangan disediakan."}
+                      <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)", letterSpacing: "0.05em" }}>
+                        Status Tiket:
+                      </span>
+                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                        {[
+                          ["new", "Baru", "#06b6d4"],
+                          ["in_progress", "Dalam Proses", "#f59e0b"],
+                          ["resolved", "Selesai", "#10b981"],
+                          ["closed", "Tutup", "#64748b"],
+                        ].map(([k, l, col]) => {
+                          const active = ticketDetail.status === k;
+                          return (
+                            <button
+                              key={k}
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void setTicketStatus(ticketDetail.id, k as string)}
+                              style={{
+                                padding: "4px 10px",
+                                borderRadius: "8px",
+                                fontSize: "11px",
+                                fontWeight: active ? 800 : 600,
+                                border: active ? `1px solid ${col}` : "1px solid var(--border-subtle)",
+                                background: active ? `${col}22` : "transparent",
+                                color: active ? col : "var(--text-muted)",
+                                cursor: "pointer",
+                                transition: "all 0.15s ease",
+                              }}
+                            >
+                              {active && "● "}
+                              {l}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
 
-                    <div className="sub-title">Tukar Status Tiket</div>
-                    <div className="row" style={{ gap: "8px" }}>
-                      {[
-                        ["new", "Baru"],
-                        ["in_progress", "Dalam Proses"],
-                        ["resolved", "Selesai"],
-                        ["closed", "Tutup"],
-                      ].map(([k, l]) => (
-                        <button
-                          key={k}
-                          className={`ghost ${
-                            ticketDetail.status === k ? "active" : ""
-                          }`}
-                          disabled={busy}
-                          onClick={() =>
-                            void setTicketStatus(ticketDetail.id, k as string)
-                          }
-                        >
-                          {l}
-                        </button>
-                      ))}
-                    </div>
-
-                    {ticketDetail.kind === "support" && (
-                      <div style={{ marginTop: "16px" }}>
-                        <div className="sub-title">Perbualan Tiket</div>
-                        <div
+                    {/* ── 3. Chat Message Stream (Feed) ── */}
+                    <div
+                      style={{
+                        flex: 1,
+                        overflowY: "auto",
+                        padding: "16px 20px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "14px",
+                        background: "rgba(0, 0, 0, 0.15)",
+                      }}
+                    >
+                      {/* Date Separator */}
+                      <div style={{ display: "flex", justifyContent: "center", margin: "4px 0" }}>
+                        <span
                           style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "10px",
-                            maxHeight: "300px",
-                            overflowY: "auto",
-                            marginBottom: "12px",
+                            padding: "3px 12px",
+                            borderRadius: "999px",
+                            background: "var(--bg-card)",
+                            border: "1px solid var(--border-subtle)",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            color: "var(--text-muted)",
                           }}
                         >
-                          {/* User's original question as first bubble (dark, right? no—user on left in admin view) */}
-                          {(ticketDetail.description || ticketDetail.title) && (
-                            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-                              <div className="muted" style={{ fontSize: 10, fontWeight: 700, marginBottom: 3, paddingLeft: 4 }}>
-                                Pengguna · {fmtDate(ticketDetail.created_at)}
+                          {fmtDate(ticketDetail.created_at)}
+                        </span>
+                      </div>
+
+                      {/* User's Original Message (Left) */}
+                      {(ticketDetail.title || ticketDetail.description) && (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "4px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", paddingLeft: "4px" }}>
+                            <User size={12} />
+                            <span>{ticketDetail.user_name} (Mesej Asal)</span>
+                            <span>•</span>
+                            <span>{fmtDate(ticketDetail.created_at)}</span>
+                          </div>
+                          <div
+                            style={{
+                              maxWidth: "85%",
+                              background: "var(--bg-surface)",
+                              color: "var(--text-main)",
+                              border: "1px solid var(--border-card)",
+                              borderTopLeftRadius: "4px",
+                              borderRadius: "16px",
+                              padding: "12px 16px",
+                              fontSize: "13px",
+                              lineHeight: "1.6",
+                              whiteSpace: "pre-wrap",
+                              boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                            }}
+                          >
+                            <div style={{ fontWeight: 800, fontSize: "14px", marginBottom: "4px", color: "var(--primary-light)" }}>
+                              {ticketDetail.title}
+                            </div>
+                            {ticketDetail.description || <span style={{ opacity: 0.6 }}>Tiada keterangan tambahan.</span>}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Replies List */}
+                      {(ticketDetail.replies || []).length > 0 ? (
+                        (ticketDetail.replies || []).map((r: any) =>
+                          r.sender === "admin" ? (
+                            <div key={r.id} style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", fontWeight: 700, color: "var(--primary-light)", paddingRight: "4px" }}>
+                                <ShieldCheck size={13} />
+                                <span>Admin / Anda</span>
+                                {r.created_at && (
+                                  <>
+                                    <span>•</span>
+                                    <span style={{ fontWeight: 500, color: "var(--text-muted)" }}>{fmtDate(r.created_at)}</span>
+                                  </>
+                                )}
                               </div>
                               <div
                                 style={{
                                   maxWidth: "85%",
-                                  background: "var(--panel)",
-                                  color: "var(--text-main)",
-                                  border: "1px solid var(--border-subtle)",
-                                  borderTopLeftRadius: 4,
-                                  borderRadius: 12,
-                                  padding: "10px 12px",
+                                  background: "linear-gradient(135deg, rgba(99,102,241,0.22), rgba(139,92,246,0.28))",
+                                  color: "#ffffff",
+                                  border: "1px solid rgba(99,102,241,0.45)",
+                                  borderTopRightRadius: "4px",
+                                  borderRadius: "16px",
+                                  padding: "12px 16px",
+                                  fontSize: "13px",
+                                  lineHeight: "1.6",
                                   whiteSpace: "pre-wrap",
-                                  fontSize: 13,
-                                  lineHeight: "1.5",
+                                  boxShadow: "0 4px 12px rgba(99,102,241,0.15)",
                                 }}
                               >
-                                <div style={{ fontWeight: 800, marginBottom: 2 }}>
-                                  {ticketDetail.title}
-                                </div>
-                                {ticketDetail.description}
+                                {r.body}
                               </div>
                             </div>
-                          )}
-                          {(ticketDetail.replies || []).length > 0 ? (
-                            (ticketDetail.replies || []).map((r: any) =>
-                              r.sender === "admin" ? (
-                                <div key={r.id} style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                                  <div className="muted" style={{ fontSize: 10, fontWeight: 700, marginBottom: 3, paddingRight: 4 }}>
-                                    Admin · {fmtDate(r.created_at)}
-                                  </div>
-                                  <div
-                                    style={{
-                                      maxWidth: "85%",
-                                      background: "rgba(14,165,233,0.12)",
-                                      color: "var(--text-main)",
-                                      border: "1px solid rgba(14,165,233,0.3)",
-                                      borderTopRightRadius: 4,
-                                      borderRadius: 12,
-                                      padding: "10px 12px",
-                                      whiteSpace: "pre-wrap",
-                                      fontSize: 13,
-                                      lineHeight: "1.5",
-                                    }}
-                                  >
-                                    {r.body}
-                                  </div>
-                                </div>
-                              ) : (
-                                <div key={r.id} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
-                                  <div className="muted" style={{ fontSize: 10, fontWeight: 700, marginBottom: 3, paddingLeft: 4 }}>
-                                    Pengguna · {fmtDate(r.created_at)}
-                                  </div>
-                                  <div
-                                    style={{
-                                      maxWidth: "85%",
-                                      background: "var(--panel)",
-                                      color: "var(--text-main)",
-                                      border: "1px solid var(--border-subtle)",
-                                      borderTopLeftRadius: 4,
-                                      borderRadius: 12,
-                                      padding: "10px 12px",
-                                      whiteSpace: "pre-wrap",
-                                      fontSize: 13,
-                                      lineHeight: "1.5",
-                                    }}
-                                  >
-                                    {r.body}
-                                  </div>
-                                </div>
-                              )
-                            )
                           ) : (
-                            <div
-                              className="muted"
-                              style={{ fontSize: 12, marginBottom: 12 }}
-                            >
-                              Tiada balasan lagi.
+                            <div key={r.id} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: "4px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", paddingLeft: "4px" }}>
+                                <User size={12} />
+                                <span>{ticketDetail.user_name}</span>
+                                {r.created_at && (
+                                  <>
+                                    <span>•</span>
+                                    <span style={{ fontWeight: 500 }}>{fmtDate(r.created_at)}</span>
+                                  </>
+                                )}
+                              </div>
+                              <div
+                                style={{
+                                  maxWidth: "85%",
+                                  background: "var(--bg-surface)",
+                                  color: "var(--text-main)",
+                                  border: "1px solid var(--border-card)",
+                                  borderTopLeftRadius: "4px",
+                                  borderRadius: "16px",
+                                  padding: "12px 16px",
+                                  fontSize: "13px",
+                                  lineHeight: "1.6",
+                                  whiteSpace: "pre-wrap",
+                                  boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                                }}
+                              >
+                                {r.body}
+                              </div>
                             </div>
-                          )}
+                          )
+                        )
+                      ) : ticketDetail.admin_note ? (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", fontWeight: 700, color: "var(--primary-light)", paddingRight: "4px" }}>
+                            <ShieldCheck size={13} />
+                            <span>Admin / Anda</span>
+                          </div>
+                          <div
+                            style={{
+                              maxWidth: "85%",
+                              background: "linear-gradient(135deg, rgba(99,102,241,0.22), rgba(139,92,246,0.28))",
+                              color: "#ffffff",
+                              border: "1px solid rgba(99,102,241,0.45)",
+                              borderTopRightRadius: "4px",
+                              borderRadius: "16px",
+                              padding: "12px 16px",
+                              fontSize: "13px",
+                              lineHeight: "1.6",
+                              whiteSpace: "pre-wrap",
+                            }}
+                          >
+                            {ticketDetail.admin_note}
+                          </div>
                         </div>
-                        <textarea
+                      ) : (
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "20px",
+                            borderRadius: "12px",
+                            border: "1px dashed var(--border-subtle)",
+                            color: "var(--text-muted)",
+                            fontSize: "12px",
+                            margin: "12px 0",
+                          }}
+                        >
+                          Belum ada balasan perbualan. Taip di bawah untuk membalas tiket pengguna.
+                        </div>
+                      )}
+
+                      <div ref={chatEndRef} />
+                    </div>
+
+                    {/* ── 4. Chat Composer (Sticky Bottom) ── */}
+                    <div
+                      style={{
+                        padding: "14px 20px",
+                        borderTop: "1px solid var(--border-subtle)",
+                        background: "var(--bg-surface)",
+                      }}
+                    >
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          if (!busy && ticketReply.trim()) {
+                            void sendTicketReply(ticketDetail.id);
+                          }
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "10px",
+                          background: "var(--bg-input)",
+                          border: "1px solid var(--border-card)",
+                          borderRadius: "14px",
+                          padding: "6px 8px 6px 14px",
+                        }}
+                      >
+                        <input
+                          type="text"
                           value={ticketReply}
                           onChange={(e) => setTicketReply(e.target.value)}
-                          placeholder="Taip balasan untuk pengguna…"
-                          rows={3}
+                          placeholder="Tulis balasan kepada pengguna… (Tekan Enter untuk hantar)"
+                          disabled={busy}
                           style={{
-                            width: "100%",
-                            boxSizing: "border-box",
-                            borderRadius: "10px",
-                            border: "1px solid var(--border)",
-                            background: "var(--bg)",
+                            flex: 1,
+                            background: "transparent",
+                            border: "none",
+                            outline: "none",
                             color: "var(--text-main)",
-                            padding: "10px 12px",
-                            fontSize: 13,
-                            fontFamily: "inherit",
-                            resize: "vertical",
+                            fontSize: "13px",
                           }}
                         />
+
                         <button
+                          type="submit"
                           className="primary"
-                          style={{ marginTop: "10px", width: "100%" }}
                           disabled={busy || !ticketReply.trim()}
-                          onClick={() => void sendTicketReply(ticketDetail.id)}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: "6px",
+                            padding: "8px 16px",
+                            borderRadius: "10px",
+                            fontSize: "13px",
+                            fontWeight: 700,
+                            minWidth: "auto",
+                            flexShrink: 0,
+                            cursor: "pointer",
+                          }}
                         >
-                          Hantar Balasan
+                          {busy ? (
+                            <Loader2 size={16} className="spin" />
+                          ) : (
+                            <>
+                              <Send size={15} />
+                              <span>Hantar</span>
+                            </>
+                          )}
                         </button>
-                      </div>
-                    )}
+                      </form>
+                    </div>
                   </div>
                 </div>
               )}

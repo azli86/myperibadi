@@ -294,6 +294,8 @@ export default function RequestPage() {
   )
 
   const openTicketChat = useCallback((tk: Ticket) => {
+    // Only support tickets have a live chat; other kinds are display-only (status only).
+    if (tk.kind !== "support") return
     setSelectedTicket(tk)
     setUserReplyText("")
     setReplyError("")
@@ -637,10 +639,11 @@ export default function RequestPage() {
                     key={tk.id}
                     onClick={() => openTicketChat(tk)}
                     className={cn(
-                      "p-4 transition-colors relative cursor-pointer active:bg-[var(--surface-tint)]",
+                      "p-4 transition-colors relative",
+                      tk.kind === "support" ? "cursor-pointer active:bg-[var(--surface-tint)]" : "",
                       isResolved
                         ? "bg-emerald-950/10 [background-image:repeating-linear-gradient(135deg,rgba(16,185,129,0.06)_0,rgba(16,185,129,0.06)_10px,transparent_10px,transparent_20px)]"
-                        : "hover:bg-[var(--surface-tint)]/40"
+                        : tk.kind === "support" ? "hover:bg-[var(--surface-tint)]/40" : ""
                     )}
                   >
                     <div className="flex items-start gap-3">
@@ -685,26 +688,28 @@ export default function RequestPage() {
                           </div>
                         </div>
 
-                        {/* Admin note banner / Reply trigger */}
-                        {tk.admin_note ? (
-                          <div className="mt-2.5 flex items-center justify-between gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 text-xs font-bold text-sky-600 dark:text-sky-400">
-                            <div className="flex items-center gap-1.5 truncate">
-                              <MessageSquare size={13} className="shrink-0" />
-                              <span className="truncate">{tr("Balasan Admin: ", "Admin Reply: ")}{tk.admin_note}</span>
+                        {/* Only support tickets show a chat trigger; bug/feature are display-only (status only). */}
+                        {tk.kind === "support" ? (
+                          tk.admin_note ? (
+                            <div className="mt-2.5 flex items-center justify-between gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 text-xs font-bold text-sky-600 dark:text-sky-400">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <MessageSquare size={13} className="shrink-0" />
+                                <span className="truncate">{tr("Balasan Admin: ", "Admin Reply: ")}{tk.admin_note}</span>
+                              </div>
+                              <span className="shrink-0 text-[0.65rem] font-bold underline flex items-center gap-0.5">
+                                {tr("Chat", "Chat")}
+                                <ChevronRight size={12} />
+                              </span>
                             </div>
-                            <span className="shrink-0 text-[0.65rem] font-bold underline flex items-center gap-0.5">
-                              {tr("Chat", "Chat")}
-                              <ChevronRight size={12} />
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="mt-2.5 flex items-center justify-end">
-                            <span className="inline-flex items-center gap-1 text-[0.68rem] font-bold text-[var(--muted)] hover:text-[var(--text)]">
-                              <MessageSquare size={12} />
-                              <span>{tr("Buka Chat Tiket →", "Open Ticket Chat →")}</span>
-                            </span>
-                          </div>
-                        )}
+                          ) : (
+                            <div className="mt-2.5 flex items-center justify-end">
+                              <span className="inline-flex items-center gap-1 text-[0.68rem] font-bold text-[var(--muted)] hover:text-[var(--text)]">
+                                <MessageSquare size={12} />
+                                <span>{tr("Buka Chat Tiket →", "Open Ticket Chat →")}</span>
+                              </span>
+                            </div>
+                          )
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -783,10 +788,11 @@ export default function RequestPage() {
                           key={tk.id}
                           onClick={() => openTicketChat(tk)}
                           className={cn(
-                            "transition-colors cursor-pointer",
+                            "transition-colors",
+                            tk.kind === "support" ? "cursor-pointer" : "",
                             isResolved
                               ? "bg-emerald-950/10 [background-image:repeating-linear-gradient(135deg,rgba(16,185,129,0.06)_0,rgba(16,185,129,0.06)_10px,transparent_10px,transparent_20px)] hover:bg-emerald-950/20"
-                              : "hover:bg-[var(--surface-tint)]/50"
+                              : tk.kind === "support" ? "hover:bg-[var(--surface-tint)]/50" : ""
                           )}
                         >
                           {/* 1. Ticket Title & Details */}
@@ -843,25 +849,31 @@ export default function RequestPage() {
                             </div>
                           </td>
 
-                          {/* 6. Admin Feedback / Chat Action */}
+                          {/* 6. Admin Feedback / Chat Action (only for support tickets; bug/feature are status-only) */}
                           <td className="py-4 pr-5 pl-3 align-middle text-right whitespace-nowrap">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                openTicketChat(tk)
-                              }}
-                              className={cn(
-                                "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition active:scale-95",
-                                tk.admin_note
-                                  ? "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400 hover:bg-sky-500/20"
-                                  : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] hover:bg-[var(--surface-tint-strong)]"
-                              )}
-                            >
-                              <MessageSquare size={13} />
-                              <span>{tk.admin_note ? tr("Chat Balasan", "Reply Chat") : tr("Buka Chat", "Open Chat")}</span>
-                              <ChevronRight size={13} />
-                            </button>
+                            {tk.kind === "support" ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  openTicketChat(tk)
+                                }}
+                                className={cn(
+                                  "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition active:scale-95",
+                                  tk.admin_note
+                                    ? "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400 hover:bg-sky-500/20"
+                                    : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] hover:bg-[var(--surface-tint-strong)]"
+                                )}
+                              >
+                                <MessageSquare size={13} />
+                                <span>{tk.admin_note ? tr("Chat Balasan", "Reply Chat") : tr("Buka Chat", "Open Chat")}</span>
+                                <ChevronRight size={13} />
+                              </button>
+                            ) : (
+                              <span className="text-[0.65rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                                {tr("—", "—")}
+                              </span>
+                            )}
                           </td>
                         </tr>
                       )

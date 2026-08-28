@@ -6,6 +6,7 @@ import ZoomLock from "@/components/layout/ZoomLock";
 import { LangProvider } from "@/lib/lang";
 import PWARegister from "@/components/pwa/PWARegister";
 import PWAInstallGate from "@/components/pwa/PWAInstallGate";
+import MobileIntroSplash from "@/components/layout/MobileIntroSplash";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import AuthSessionSync from "@/components/auth/AuthSessionSync";
 import {
@@ -109,6 +110,7 @@ export default async function RootLayout({
             <ZoomLock />
             <PWARegister />
             <PWAInstallGate />
+            <MobileIntroSplash />
             <AuthSessionSync />
             <AppShellBoundary>
               {children}

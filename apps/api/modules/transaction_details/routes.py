@@ -374,7 +374,12 @@ async def get_attachment_pdf_preview_route(
     get_user_attachment: Callable[..., Awaitable[models.Attachment]],
 ) -> Response:
     attachment = await get_user_attachment(attachment_id, current_user.id, db)
-    if attachment.mime_type != "application/pdf":
+    is_pdf = (
+        attachment.mime_type == "application/pdf"
+        or (attachment.file_name or "").lower().endswith(".pdf")
+        or (attachment.file_path or "").lower().endswith(".pdf")
+    )
+    if not is_pdf:
         raise HTTPException(status_code=400, detail="Attachment is not a PDF.")
     file_path = attachment.file_path
     await db.close()

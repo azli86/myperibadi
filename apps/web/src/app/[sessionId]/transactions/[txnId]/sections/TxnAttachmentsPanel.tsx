@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { FileText, Globe, Trash2, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
+import { FileText, Globe, Trash2, Loader2, ChevronLeft, ChevronRight, Download, ExternalLink } from "lucide-react"
 import { SmartImage } from "@/components/ui/SmartImage"
 import { useLang } from "@/lib/lang"
 import type { TransactionDetail } from "../types"
@@ -14,8 +14,8 @@ export type TxnAttachmentsPanelProps = {
   onRequestDelete: (attachment: NonNullable<TransactionDetail["attachments"]>[number]) => void
   onRetryLoad: (attachment: NonNullable<TransactionDetail["attachments"]>[number]) => void
   formatBytes: (bytes: number | null) => string
-  isImageAttachment: (mimeType: string | null) => boolean
-  isPdfAttachment: (mimeType: string | null) => boolean
+  isImageAttachment: (mimeType?: string | null, fileName?: string | null) => boolean
+  isPdfAttachment: (mimeType?: string | null, fileName?: string | null) => boolean
 }
 
 export default function TxnAttachmentsPanel({
@@ -34,7 +34,9 @@ export default function TxnAttachmentsPanel({
   const [activeIndex, setActiveIndex] = useState(0)
   const attachments = txn.attachments || []
   const hasAttachments = attachments.length > 0
-  const previewable = attachments.filter((att) => isImageAttachment(att.mime_type) || isPdfAttachment(att.mime_type))
+  const previewable = attachments.filter(
+    (att) => isImageAttachment(att.mime_type, att.file_name) || isPdfAttachment(att.mime_type, att.file_name)
+  )
 
   return (
     <div className="sticky top-5 space-y-5">
@@ -117,7 +119,7 @@ export default function TxnAttachmentsPanel({
                     </div>
                   </div>
 
-                  {isImageAttachment(att.mime_type) && (
+                  {isImageAttachment(att.mime_type, att.file_name) && (
                     <div className="flex min-h-40 justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3">
                       {attachmentObjectUrls[att.id] ? (
                         <SmartImage
@@ -139,15 +141,59 @@ export default function TxnAttachmentsPanel({
                     </div>
                   )}
 
-                  {isPdfAttachment(att.mime_type) && (
-                    <div className="h-[500px] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] md:h-[440px] lg:h-[460px]">
+                  {isPdfAttachment(att.mime_type, att.file_name) && (
+                    <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]">
                       {attachmentObjectUrls[att.id] ? (
-                        <iframe src={`${attachmentObjectUrls[att.id]}#toolbar=0`} className="h-full w-full border-0" title={att.file_name} />
+                        <div className="group relative flex flex-col items-center justify-center p-3">
+                          <div className="relative max-h-[380px] w-full overflow-hidden rounded-xl bg-white shadow-xs">
+                            <SmartImage
+                              src={attachmentObjectUrls[att.id]}
+                              alt={att.file_name}
+                              className="h-auto max-h-[380px] w-full object-contain cursor-zoom-in"
+                              imgClassName="h-auto max-h-[380px] w-full object-contain cursor-zoom-in transition-transform active:scale-[0.98]"
+                              loading="eager"
+                              onClick={() => onOpen(att)}
+                            />
+                            <div className="absolute top-2.5 left-2.5 flex items-center gap-1 rounded-lg bg-rose-600 px-2 py-0.5 text-[10px] font-black uppercase text-white shadow-md">
+                              <FileText size={11} />
+                              <span>PDF</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 flex w-full items-center justify-between gap-2 border-t border-[var(--divider)] pt-2.5">
+                            <button
+                              type="button"
+                              onClick={() => onOpen(att)}
+                              className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--card)] py-2 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95 shadow-2xs"
+                            >
+                              <ExternalLink size={13} />
+                              <span>{isBm ? "Buka Fail PDF" : "Open PDF File"}</span>
+                            </button>
+                            <a
+                              href={att.proxy_url ? `/api${att.proxy_url.replace(/^\/api/, "")}` : `/api/attachments/${att.id}`}
+                              download={att.file_name}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-xs font-bold text-[var(--muted)] transition hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)] active:scale-95 shadow-2xs"
+                              title={isBm ? "Muat Turun" : "Download"}
+                            >
+                              <Download size={13} />
+                              <span className="hidden sm:inline">{isBm ? "Muat Turun" : "Download"}</span>
+                            </a>
+                          </div>
+                        </div>
                       ) : (
-                        <div className="flex h-full flex-col items-center justify-center gap-2">
-                          <Loader2 className="animate-spin text-[var(--muted)]" size={20} />
-                          <button onClick={() => onRetryLoad(att)} className="text-[0.625rem] font-semibold text-[var(--muted)] hover:text-[var(--text)] transition-colors">
-                            {langT.pleaseWait}...
+                        <div className="flex h-52 w-full flex-col items-center justify-center gap-2 p-4 text-center">
+                          <Loader2 className="animate-spin text-[var(--muted)]" size={24} />
+                          <p className="text-xs font-semibold text-[var(--muted)]">
+                            {isBm ? "Memuatkan pratonton PDF..." : "Loading PDF preview..."}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => onRetryLoad(att)}
+                            className="mt-1 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs font-bold text-[var(--text)] hover:bg-[var(--surface-tint-strong)] transition active:scale-95"
+                          >
+                            {isBm ? "Cuba Semula" : "Retry"}
                           </button>
                         </div>
                       )}
