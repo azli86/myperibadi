@@ -20,9 +20,9 @@ export function MobilePageHeader({
   backPreferHistory?: boolean
 }) {
   return (
-    <div className={cn("sticky top-0 z-40 bg-[var(--page-bg)] px-1 pb-2 pt-0", className)}>
+    <div className={cn("sticky top-0 z-40 bg-[var(--page-bg)] px-1 pb-2 pt-0.5", className)}>
       <div className="flex items-center gap-3 pt-0.5">
-        <h1 className="min-w-0 flex-1 truncate text-left text-4xl font-black tracking-tight text-[var(--text)] sm:text-5xl">
+        <h1 className="min-w-0 flex-1 truncate text-left text-6xl font-black leading-[1.05] tracking-tight text-[var(--text)]">
           {title}
         </h1>
         <div className="flex shrink-0 items-center justify-end gap-1.5">
