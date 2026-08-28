@@ -319,8 +319,6 @@ export default function Calculator({
     return currentValue
   }
 
-  const roundUpToTenSen = (amount: number) => Math.ceil(amount * 10) / 10
-
   const detectCategory = (title: string) => {
     const normalizedTitle = title.trim().toLowerCase()
     let best: { category: CategoryOption; score: number } | null = null
@@ -354,7 +352,7 @@ export default function Calculator({
   const submitTransaction = async (event: React.FormEvent) => {
     event.preventDefault()
     const title = transactionTitle.trim()
-    const amount = roundUpToTenSen(getTransactionAmount())
+    const amount = getTransactionAmount()
     if (!title) {
       setSendError(tr("Taip title transaksi", "Enter transaction title"))
       return
