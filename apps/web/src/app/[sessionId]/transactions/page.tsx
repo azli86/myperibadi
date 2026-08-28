@@ -596,18 +596,38 @@ const currentCycleKeyStr = useMemo(
   () => currentCycleKey(new Date(), cycleStartDay),
   [cycleStartDay]
 )
- const didShowDeletedAlertRef = useRef(false)
+ const [txnRefreshFlag, setTxnRefreshFlag] = useState(0)
+ const prevDeletedRef = useRef<string | null>(null)
  useEffect(() => {
- if (searchParams.get("deleted") !== "success" || didShowDeletedAlertRef.current) return
-
- didShowDeletedAlertRef.current = true
- router.replace(`/${sessionId}/transactions`, { scroll: false })
+ const cur = searchParams.get("deleted")
+ const justArrived = cur === "success" && prevDeletedRef.current !== "success"
+ prevDeletedRef.current = cur
+ if (!justArrived) return
+ // Trigger a fresh refetch so the list reflects the deleted transaction.
+ // On desktop, Next.js client-side navigation back from the detail page may
+ // otherwise serve stale cached data and the removed row keeps showing.
+ setTxnRefreshFlag((f) => f + 1)
  showAlert(
  lang === "EN" ? "Deleted" : "Berjaya Dipadam",
  lang === "EN" ? "Transaction deleted successfully." : "Transaksi berjaya dipadam.",
  "success"
  )
+ router.replace(`/${sessionId}/transactions`, { scroll: false })
  }, [searchParams, lang, router, sessionId])
+
+ // When the transaction-detail iframe deletes a transaction it posts a
+ // TRANSACTION_DELETED message back so this list can close the panel and
+ // refetch instead of waiting for a route navigation inside the iframe.
+ useEffect(() => {
+ const onMessage = (e: MessageEvent) => {
+ if (e.data?.type === "TRANSACTION_DELETED") {
+ setMobileDetailId(null)
+ setTxnRefreshFlag((f) => f + 1)
+ }
+ }
+ window.addEventListener("message", onMessage)
+ return () => window.removeEventListener("message", onMessage)
+ }, [])
 
  const currentMonthInKualaLumpur = new Intl.DateTimeFormat("en-CA", {
  year: "numeric",
@@ -720,7 +740,7 @@ const currentCycleKeyStr = useMemo(
  }
  }
  fetchTxns()
- }, [endDate, searchQuery, selectedCategory, selectedMonth, selectedType, selectedWallet, startDate])
+ }, [endDate, searchQuery, selectedCategory, selectedMonth, selectedType, selectedWallet, startDate, txnRefreshFlag])
 
  const monthOptions = useMemo(
  () => {

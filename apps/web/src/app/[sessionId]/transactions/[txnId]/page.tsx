@@ -657,6 +657,7 @@ export default function TransactionDetailPage() {
       } else {
         if (activeFetchIdRef.current !== fetchId) return
         if (res.status === 404) {
+          notifyParentDeleted()
           router.replace(`/${sessionId}/transactions?deleted=success`)
           return
         }
@@ -788,6 +789,17 @@ export default function TransactionDetailPage() {
     } catch {}
   }
 
+  // When this detail page is shown inside the transactions list's iframe,
+  // notify the parent so it can close the panel and refetch the list. In a
+  // full-page view window.parent === window and this is a harmless no-op.
+  const notifyParentDeleted = () => {
+    try {
+      if (typeof window !== "undefined" && window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "TRANSACTION_DELETED" }, "*")
+      }
+    } catch {}
+  }
+
   const handleDelete = async () => {
     setDeleting(true)
     try {
@@ -799,6 +811,7 @@ export default function TransactionDetailPage() {
       })
       if (res.ok) {
         setShowDeleteModal(false)
+        notifyParentDeleted()
         router.push(`/${sessionId}/transactions?deleted=success`)
       } else {
         const errorData = await res.json().catch(() => ({}))
