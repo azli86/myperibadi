@@ -4045,6 +4045,39 @@ async def _process_whatsapp_message_impl(
                         forced_wallet_id=forced_wallet_id,
                         skip_category_prompt=True,
                     )
+            # User typed a category-like reply that doesn't match any known
+            # category, subx/loanx command, or income/expense alias. Fall back to
+            # the default category for the pending transaction type so the OCR
+            # amount is still saved instead of asking for an amount again
+            # (e.g. reply "potong rambut tng" -> "Lain-lain" + wallet TNG).
+            fb_type = pending_selection.get("txn_type") or "expense"
+            fb_cat = (
+                await get_default_category(db, fb_type, household_id=user.default_household_id)
+                if normalized_typed and not normalized_typed.isdigit()
+                else None
+            )
+            if fb_cat:
+                _clear_pending_category_selection(user_id, source_channel)
+                return await _process_whatsapp_message_impl(
+                    db,
+                    user_id=user_id,
+                    phone=phone,
+                    text=str(pending_selection.get("original_text") or ""),
+                    latitude=pending_selection.get("latitude"),
+                    longitude=pending_selection.get("longitude"),
+                    location_name=pending_selection.get("location_name"),
+                    source_channel=source_channel,
+                    show_current_balance=show_current_balance,
+                    show_expense_amount=show_expense_amount,
+                    show_income_amount=show_income_amount,
+                    allow_llm_fallback=allow_llm_fallback,
+                    forced_category_id=int(fb_cat.id),
+                    forced_wallet_id=forced_wallet_id,
+                    skip_category_prompt=True,
+                    txn_time=pending_selection.get("txn_time"),
+                    force_category_prompt=bool(pending_selection.get("force_category_prompt")),
+                    receipt_user_note=typed_note or pending_selection.get("receipt_user_note"),
+                )
 
         
         # 1.5. Ensure legacy category scope exists for budget/category mapping.
@@ -4718,9 +4751,10 @@ async def _process_whatsapp_message_impl(
                         "longitude": resolved_longitude,
                         "location_name": resolved_location_name,
                         "options": prompt_options,
-                        "txn_time": txn_time,
+                        "txn_time": txn_time.strftime("%H:%M") if hasattr(txn_time, "strftime") else (txn_time or None),
                         "force_category_prompt": bool(force_category_prompt),
                         "receipt_user_note": receipt_user_note,
+                        "txn_type": txn_type,
                     },
                 )
                 lines = [
