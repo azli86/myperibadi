@@ -22,7 +22,7 @@ export function MobilePageHeader({
   return (
     <div className={cn("sticky top-0 z-40 bg-[var(--page-bg)] px-1 pb-2 pt-0.5", className)}>
       <div className="flex items-center gap-3 pt-0.5">
-        <h1 className="min-w-0 flex-1 truncate text-left text-[40px] font-black leading-[1.05] tracking-tight text-[var(--text)]">
+        <h1 className="min-w-0 flex-1 truncate text-left text-[37px] font-black leading-[1.05] tracking-tight text-[var(--text)]">
           {title}
         </h1>
         <div className="flex shrink-0 items-center justify-end gap-1.5">
