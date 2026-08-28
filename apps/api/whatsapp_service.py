@@ -2619,28 +2619,11 @@ async def get_category_suggestions_by_keywords(
     if ranked:
         return [category for _, category in ranked[:limit]]
 
-    fallback_stmt = (
-        select(models.Category)
-        .where(
-            models.Category.household_id == household_id,
-            models.Category.is_internal == False,
-        )
-        .order_by(models.Category.is_default.asc(), models.Category.name.asc(), models.Category.id.asc())
-    )
-    if preferred_kind:
-        fallback_stmt = fallback_stmt.where(models.Category.kind == preferred_kind)
-    fallback_result = await db.execute(fallback_stmt)
-    default_names = {"lain", "lain-lain", "other", "others", "miscellaneous"}
-    fallback_categories = [
-        category for category in fallback_result.scalars().all()
-        if (category.name or "").strip().lower() not in default_names
-    ]
-    # OCR appends an exact portal category name. Put that choice first, then
-    # nearby names; never return the previous arbitrary alphabetical first three.
-    normalized = normalized_text.lower()
-    exact = [category for category in fallback_categories if normalize_message_text(category.name).lower() in normalized]
-    rest = [category for category in fallback_categories if category not in exact]
-    return (exact + rest)[:limit]
+    # No exact keyword matched. Return an empty list so the caller falls through
+    # to the default category (Lain-lain) instead of prompting for a category.
+    # This keeps behaviour predictable: a transaction without an exact keyword
+    # match is never bounced back for a category choice.
+    return []
 
 
 async def get_category_by_keywords(db: AsyncSession, text: str, household_id: Optional[int] = None, preferred_kind: Optional[str] = None) -> Optional[models.Category]:
