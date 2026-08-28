@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useLayoutEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -19,17 +19,42 @@ export function MobilePageHeader({
   className?: string
   backPreferHistory?: boolean
 }) {
+  const headerRef = useRef<HTMLDivElement>(null)
+  const [spacer, setSpacer] = useState(0)
+
+  // Fixed header leaves the flow — keep an in-flow spacer the same height so
+  // page content is never covered and the header is truly pinned to the top.
+  useLayoutEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const update = () => setSpacer(el.offsetHeight)
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   return (
-    <div className={cn("sticky top-0 z-40 bg-[var(--page-bg)] px-1 pb-2 pt-0.5", className)}>
-      <div className="flex items-center gap-3 pt-0.5">
-        <h1 className="min-w-0 flex-1 truncate text-left text-[37px] font-black leading-[1.05] tracking-tight text-[var(--text)]">
-          {title}
-        </h1>
-        <div className="flex shrink-0 items-center justify-end gap-1.5">
-          {action ?? <span className="h-10 w-10" aria-hidden />}
+    <>
+      <div
+        ref={headerRef}
+        className={cn(
+          "fixed inset-x-0 top-0 z-40 bg-[var(--page-bg)] px-1 pb-2 pt-0.5",
+          className,
+        )}
+      >
+        <div className="flex items-center gap-3 pt-0.5">
+          <h1 className="min-w-0 flex-1 truncate text-left text-[37px] font-black leading-[1.05] tracking-tight text-[var(--text)]">
+            {title}
+          </h1>
+          <div className="flex shrink-0 items-center justify-end gap-1.5">
+            {action ?? <span className="h-10 w-10" aria-hidden />}
+          </div>
         </div>
       </div>
-    </div>
+      {/* In-flow spacer so the fixed header never covers page content */}
+      <div aria-hidden className="w-full" style={{ height: spacer }} />
+    </>
   )
 }
 
