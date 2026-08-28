@@ -442,6 +442,13 @@ export default function SubscriptionDetailPage() {
             headers: token ? { Authorization: `Bearer ${token}` } : undefined,
           })
           if (!res.ok) throw new Error(await readApiErrorMessage(res, tr("Gagal padam subscription.", "Failed to delete subscription.")))
+          // When shown inside the subscriptions list's iframe, tell the parent
+          // to close the panel and refetch so the removed row disappears.
+          try {
+            if (typeof window !== "undefined" && window.parent && window.parent !== window) {
+              window.parent.postMessage({ type: "SUBSCRIPTION_DELETED" }, "*")
+            }
+          } catch {}
           router.push(`/${sessionId}/subscription`)
         } catch (err) {
           showAlert(

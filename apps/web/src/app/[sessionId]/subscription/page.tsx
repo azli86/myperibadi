@@ -147,6 +147,7 @@ export default function SubscriptionPage() {
     if (window.history.state?.detailSlide) window.history.back()
     else setDetailId(null)
   }
+  const subscriptionsRefreshRef = useRef<() => void>(() => {})
   const [mounted, setMounted] = useState(false)
   const sessionId = (params.sessionId as string) || ""
   const { lang } = useLang()
@@ -229,6 +230,7 @@ export default function SubscriptionPage() {
       } finally {
         setLoading(false)
       }
+      subscriptionsRefreshRef.current = loadSubscriptions
     },
     [hasLoadedSubscriptions, includeSettled, tr],
   )
@@ -236,6 +238,20 @@ export default function SubscriptionPage() {
   useEffect(() => {
     loadSubscriptions({ forceSkeleton: !hasLoadedSubscriptions })
   }, [loadSubscriptions])
+
+  // When the subscription-detail iframe deletes a subscription it posts a
+  // SUBSCRIPTION_DELETED message so this list closes the panel and refetches
+  // instead of only navigating inside the iframe.
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === "SUBSCRIPTION_DELETED") {
+        setDetailId(null)
+        subscriptionsRefreshRef.current()
+      }
+    }
+    window.addEventListener("message", onMessage)
+    return () => window.removeEventListener("message", onMessage)
+  }, [])
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent("portal:mobile-bottom-nav-visibility", { detail: { hidden: showCreateSheet } }))
