@@ -1358,9 +1358,9 @@ const currentCycleKeyStr = useMemo(
 
  return (
  // overflow-x-hidden on desktop breaks position:sticky for the top bar
- <div className="max-w-full space-y-4 overflow-x-hidden pb-8 md:space-y-0 md:overflow-x-visible md:pb-0">
+ <div className="max-w-full space-y-4 overflow-x-clip pb-8 md:space-y-0 md:overflow-x-visible md:pb-0">
  {/* Mobile header */}
- <div className="border-b border-[color:var(--border)] pb-4 md:hidden">
+ <div className="sticky top-0 z-40 border-b border-[color:var(--border)] bg-[var(--page-bg)] pb-4 md:hidden">
  <MobilePageHeader
  title={lang === "EN" ? "Transactions" : "Transaksi"}
  fallbackHref={`/${sessionId}`}

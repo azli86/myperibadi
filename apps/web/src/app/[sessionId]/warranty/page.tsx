@@ -436,7 +436,7 @@ export default function WarrantyListPage() {
   return (
     <>
       {/* ── HEADER PRESERVED ── */}
-      <div className="border-b border-[color:var(--border)] pb-4 md:hidden">
+      <div className="sticky top-0 z-40 border-b border-[color:var(--border)] bg-[var(--page-bg)] pb-4 md:hidden">
         <MobilePageHeader
           title={tr("Waranti Saya", "My Warranty")}
           fallbackHref={`/${sessionId}`}

@@ -697,7 +697,7 @@ export default function WarrantyDetailPage() {
   return (
     <>
       {/* ── HEADER BAR ── */}
-      <div className="border-b border-[color:var(--border)] pb-4 md:hidden">
+      <div className="sticky top-0 z-40 border-b border-[color:var(--border)] bg-[var(--page-bg)] pb-4 md:hidden">
         <MobilePageHeader
           title={tr("Butiran Waranti", "Warranty Details")}
           fallbackHref={`/${sessionId}/warranty`}
