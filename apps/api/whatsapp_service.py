@@ -2605,15 +2605,10 @@ async def get_category_suggestions_by_keywords(
         score = 0
         for source_word in source_words:
             for kw_word in kw_words or [kw_text]:
+                # EXACT word match only. No "contains", "start with", or prefix
+                # overlap so a short keyword like "ai" cannot match "ais"/"aib".
                 if source_word == kw_word:
                     score = max(score, 500 + len(kw_word) * 10)
-                elif source_word.startswith(kw_word) or kw_word.startswith(source_word):
-                    # Only accept prefix overlap (e.g. "tng" / "touchng") so that a
-                    # keyword buried in the middle of a word ("ai" inside "main")
-                    # is not treated as a match for every related category.
-                    score = max(score, 180 + min(len(source_word), len(kw_word)) * 8)
-                elif source_word[:4] == kw_word[:4] and len(source_word) >= 4 and len(kw_word) >= 4:
-                    score = max(score, 120 + min(len(source_word), len(kw_word)) * 6)
         if score <= 0:
             continue
         current = best_by_category.get(int(category.id))
@@ -2678,21 +2673,17 @@ async def get_category_by_keywords(db: AsyncSession, text: str, household_id: Op
             if not kw_text:
                 continue
 
-            if kw.match_type == "exact":
-                if kw_text != search_text:
-                    continue
-                base_score = 200000 + len(kw_text) * 100
-            else:  # contains
-                contains_score = _contains_keyword_score(search_text, kw_text)
-                if contains_score is None:
-                    continue
-                base_score = contains_score
+            # EXACT match only: a keyword must equal the whole word/phrase in the
+            # message. We no longer accept "contains" / "start with" / prefix
+            # overlaps so short keywords like "ai" cannot silently pull in
+            # unrelated words such as "ais" or "aib".
+            if kw_text != search_text:
+                continue
+            base_score = 200000 + len(kw_text) * 100
 
             preferred_bonus = 75 if preferred_kind_norm and category.kind == preferred_kind_norm else 0
-            exact_bonus = 1 if kw.match_type == "exact" else 0
             candidate = (
                 base_score + preferred_bonus,
-                exact_bonus,
                 len(kw_text),
                 -int(kw.id or 0),  # deterministic tie-breaker
                 category,
