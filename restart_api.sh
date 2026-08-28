@@ -22,7 +22,7 @@ sleep 2
 
 echo "Starting API service..."
 cd "$API_DIR"
-setsid -f venv/bin/python main.py > backend.log 2>&1
+setsid -f env PYTHONUNBUFFERED=1 venv/bin/python main.py > backend.log 2>&1
 
 for i in {1..10}; do
   if ss -ltn | grep -q ":$API_PORT"; then
