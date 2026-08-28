@@ -1054,7 +1054,7 @@ async def _process_subx_command(
 
     explicit_txn_date, normalized, _has_invalid = extract_explicit_txn_date(normalized)
 
-    # subx pay <name> <amount> <wallet>
+    # subx pay <name> <amount> <wallet>  (full amount form)
     pay_match = re.match(r"^subx\s+pay\s+(.+?)\s+(?:rm\s*)?(\d+(?:\.\d{1,2})?)(?:\s+(.+))?$", normalized, flags=re.IGNORECASE)
     if pay_match:
         sub_name = normalize_counterparty_name(pay_match.group(1) or "")
@@ -1152,6 +1152,130 @@ async def _process_subx_command(
             f"*{ref_id}*\n✅ {sub.name} dibayar: *RM {pay_amount:,.2f}* guna *{wallet_display_name(selected_wallet)}*.\nTransaksi direkod."
         )
         return message, txn
+
+    # subx pay <name> [<wallet>] — no amount given: use the amount stored on the
+    # subscription so the user can simply say `subx pay google one tng` and the
+    # bot records the subscription's saved amount.
+    pay_no_amount = re.match(r"^subx\s+pay\s+(.+)$", normalized, flags=re.IGNORECASE)
+    if pay_no_amount:
+        rest = str(pay_no_amount.group(1) or "").strip()
+        sub_list_result = await db.execute(
+            select(models.Subscription).where(models.Subscription.user_id == user_id).order_by(models.Subscription.name.asc())
+        )
+        sub_list = list(sub_list_result.scalars().all())
+        wallet_query = select(models.Wallet).where(models.Wallet.owner_user_id == user_id)
+        if household_id:
+            wallet_query = select(models.Wallet).where(
+                or_(models.Wallet.owner_user_id == user_id, models.Wallet.household_id == household_id)
+            )
+        wallet_res = await db.execute(wallet_query.order_by(models.Wallet.is_bot_default.desc(), models.Wallet.name.asc(), models.Wallet.id.asc()))
+        wallets = list(wallet_res.scalars().all())
+        rest_lower = rest.lower()
+        matched_sub = None
+        matched_wallet_hint = None
+        for sub in sub_list:
+            sub_names = [
+                (getattr(sub, "name", "") or "").strip().lower(),
+                (getattr(sub, "key", "") or "").strip().lower(),
+            ]
+            for sub_name in sub_names:
+                if not sub_name:
+                    continue
+                idx = rest_lower.find(sub_name)
+                if idx < 0:
+                    continue
+                tail = rest[idx + len(sub_name):].strip()
+                # The tail must be empty (wallet only) or a valid wallet hint.
+                if not tail or _match_wallet_by_hint(wallets, tail):
+                    matched_sub = sub
+                    matched_wallet_hint = tail or None
+                    break
+            if matched_sub:
+                break
+        if matched_sub and float(matched_sub.amount or 0) > 0:
+            sub = matched_sub
+            sub_name = (getattr(sub, "name", "") or "").strip()
+            pay_amount = float(sub.amount)
+            wallet_hint = matched_wallet_hint
+            selected_wallet = _match_wallet_by_hint(wallets, wallet_hint) if wallet_hint else None
+            if wallet_hint and not selected_wallet:
+                return ("Error: Personal wallet not found." if is_en else "Ralat: Wallet personal tidak dijumpai.")
+            if not selected_wallet:
+                selected_wallet = await _select_default_wallet_for_debt(db, user_id=user_id, household_id=household_id)
+            if not selected_wallet:
+                return _build_subx_help_text(language)
+
+            household_id = household_id or await ensure_standard_categories(db, user_id)
+            category_names = ["Subscriptions", "Subscription", "Langganan", "Loan / Komitmen", "Bil & Langganan"]
+            category_result = await db.execute(
+                select(models.Category).where(
+                    models.Category.household_id == household_id,
+                    models.Category.kind == "expense",
+                    models.Category.is_internal == False,
+                    models.Category.name.in_(category_names),
+                ).order_by(models.Category.name.asc()).limit(1)
+            )
+            category = category_result.scalars().first()
+            if not category:
+                fallback_result = await db.execute(
+                    select(models.Category).where(
+                        models.Category.household_id == household_id,
+                        models.Category.kind == "expense",
+                        models.Category.is_internal == False,
+                    ).order_by(models.Category.name.asc()).limit(1)
+                )
+                category = fallback_result.scalars().first()
+
+            payment_date = explicit_txn_date or current_business_date()
+            txn = models.Transaction(
+                wallet_id=selected_wallet.id,
+                user_id=user_id,
+                household_id=household_id,
+                reference_id=models.generate_txn_reference(payment_date),
+                type="expense",
+                txn_date=payment_date,
+                vendor_or_source=f"SUBX {sub_name}"[:190],
+                amount=pay_amount,
+                category_id=category.id if category else None,
+                subscription_id=sub.id,
+                notes=f"SUBX payment for {sub_name}"[:255],
+                source_channel=source_channel,
+            )
+            db.add(txn)
+            await db.flush()
+            sub.last_payment_date = payment_date
+            await db.commit()
+            pending_media = _take_pending_receipt_media(user_id, source_channel)
+            if pending_media and txn:
+                try:
+                    await process_whatsapp_media_message(
+                        db=db,
+                        user_id=user_id,
+                        phone="",
+                        payload=pending_media.get("payload"),
+                        mime_type=pending_media.get("mime_type"),
+                        file_name=pending_media.get("file_name"),
+                        caption="",
+                        target_txn_ref=None,
+                        target_txn_override=txn,
+                        source_channel=source_channel,
+                        show_current_balance=True,
+                        show_expense_amount=True,
+                        show_income_amount=True,
+                        existing_object_key=pending_media.get("object_key"),
+                        media_size_bytes=pending_media.get("size_bytes"),
+                    )
+                except Exception as exc:
+                    _safe_print(f"[WA] Failed to attach receipt media to subx payment: {exc}")
+            ref_id = txn.reference_id
+            message = (
+                f"*{ref_id}*\n✅ {sub_name} paid: *RM {pay_amount:,.2f}* via *{wallet_display_name(selected_wallet)}* (amount from subscription).\nTransaction recorded."
+                if is_en
+                else
+                f"*{ref_id}*\n✅ {sub_name} dibayar: *RM {pay_amount:,.2f}* guna *{wallet_display_name(selected_wallet)}* (jumlah dari langganan).\nTransaksi direkod."
+            )
+            return message, txn
+        return _build_subx_help_text(language)
 
     # subx <name> <amount> <day>HB
     match = re.match(r"^subx\s+(.+?)\s+(?:rm\s*)?(\d+(?:\.\d{1,2})?)\s+(\d{1,2})\s*hb$", normalized, flags=re.IGNORECASE)
