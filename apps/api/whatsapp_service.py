@@ -221,8 +221,8 @@ BOT_TRANSLATIONS = {
         "no_amount": "Maaf, saya tidak dapat menemui jumlah (amount) dalam mesej anda.",
         "invalid_date_token": "Format tarikh tidak sah. Guna `@DDMMYYYY` contoh: `grab 18.50 @05042026`.",
         "wallet_not_found": "Ralat: Wallet personal tidak dijumpai.",
-        "saved": "*{ref_id}*\n✅ *Done | Rekod Disimpan*\n• Jenis: *{txn_type_label}*\n• Nota: {text}\n• Wallet: *{wallet_name}*\n• Kategori: *{cat}*\n• Jumlah : *{amount}*\n• Tarikh: *{txn_date}*{time_note}\n• Baki Semasa : *{balance}*{backdate_hint}",
-        "saved_hidden_balance": "*{ref_id}*\n✅ *Done | Rekod Disimpan*\n• Jenis: *{txn_type_label}*\n• Nota: {text}\n• Wallet: *{wallet_name}*\n• Kategori: *{cat}*\n• Jumlah : *{amount}*\n• Tarikh: *{txn_date}*{time_note}\n• Baki Semasa : *{private_value}*{backdate_hint}",
+        "saved": "*{ref_id}*\n{status_mark} *Done | Rekod Disimpan*\n• Jenis: *{txn_type_label}*\n• Nota: {text}\n• Wallet: *{wallet_name}*\n• Kategori: *{cat}*\n• Jumlah : *{amount}*\n• Tarikh: *{txn_date}*{time_note}\n• Baki Semasa : *{balance}*{backdate_hint}",
+        "saved_hidden_balance": "*{ref_id}*\n{status_mark} *Done | Rekod Disimpan*\n• Jenis: *{txn_type_label}*\n• Nota: {text}\n• Wallet: *{wallet_name}*\n• Kategori: *{cat}*\n• Jumlah : *{amount}*\n• Tarikh: *{txn_date}*{time_note}\n• Baki Semasa : *{private_value}*{backdate_hint}",
         "error": "Maaf, ralat teknikal berlaku semasa menyimpan data anda.",
         "no_note": "Tiada nota",
         "lang_switched": "Bahasa telah ditukar ke Bahasa Melayu.",
@@ -288,8 +288,8 @@ BOT_TRANSLATIONS = {
         "no_amount": "Sorry, I couldn't find an amount in your message.",
         "invalid_date_token": "Invalid date format. Use `@DDMMYYYY`, e.g. `grab 18.50 @05042026`.",
         "wallet_not_found": "Error: Personal wallet not found.",
-        "saved": "*{ref_id}*\n✅ *Done | Record Saved*\n• Type: *{txn_type_label}*\n• Note: {text}\n• Wallet: *{wallet_name}*\n• Category: *{cat}*\n• Amount : *{amount}*\n• Date: *{txn_date}*{time_note}\n• Current Balance : *{balance}*{backdate_hint}",
-        "saved_hidden_balance": "*{ref_id}*\n✅ *Done | Record Saved*\n• Type: *{txn_type_label}*\n• Note: {text}\n• Wallet: *{wallet_name}*\n• Category: *{cat}*\n• Amount : *{amount}*\n• Date: *{txn_date}*{time_note}\n• Current Balance : *{private_value}*{backdate_hint}",
+        "saved": "*{ref_id}*\n{status_mark} *Done | Record Saved*\n• Type: *{txn_type_label}*\n• Note: {text}\n• Wallet: *{wallet_name}*\n• Category: *{cat}*\n• Amount : *{amount}*\n• Date: *{txn_date}*{time_note}\n• Current Balance : *{balance}*{backdate_hint}",
+        "saved_hidden_balance": "*{ref_id}*\n{status_mark} *Done | Record Saved*\n• Type: *{txn_type_label}*\n• Note: {text}\n• Wallet: *{wallet_name}*\n• Category: *{cat}*\n• Amount : *{amount}*\n• Date: *{txn_date}*{time_note}\n• Current Balance : *{private_value}*{backdate_hint}",
         "error": "Sorry, a technical error occurred while saving your data.",
         "no_note": "No note",
         "lang_switched": "Language switched to English.",
@@ -5130,12 +5130,14 @@ async def _process_whatsapp_message_impl(
             txn_type_label = "Income" if (txn_type or "").lower() == "income" else "Expense"
         else:
             txn_type_label = "Pendapatan" if (txn_type or "").lower() == "income" else "Perbelanjaan"
+        status_mark = "🟢" if (txn_type or "").lower() == "income" else "🔴"
         return saved_template.format(
             ref_id=txn.reference_id,
             text=reply_note,
             wallet_name=wallet_reply_name,
             cat=cat_name,
             txn_type_label=txn_type_label,
+            status_mark=status_mark,
             amount=private_value if hide_saved_amount else f"RM {amount:,.2f}",
             txn_date=txn_date.strftime("%d/%m/%Y"),
             time_note=time_note,
