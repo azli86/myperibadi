@@ -3589,106 +3589,118 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 : "translate-y-0",
             )}
           >
-            <div className="bg-[var(--bottom-nav-surface)] pb-[env(safe-area-inset-bottom,0px)]">
+            <div className="border-t border-[var(--border)] bg-[var(--bottom-nav-surface)] pb-[env(safe-area-inset-bottom,0px)]">
               {(() => {
-                const chatItem = mobileNavFlat.find((item) => item.nameKey === "chat");
-                const leftNavItems = mobileNavFlat.filter((item) =>
-                  item.nameKey === "home" ||
-                  item.nameKey === "transactions",
-                );
-                const rightNavItems = mobileNavFlat.filter((item) => item.nameKey === "wallet");
-                const isChatActive = Boolean(
-                  chatItem &&
-                    (pathname === chatItem.href ||
-                      (chatItem.href !== `/${sessionId}` &&
-                        chatItem.href !== "/" &&
-                        pathname.startsWith(chatItem.href))),
-                );
-                const renderSideLink = (item: (typeof mobileNavFlat)[number]) => {
-                  const isActive =
-                    pathname === item.href ||
-                    (item.href !== `/${sessionId}` &&
-                      item.href !== "/" &&
-                      pathname.startsWith(item.href));
-                  const Icon = item.icon;
+                const isPathActive = (href: string) =>
+                  pathname === href ||
+                  (href !== `/${sessionId}` &&
+                    href !== "/" &&
+                    pathname.startsWith(href));
+                const navItems = (["home", "transactions", "chat", "wallet"] as const)
+                  .map((key) => mobileNavFlat.find((item) => item.nameKey === key))
+                  .filter((item): item is (typeof mobileNavFlat)[number] => Boolean(item));
+                const moreLabel = lang === "BM" ? "Lagi" : "More";
+
+                const renderNavItem = (
+                  item: (typeof mobileNavFlat)[number],
+                  isActive: boolean,
+                ) => {
+                  const Icon = item.icon as React.ComponentType<{ active?: boolean; size?: number }>;
                   return (
                     <Link
                       key={item.nameKey}
                       href={item.href}
                       aria-label={item.label}
+                      aria-current={isActive ? "page" : undefined}
                       scroll={true}
                       prefetch
                       onClick={(event) => handleBottomNavLinkClick(event, item.href)}
-                      className={cn(
-                        "group relative flex h-14 w-full items-center justify-center transition-all duration-250 active:scale-95",
-                        isActive
-                          ? "text-[var(--bottom-nav-active-detail)]"
-                          : "text-[var(--bottom-nav-muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--bottom-nav-text)]",
-                      )}
+                      className="group flex flex-col items-center justify-center gap-1 rounded-2xl py-1.5 transition-transform duration-200 active:scale-90"
                     >
-                      <span className="relative inline-flex flex-col items-center gap-1">
-                        <Icon
-                          active={isActive}
-                          size={
-                            item.nameKey === "wallet" || item.nameKey === "receipts" ? 30 : 28
-                          }
+                      <span className="relative flex h-8 w-16 items-center justify-center">
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "absolute inset-0 rounded-full transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+                            isActive
+                              ? "scale-100 bg-[var(--bottom-nav-active-fill)] opacity-100"
+                              : "scale-50 bg-[var(--bottom-nav-active-fill)] opacity-0 group-hover:opacity-40",
+                          )}
                         />
+                        <span
+                          className={cn(
+                            "relative z-10 transition-colors duration-200",
+                            isActive
+                              ? "text-[var(--bottom-nav-active-detail)]"
+                              : "text-[var(--bottom-nav-muted)] group-hover:text-[var(--bottom-nav-text)]",
+                          )}
+                        >
+                          {item.nameKey === "chat" ? (
+                            <ChatNavIcon active={isActive} size={24} />
+                          ) : (
+                            <Icon active={isActive} size={22} />
+                          )}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          "text-[10px] font-semibold leading-none tracking-tight transition-colors duration-200",
+                          isActive
+                            ? "text-[var(--bottom-nav-active-detail)]"
+                            : "text-[var(--bottom-nav-muted)] group-hover:text-[var(--bottom-nav-text)]",
+                        )}
+                      >
+                        {item.label}
                       </span>
                     </Link>
                   );
                 };
+
                 return (
-              <div
-                className={cn(
-                  "relative mx-auto grid h-16 max-w-screen-md grid-cols-5 items-center px-2",
-                )}
-              >
-                {/* Left cluster */}
-                <div className="contents">
-                  {leftNavItems.map(renderSideLink)}
-                </div>
-
-                {/* Center spacer keeps layout balanced; chat sits on true center */}
-                <div className="col-start-3 h-14" aria-hidden="true" />
-
-                {chatItem ? (
-                  <Link
-                    href={chatItem.href}
-                    aria-label={chatItem.label}
-                    scroll={true}
-                    prefetch
-                    onClick={(event) => handleBottomNavLinkClick(event, chatItem.href)}
-                    className={cn(
-                      "absolute left-1/2 top-1/2 z-10 flex h-14 w-[54px] -translate-x-1/2 -translate-y-1/2 items-center justify-center text-[var(--bottom-nav-text)] transition-all duration-250 active:scale-95",
-                      isChatActive
-                        ? "text-[var(--bottom-nav-active-detail)]"
-                        : "text-[var(--bottom-nav-text)]",
+                  <div className="mx-auto grid max-w-screen-md grid-cols-5 px-1 pb-1 pt-1.5">
+                    {navItems.map((item) =>
+                      renderNavItem(item, isPathActive(item.href)),
                     )}
-                  >
-                    <ChatNavIcon active={isChatActive} size={54} />
-                  </Link>
-                ) : null}
-
-                {/* Right cluster */}
-                <div className="contents">
-                  {rightNavItems.map(renderSideLink)}
-                  <button
-                    type="button"
-                    aria-label={t.openMenu}
-                    onClick={() => setShowMobileMenu(true)}
-                    className={cn(
-                      "group relative flex h-14 w-full items-center justify-center transition-all duration-200 active:scale-95",
-                      showMobileMenu
-                        ? "text-[var(--bottom-nav-active-detail)]"
-                        : "text-[var(--bottom-nav-muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--bottom-nav-text)]",
-                    )}
-                  >
-                    <span className="relative inline-flex flex-col items-center">
-                      <NavMoreIcon active={showMobileMenu} size={28} />
-                    </span>
-                  </button>
-                </div>
-              </div>
+                    <button
+                      type="button"
+                      aria-label={t.openMenu}
+                      aria-expanded={showMobileMenu}
+                      onClick={() => setShowMobileMenu(true)}
+                      className="group flex flex-col items-center justify-center gap-1 rounded-2xl py-1.5 transition-transform duration-200 active:scale-90"
+                    >
+                      <span className="relative flex h-8 w-16 items-center justify-center">
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "absolute inset-0 rounded-full transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+                            showMobileMenu
+                              ? "scale-100 bg-[var(--bottom-nav-active-fill)] opacity-100"
+                              : "scale-50 bg-[var(--bottom-nav-active-fill)] opacity-0 group-hover:opacity-40",
+                          )}
+                        />
+                        <span
+                          className={cn(
+                            "relative z-10 transition-colors duration-200",
+                            showMobileMenu
+                              ? "text-[var(--bottom-nav-active-detail)]"
+                              : "text-[var(--bottom-nav-muted)] group-hover:text-[var(--bottom-nav-text)]",
+                          )}
+                        >
+                          <NavMoreIcon active={showMobileMenu} size={22} />
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          "text-[10px] font-semibold leading-none tracking-tight transition-colors duration-200",
+                          showMobileMenu
+                            ? "text-[var(--bottom-nav-active-detail)]"
+                            : "text-[var(--bottom-nav-muted)] group-hover:text-[var(--bottom-nav-text)]",
+                        )}
+                      >
+                        {moreLabel}
+                      </span>
+                    </button>
+                  </div>
                 );
               })()}
             </div>
