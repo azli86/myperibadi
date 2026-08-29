@@ -44,7 +44,7 @@ export function MobilePageHeader({
         )}
       >
         <div className="flex items-center gap-3 pt-0.5">
-          <h1 className="min-w-0 flex-1 truncate text-left text-[35px] font-black leading-[1.05] tracking-tight text-[var(--text)]">
+          <h1 className="min-w-0 flex-1 truncate text-left text-[30px] font-black leading-[1.05] tracking-tight text-[var(--text)]">
             {title}
           </h1>
           <div className="flex shrink-0 items-center justify-end gap-1.5">
