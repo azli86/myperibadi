@@ -357,18 +357,18 @@ WHATSAPP_BUDGET_COMMANDS_ENABLED = (
 
 CORPORATE_BULLET = "•"
 EMOJI_PATTERN = re.compile(
-    "["
-    "\U0001F1E6-\U0001F1FF"
-    "\U0001F300-\U0001F5FF"
-    "\U0001F600-\U0001F64F"
-    "\U0001F680-\U0001F6FF"
-    "\U0001F700-\U0001F77F"
-    "\U0001F780-\U0001F7FF"
-    "\U0001F800-\U0001F8FF"
-    "\U0001F900-\U0001F9FF"
-    "\U0001FA00-\U0001FAFF"
-    "\u2600-\u27BF"
-    "]+",
+    r"(?:(?!\U0001F534|\U0001F7E2)["
+    r"\U0001F1E6-\U0001F1FF"
+    r"\U0001F300-\U0001F5FF"
+    r"\U0001F600-\U0001F64F"
+    r"\U0001F680-\U0001F6FF"
+    r"\U0001F700-\U0001F77F"
+    r"\U0001F780-\U0001F7FF"
+    r"\U0001F800-\U0001F8FF"
+    r"\U0001F900-\U0001F9FF"
+    r"\U0001FA00-\U0001FAFF"
+    r"\u2600-\u27BF"
+    r"])+",
     re.UNICODE,
 )
 DECORATIVE_LINE_PATTERN = re.compile(r"(?m)^[ \t]*(?:[•\-\u2500-\u257F_=][ \t]*){2,}$")
@@ -411,8 +411,6 @@ def format_corporate_bot_reply(reply: Optional[str]) -> Optional[str]:
     text = text.replace("*Done | Receipt Uploaded*", "📎 *Done | Receipt Uploaded*")
     text = re.sub(r"(?m)^Pilihan wallet:", "⚠️ Pilihan wallet:", text)
     text = re.sub(r"(?m)^Wallet options:", "⚠️ Wallet options:", text)
-    # Restore colored status dots (kept as safe text markers through emoji stripping)
-    text = text.replace("[GREEN]", "🟢").replace("[RED]", "🔴")
     return text
 
 
@@ -5130,7 +5128,7 @@ async def _process_whatsapp_message_impl(
             txn_type_label = "Income" if (txn_type or "").lower() == "income" else "Expense"
         else:
             txn_type_label = "Pendapatan" if (txn_type or "").lower() == "income" else "Perbelanjaan"
-        status_mark = "[GREEN]" if (txn_type or "").lower() == "income" else "[RED]"
+        status_mark = "🟢" if (txn_type or "").lower() == "income" else "🔴"
         return saved_template.format(
             ref_id=txn.reference_id,
             text=reply_note,

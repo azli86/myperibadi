@@ -372,6 +372,7 @@ async def create_item_with_media(
         location_name=entities.get("location_name"),
     )
     user = (await db.execute(select(models.User).where(models.User.id == user_id))).scalar_one()
+    is_bm = getattr(user, "language", "BM") != "EN"
     payload = ItemCreate(
         name=name, quantity=qty,
         location_id=location.id if location else None,
@@ -399,7 +400,9 @@ async def create_item_with_media(
         await db.refresh(item)
     loc_txt = await _fmt_location(db, user_id=user_id, item=item)
     photo_note = "\n📷 Gambar dilampirkan" if object_key else ""
-    return f"✅ *{item.name}* direkodkan\nKuantiti: {_fmt_qty(item)}\nLokasi: {loc_txt}{photo_note}"
+    if is_bm:
+        return f"✅ *{item.name}* direkodkan\nKuantiti: {_fmt_qty(item)}\nLokasi: {loc_txt}{photo_note}"
+    return f"✅ *{item.name}* recorded\nQuantity: {_fmt_qty(item)}\nLocation: {loc_txt}{photo_note}"
 
 # ── post-transaction suggestion (WhatsApp/Telegram offer) ───────────────
 
@@ -413,29 +416,58 @@ async def build_txn_suggestion(db: AsyncSession, *, user_id: str, txn: models.Tr
     vendor = (txn.vendor_or_source or "").strip()
     if not vendor:
         return None
+    try:
+        user_res = await db.execute(select(models.User).where(models.User.id == user_id))
+        user = user_res.scalar_one_or_none()
+        is_bm = getattr(user, "language", "BM") != "EN"
+    except Exception:
+        is_bm = True
+    if is_bm:
+        return (
+            "\n\n📦 Mahu tambah pembelian ini ke *Barang Saya*?\n"
+            "Balas: tambah barang " + vendor[:60]
+        )
     return (
-        "\n\n📦 Mahu tambah pembelian ini ke *Barang Saya*?\n"
-        "Balas: tambah barang " + vendor[:60]
+        "\n\n📦 Add this purchase to *My Inventory*?\n"
+        "Reply: add item " + vendor[:60]
     )
 
-def _help_text() -> str:
+def _help_text(is_bm: bool = True) -> str:
+    if is_bm:
+        return (
+            "📦 *Barang Saya*\n\n"
+            "Guna awalan *stuff* supaya tidak bertembung dengan arahan lain.\n"
+            "Bot sokong *tambah* dan *cari* barang sahaja — fungsi lain buat dalam app/web.\n\n"
+            "• Tambah: stuff kabel HDMI 2 (nama lokasi/bekas juga boleh, contoh: stuff kabel HDMI ruang tamu)\n"
+            "• Cari: stuff cari kabel\n"
+            "• Cari: stuff kabel"
+        )
     return (
-        "📦 *Barang Saya*\n\n"
-        "Guna awalan *stuff* supaya tidak bertembung dengan arahan lain.\n"
-        "Bot sokong *tambah* dan *cari* barang sahaja — fungsi lain buat dalam app/web.\n\n"
-        "• Tambah: stuff kabel HDMI 2 (nama lokasi/bekas juga boleh, contoh: stuff kabel HDMI ruang tamu)\n"
-        "• Cari: stuff cari kabel\n"
-        "• Cari: stuff kabel"
+        "📦 *My Inventory*\n\n"
+        "Use the *stuff* prefix so it doesn't clash with other commands.\n"
+        "The bot supports *add* and *search* only — other actions are done in the app/web.\n\n"
+        "• Add: stuff hdmi cable 2 (location/container names also work, e.g. stuff hdmi cable living room)\n"
+        "• Search: stuff find cable\n"
+        "• Search: stuff cable"
     )
 
-def _fallback_text() -> str:
+def _fallback_text(is_bm: bool = True) -> str:
+    if is_bm:
+        return (
+            "Saya tidak pasti arahan tersebut.\n\n"
+            "Untuk Barang Saya, anda boleh cuba:\n"
+            "• cari kabel HDMI\n"
+            "• tambah barang charger laptop\n"
+            "• kabel HDMI dekat mana\n"
+            "• barang dalam Kotak Elektronik A"
+        )
     return (
-        "Saya tidak pasti arahan tersebut.\n\n"
-        "Untuk Barang Saya, anda boleh cuba:\n"
-        "• cari kabel HDMI\n"
-        "• tambah barang charger laptop\n"
-        "• kabel HDMI dekat mana\n"
-        "• barang dalam Kotak Elektronik A"
+        "I'm not sure about that command.\n\n"
+        "For My Inventory, try:\n"
+        "• find hdmi cable\n"
+        "• add item laptop charger\n"
+        "• where is the hdmi cable\n"
+        "• items inside Electronic Box A"
     )
 
 # ── main handler ─────────────────────────────────────────────────────────────
@@ -450,12 +482,17 @@ async def handle_inventory_message(
         return None
     tl = t.lower()
 
+    # Language for replies (default BM)
+    if current_user is None:
+        current_user = (await db.execute(select(models.User).where(models.User.id == user_id))).scalar_one_or_none()
+    is_bm = getattr(current_user, "language", "BM") != "EN"
+
     # Guard: "barang" keyword must appear or active state must exist for plain flows
     state = await _load_state(db, user_id=user_id, channel=channel)
 
     # 1) active confirmation flow takes precedence
     if state and state.pending_action:
-        return await _handle_state_reply(db, user_id=user_id, channel=channel, state=state, text=t)
+        return await _handle_state_reply(db, user_id=user_id, channel=channel, state=state, text=t, is_bm=is_bm)
 
     parsed = parse_inventory_intent(t)
     intent = parsed["intent"]
@@ -465,19 +502,30 @@ async def handle_inventory_message(
     entities = parsed["entities"]
 
     if intent == "inventory_help":
-        return _help_text()
+        return _help_text(is_bm)
 
     if intent == "inventory_summary":
         s = await queries.get_summary(db, user_id=user_id)
+        if is_bm:
+            return (
+                "📦 *Ringkasan Barang Saya*\n\n"
+                f"Jenis barang: {s['total_types']}\n"
+                f"Jumlah unit: {s['total_units']}\n"
+                f"Ada: {s['available']}\n"
+                f"Dipinjam: {s['loaned']}\n"
+                f"Hilang: {s['missing']}\n"
+                f"Rosak: {s['damaged']}\n"
+                f"Tanpa lokasi: {s['no_location']}"
+            )
         return (
-            "📦 *Ringkasan Barang Saya*\n\n"
-            f"Jenis barang: {s['total_types']}\n"
-            f"Jumlah unit: {s['total_units']}\n"
-            f"Ada: {s['available']}\n"
-            f"Dipinjam: {s['loaned']}\n"
-            f"Hilang: {s['missing']}\n"
-            f"Rosak: {s['damaged']}\n"
-            f"Tanpa lokasi: {s['no_location']}"
+            "📦 *My Inventory Summary*\n\n"
+            f"Item types: {s['total_types']}\n"
+            f"Total units: {s['total_units']}\n"
+            f"Available: {s['available']}\n"
+            f"Loaned: {s['loaned']}\n"
+            f"Missing: {s['missing']}\n"
+            f"Damaged: {s['damaged']}\n"
+            f"Without location: {s['no_location']}"
         )
 
     if intent == "inventory_create_item":
@@ -496,7 +544,9 @@ async def handle_inventory_message(
         )
         item = await service.create_item(db, current_user=current_user, payload=payload, source_channel=channel)
         loc_txt = await _fmt_location(db, user_id=user_id, item=item)
-        return f"✅ *{item.name}* direkodkan\nKuantiti: {_fmt_qty(item)}\nLokasi: {loc_txt}"
+        if is_bm:
+            return f"✅ *{item.name}* direkodkan\nKuantiti: {_fmt_qty(item)}\nLokasi: {loc_txt}"
+        return f"✅ *{item.name}* recorded\nQuantity: {_fmt_qty(item)}\nLocation: {loc_txt}"
 
     if intent == "inventory_create_location":
         name = entities["location_name"]
@@ -682,18 +732,19 @@ async def handle_inventory_message(
                 "Rekod dan sejarah pergerakan akan disembunyikan.\n"
                 "Balas *sah* untuk padam atau *batal*.")
 
-    return _fallback_text()
+    return _fallback_text(is_bm)
 
 # ── state reply handler (numbered pick / confirm / cancel) ───────────────────
 
 async def _handle_state_reply(
     db: AsyncSession, *, user_id: str, channel: str, state: models.InventoryConversationState, text: str,
+    is_bm: bool = True,
 ) -> str:
     tl = text.lower().strip()
 
     if tl in CANCEL_WORDS or tl in {"batal", "cancel"}:
         await _clear_state(db, row=state)
-        return "Baik, dibatalkan. Tiada perubahan dibuat."
+        return "Baik, dibatalkan. Tiada perubahan dibuat." if is_bm else "OK, cancelled. No changes were made."
 
     draft = _draft(state)
     cands = _candidates(state)
@@ -709,9 +760,11 @@ async def _handle_state_reply(
             payload = ItemCreate(name=name)
             item = await service.create_item(db, current_user=user, payload=payload, source_channel=channel)
             await _clear_state(db, row=state)
-            return f"✅ *{item.name}* direkodkan\nKuantiti: {_fmt_qty(item)}\nLokasi: Tiada lokasi direkodkan"
+            if is_bm:
+                return f"✅ *{item.name}* direkodkan\nKuantiti: {_fmt_qty(item)}\nLokasi: Tiada lokasi direkodkan"
+            return f"✅ *{item.name}* recorded\nQuantity: {_fmt_qty(item)}\nLocation: No location recorded"
         await _clear_state(db, row=state)
-        return "Baik, tidak ditambah."
+        return "Baik, tidak ditambah." if is_bm else "OK, not added."
 
     if action == "pick_item" and tl.isdigit():
         idx = int(tl) - 1
@@ -758,7 +811,7 @@ async def _handle_state_reply(
                               pending_action="confirm_delete", draft_data={"item_id": item_id})
             return f"Padam *{item.name}* ({_fmt_qty(item)})?\n\nBalas *sah* untuk padam atau *batal*."
 
-        return _fallback_text()
+        return _fallback_text(is_bm)
 
     if action == "confirm_status" and tl in CONFIRM_WORDS:
         item_id = int(draft.get("item_id", 0))
