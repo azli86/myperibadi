@@ -401,10 +401,8 @@ def format_corporate_bot_reply(reply: Optional[str]) -> Optional[str]:
     text = re.sub(r"[ \t]+\n", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     text = text.strip()
-    text = re.sub(r"^\*Rekod Disimpan\*", "✅ *Rekod Disimpan*", text)
-    text = re.sub(r"^\*Record Saved\*", "✅ *Record Saved*", text)
-    text = text.replace("*Done | Rekod Disimpan*", "✅ *Done | Rekod Disimpan*")
-    text = text.replace("*Done | Record Saved*", "✅ *Done | Record Saved*")
+    # Saved transaction confirmations carry their own status mark (🟢/🔴) — do not
+    # re-add a ✅ tick on top of it.
     text = text.replace("*Done | Transfer Berjaya*", "✅ *Done | Transfer Berjaya*")
     text = text.replace("*Done | Transfer Successful*", "✅ *Done | Transfer Successful*")
     text = text.replace("*Done | Rekod Hutang Disimpan*", "✅ *Done | Rekod Hutang Disimpan*")
@@ -413,6 +411,8 @@ def format_corporate_bot_reply(reply: Optional[str]) -> Optional[str]:
     text = text.replace("*Done | Receipt Uploaded*", "📎 *Done | Receipt Uploaded*")
     text = re.sub(r"(?m)^Pilihan wallet:", "⚠️ Pilihan wallet:", text)
     text = re.sub(r"(?m)^Wallet options:", "⚠️ Wallet options:", text)
+    # Restore colored status dots (kept as safe text markers through emoji stripping)
+    text = text.replace("[GREEN]", "🟢").replace("[RED]", "🔴")
     return text
 
 
@@ -5130,7 +5130,7 @@ async def _process_whatsapp_message_impl(
             txn_type_label = "Income" if (txn_type or "").lower() == "income" else "Expense"
         else:
             txn_type_label = "Pendapatan" if (txn_type or "").lower() == "income" else "Perbelanjaan"
-        status_mark = "🟢" if (txn_type or "").lower() == "income" else "🔴"
+        status_mark = "[GREEN]" if (txn_type or "").lower() == "income" else "[RED]"
         return saved_template.format(
             ref_id=txn.reference_id,
             text=reply_note,
