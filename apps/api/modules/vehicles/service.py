@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, Optional
 
 from fastapi import HTTPException, UploadFile
-from sqlalchemy import delete as sa_delete, or_, select
+from sqlalchemy import delete as sa_delete, or_, select, update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
@@ -848,6 +848,28 @@ async def create_maintenance(
             source_id=int(row.id),
         )
         db.add(reminder)
+        # Dismiss stale pending reminders from earlier services of the same
+        # vehicle + service_type — they are superseded by this new one.
+        older = (await db.execute(
+            select(models.VehicleMaintenance.id)
+            .where(
+                models.VehicleMaintenance.vehicle_id == vehicle.id,
+                models.VehicleMaintenance.household_id == household_id,
+                models.VehicleMaintenance.service_type == service_type,
+                models.VehicleMaintenance.id != row.id,
+            )
+        )).scalars().all()
+        if older:
+            await db.execute(
+                sa_update(models.VehicleReminder)
+                .where(
+                    models.VehicleReminder.household_id == household_id,
+                    models.VehicleReminder.status == "pending",
+                    models.VehicleReminder.source_type == "maintenance",
+                    models.VehicleReminder.source_id.in_(list(older)),
+                )
+                .values(status="completed")
+            )
     await db.commit()
     await db.refresh(row)
     return row
@@ -1736,6 +1758,28 @@ async def build_due_reminders(
             if not exists:
                 orphan_ids.append(int(r.id))
                 continue
+            # Maintenance-sourced reminder: a completed service may have been
+            # superseded by a newer service of the same type on the same vehicle.
+            # Such stale reminders must not surface as overdue.
+            if r.source_type == "maintenance":
+                src = (await db.execute(
+                    select(models.VehicleMaintenance)
+                    .where(models.VehicleMaintenance.id == int(r.source_id))
+                )).scalar_one_or_none()
+                if src is not None and (src.status or "").lower() == "completed":
+                    newer = (await db.execute(
+                        select(models.VehicleMaintenance.id)
+                        .where(
+                            models.VehicleMaintenance.vehicle_id == int(r.vehicle_id),
+                            models.VehicleMaintenance.household_id == household_id,
+                            models.VehicleMaintenance.service_type == src.service_type,
+                            models.VehicleMaintenance.service_date > src.service_date,
+                        )
+                        .limit(1)
+                    )).scalars().first()
+                    if newer is not None:
+                        orphan_ids.append(int(r.id))
+                        continue
         v = vehicle_map.get(int(r.vehicle_id))
         serialized = serialize_reminder(r, vehicle=v, today=today)
         # Dedupe key for later synthetic items
@@ -1762,6 +1806,10 @@ async def build_due_reminders(
     )
     for v in target_vehicles:
         for m in await queries.list_maintenance(db, vehicle_id=int(v.id), household_id=household_id, limit=30):
+            # Skip completed maintenance — a finished service must not be shown
+            # as overdue even if its next_service_* threshold has been reached/kept.
+            if (m.status or "").lower() == "completed":
+                continue
             is_date_overdue = bool(m.next_service_date and m.next_service_date < today)
             is_odo_overdue = bool(
                 m.next_service_odometer is not None
