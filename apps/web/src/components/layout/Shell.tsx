@@ -4118,7 +4118,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           </span>
                         </div>
                         <span className="rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--muted)]">
-                          7 {lang === "BM" ? "modul" : "modules"}
+                          8 {lang === "BM" ? "modul" : "modules"}
                         </span>
                       </div>
 
@@ -4157,6 +4157,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           { name: lang === "BM" ? "Barang Saya" : "Inventory", subtitle: lang === "BM" ? "Jejak barang" : "Item boxes", href: `/${sessionId}/inventory`, icon: Package },
                           { name: lang === "BM" ? "Cukai" : "Income Tax", subtitle: lang === "BM" ? "Cukai tahunan" : "Annual tax", href: `/${sessionId}/tax`, icon: Landmark },
                           { name: lang === "BM" ? "Acara Saya" : "My Events", subtitle: lang === "BM" ? "Bajet majlis" : "Event budget", href: `/${sessionId}/event`, icon: CalendarDays },
+                          { name: lang === "BM" ? "Kesihatan" : "Health", subtitle: lang === "BM" ? "Monitor & ubat" : "Monitor & meds", href: `/${sessionId}/health`, icon: Heart },
                           { name: lang === "BM" ? "Lencana" : "Badges", subtitle: lang === "BM" ? "Status & level" : "Achievements", href: `/${sessionId}/badges`, icon: Award },
                         ].map((item) => (
                           <button
