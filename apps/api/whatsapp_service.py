@@ -3994,6 +3994,91 @@ async def _process_whatsapp_message_impl(
                         )
                         reply = res[0] if isinstance(res, tuple) else res
                     return reply, None
+            # Transfer between two wallets: reply like `transfer pbe tng` (or
+            # `transfer dari pbe ke tng`) turns the OCR amount into a wallet-to-wallet
+            # transfer instead of an expense (e.g. moving money from PBE to TNG).
+            if normalized_typed.startswith("transfer") or normalized_typed.startswith("pindah"):
+                ocr_amount = extract_amount(str(pending_selection.get("original_text") or ""))
+                if ocr_amount and ocr_amount > 0:
+                    # Use the full reply (normalized_selection) because
+                    # _split_reply_category_wallet already stripped the trailing
+                    # wallet into forced_wallet_id. We need both wallet names.
+                    transfer_reply = re.sub(r"\d+(?:\.\d+)?", "", normalized_selection).strip()
+                    transfer_reply = transfer_reply.replace("transfer", " ").replace("pindah", " ").replace("dari", " ").replace("ke", " ").replace("from", " ").replace("to", " ").replace("duit", " ").replace("money", " ")
+                    transfer_reply = re.sub(r"\s+", " ", transfer_reply).strip()
+                    wallet_query = select(models.Wallet).where(models.Wallet.owner_user_id == user_id)
+                    if household_id:
+                        wallet_query = select(models.Wallet).where(
+                            or_(models.Wallet.owner_user_id == user_id, models.Wallet.household_id == household_id)
+                        )
+                    w_res = await db.execute(wallet_query)
+                    user_wallets = w_res.scalars().all()
+                    found_wallets = []
+                    for w in user_wallets:
+                        m = re.search(rf"\b{re.escape(w.name.lower())}\b", transfer_reply)
+                        if m:
+                            found_wallets.append((m.start(), w))
+                    found_wallets.sort(key=lambda x: x[0])
+                    if len(found_wallets) >= 2:
+                        from_w = found_wallets[0][1]
+                        to_w = found_wallets[-1][1]
+                        if from_w.id != to_w.id:
+                            inc_res = await db.execute(select(func.sum(models.Transaction.amount)).where(models.Transaction.wallet_id == from_w.id, models.Transaction.type == "income"))
+                            exp_res = await db.execute(select(func.sum(models.Transaction.amount)).where(models.Transaction.wallet_id == from_w.id, models.Transaction.type == "expense"))
+                            from_w_bal = (inc_res.scalar() or 0) - (exp_res.scalar() or 0)
+                            if from_w_bal >= ocr_amount:
+                                txn_date = current_business_date()
+                                ocr_dt, _cleaned, _inv = extract_explicit_txn_date(str(pending_selection.get("original_text") or ""))
+                                if ocr_dt:
+                                    txn_date = ocr_dt
+                                ref_id = models.generate_txn_reference(txn_date)
+                                transfer_category = await ensure_internal_transfer_category(db, household_id)
+                                txn_out = models.Transaction(
+                                    wallet_id=from_w.id,
+                                    user_id=user_id,
+                                    reference_id=ref_id + "-O",
+                                    type="expense",
+                                    txn_date=txn_date,
+                                    vendor_or_source=f"Transfer to {to_w.name}",
+                                    amount=ocr_amount,
+                                    category_id=transfer_category.id if transfer_category else None,
+                                    notes=str(pending_selection.get("original_text") or ""),
+                                    source_channel=source_channel,
+                                )
+                                txn_in = models.Transaction(
+                                    wallet_id=to_w.id,
+                                    user_id=user_id,
+                                    reference_id=ref_id + "-I",
+                                    type="income",
+                                    txn_date=txn_date,
+                                    vendor_or_source=f"Transfer from {from_w.name}",
+                                    amount=ocr_amount,
+                                    category_id=transfer_category.id if transfer_category else None,
+                                    notes=str(pending_selection.get("original_text") or ""),
+                                    source_channel=source_channel,
+                                )
+                                db.add(txn_out)
+                                db.add(txn_in)
+                                await db.commit()
+                                _clear_pending_category_selection(user_id, source_channel)
+                                _take_pending_receipt_media(user_id, source_channel)
+                                hide_group_transfer_amount = _should_hide_group_amount(
+                                    source_channel=source_channel,
+                                    txn_type="expense",
+                                    show_expense_amount=show_expense_amount,
+                                    show_income_amount=show_income_amount,
+                                ) or _should_hide_group_amount(
+                                    source_channel=source_channel,
+                                    txn_type="income",
+                                    show_expense_amount=show_expense_amount,
+                                    show_income_amount=show_income_amount,
+                                )
+                                return t.get("transfer_success").format(
+                                    ref_id=ref_id,
+                                    amount=private_value if hide_group_transfer_amount else f"RM {ocr_amount:,.2f}",
+                                    from_name=wallet_display_name(from_w),
+                                    to_name=wallet_display_name(to_w),
+                                ), None
             # Generic kind alias: reply 'income' or 'expense' picks the default category of that kind.
             if normalized_typed in {"income", "pendapatan", "gaji", "salary", "expense", "expenses", "belanja", "perbelanjaan"}:
                 alias_kind = "income" if normalized_typed in {"income", "pendapatan", "gaji", "salary"} else "expense"
