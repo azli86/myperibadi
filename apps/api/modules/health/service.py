@@ -135,6 +135,39 @@ def _compute_bmi(weight_kg, height_cm):
     return round(weight_kg / ((height_cm / 100) ** 2), 1)
 
 
+def _bmi_category(bmi):
+    """WHO BMI classification with BM/EN labels and a color key."""
+    if bmi is None:
+        return None
+    if bmi < 18.5:
+        return {
+            "key": "underweight",
+            "label_bm": "Terlalu Kurus",
+            "label_en": "Underweight",
+            "color": "amber",
+        }
+    if bmi < 25:
+        return {
+            "key": "normal",
+            "label_bm": "Normal",
+            "label_en": "Normal",
+            "color": "green",
+        }
+    if bmi < 30:
+        return {
+            "key": "overweight",
+            "label_bm": "Berat Berlebihan",
+            "label_en": "Overweight",
+            "color": "amber",
+        }
+    return {
+        "key": "obese",
+        "label_bm": "Obesiti",
+        "label_en": "Obese",
+        "color": "red",
+    }
+
+
 async def build_dashboard(db, *, user_id) -> dict[str, Any]:
     latest = await queries.latest_readings(db, user_id=user_id)
     order = ["weight", "bp", "glucose", "pulse", "spo2", "temperature", "height"]
@@ -158,9 +191,11 @@ async def build_dashboard(db, *, user_id) -> dict[str, Any]:
     height = latest.get("height")
     weight_kg = float(weight.value) if weight and weight.value is not None else None
     height_cm = float(height.value) if height and height.value is not None else None
+    bmi = _compute_bmi(weight_kg, height_cm)
     return {
         "metrics": metrics,
-        "bmi": _compute_bmi(weight_kg, height_cm),
+        "bmi": bmi,
+        "bmi_category": _bmi_category(bmi),
         "height_cm": height_cm,
         "weight_kg": weight_kg,
     }

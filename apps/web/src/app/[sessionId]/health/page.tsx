@@ -42,6 +42,12 @@ type Metric = {
 type Dashboard = {
   metrics: Metric[]
   bmi?: number | null
+  bmi_category?: {
+    key: string
+    label_bm: string
+    label_en: string
+    color: string
+  } | null
   height_cm?: number | null
   weight_kg?: number | null
 }
@@ -250,6 +256,20 @@ export default function HealthDashboardPage() {
                       </span>
                       <span className="text-xs font-semibold text-[var(--muted)]">BMI</span>
                     </div>
+                    {dash?.bmi_category && (
+                      <span
+                        className={cn(
+                          "mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold",
+                          dash.bmi_category.color === "red"
+                            ? "bg-red-500/15 text-red-500"
+                            : dash.bmi_category.color === "amber"
+                            ? "bg-amber-500/15 text-amber-500"
+                            : "bg-emerald-500/15 text-emerald-500",
+                        )}
+                      >
+                        {isBm ? dash.bmi_category.label_bm : dash.bmi_category.label_en}
+                      </span>
+                    )}
                     <p className="mt-0.5 text-[11px] text-[var(--muted)]">
                       {dash?.metrics?.length ?? 0} {isBm ? "bacaan" : "readings"} · {today.length} {isBm ? "ubat hari ini" : "meds today"}
                     </p>
@@ -400,8 +420,18 @@ export default function HealthDashboardPage() {
                   {isBm ? "Monitor Kesihatan" : "Health Monitor"}
                 </h2>
                 {dash?.bmi != null && (
-                  <span className="rounded-full bg-[var(--accent2)]/15 px-2.5 py-1 text-xs font-bold text-[var(--accent2)]">
+                  <span
+                    className={cn(
+                      "rounded-full bg-[var(--accent2)]/15 px-2.5 py-1 text-xs font-bold text-[var(--accent2)]",
+                      dash.bmi_category?.color === "red"
+                        ? "!bg-red-500/15 !text-red-500"
+                        : dash.bmi_category?.color === "amber"
+                        ? "!bg-amber-500/15 !text-amber-500"
+                        : "",
+                    )}
+                  >
                     BMI {dash.bmi}
+                    {dash.bmi_category ? ` · ${isBm ? dash.bmi_category.label_bm : dash.bmi_category.label_en}` : ""}
                   </span>
                 )}
               </div>
