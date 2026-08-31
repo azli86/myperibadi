@@ -4,13 +4,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams } from "next/navigation"
 import {
   Activity,
-  Check,
   HeartPulse,
   LineChart,
-  Loader2,
   Plus,
   Stethoscope,
-  X,
 } from "lucide-react"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
@@ -24,6 +21,8 @@ import {
   MobilePageHeader,
 } from "@/components/layout/PageHeader"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
+import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 
 type Reading = {
   id: number
@@ -66,6 +65,7 @@ export default function HealthReadingsPage() {
   const [form, setForm] = useState<Record<string, string>>({})
   const [mounted, setMounted] = useState(false)
   const showDataSkeleton = useDelayedSkeleton(loading && !hasLoaded)
+  const addSwipe = useSwipeDownToClose(() => setShowAdd(false))
 
   const meta = useMemo(() => METRICS.find((m) => m.key === metric) || METRICS[0], [metric])
 
@@ -374,21 +374,33 @@ export default function HealthReadingsPage() {
 
       {/* Add reading sheet */}
       {showAdd ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" onClick={() => setShowAdd(false)}>
+        <div
+          className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-[var(--overlay)] p-0 sm:items-center"
+          onClick={() => setShowAdd(false)}
+          onTouchMove={(e) => e.preventDefault()}
+        >
           <div
-            className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-[var(--card)] sm:rounded-3xl"
             onClick={(e) => e.stopPropagation()}
+            data-swipe-sheet
+            {...addSwipe}
+            className="app-sheet-panel app-sheet-panel--lg w-full max-h-[90dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[32rem] sm:rounded-2xl"
           >
-            <div className="overflow-y-auto p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-black text-[var(--text)]">
-                {isBm ? "Tambah Bacaan" : "Add Reading"} — {isBm ? meta.labelBM : meta.labelEN}
-              </h3>
-              <button onClick={() => setShowAdd(false)} className="rounded-lg p-1 text-[var(--muted)]">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="space-y-3">
+            <AppSheetHeader
+              title={isBm ? "Tambah Bacaan" : "Add Reading"}
+              eyebrow={isBm ? meta.labelBM : meta.labelEN}
+              onClose={() => setShowAdd(false)}
+              action={
+                <button
+                  type="button"
+                  onClick={saveReading}
+                  disabled={saving}
+                  className="px-2 py-1 text-base font-bold text-[var(--accent)] transition hover:opacity-80 disabled:opacity-50"
+                >
+                  {saving ? (isBm ? "Menyimpan…" : "Saving…") : isBm ? "Simpan" : "Save"}
+                </button>
+              }
+            />
+            <div className="space-y-3 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
               {meta.fields.includes("value") && (
                 <Field
                   label={isBm ? "Nilai" : "Value"}
@@ -418,18 +430,6 @@ export default function HealthReadingsPage() {
                 value={form.note || ""}
                 onChange={(v) => setForm((f) => ({ ...f, note: v }))}
               />
-            </div>
-            </div>
-            {/* Sticky footer so the save button is always visible */}
-            <div className="sticky bottom-0 z-10 border-t border-[var(--border)] bg-[var(--card)] p-4">
-              <button
-                onClick={saveReading}
-                disabled={saving}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] py-3 text-sm font-bold text-[var(--btn-primary-text)] disabled:opacity-50"
-              >
-                {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                {isBm ? "Simpan" : "Save"}
-              </button>
             </div>
           </div>
         </div>
