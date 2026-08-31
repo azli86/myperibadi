@@ -147,29 +147,135 @@ export default function HealthReadingsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--page-bg)]">
-      <MobilePageHeader
-        title={isBm ? "Monitor" : "Monitor"}
-        fallbackHref={`/${sessionId}/health`}
-        action={
-          <MobileIconButton label={isBm ? "Tambah bacaan" : "Add reading"} onClick={() => setShowAdd(true)}>
-            <Plus />
-          </MobileIconButton>
-        }
-      />
-      <DesktopPageHeader
-        title={isBm ? "Monitor Kesihatan" : "Health Monitor"}
-        homeHref={`/${sessionId}`}
-        breadcrumbs={[{ label: isBm ? "Kesihatan" : "Health", href: `/${sessionId}/health` }]}
-        actions={
-          <DesktopPageAction onClick={() => setShowAdd(true)}>
-            <Plus />
-            {isBm ? "Tambah" : "Add"}
-          </DesktopPageAction>
-        }
-      />
+      <div className="md:hidden">
+        <MobilePageHeader
+          className="border-b border-[color:var(--border)] pb-4"
+          title={isBm ? "Monitor" : "Monitor"}
+          fallbackHref={`/${sessionId}/health`}
+          action={
+            <MobileIconButton label={isBm ? "Tambah bacaan" : "Add reading"} onClick={() => setShowAdd(true)}>
+              <Plus />
+            </MobileIconButton>
+          }
+        />
+      </div>
+
+      <div className="hidden md:block">
+        <DesktopPageHeader
+          title={isBm ? "Monitor Kesihatan" : "Health Monitor"}
+          homeHref={`/${sessionId}`}
+          breadcrumbs={[{ label: isBm ? "Kesihatan" : "Health", href: `/${sessionId}/health` }]}
+          actions={
+            <DesktopPageAction onClick={() => setShowAdd(true)}>
+              <Plus />
+              {isBm ? "Tambah" : "Add"}
+            </DesktopPageAction>
+          }
+        />
+      </div>
+
+      {/* ── MOBILE VIEW ── */}
+      <div className="md:hidden px-1 pb-24 pt-1 space-y-4">
+        {/* Metric picker */}
+        <div className="no-scrollbar -mx-2 flex items-center gap-1.5 overflow-x-auto px-2 pb-0.5">
+          {METRICS.map((m) => (
+            <button
+              key={m.key}
+              onClick={() => setMetric(m.key)}
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95",
+                metric === m.key
+                  ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
+                  : "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]",
+              )}
+            >
+              {isBm ? m.labelBM : m.labelEN}
+            </button>
+          ))}
+        </div>
+
+        {/* Chart */}
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-base font-black text-[var(--text)]">
+              <LineChart size={18} className="text-[var(--accent2)]" />
+              {isBm ? meta.labelBM : meta.labelEN}
+            </h2>
+            <div className="flex gap-1">
+              {RANGES.map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRange(r)}
+                  className={cn(
+                    "rounded-lg px-2 py-1 text-[11px] font-bold transition",
+                    range === r ? "bg-[var(--accent2)] text-white" : "bg-[var(--page-bg)] text-[var(--muted)]",
+                  )}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+          {showDataSkeleton ? (
+            <div className="h-40 animate-pulse rounded-xl bg-[var(--page-bg)]" />
+          ) : chartData.length ? (
+            <div className="flex h-40 items-end gap-1">
+              {chartData.map((p) => (
+                <div key={p.id} className="group relative flex flex-1 flex-col items-center">
+                  <div
+                    className="w-full rounded-t-md bg-[var(--accent2)]/80 transition group-hover:bg-[var(--accent2)]"
+                    style={{ height: `${Math.max(p.pct, 4)}%` }}
+                  />
+                  <div className="mt-1 hidden text-[9px] text-[var(--muted)] group-hover:block">{p.time}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-[var(--muted)]">
+              {isBm ? "Tiada bacaan untuk julat ini." : "No readings for this range."}
+            </p>
+          )}
+        </section>
+
+        {/* Reading list */}
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+          <h2 className="mb-3 text-base font-black text-[var(--text)]">{isBm ? "Senarai Bacaan" : "Readings"}</h2>
+          {!readings.length ? (
+            <p className="py-6 text-center text-sm text-[var(--muted)]">
+              {isBm ? "Belum ada bacaan." : "No readings yet."}
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {readings.map((r) => (
+                <li
+                  key={r.id}
+                  className="flex items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--page-bg)] p-3"
+                >
+                  <div>
+                    <div className="text-sm font-bold text-[var(--text)]">
+                      {metric === "bp" && r.systolic != null && r.diastolic != null
+                        ? `${r.systolic} / ${r.diastolic}`
+                        : r.value != null
+                          ? `${r.value}`
+                          : "—"}
+                      <span className="ml-1 text-xs font-semibold text-[var(--muted)]">{r.unit}</span>
+                    </div>
+                    {r.note ? <div className="text-xs text-[var(--muted)]">{r.note}</div> : null}
+                  </div>
+                  <div className="shrink-0 text-xs text-[var(--muted)]">
+                    {new Date(r.measured_at).toLocaleDateString([], { day: "2-digit", month: "2-digit" })}{" "}
+                    {new Date(r.measured_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      {/* ── DESKTOP VIEW ── */}
       <DesktopPageBody>
         <div className="mx-auto w-full max-w-[900px] space-y-4 p-4">
-          {/* Metric picker */}
           <div className="flex gap-2 overflow-x-auto pb-1">
             {METRICS.map((m) => (
               <button
@@ -187,7 +293,6 @@ export default function HealthReadingsPage() {
             ))}
           </div>
 
-          {/* Range picker */}
           <div className="flex gap-1">
             {RANGES.map((r) => (
               <button
@@ -203,8 +308,7 @@ export default function HealthReadingsPage() {
             ))}
           </div>
 
-          {/* Chart */}
-          <section className="rounded-2xl bg-[var(--card)] p-4 shadow-sm">
+          <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
             <h2 className="mb-3 flex items-center gap-2 text-base font-black text-[var(--text)]">
               <LineChart size={18} className="text-[var(--accent2)]" />
               {isBm ? meta.labelBM : meta.labelEN} — {isBm ? "Sejarah" : "History"}
@@ -230,8 +334,7 @@ export default function HealthReadingsPage() {
             )}
           </section>
 
-          {/* Reading list */}
-          <section className="rounded-2xl bg-[var(--card)] p-4 shadow-sm">
+          <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
             <h2 className="mb-3 text-base font-black text-[var(--text)]">{isBm ? "Senarai Bacaan" : "Readings"}</h2>
             {!readings.length ? (
               <p className="py-6 text-center text-sm text-[var(--muted)]">

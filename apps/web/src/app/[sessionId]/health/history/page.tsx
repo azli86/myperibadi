@@ -88,12 +88,82 @@ export default function HealthHistoryPage() {
 
   return (
     <div className="min-h-screen bg-[var(--page-bg)]">
-      <MobilePageHeader title={isBm ? "History" : "History"} fallbackHref={`/${sessionId}/health`} />
-      <DesktopPageHeader
-        title={isBm ? "Sejarah Kesihatan" : "Health History"}
-        homeHref={`/${sessionId}`}
-        breadcrumbs={[{ label: isBm ? "Kesihatan" : "Health", href: `/${sessionId}/health` }]}
-      />
+      <div className="md:hidden">
+        <MobilePageHeader
+          className="border-b border-[color:var(--border)] pb-4"
+          title={isBm ? "History" : "History"}
+          fallbackHref={`/${sessionId}/health`}
+        />
+      </div>
+
+      <div className="hidden md:block">
+        <DesktopPageHeader
+          title={isBm ? "Sejarah Kesihatan" : "Health History"}
+          homeHref={`/${sessionId}`}
+          breadcrumbs={[{ label: isBm ? "Kesihatan" : "Health", href: `/${sessionId}/health` }]}
+        />
+      </div>
+
+      {/* ── MOBILE VIEW ── */}
+      <div className="md:hidden px-1 pb-24 pt-1 space-y-4">
+        <div className="flex gap-1">
+          {RANGES.map((r) => (
+            <button
+              key={r}
+              onClick={() => setRange(r)}
+              className={cn(
+                "rounded-lg px-3 py-1 text-xs font-bold transition",
+                range === r ? "bg-[var(--accent2)] text-white" : "bg-[var(--card)] text-[var(--muted)]",
+              )}
+            >
+              {r}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="h-32 animate-pulse rounded-2xl bg-[var(--card)]" />
+        ) : (
+          METRICS.map((m) => {
+            const rows = [...(data[m.key] || [])].reverse()
+            const vals = rows.map((r) => (m.key === "bp" && r.systolic != null ? r.systolic : r.value))
+            const max = Math.max(...vals.filter((v): v is number => v != null), 1)
+            return (
+              <section key={m.key} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+                <h2 className="mb-3 flex items-center gap-2 text-base font-black text-[var(--text)]">
+                  <LineChart size={18} className="text-[var(--accent2)]" />
+                  {isBm ? m.labelBM : m.labelEN}
+                </h2>
+                {!rows.length ? (
+                  <p className="py-6 text-center text-sm text-[var(--muted)]">
+                    {isBm ? "Tiada bacaan." : "No readings."}
+                  </p>
+                ) : (
+                  <div className="flex h-32 items-end gap-1">
+                    {rows.map((r) => {
+                      const v = m.key === "bp" && r.systolic != null ? r.systolic : r.value
+                      const pct = ((v ?? 0) / max) * 100
+                      return (
+                        <div key={r.id} className="group relative flex flex-1 flex-col items-center">
+                          <div
+                            className="w-full rounded-t-md bg-[var(--accent2)]/80 transition group-hover:bg-[var(--accent2)]"
+                            style={{ height: `${Math.max(pct, 4)}%` }}
+                          />
+                          <div className="mt-1 hidden text-[9px] text-[var(--muted)] group-hover:block">
+                            {new Date(r.measured_at).toLocaleDateString([], { day: "2-digit", month: "2-digit" })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </section>
+            )
+          })
+        )}
+      </div>
+
+      {/* ── DESKTOP VIEW ── */}
       <DesktopPageBody>
         <div className="mx-auto w-full max-w-[900px] space-y-4 p-4">
           <div className="flex gap-1">
@@ -119,7 +189,7 @@ export default function HealthHistoryPage() {
               const vals = rows.map((r) => (m.key === "bp" && r.systolic != null ? r.systolic : r.value))
               const max = Math.max(...vals.filter((v): v is number => v != null), 1)
               return (
-                <section key={m.key} className="rounded-2xl bg-[var(--card)] p-4 shadow-sm">
+                <section key={m.key} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
                   <h2 className="mb-3 flex items-center gap-2 text-base font-black text-[var(--text)]">
                     <LineChart size={18} className="text-[var(--accent2)]" />
                     {isBm ? m.labelBM : m.labelEN}

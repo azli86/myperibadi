@@ -211,26 +211,163 @@ export default function HealthMedicationsPage() {
 
   return (
     <div className="min-h-screen bg-[var(--page-bg)]">
-      <MobilePageHeader
-        title={isBm ? "Ubat" : "Medications"}
-        fallbackHref={`/${sessionId}/health`}
-        action={
-          <MobileIconButton label={isBm ? "Tambah ubat" : "Add medication"} onClick={() => setShowAdd(true)}>
-            <Plus />
-          </MobileIconButton>
-        }
-      />
-      <DesktopPageHeader
-        title={isBm ? "Ubat & Reminder" : "Medications & Reminders"}
-        homeHref={`/${sessionId}`}
-        breadcrumbs={[{ label: isBm ? "Kesihatan" : "Health", href: `/${sessionId}/health` }]}
-        actions={
-          <DesktopPageAction onClick={() => setShowAdd(true)}>
-            <Plus />
-            {isBm ? "Tambah Ubat" : "Add Medication"}
-          </DesktopPageAction>
-        }
-      />
+      <div className="md:hidden">
+        <MobilePageHeader
+          className="border-b border-[color:var(--border)] pb-4"
+          title={isBm ? "Ubat" : "Medications"}
+          fallbackHref={`/${sessionId}/health`}
+          action={
+            <MobileIconButton label={isBm ? "Tambah ubat" : "Add medication"} onClick={() => setShowAdd(true)}>
+              <Plus />
+            </MobileIconButton>
+          }
+        />
+      </div>
+
+      <div className="hidden md:block">
+        <DesktopPageHeader
+          title={isBm ? "Ubat & Reminder" : "Medications & Reminders"}
+          homeHref={`/${sessionId}`}
+          breadcrumbs={[{ label: isBm ? "Kesihatan" : "Health", href: `/${sessionId}/health` }]}
+          actions={
+            <DesktopPageAction onClick={() => setShowAdd(true)}>
+              <Plus />
+              {isBm ? "Tambah Ubat" : "Add Medication"}
+            </DesktopPageAction>
+          }
+        />
+      </div>
+
+      {/* ── MOBILE VIEW ── */}
+      <div className="md:hidden px-1 pb-24 pt-1 space-y-4">
+        {showDataSkeleton ? (
+          <div className="h-28 animate-pulse rounded-2xl bg-[var(--card)]" />
+        ) : !meds.length ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 px-4 py-14 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]">
+              <Pill size={24} />
+            </div>
+            <p className="mt-3 text-sm font-bold text-[var(--text)]">
+              {isBm ? "Belum ada ubat" : "No medications yet"}
+            </p>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              {isBm ? "Tambahkan ubat pertama anda dan tetapkan waktu reminder." : "Add your first medication and set reminder times."}
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowAdd(true)}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-4 py-2.5 text-xs font-bold text-[var(--bg)] shadow-sm transition active:scale-[0.98]"
+            >
+              <Plus className="h-4 w-4" />
+              {isBm ? "Tambah Ubat" : "Add Medication"}
+            </button>
+          </div>
+        ) : (
+          meds.map((med) => (
+            <section key={med.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Pill size={18} className="shrink-0 text-[var(--accent2)]" />
+                  <h2 className="truncate text-base font-black text-[var(--text)]">{med.name}</h2>
+                  {med.dosage ? (
+                    <span className="shrink-0 text-xs font-semibold text-[var(--muted)]">{med.dosage}</span>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    onClick={() => toggleReminder(med)}
+                    className={cn(
+                      "rounded-lg p-1.5 transition",
+                      med.reminder_enabled
+                        ? "bg-emerald-500/15 text-emerald-500"
+                        : "bg-[var(--page-bg)] text-[var(--muted)]",
+                    )}
+                    aria-label={isBm ? "Toggle reminder" : "Toggle reminder"}
+                  >
+                    {med.reminder_enabled ? <Bell size={16} /> : <BellOff size={16} />}
+                  </button>
+                  <button
+                    onClick={() => deleteMed(med)}
+                    className="rounded-lg p-1.5 text-[var(--muted)] transition hover:text-rose-500"
+                    aria-label={isBm ? "Padam" : "Delete"}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                {med.schedules.map((s) => {
+                  const dose = statusOf(med, s)
+                  return (
+                    <div
+                      key={s.id}
+                      className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--page-bg)] p-2.5"
+                    >
+                      <button
+                        onClick={() => toggleSchedule(med, s)}
+                        className={cn(
+                          "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition",
+                          s.enabled ? "border-emerald-500 bg-emerald-500 text-white" : "border-[var(--border)]",
+                        )}
+                        aria-label={isBm ? "Toggle waktu" : "Toggle time"}
+                      >
+                        {s.enabled ? <Check size={12} strokeWidth={3} /> : null}
+                      </button>
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <Clock size={14} className="shrink-0 text-[var(--muted)]" />
+                        <span className={cn("text-sm font-bold text-[var(--text)]", !s.enabled && "opacity-40")}>
+                          {s.time}
+                        </span>
+                        {s.enabled ? (
+                          <button
+                            onClick={() => tickDose(med, s, "taken")}
+                            disabled={tickingId === `${med.id}-${s.id}` || dose?.status === "taken"}
+                            className={cn(
+                              "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 transition active:scale-95 disabled:opacity-60",
+                              dose?.status === "taken"
+                                ? "border-emerald-500 bg-emerald-500 text-white"
+                                : "border-[var(--border)] text-transparent",
+                            )}
+                          >
+                            {tickingId === `${med.id}-${s.id}` ? (
+                              <Loader2 size={13} className="animate-spin text-[var(--muted)]" />
+                            ) : (
+                              <Check size={13} strokeWidth={3} />
+                            )}
+                          </button>
+                        ) : null}
+                      </div>
+                      {s.enabled ? (
+                        <div className="flex shrink-0 items-center gap-2">
+                          {dose?.status === "taken" ? (
+                            <span className="text-[11px] font-bold text-emerald-500">
+                              {isBm ? "Sudah Ambil" : "Taken"}
+                            </span>
+                          ) : dose?.status === "skipped" ? (
+                            <span className="text-[11px] font-bold text-slate-400">{isBm ? "Skip" : "Skipped"}</span>
+                          ) : (
+                            <button
+                              onClick={() => tickDose(med, s, "skipped")}
+                              disabled={tickingId === `${med.id}-${s.id}`}
+                              className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-[var(--muted)] transition hover:bg-[var(--page-bg)] disabled:opacity-50"
+                            >
+                              <SkipForward size={12} />
+                              {isBm ? "Skip" : "Skip"}
+                            </button>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          ))
+        )}
+      </div>
+
+      {/* ── DESKTOP VIEW ── */}
       <DesktopPageBody>
         <div className="mx-auto w-full max-w-[900px] space-y-3 p-4">
           {showDataSkeleton ? (
@@ -241,7 +378,7 @@ export default function HealthMedicationsPage() {
             </p>
           ) : (
             meds.map((med) => (
-              <section key={med.id} className="rounded-2xl bg-[var(--card)] p-4 shadow-sm">
+              <section key={med.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div className="flex min-w-0 items-center gap-2">
                     <Pill size={18} className="shrink-0 text-[var(--accent2)]" />
