@@ -376,9 +376,10 @@ export default function HealthReadingsPage() {
       {showAdd ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" onClick={() => setShowAdd(false)}>
           <div
-            className="w-full max-w-md rounded-t-3xl bg-[var(--card)] p-5 sm:rounded-3xl"
+            className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-[var(--card)] sm:rounded-3xl"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="overflow-y-auto p-5">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-black text-[var(--text)]">
                 {isBm ? "Tambah Bacaan" : "Add Reading"} — {isBm ? meta.labelBM : meta.labelEN}
@@ -417,6 +418,10 @@ export default function HealthReadingsPage() {
                 value={form.note || ""}
                 onChange={(v) => setForm((f) => ({ ...f, note: v }))}
               />
+            </div>
+            </div>
+            {/* Sticky footer so the save button is always visible */}
+            <div className="sticky bottom-0 z-10 border-t border-[var(--border)] bg-[var(--card)] p-4">
               <button
                 onClick={saveReading}
                 disabled={saving}

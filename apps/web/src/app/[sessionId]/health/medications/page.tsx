@@ -466,9 +466,10 @@ export default function HealthMedicationsPage() {
       {showAdd ? (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" onClick={() => setShowAdd(false)}>
           <div
-            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-[var(--card)] p-5 sm:rounded-3xl"
+            className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-[var(--card)] sm:rounded-3xl"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="overflow-y-auto p-5">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-black text-[var(--text)]">{isBm ? "Tambah Ubat" : "Add Medication"}</h3>
               <button onClick={() => setShowAdd(false)} className="rounded-lg p-1 text-[var(--muted)]">
@@ -598,6 +599,10 @@ export default function HealthMedicationsPage() {
                   />
                 </button>
               </div>
+            </div>
+            </div>
+            {/* Sticky footer so the save button is always visible */}
+            <div className="sticky bottom-0 z-10 border-t border-[var(--border)] bg-[var(--card)] p-4">
               <button
                 onClick={saveMed}
                 disabled={saving}
