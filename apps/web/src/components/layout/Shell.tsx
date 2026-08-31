@@ -79,6 +79,8 @@ import {
   Images,
   Car,
   Users,
+  Heart,
+  Pill,
   type LucideIcon,
 } from "lucide-react";
 import { cn, getTodayDateInTimeZone } from "@/lib/utils";
@@ -723,6 +725,16 @@ function getMobileHeaderMeta(
     };
   }
 
+  if (pathname === `${base}/health` || pathname.startsWith(`${base}/health/`)) {
+    return {
+      title: "Kesihatan",
+      subtitle: "Monitor kesihatan & peringatan ubat",
+      eyebrow: "Kesihatan",
+      icon: Heart,
+      backHref: null,
+    };
+  }
+
   if (pathname === `${base}/budget`) {
     return {
       title: t.budget,
@@ -996,6 +1008,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       icon: Landmark,
     },
     { name: t.categories, href: `/${sessionId}/categories`, icon: Settings },
+    { name: lang === "BM" ? "Kesihatan" : "Health", href: `/${sessionId}/health`, icon: Heart },
     { name: t.chat, href: `/${sessionId}/chat`, icon: MessageSquare },
   ];
   const desktopMainNavigation = [
@@ -1030,6 +1043,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { name: "BNPL", href: `/${sessionId}/bnpl`, icon: CreditCard },
     { name: lang === "BM" ? "Subscription" : "Subscription", href: `/${sessionId}/subscription`, icon: CreditCard },
     { name: "Loan", href: `/${sessionId}/loan`, icon: CreditCard },
+    { name: lang === "BM" ? "Kesihatan" : "Health", href: `/${sessionId}/health`, icon: Heart },
     { name: t.debt, href: `/${sessionId}/debt`, icon: HandCoins },
   ];
   const desktopMapNavigation = [
@@ -1207,6 +1221,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   : "Track your items, locations and boxes",
               href: `/${sessionId}/inventory`,
               icon: Package,
+            },
+            {
+              name: lang === "BM" ? "Kesihatan" : "Health",
+              subtitle:
+                lang === "BM"
+                  ? "Monitor kesihatan & peringatan ubat"
+                  : "Health monitor & medication reminder",
+              href: `/${sessionId}/health`,
+              icon: Heart,
             },
             {
               name: "Split Bill",
