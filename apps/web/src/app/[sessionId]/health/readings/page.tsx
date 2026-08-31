@@ -152,7 +152,6 @@ export default function HealthReadingsPage() {
           className="border-b border-[color:var(--border)] pb-4"
           title={isBm ? "Monitor" : "Monitor"}
           fallbackHref={`/${sessionId}/health`}
-          alignLeft
           action={
             <MobileIconButton label={isBm ? "Tambah bacaan" : "Add reading"} onClick={() => setShowAdd(true)}>
               <Plus />

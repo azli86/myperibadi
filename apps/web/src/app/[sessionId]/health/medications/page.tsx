@@ -222,7 +222,6 @@ export default function HealthMedicationsPage() {
           className="border-b border-[color:var(--border)] pb-4"
           title={isBm ? "Ubat" : "Medications"}
           fallbackHref={`/${sessionId}/health`}
-          alignLeft
           action={
             <MobileIconButton label={isBm ? "Tambah ubat" : "Add medication"} onClick={() => setShowAdd(true)}>
               <Plus />

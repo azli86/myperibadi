@@ -93,7 +93,6 @@ export default function HealthHistoryPage() {
           className="border-b border-[color:var(--border)] pb-4"
           title={isBm ? "History" : "History"}
           fallbackHref={`/${sessionId}/health`}
-          alignLeft
         />
       </div>
 

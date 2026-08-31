@@ -204,7 +204,6 @@ export default function HealthDashboardPage() {
           className="border-b border-[color:var(--border)] pb-4"
           title={isBm ? "Kesihatan" : "Health"}
           fallbackHref={`/${sessionId}`}
-          alignLeft
           action={
             <MobileIconButton label={isBm ? "Tambah bacaan" : "Add reading"} onClick={() => router.push(`/${sessionId}/health/readings`)}>
               <Plus />
