@@ -12,12 +12,14 @@ export function MobilePageHeader({
   action,
   className,
   backPreferHistory,
+  alignLeft,
 }: {
   title: string
   fallbackHref: string
   action?: React.ReactNode
   className?: string
   backPreferHistory?: boolean
+  alignLeft?: boolean
 }) {
   const headerRef = useRef<HTMLDivElement>(null)
   const [spacer, setSpacer] = useState(0)
@@ -39,15 +41,15 @@ export function MobilePageHeader({
       <div
         ref={headerRef}
         className={cn(
-          "fixed inset-x-0 top-0 z-40 bg-[var(--page-bg)] px-1 pb-2 pt-0.5",
+          "fixed inset-x-0 top-0 z-40 bg-[var(--page-bg)] px-4 py-3",
           className,
         )}
       >
-        <div className="flex items-center gap-3 pt-0.5">
-          <h1 className="min-w-0 flex-1 truncate text-left text-[30px] font-black leading-[1.05] tracking-tight text-[var(--text)]">
+        <div className={cn("flex items-center gap-2.5 pt-0.5", alignLeft ? "justify-start" : "justify-between")}>
+          <h1 className={cn("truncate text-left text-[30px] font-black leading-[1.05] tracking-tight text-[var(--text)]", !alignLeft && "min-w-0 flex-1")}>
             {title}
           </h1>
-          <div className="flex shrink-0 items-center justify-end gap-1.5">
+          <div className={cn("flex shrink-0 items-center gap-1.5", !alignLeft && "justify-end")}>
             {action ?? <span className="h-10 w-10" aria-hidden />}
           </div>
         </div>

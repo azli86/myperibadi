@@ -962,6 +962,7 @@ export default function VehicleDetailPage() {
             title={vehicle.name}
             fallbackHref={`/${sessionId}/vehicle`}
             backPreferHistory
+            alignLeft
             action={(
               <button
                 type="button"
