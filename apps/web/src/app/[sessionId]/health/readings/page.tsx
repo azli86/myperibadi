@@ -177,7 +177,7 @@ export default function HealthReadingsPage() {
       {/* ── MOBILE VIEW ── */}
       <div className="md:hidden px-1 pb-24 pt-1 space-y-4">
         {/* Metric picker */}
-        <div className="no-scrollbar -mx-2 flex items-center gap-1.5 overflow-x-auto px-2 pb-0.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {METRICS.map((m) => (
             <button
               key={m.key}
