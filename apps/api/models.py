@@ -1740,3 +1740,90 @@ class TaxTransactionLink(Base):
     status: Mapped[str] = mapped_column(String(20), default="suggested")  # suggested | reviewed | accepted | rejected
     document_id: Mapped[Optional[int]] = mapped_column(BigInteger, ForeignKey("tax_documents.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+# ── Health Monitor & Medication Reminder ──────────────────────────────────────
+
+class HealthReading(Base):
+    """A single health measurement. BMI is computed from latest height+weight."""
+    __tablename__ = "health_readings"
+    __table_args__ = (
+        Index("ix_health_readings_user_metric_date", "user_id", "metric_type", "measured_at"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    household_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    metric_type: Mapped[str] = mapped_column(String(30), nullable=False)  # weight | height | bp | glucose | pulse | spo2 | temperature
+    value: Mapped[Optional[float]] = mapped_column(DECIMAL(10, 2), nullable=True)
+    systolic: Mapped[Optional[float]] = mapped_column(DECIMAL(10, 2), nullable=True)  # BP only
+    diastolic: Mapped[Optional[float]] = mapped_column(DECIMAL(10, 2), nullable=True)  # BP only
+    unit: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    measured_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Medication(Base):
+    """A medication with one or more reminder times."""
+    __tablename__ = "medications"
+    __table_args__ = (
+        Index("ix_medications_user_created", "user_id", "created_at"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    household_id: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    name: Mapped[str] = mapped_column(String(190), nullable=False)
+    dosage: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)  # e.g. "500mg"
+    frequency: Mapped[int] = mapped_column(Integer, default=1)  # times per day
+    timing: Mapped[str] = mapped_column(String(20), default="anytime")  # before_meal | after_meal | anytime
+    start_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    reminder_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    schedules: Mapped[List["MedicationSchedule"]] = relationship(
+        back_populates="medication", cascade="all, delete-orphan"
+    )
+    dose_logs: Mapped[List["MedicationDoseLog"]] = relationship(
+        back_populates="medication", cascade="all, delete-orphan"
+    )
+
+
+class MedicationSchedule(Base):
+    """A reminder time slot for a medication (e.g. 8:00 AM)."""
+    __tablename__ = "medication_schedules"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    medication_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("medications.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    time: Mapped[time] = mapped_column(Time, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    position: Mapped[int] = mapped_column(Integer, default=0)  # display order
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    medication: Mapped["Medication"] = relationship(back_populates="schedules")
+
+
+class MedicationDoseLog(Base):
+    """Daily dose status for a medication schedule slot."""
+    __tablename__ = "medication_dose_logs"
+    __table_args__ = (
+        Index("ix_dose_logs_med_date", "medication_id", "dose_date"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    medication_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("medications.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    schedule_id: Mapped[Optional[int]] = mapped_column(
+        BigInteger, ForeignKey("medication_schedules.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    dose_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    scheduled_time: Mapped[time] = mapped_column(Time, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | taken | skipped | missed
+    taken_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    medication: Mapped["Medication"] = relationship(back_populates="dose_logs")
