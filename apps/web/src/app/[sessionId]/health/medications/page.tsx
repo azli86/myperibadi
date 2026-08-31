@@ -63,6 +63,7 @@ export default function HealthMedicationsPage() {
   // add form
   const [name, setName] = useState("")
   const [dosage, setDosage] = useState("")
+  const [pillCount, setPillCount] = useState("")
   const [timing, setTiming] = useState("anytime")
   const [times, setTimes] = useState<string[]>(["08:00"])
   const [reminderEnabled, setReminderEnabled] = useState(true)
@@ -110,9 +111,14 @@ export default function HealthMedicationsPage() {
     }
     setSaving(true)
     try {
+      const doseText = dosage.trim()
+      const pills = pillCount.trim()
+      const fullDosage = pills
+        ? (doseText ? `${pills} pil · ${doseText}` : `${pills} pil`)
+        : doseText
       const body = {
         name: name.trim(),
-        dosage: dosage.trim() || null,
+        dosage: fullDosage || null,
         timing,
         reminder_enabled: reminderEnabled,
         schedules: times.filter((t) => t).map((t) => ({ time: t, enabled: true })),
@@ -126,6 +132,7 @@ export default function HealthMedicationsPage() {
       if (!res.ok) throw new Error()
       setName("")
       setDosage("")
+      setPillCount("")
       setTimes(["08:00"])
       setShowAdd(false)
       await loadMeds()
@@ -481,7 +488,37 @@ export default function HealthMedicationsPage() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-bold text-[var(--muted)]">{isBm ? "Dos" : "Dosage"}</label>
+                <label className="mb-1 block text-xs font-bold text-[var(--muted)]">
+                  {isBm ? "Bilangan Pil" : "Pills"}
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPillCount((v) => String(Math.max(1, (parseInt(v) || 1) - 1)))}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--page-bg)] text-base font-black text-[var(--text)] transition active:scale-95"
+                    aria-label={isBm ? "Kurang pil" : "Fewer pills"}
+                  >
+                    −
+                  </button>
+                  <input
+                    value={pillCount}
+                    onChange={(e) => setPillCount(e.target.value.replace(/\D/g, ""))}
+                    inputMode="numeric"
+                    placeholder="1"
+                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--page-bg)] px-3 py-2.5 text-center text-sm font-bold text-[var(--text)] outline-none focus:border-[var(--accent2)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPillCount((v) => String((parseInt(v) || 1) + 1))}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--page-bg)] text-base font-black text-[var(--text)] transition active:scale-95"
+                    aria-label={isBm ? "Tambah pil" : "More pills"}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold text-[var(--muted)]">{isBm ? "Dos (mg)" : "Dosage (mg)"}</label>
                 <input
                   value={dosage}
                   onChange={(e) => setDosage(e.target.value)}
