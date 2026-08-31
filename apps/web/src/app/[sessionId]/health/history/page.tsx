@@ -164,7 +164,8 @@ export default function HealthHistoryPage() {
       </div>
 
       {/* ── DESKTOP VIEW ── */}
-      <DesktopPageBody>
+      <div className="hidden md:block">
+        <DesktopPageBody>
         <div className="mx-auto w-full max-w-[900px] space-y-4 p-4">
           <div className="flex gap-1">
             {RANGES.map((r) => (
@@ -222,7 +223,8 @@ export default function HealthHistoryPage() {
             })
           )}
         </div>
-      </DesktopPageBody>
+        </DesktopPageBody>
+      </div>
       {alertModal}
     </div>
   )

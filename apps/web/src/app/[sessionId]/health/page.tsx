@@ -384,7 +384,8 @@ export default function HealthDashboardPage() {
       </div>
 
       {/* ── DESKTOP VIEW ── */}
-      <DesktopPageBody>
+      <div className="hidden md:block">
+        <DesktopPageBody>
         {showDataSkeleton ? (
           <div className="space-y-3 p-4">
             <div className="h-24 animate-pulse rounded-2xl bg-[var(--card)]" />
@@ -496,7 +497,8 @@ export default function HealthDashboardPage() {
             </section>
           </div>
         )}
-      </DesktopPageBody>
+        </DesktopPageBody>
+      </div>
       {alertModal}
     </div>
   )

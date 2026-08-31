@@ -353,7 +353,8 @@ export default function HealthMedicationsPage() {
       </div>
 
       {/* ── DESKTOP VIEW ── */}
-      <DesktopPageBody>
+      <div className="hidden md:block">
+        <DesktopPageBody>
         <div className="mx-auto w-full max-w-[900px] space-y-3 p-4">
           {showDataSkeleton ? (
             <div className="h-24 animate-pulse rounded-2xl bg-[var(--card)]" />
@@ -451,7 +452,8 @@ export default function HealthMedicationsPage() {
             ))
           )}
         </div>
-      </DesktopPageBody>
+        </DesktopPageBody>
+      </div>
 
       {/* Add medication sheet */}
       {showAdd ? (

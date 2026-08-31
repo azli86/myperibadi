@@ -274,7 +274,8 @@ export default function HealthReadingsPage() {
       </div>
 
       {/* ── DESKTOP VIEW ── */}
-      <DesktopPageBody>
+      <div className="hidden md:block">
+        <DesktopPageBody>
         <div className="mx-auto w-full max-w-[900px] space-y-4 p-4">
           <div className="flex gap-2 overflow-x-auto pb-1">
             {METRICS.map((m) => (
@@ -368,7 +369,8 @@ export default function HealthReadingsPage() {
             )}
           </section>
         </div>
-      </DesktopPageBody>
+        </DesktopPageBody>
+      </div>
 
       {/* Add reading sheet */}
       {showAdd ? (
