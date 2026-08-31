@@ -307,12 +307,17 @@ export default function HealthMedicationsPage() {
                       <button
                         onClick={() => toggleSchedule(med, s)}
                         className={cn(
-                          "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition",
-                          s.enabled ? "border-emerald-500 bg-emerald-500 text-white" : "border-[var(--border)]",
+                          "relative h-5 w-9 shrink-0 rounded-full transition",
+                          s.enabled ? "bg-emerald-500" : "bg-[var(--border)]",
                         )}
                         aria-label={isBm ? "Toggle waktu" : "Toggle time"}
                       >
-                        {s.enabled ? <Check size={12} strokeWidth={3} /> : null}
+                        <span
+                          className={cn(
+                            "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all",
+                            s.enabled ? "left-[18px]" : "left-0.5",
+                          )}
+                        />
                       </button>
                       <div className="flex min-w-0 flex-1 items-center gap-2">
                         <Clock size={14} className="shrink-0 text-[var(--muted)]" />
@@ -421,12 +426,17 @@ export default function HealthMedicationsPage() {
                         <button
                           onClick={() => toggleSchedule(med, s)}
                           className={cn(
-                            "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition",
-                            s.enabled ? "border-emerald-500 bg-emerald-500 text-white" : "border-[var(--border)]",
+                            "relative h-5 w-9 shrink-0 rounded-full transition",
+                            s.enabled ? "bg-emerald-500" : "bg-[var(--border)]",
                           )}
                           aria-label={isBm ? "Toggle waktu" : "Toggle time"}
                         >
-                          {s.enabled ? <Check size={12} strokeWidth={3} /> : null}
+                          <span
+                            className={cn(
+                              "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all",
+                              s.enabled ? "left-[18px]" : "left-0.5",
+                            )}
+                          />
                         </button>
                         <div className="flex min-w-0 flex-1 items-center gap-2">
                           <Clock size={14} className="shrink-0 text-[var(--muted)]" />
