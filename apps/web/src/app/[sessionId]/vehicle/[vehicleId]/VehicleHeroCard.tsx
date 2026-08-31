@@ -132,7 +132,7 @@ export function VehicleHeroCard({
 
         {/* Bottom content */}
         <div className="absolute inset-x-0 -bottom-3 flex flex-wrap items-center justify-center gap-1.5 px-2.5 sm:px-3 md:px-4 lg:px-5">
-          <span className="inline-flex max-w-[42%] items-center truncate rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--card)_90%,transparent)] px-2.5 py-1 text-[0.7rem] font-black text-[var(--text)] shadow-sm backdrop-blur-md md:px-3.5 md:py-1.5 md:text-sm">
+          <span className="inline-flex min-w-0 max-w-full items-center truncate rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--card)_90%,transparent)] px-2.5 py-1 text-[0.7rem] font-black text-[var(--text)] shadow-sm backdrop-blur-md md:px-3.5 md:py-1.5 md:text-sm">
             {vehicle.name}
           </span>
           {vehicle.registration_number ? (

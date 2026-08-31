@@ -50,30 +50,30 @@ export function VehicleSummaryCard({
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2">
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
+        <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
           <Fuel size={14} className="text-[var(--muted)]" />
           <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
             Fuel
           </p>
-          <p className="mt-0.5 text-sm font-black tabular-nums text-[var(--text)]">
+          <p className="mt-0.5 truncate text-sm font-black tabular-nums text-[var(--text)]">
             {money(fuelCost)}
           </p>
         </div>
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
+        <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
           <Wrench size={14} className="text-[var(--muted)]" />
           <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
             {isBm ? "Servis" : "Service"}
           </p>
-          <p className="mt-0.5 text-sm font-black tabular-nums text-[var(--text)]">
+          <p className="mt-0.5 truncate text-sm font-black tabular-nums text-[var(--text)]">
             {money(maintenanceCost)}
           </p>
         </div>
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
+        <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
           <AlertTriangle size={14} className="text-[var(--muted)]" />
           <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
             Due
           </p>
-          <p className="mt-0.5 text-sm font-black tabular-nums text-[var(--text)]">
+          <p className="mt-0.5 truncate text-sm font-black tabular-nums text-[var(--text)]">
             {overdueCount + dueSoonCount}
           </p>
         </div>

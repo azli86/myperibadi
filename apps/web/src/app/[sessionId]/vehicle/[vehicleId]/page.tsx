@@ -936,7 +936,7 @@ export default function VehicleDetailPage() {
               : tr("Log servis", "Log service")
 
   return (
-    <div className="min-h-[70vh] w-full bg-[var(--page-bg)]">
+    <div className="min-h-[70vh] w-full max-w-full overflow-x-hidden bg-[var(--page-bg)]">
       <div className="hidden md:block">
         <DesktopPageHeader
           title={vehicle.name}
@@ -956,7 +956,7 @@ export default function VehicleDetailPage() {
           )}
         />
       </div>
-      <div className="mx-auto w-full space-y-4 px-1 pb-24 pt-0 md:max-w-6xl md:space-y-4 md:px-6 md:pb-16 lg:max-w-7xl">
+      <div className="mx-auto w-full max-w-full space-y-4 px-3 pb-24 pt-0 md:max-w-6xl md:space-y-4 md:px-6 md:pb-16 lg:max-w-7xl">
         <div className="space-y-5 md:hidden">
           <MobilePageHeader
             title={vehicle.name}
@@ -1013,11 +1013,11 @@ export default function VehicleDetailPage() {
               className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5"
             >
               <div className="mb-3.5 flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
+                <div className="flex min-w-0 items-start gap-3">
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]">
                     <FileText size={18} />
                   </span>
-                  <div>
+                  <div className="min-w-0">
                     <h2 className="text-sm font-black tracking-tight text-[var(--text)]">
                       {tr("Dokumen", "Documents")}
                     </h2>
@@ -1039,19 +1039,19 @@ export default function VehicleDetailPage() {
               {(summary?.road_tax_expiry || summary?.insurance_expiry) && (
                 <div className="mb-3 grid grid-cols-2 gap-2">
                   {summary?.road_tax_expiry && (
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
+                    <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
                       <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
                         Road tax
                       </p>
-                      <p className="mt-1 text-sm font-black text-[var(--text)]">{summary.road_tax_expiry}</p>
+                      <p className="mt-1 truncate text-sm font-black text-[var(--text)]">{summary.road_tax_expiry}</p>
                     </div>
                   )}
                   {summary?.insurance_expiry && (
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
+                    <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
                       <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
                         {tr("Insurans", "Insurance")}
                       </p>
-                      <p className="mt-1 text-sm font-black text-[var(--text)]">{summary.insurance_expiry}</p>
+                      <p className="mt-1 truncate text-sm font-black text-[var(--text)]">{summary.insurance_expiry}</p>
                     </div>
                   )}
                 </div>
@@ -1159,11 +1159,11 @@ export default function VehicleDetailPage() {
             {/* Fuel logs (compact) */}
             <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5">
               <div className="mb-3.5 flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
+                <div className="flex min-w-0 items-start gap-3">
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]">
                     <Fuel size={18} />
                   </span>
-                  <div>
+                  <div className="min-w-0">
                     <h2 className="text-sm font-black tracking-tight text-[var(--text)]">
                       {tr("Minyak", "Fuel")}
                     </h2>
