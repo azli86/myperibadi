@@ -429,7 +429,7 @@ async def build_txn_suggestion(db: AsyncSession, *, user_id: str, txn: models.Tr
         )
     return (
         "\n\n📦 Add this purchase to *My Inventory*?\n"
-        "Reply: add item " + vendor[:60]
+        "Reply: stuff " + vendor[:60]
     )
 
 def _help_text(is_bm: bool = True) -> str:
