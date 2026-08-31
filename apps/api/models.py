@@ -1824,6 +1824,9 @@ class MedicationDoseLog(Base):
     scheduled_time: Mapped[time] = mapped_column(Time, nullable=False)
     status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | taken | skipped | missed
     taken_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    notified_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # reminder sent
+    remind_later_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)  # reschedule target
+    missed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     medication: Mapped["Medication"] = relationship(back_populates="dose_logs")

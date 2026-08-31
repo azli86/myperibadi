@@ -1230,6 +1230,30 @@ async def start_chat_cleanup_task():
                 print(f"[cleanup] Error during chat cleanup: {e}")
     asyncio.create_task(_cleanup_loop())
 
+
+@app.on_event("startup")
+async def start_health_reminder_task():
+    """Background task: fire medication reminders & missed detection."""
+    async def _reminder_loop():
+        from modules.health import reminder as _health_reminder
+        print("[health-reminder] background loop started")
+        while True:
+            await asyncio.sleep(30)
+            try:
+                async with database.SessionLocal() as db:
+                    stats = await _health_reminder.run_reminder_cycle(
+                        db,
+                        send_telegram=_send_telegram_message,
+                        send_whatsapp=_send_worker_health_wa,
+                    )
+                    if stats.get("sent") or stats.get("missed"):
+                        print(f"[health-reminder] cycle: {stats}")
+            except Exception as exc:
+                print(f"[health-reminder] error: {exc}")
+
+    asyncio.create_task(_reminder_loop())
+
+
 @app.on_event("startup")
 async def start_account_verification_email_task():
     """Background task: email a verification request when an account is deactivated.
@@ -13127,6 +13151,15 @@ def _send_worker_message(user_id: str, payload: dict[str, Any], timeout_seconds:
         payload=payload,
         worker_request_json=_worker_request_json,
         timeout_seconds=timeout_seconds,
+    )
+
+async def _send_worker_health_wa(user_id: str, phone: str, text: str):
+    """Send a WhatsApp message to a linked user via the worker."""
+    await asyncio.to_thread(
+        _send_worker_message,
+        user_id,
+        {"to": phone, "text": text},
+        20.0,
     )
 
 

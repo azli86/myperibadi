@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Callable
 
 from sqlalchemy import select
@@ -48,6 +49,52 @@ async def handle_telegram_callback_query_route(
     user_res = await db.execute(select(models.User).where(models.User.id == link.user_id))
     user = user_res.scalar_one_or_none()
     is_bm = _telegram_is_bm(getattr(user, "language", "BM") if user else "BM")
+
+    # Medication reminder actions: health:dose:{log_id}:{taken|later|skip}
+    if data.startswith("health:dose:"):
+        parts = data.split(":")
+        log_id = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
+        action = str(parts[3] if len(parts) > 3 else "").lower()
+        if log_id:
+            log = (await db.execute(
+                select(models.MedicationDoseLog).where(models.MedicationDoseLog.id == log_id)
+            )).scalar_one_or_none()
+            if log and log.user_id == link.user_id:
+                if action == "taken":
+                    log.status = "taken"
+                    log.taken_at = datetime.utcnow()
+                    log.remind_later_at = None
+                    label = "Sudah Ambil" if is_bm else "Taken"
+                    confirm = "diambil" if is_bm else "taken"
+                elif action == "skip":
+                    log.status = "skipped"
+                    log.taken_at = datetime.utcnow()
+                    log.remind_later_at = None
+                    label = "Skip" if is_bm else "Skipped"
+                    confirm = "diskip" if is_bm else "skipped"
+                else:  # later (default 30 min)
+                    from datetime import timedelta as _td
+                    log.remind_later_at = datetime.utcnow() + _td(minutes=30)
+                    label = "Ingatkan Nanti" if is_bm else "Remind Later"
+                    confirm = None
+                await db.commit()
+                med = await db.get(models.Medication, log.medication_id) if log.medication_id else None
+                med_line = f"{med.name} {med.dosage or ''}".strip() if med else ""
+                if confirm:
+                    text = (f"✅ *{med_line}* ditandakan sudah {confirm}."
+                            if is_bm else f"✅ *{med_line}* marked as {confirm}.")
+                else:
+                    text = (f"⏰ *{med_line}* — ingatkan semula dalam 30 minit."
+                            if is_bm else f"⏰ *{med_line}* — will remind again in 30 minutes.")
+                if message_id:
+                    try:
+                        await _edit_telegram_message_text(chat_id, message_id, text)
+                    except Exception:
+                        pass
+                await _answer_telegram_callback(callback_query_id, label)
+                return {"ok": True, "dose_action": action}
+        await _answer_telegram_callback(callback_query_id)
+        return {"ok": True}
 
     if not data.startswith("tgadd:"):
         await _answer_telegram_callback(callback_query_id)

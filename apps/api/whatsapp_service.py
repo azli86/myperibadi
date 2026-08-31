@@ -3747,6 +3747,82 @@ async def _handle_direct_order(
     return reply
 
 
+async def _process_health_wa_reply(db, *, user_id, lowered, is_bm, source_channel):
+    """Handle a WhatsApp medication-reminder reply (ambil/taken/skip/nanti <min>).
+    Returns a reply string or None if the message is not a medication reply."""
+    from datetime import date, datetime, timedelta
+
+    words = (lowered or "").split()
+    if not words:
+        return None
+
+    action = None
+    later_minutes = None
+    head = words[0]
+    if head in {"ambil", "taken", "yes", "ya", "dah"}:
+        action = "taken"
+    elif head in {"skip", "lepaskan", "tak"}:
+        action = "skip"
+    elif head in {"nanti", "later", "ingatkan"}:
+        action = "later"
+        if len(words) > 1 and words[1].isdigit():
+            try:
+                later_minutes = max(1, min(int(words[1]), 720))
+            except ValueError:
+                later_minutes = 30
+        else:
+            later_minutes = 30
+    else:
+        return None
+
+    # Find the most recent pending/notified dose log for today for this user.
+    from sqlalchemy import select as sa_select
+    today = date.today()
+    rows = (
+        await db.execute(
+            sa_select(models.MedicationDoseLog)
+            .where(
+                models.MedicationDoseLog.user_id == user_id,
+                models.MedicationDoseLog.dose_date == today,
+            )
+            .order_by(models.MedicationDoseLog.scheduled_time.desc())
+        )
+    ).scalars().all()
+    if not rows:
+        return None
+
+    target = None
+    for r in rows:
+        if r.status == "pending":
+            # prefer the most recent one that's still pending
+            target = r
+            break
+    if not target:
+        return None
+
+    med = await db.get(models.Medication, target.medication_id)
+    med_line = f"{med.name} {med.dosage or ''}".strip() if med else ""
+
+    if action == "taken":
+        target.status = "taken"
+        target.taken_at = datetime.utcnow()
+        target.remind_later_at = None
+        await db.commit()
+        return (f"✅ *{med_line}* ditandakan sudah diambil."
+                if is_bm else f"✅ *{med_line}* marked as taken.")
+    if action == "skip":
+        target.status = "skipped"
+        target.taken_at = datetime.utcnow()
+        target.remind_later_at = None
+        await db.commit()
+        return (f"⊘ *{med_line}* diskip." if is_bm else f"⊘ *{med_line}* skipped.")
+    # later
+    target.remind_later_at = datetime.utcnow() + timedelta(minutes=later_minutes)
+    await db.commit()
+    return (f"⏰ *{med_line}* — ingatkan semula dalam {later_minutes} minit."
+            if is_bm else f"⏰ *{med_line}* — will remind again in {later_minutes} minutes.")
+
+
 async def _process_whatsapp_message_impl(
     db: AsyncSession,
     user_id: str,
@@ -4174,6 +4250,13 @@ async def _process_whatsapp_message_impl(
                 user.language = "BM"
                 await db.commit()
                 return BOT_TRANSLATIONS["BM"]["lang_switched"], None
+
+        # Medication reminder reply (WhatsApp): ambil / taken / skip / nanti <min>
+        med_reply = await _process_health_wa_reply(
+            db, user_id=user_id, lowered=lowered, is_bm=user_lang != "EN", source_channel=source_channel
+        )
+        if med_reply:
+            return med_reply, None
 
         if _is_budget_command(lowered):
             budget_reply = await _process_budget_command(
