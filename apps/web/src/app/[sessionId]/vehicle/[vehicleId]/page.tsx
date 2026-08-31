@@ -936,7 +936,7 @@ export default function VehicleDetailPage() {
               : tr("Log servis", "Log service")
 
   return (
-    <div className="min-h-[70vh] w-full max-w-full overflow-x-hidden bg-[var(--page-bg)]">
+    <div className="min-h-[70vh] w-full bg-[var(--page-bg)]">
       <div className="hidden md:block">
         <DesktopPageHeader
           title={vehicle.name}
@@ -956,7 +956,7 @@ export default function VehicleDetailPage() {
           )}
         />
       </div>
-      <div className="mx-auto w-full max-w-full space-y-4 px-3 pb-24 pt-0 md:max-w-6xl md:space-y-4 md:px-6 md:pb-16 lg:max-w-7xl">
+      <div className="mx-auto w-full space-y-4 px-1 pb-24 pt-0 md:max-w-6xl md:space-y-4 md:px-6 md:pb-16 lg:max-w-7xl">
         <div className="space-y-5 md:hidden">
           <MobilePageHeader
             title={vehicle.name}
@@ -988,7 +988,7 @@ export default function VehicleDetailPage() {
         />
 
         {/* Content below hero: mobile single column; desktop 2-col */}
-        <div className="grid gap-4 md:gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-start">
+        <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-start">
           <div className="space-y-4">
             <VehicleQuickActions
               isBm={isBm}
