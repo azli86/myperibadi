@@ -10,7 +10,6 @@ import {
   Loader2,
   Pill,
   Plus,
-  SkipForward,
   Trash2,
   X,
 } from "lucide-react"
@@ -319,49 +318,30 @@ export default function HealthMedicationsPage() {
                           )}
                         />
                       </button>
-                      <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <Clock size={14} className="shrink-0 text-[var(--muted)]" />
-                        <span className={cn("text-sm font-bold text-[var(--text)]", !s.enabled && "opacity-40")}>
-                          {s.time}
-                        </span>
-                        {s.enabled ? (
+                      <Clock size={14} className="shrink-0 text-[var(--muted)]" />
+                      <span className={cn("flex-1 text-sm font-bold text-[var(--text)]", !s.enabled && "opacity-40")}>
+                        {s.time}
+                      </span>
+                      {s.enabled ? (
+                        dose?.status === "taken" ? (
+                          <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-500">
+                            <Check size={13} strokeWidth={3} />
+                            {isBm ? "Sudah Ambil" : "Taken"}
+                          </span>
+                        ) : (
                           <button
                             onClick={() => tickDose(med, s, "taken")}
-                            disabled={tickingId === `${med.id}-${s.id}` || dose?.status === "taken"}
-                            className={cn(
-                              "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 transition active:scale-95 disabled:opacity-60",
-                              dose?.status === "taken"
-                                ? "border-emerald-500 bg-emerald-500 text-white"
-                                : "border-[var(--border)] text-transparent",
-                            )}
+                            disabled={tickingId === `${med.id}-${s.id}`}
+                            className="flex shrink-0 items-center gap-1 rounded-lg border-2 border-emerald-500 px-2 py-1 text-[11px] font-bold text-emerald-500 transition active:scale-95 disabled:opacity-50"
                           >
                             {tickingId === `${med.id}-${s.id}` ? (
-                              <Loader2 size={13} className="animate-spin text-[var(--muted)]" />
+                              <Loader2 size={12} className="animate-spin" />
                             ) : (
                               <Check size={13} strokeWidth={3} />
                             )}
+                            {isBm ? "Ambil" : "Take"}
                           </button>
-                        ) : null}
-                      </div>
-                      {s.enabled ? (
-                        <div className="flex shrink-0 items-center gap-2">
-                          {dose?.status === "taken" ? (
-                            <span className="text-[11px] font-bold text-emerald-500">
-                              {isBm ? "Sudah Ambil" : "Taken"}
-                            </span>
-                          ) : dose?.status === "skipped" ? (
-                            <span className="text-[11px] font-bold text-slate-400">{isBm ? "Skip" : "Skipped"}</span>
-                          ) : (
-                            <button
-                              onClick={() => tickDose(med, s, "skipped")}
-                              disabled={tickingId === `${med.id}-${s.id}`}
-                              className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-[var(--muted)] transition hover:bg-[var(--page-bg)] disabled:opacity-50"
-                            >
-                              <SkipForward size={12} />
-                              {isBm ? "Skip" : "Skip"}
-                            </button>
-                          )}
-                        </div>
+                        )
                       ) : null}
                     </div>
                   )
@@ -438,49 +418,30 @@ export default function HealthMedicationsPage() {
                             )}
                           />
                         </button>
-                        <div className="flex min-w-0 flex-1 items-center gap-2">
-                          <Clock size={14} className="shrink-0 text-[var(--muted)]" />
-                          <span className={cn("text-sm font-bold text-[var(--text)]", !s.enabled && "opacity-40")}>
-                            {s.time}
-                          </span>
-                          {s.enabled ? (
+                        <Clock size={14} className="shrink-0 text-[var(--muted)]" />
+                        <span className={cn("flex-1 text-sm font-bold text-[var(--text)]", !s.enabled && "opacity-40")}>
+                          {s.time}
+                        </span>
+                        {s.enabled ? (
+                          dose?.status === "taken" ? (
+                            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-500">
+                              <Check size={13} strokeWidth={3} />
+                              {isBm ? "Sudah Ambil" : "Taken"}
+                            </span>
+                          ) : (
                             <button
                               onClick={() => tickDose(med, s, "taken")}
-                              disabled={tickingId === `${med.id}-${s.id}` || dose?.status === "taken"}
-                              className={cn(
-                                "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-2 transition active:scale-95 disabled:opacity-60",
-                                dose?.status === "taken"
-                                  ? "border-emerald-500 bg-emerald-500 text-white"
-                                  : "border-[var(--border)] text-transparent",
-                              )}
+                              disabled={tickingId === `${med.id}-${s.id}`}
+                              className="flex shrink-0 items-center gap-1 rounded-lg border-2 border-emerald-500 px-2 py-1 text-[11px] font-bold text-emerald-500 transition active:scale-95 disabled:opacity-50"
                             >
                               {tickingId === `${med.id}-${s.id}` ? (
-                                <Loader2 size={13} className="animate-spin text-[var(--muted)]" />
+                                <Loader2 size={12} className="animate-spin" />
                               ) : (
                                 <Check size={13} strokeWidth={3} />
                               )}
+                              {isBm ? "Ambil" : "Take"}
                             </button>
-                          ) : null}
-                        </div>
-                        {s.enabled ? (
-                          <div className="flex shrink-0 items-center gap-2">
-                            {dose?.status === "taken" ? (
-                              <span className="text-[11px] font-bold text-emerald-500">
-                                {isBm ? "Sudah Ambil" : "Taken"}
-                              </span>
-                            ) : dose?.status === "skipped" ? (
-                              <span className="text-[11px] font-bold text-slate-400">{isBm ? "Skip" : "Skipped"}</span>
-                            ) : (
-                              <button
-                                onClick={() => tickDose(med, s, "skipped")}
-                                disabled={tickingId === `${med.id}-${s.id}`}
-                                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-[var(--muted)] transition hover:bg-[var(--page-bg)] disabled:opacity-50"
-                              >
-                                <SkipForward size={12} />
-                                {isBm ? "Skip" : "Skip"}
-                              </button>
-                            )}
-                          </div>
+                          )
                         ) : null}
                       </div>
                     )
