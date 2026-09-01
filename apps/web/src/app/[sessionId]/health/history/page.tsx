@@ -2,7 +2,14 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
-import { Activity, LineChart } from "lucide-react"
+import { LineChart as LineChartIcon } from "lucide-react"
+import { Line, LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
@@ -33,6 +40,84 @@ const METRICS: { key: string; labelBM: string; labelEN: string }[] = [
 ]
 
 const RANGES = ["7d", "30d", "3m", "1y"]
+
+const METRIC_COLORS: Record<string, string> = {
+  weight: "#3b82f6",
+  height: "#6366f1",
+  bp: "#ef4444",
+  glucose: "#f59e0b",
+  pulse: "#ec4899",
+  spo2: "#10b981",
+  temperature: "#8b5cf6",
+}
+
+function HealthTrendChart({
+  metricKey,
+  rows,
+  isBm,
+}: {
+  metricKey: string
+  rows: Reading[]
+  isBm: boolean
+}) {
+  const color = METRIC_COLORS[metricKey] || "#3b82f6"
+  const isBp = metricKey === "bp"
+  const points = rows.map((r) => {
+    const d = new Date(r.measured_at)
+    return {
+      label: d.toLocaleDateString([], { day: "2-digit", month: "2-digit" }),
+      systolic: r.systolic != null ? r.systolic : undefined,
+      diastolic: r.diastolic != null ? r.diastolic : undefined,
+      value: isBp && r.systolic != null ? r.systolic : (r.value ?? undefined),
+    }
+  })
+
+  const config: ChartConfig = isBp
+    ? {
+        systolic: { label: "SYS", color },
+        diastolic: { label: "DIA", color: "#f59e0b" },
+      }
+    : { value: { label: isBm ? "Nilai" : "Value", color } }
+
+  if (!points.length) return null
+
+  return (
+    <ChartContainer config={config} className="h-44 w-full">
+      <LineChart data={points} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+        <XAxis
+          dataKey="label"
+          tickLine={false}
+          axisLine={false}
+          tick={{ fontSize: 10, fill: "var(--muted)" }}
+          interval="preserveStartEnd"
+        />
+        <YAxis
+          tickLine={false}
+          axisLine={false}
+          tick={{ fontSize: 10, fill: "var(--muted)" }}
+          width={40}
+        />
+        <ChartTooltip
+          content={
+            <ChartTooltipContent
+              indicator="dot"
+              labelFormatter={(_, payload) => payload?.[0]?.payload?.label ?? ""}
+            />
+          }
+        />
+        {isBp ? (
+          <>
+            <Line type="monotone" dataKey="systolic" stroke={color} strokeWidth={2} dot={false} name="SYS" />
+            <Line type="monotone" dataKey="diastolic" stroke="#f59e0b" strokeWidth={2} dot={false} name="DIA" />
+          </>
+        ) : (
+          <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} name="value" />
+        )}
+      </LineChart>
+    </ChartContainer>
+  )
+}
 
 export default function HealthHistoryPage() {
   const params = useParams()
@@ -126,12 +211,10 @@ export default function HealthHistoryPage() {
         ) : (
           METRICS.map((m) => {
             const rows = [...(data[m.key] || [])].reverse()
-            const vals = rows.map((r) => (m.key === "bp" && r.systolic != null ? r.systolic : r.value))
-            const max = Math.max(...vals.filter((v): v is number => v != null), 1)
             return (
               <section key={m.key} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
                 <h2 className="mb-3 flex items-center gap-2 text-base font-black text-[var(--text)]">
-                  <LineChart size={18} className="text-[var(--accent2)]" />
+                  <LineChartIcon size={18} className="text-[var(--accent2)]" />
                   {isBm ? m.labelBM : m.labelEN}
                 </h2>
                 {!rows.length ? (
@@ -139,23 +222,7 @@ export default function HealthHistoryPage() {
                     {isBm ? "Tiada bacaan." : "No readings."}
                   </p>
                 ) : (
-                  <div className="flex h-32 items-end gap-1">
-                    {rows.map((r) => {
-                      const v = m.key === "bp" && r.systolic != null ? r.systolic : r.value
-                      const pct = ((v ?? 0) / max) * 100
-                      return (
-                        <div key={r.id} className="group relative flex flex-1 flex-col items-center">
-                          <div
-                            className="w-full rounded-t-md bg-[var(--accent2)]/80 transition group-hover:bg-[var(--accent2)]"
-                            style={{ height: `${Math.max(pct, 4)}%` }}
-                          />
-                          <div className="mt-1 hidden text-[9px] text-[var(--muted)] group-hover:block">
-                            {new Date(r.measured_at).toLocaleDateString([], { day: "2-digit", month: "2-digit" })}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
+                  <HealthTrendChart metricKey={m.key} rows={rows} isBm={isBm} />
                 )}
               </section>
             )
@@ -187,12 +254,10 @@ export default function HealthHistoryPage() {
           ) : (
             METRICS.map((m) => {
               const rows = [...(data[m.key] || [])].reverse()
-              const vals = rows.map((r) => (m.key === "bp" && r.systolic != null ? r.systolic : r.value))
-              const max = Math.max(...vals.filter((v): v is number => v != null), 1)
               return (
                 <section key={m.key} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
                   <h2 className="mb-3 flex items-center gap-2 text-base font-black text-[var(--text)]">
-                    <LineChart size={18} className="text-[var(--accent2)]" />
+                    <LineChartIcon size={18} className="text-[var(--accent2)]" />
                     {isBm ? m.labelBM : m.labelEN}
                   </h2>
                   {!rows.length ? (
@@ -200,23 +265,7 @@ export default function HealthHistoryPage() {
                       {isBm ? "Tiada bacaan." : "No readings."}
                     </p>
                   ) : (
-                    <div className="flex h-32 items-end gap-1">
-                      {rows.map((r) => {
-                        const v = m.key === "bp" && r.systolic != null ? r.systolic : r.value
-                        const pct = ((v ?? 0) / max) * 100
-                        return (
-                          <div key={r.id} className="group relative flex flex-1 flex-col items-center">
-                            <div
-                              className="w-full rounded-t-md bg-[var(--accent2)]/80 transition group-hover:bg-[var(--accent2)]"
-                              style={{ height: `${Math.max(pct, 4)}%` }}
-                            />
-                            <div className="mt-1 hidden text-[9px] text-[var(--muted)] group-hover:block">
-                              {new Date(r.measured_at).toLocaleDateString([], { day: "2-digit", month: "2-digit" })}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
+                    <HealthTrendChart metricKey={m.key} rows={rows} isBm={isBm} />
                   )}
                 </section>
               )

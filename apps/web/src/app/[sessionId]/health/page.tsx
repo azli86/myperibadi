@@ -16,6 +16,13 @@ import {
   SkipForward,
   Stethoscope,
 } from "lucide-react"
+import { Line as ReLine, LineChart as ReLineChart, ResponsiveContainer } from "recharts"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
@@ -74,6 +81,16 @@ const METRIC_META: Record<string, { icon: React.ComponentType<any>; color: strin
   height: { icon: LineChart, color: "text-indigo-500" },
 }
 
+const METRIC_HEX: Record<string, string> = {
+  weight: "#0ea5e9",
+  bp: "#f43f5e",
+  glucose: "#8b5cf6",
+  pulse: "#f59e0b",
+  spo2: "#10b981",
+  temperature: "#f97316",
+  height: "#6366f1",
+}
+
 function fmtTime(iso?: string | null): string {
   if (!iso) return ""
   const d = new Date(iso)
@@ -87,6 +104,67 @@ function fmtMetric(m: Metric): string {
     return m.value != null ? String(m.value) : "—"
   }
   return m.value != null ? String(m.value) : "—"
+}
+
+function bmiColor(key?: string | null): string {
+  if (key === "red") return "#ef4444"
+  if (key === "amber") return "#f59e0b"
+  return "#22c55e"
+}
+
+/** Circular BMI progress ring (Apple-Health style). */
+function BmiRing({ bmi, category }: { bmi: number; category?: { color: string } | null }) {
+  const size = 120
+  const stroke = 10
+  const r = (size - stroke) / 2
+  const c = 2 * Math.PI * r
+  // Map BMI 14-40 onto the ring arc (clamp).
+  const frac = Math.max(0, Math.min(1, (bmi - 14) / (40 - 14)))
+  const color = bmiColor(category?.color)
+  return (
+    <div className="relative h-[120px] w-[120px]">
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - frac)}
+          className="transition-all duration-700"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-3xl font-black tracking-tight text-[var(--text)]">{bmi}</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">BMI</span>
+      </div>
+    </div>
+  )
+}
+
+/** Mini sparkline for a metric card using shadcn chart. */
+function Sparkline({ points, color }: { points: Array<{ label: string; value: number }>; color: string }) {
+  const config: ChartConfig = { value: { label: "", color } }
+  if (!points.length) return null
+  return (
+    <ChartContainer config={config} className="h-10 w-full">
+      <ReLineChart data={points} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+        <ReLine
+          type="monotone"
+          dataKey="value"
+          stroke={color}
+          strokeWidth={2}
+          dot={false}
+          isAnimationActive={false}
+          name="value"
+        />
+      </ReLineChart>
+    </ChartContainer>
+  )
 }
 
 export default function HealthDashboardPage() {
@@ -104,6 +182,7 @@ export default function HealthDashboardPage() {
   const [hasLoaded, setHasLoaded] = useState(false)
   const [tickingId, setTickingId] = useState<number | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [spark, setSpark] = useState<Record<string, Array<{ label: string; value: number }>>>({})
   const showDataSkeleton = useDelayedSkeleton(loading && !hasLoaded)
 
   const authHeaders = useCallback((): HeadersInit => {
@@ -127,7 +206,36 @@ export default function HealthDashboardPage() {
         fetch("/api/health/dashboard", { headers, credentials: "include", cache: "no-store" }),
         fetch("/api/health/medications/today", { headers, credentials: "include", cache: "no-store" }),
       ])
-      if (dRes.ok) setDash(await dRes.json())
+      if (dRes.ok) {
+        const d = await dRes.json()
+        setDash(d)
+        // fetch sparkline history for each metric that has a reading
+        const metricKeys: string[] = Array.isArray(d?.metrics) ? d.metrics.map((m: Metric) => m.metric_type) : []
+        if (metricKeys.length) {
+          const sparkOut: Record<string, Array<{ label: string; value: number }>> = {}
+          const results = await Promise.all(
+            metricKeys.map(async (k) => {
+              const r = await fetch(`/api/health/readings?metric=${k}&range=30d`, {
+                headers,
+                credentials: "include",
+                cache: "no-store",
+              })
+              if (!r.ok) return { key: k, rows: [] as Metric[] }
+              return { key: k, rows: (await r.json()) as Metric[] }
+            }),
+          )
+          for (const res of results) {
+            sparkOut[res.key] = [...res.rows]
+              .reverse()
+              .slice(-14)
+              .map((m) => ({
+                label: new Date(m.measured_at || "").toLocaleDateString([], { day: "2-digit", month: "2-digit" }),
+                value: m.metric_type === "bp" && m.systolic != null ? m.systolic : (m.value ?? 0),
+              }))
+          }
+          setSpark(sparkOut)
+        }
+      }
       if (tRes.ok) {
         const data = await tRes.json()
         setToday(Array.isArray(data) ? data : [])
@@ -248,37 +356,50 @@ export default function HealthDashboardPage() {
               <div className="pointer-events-none absolute -bottom-10 left-6 h-36 w-36 rounded-full bg-sky-500/10 blur-3xl" />
               <div className="relative z-10 space-y-4">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
                       {isBm ? "Papan Kesihatan" : "Health Dashboard"}
                     </p>
-                    <div className="mt-1 flex items-baseline gap-2">
-                      <span className="text-3xl font-black tracking-tight text-[var(--text)]">
-                        {dash?.bmi != null ? dash.bmi : "—"}
-                      </span>
-                      <span className="text-xs font-semibold text-[var(--muted)]">BMI</span>
-                    </div>
-                    {dash?.bmi_category && (
-                      <span
-                        className={cn(
-                          "mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold",
-                          dash.bmi_category.color === "red"
-                            ? "bg-red-500/15 text-red-500"
-                            : dash.bmi_category.color === "amber"
-                            ? "bg-amber-500/15 text-amber-500"
-                            : "bg-emerald-500/15 text-emerald-500",
-                        )}
-                      >
-                        {isBm ? dash.bmi_category.label_bm : dash.bmi_category.label_en}
-                      </span>
+                    {dash?.bmi != null ? (
+                      <div className="mt-2 space-y-2">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-xl font-black tracking-tight text-[var(--text)]">
+                            Indeks Jisim Badan
+                          </span>
+                        </div>
+                        <span
+                          className={cn(
+                            "inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold",
+                            dash.bmi_category?.color === "red"
+                              ? "bg-red-500/15 text-red-500"
+                              : dash.bmi_category?.color === "amber"
+                              ? "bg-amber-500/15 text-amber-500"
+                              : "bg-emerald-500/15 text-emerald-500",
+                          )}
+                        >
+                          {isBm ? dash.bmi_category?.label_bm : dash.bmi_category?.label_en}
+                        </span>
+                        <p className="text-[11px] text-[var(--muted)]">
+                          {dash?.metrics?.length ?? 0} {isBm ? "bacaan" : "readings"} · {today.length}{" "}
+                          {isBm ? "ubat hari ini" : "meds today"}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="mt-2">
+                        <span className="text-3xl font-black tracking-tight text-[var(--text)]">—</span>
+                        <p className="mt-0.5 text-[11px] text-[var(--muted)]">
+                          {isBm ? "Tambah berat & tinggi untuk kira BMI" : "Add weight & height to compute BMI"}
+                        </p>
+                      </div>
                     )}
-                    <p className="mt-0.5 text-[11px] text-[var(--muted)]">
-                      {dash?.metrics?.length ?? 0} {isBm ? "bacaan" : "readings"} · {today.length} {isBm ? "ubat hari ini" : "meds today"}
-                    </p>
                   </div>
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] shadow-sm">
-                    <HeartPulse className="h-5 w-5 text-[var(--text)]" />
-                  </div>
+                  {dash?.bmi != null ? (
+                    <BmiRing bmi={dash.bmi} category={dash.bmi_category} />
+                  ) : (
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-tint)]">
+                      <HeartPulse className="h-8 w-8 text-[var(--muted)]" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Quick sub-module links */}
@@ -319,6 +440,8 @@ export default function HealthDashboardPage() {
                   {dash.metrics.map((m) => {
                     const meta = METRIC_META[m.metric_type] || { icon: Activity, color: "text-sky-500" }
                     const Icon = meta.icon
+                    const hex = METRIC_HEX[m.metric_type] || "#3b82f6"
+                    const sparkPoints = spark[m.metric_type] || []
                     return (
                       <div key={m.metric_type} className="rounded-xl border border-[var(--border)] bg-[var(--page-bg)] p-3">
                         <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--muted)]">
@@ -333,6 +456,11 @@ export default function HealthDashboardPage() {
                         </div>
                         {m.measured_at && (
                           <div className="mt-0.5 text-[10px] text-[var(--muted)]">{fmtTime(m.measured_at)}</div>
+                        )}
+                        {sparkPoints.length > 1 && (
+                          <div className="mt-2">
+                            <Sparkline points={sparkPoints} color={hex} />
+                          </div>
                         )}
                       </div>
                     )
@@ -446,6 +574,8 @@ export default function HealthDashboardPage() {
                   {dash.metrics.map((m) => {
                     const meta = METRIC_META[m.metric_type] || { icon: Activity, color: "text-sky-500" }
                     const Icon = meta.icon
+                    const hex = METRIC_HEX[m.metric_type] || "#3b82f6"
+                    const sparkPoints = spark[m.metric_type] || []
                     return (
                       <div key={m.metric_type} className="rounded-xl border border-[var(--border)] bg-[var(--page-bg)] p-3">
                         <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--muted)]">
@@ -460,6 +590,11 @@ export default function HealthDashboardPage() {
                         </div>
                         {m.measured_at && (
                           <div className="mt-0.5 text-[10px] text-[var(--muted)]">{fmtTime(m.measured_at)}</div>
+                        )}
+                        {sparkPoints.length > 1 && (
+                          <div className="mt-2">
+                            <Sparkline points={sparkPoints} color={hex} />
+                          </div>
                         )}
                       </div>
                     )
