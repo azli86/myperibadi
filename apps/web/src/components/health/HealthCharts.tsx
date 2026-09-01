@@ -229,179 +229,156 @@ export function BmiRing({ bmi, category }: { bmi: number; category?: { color: st
 }
 
 /**
- * Spotify-style speedometer BMI gauge (thick rounded arc segments with gaps,
- * saturated colors, scale numbers inside the arc).
- * 4 zones: blue <18.5, green 18.5-24.9, yellow 25-29.9, red >=30.
+ * Minimalist semicircular BMI speedometer (Android health-calculator style).
+ * - Segmented 180-degree arc (left 180deg to right 0deg), thick rounded bands
+ * - Category labels curved inside each colored segment
+ * - Small triangular pointer riding ON the arc (no long needle)
+ * - Big BMI readout in the empty center area under the arc
  */
 export function BmiGauge({
   bmi,
   category,
+  isBm = true,
   className = "",
 }: {
   bmi: number
   category?: { color: string; label_bm?: string; label_en?: string } | null
+  isBm?: boolean
   className?: string
 }) {
   const MIN = 14
   const MAX = 40
-  // [from, to, color]
-  const ZONES: Array<[number, number, string]> = [
-    [MIN, 18.5, "#00a0f0"],
-    [18.5, 25, "#1db954"],
-    [25, 30, "#f5c400"],
-    [30, MAX, "#fc0000"],
+  const ZONES = [
+    { from: 14, to: 18.5, color: "#00a0f0", dark: false, label: isBm ? "KURUS" : "UNDERWEIGHT" },
+    { from: 18.5, to: 25, color: "#1db954", dark: false, label: isBm ? "NORMAL" : "NORMAL" },
+    { from: 25, to: 30, color: "#f5c400", dark: true, label: isBm ? "BERLEBIHAN" : "OVERWEIGHT" },
+    { from: 30, to: 40, color: "#fc0000", dark: false, label: isBm ? "OBES" : "OBESE" },
   ]
-  const START = -235 // deg
-  const SWEEP = 290 // total sweep
-  const W = 300
-  const H = 252
-  const cx = W / 2
-  const cy = 138
-  const R = 118 // band radius (center of stroke)
-  const BW = 21 // band width
+  // Visual spans (degrees, sum = 180) — balanced so every label fits
+  const SPANS = [40, 50, 44, 46]
+  const bounds: number[] = [180]
+  for (const sp of SPANS) bounds.push(bounds[bounds.length - 1] - sp)
 
+  const W = 324
+  const H = 196
+  const cx = 162
+  const cy = 176
+  const R = 130 // band center radius
+  const BW = 30 // band thickness (px in viewBox units)
+  const TRIM = 6 // degrees trimmed at internal boundaries (gap)
+
+  // Piecewise value -> angle (180 left ... 0 right). Keeps boundaries aligned
+  // with the balanced visual spans.
   const angleFor = (v: number) => {
-    const t = Math.max(0, Math.min(1, (v - MIN) / (MAX - MIN)))
-    return START + t * SWEEP
+    for (let i = 0; i < ZONES.length; i++) {
+      const z = ZONES[i]
+      if (v <= z.to || i === ZONES.length - 1) {
+        const t = Math.max(0, Math.min(1, (v - z.from) / (z.to - z.from)))
+        return bounds[i] - t * SPANS[i]
+      }
+    }
+    return bounds[0]
   }
   const polar = (r: number, deg: number) => {
     const rad = (deg * Math.PI) / 180
-    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
+    return { x: cx + r * Math.cos(rad), y: cy - r * Math.sin(rad) }
   }
   const arcPath = (r: number, a1: number, a2: number) => {
     const p1 = polar(r, a1)
     const p2 = polar(r, a2)
-    const large = a2 - a1 > 180 ? 1 : 0
+    const large = a1 - a2 > 180 ? 1 : 0
     return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`
   }
 
-  // Thick rounded segments with gaps between zones
-  const GAP_DEG = 2.5
-  const zoneEls = ZONES.map(([from, to, color], i) => {
-    const a1 = i === 0 ? START : angleFor(from) + GAP_DEG
-    const a2 = i === ZONES.length - 1 ? START + SWEEP : angleFor(to) - GAP_DEG
+  const uid = React.useId().replace(/[^a-zA-Z0-9]/g, "")
+  const activeIdx = bmi < 18.5 ? 0 : bmi < 25 ? 1 : bmi < 30 ? 2 : 3
+  const activeColor = ZONES[activeIdx].color
+
+  // Segmented color bands with rounded caps
+  const segEls = ZONES.map((z, i) => {
+    const a1 = bounds[i] - (i === 0 ? 0 : TRIM)
+    const a2 = bounds[i + 1] + (i === ZONES.length - 1 ? 0 : TRIM)
     return (
       <path
         key={i}
         d={arcPath(R, a1, a2)}
-        stroke={color}
+        stroke={z.color}
         strokeWidth={BW}
         fill="none"
         strokeLinecap="round"
-        style={{ filter: "drop-shadow(0 3px 5px rgba(0,0,0,0.16))" }}
       />
     )
   })
 
-  // Minor tick marks on the outside edge of the band (subtle)
-  const tickEls: React.ReactNode[] = []
-  for (let v = MIN; v <= MAX; v += 1) {
-    const a = angleFor(v)
-    const p1 = polar(R + BW / 2 + 2, a)
-    const p2 = polar(R + BW / 2 + 7, a)
-    tickEls.push(
-      <line
-        key={`t${v}`}
-        x1={p1.x}
-        y1={p1.y}
-        x2={p2.x}
-        y2={p2.y}
-        stroke="var(--muted)"
-        strokeWidth={1}
-        opacity={0.4}
-      />,
-    )
-  }
-
-  // Scale numbers INSIDE the arc (like the reference)
-  const scaleLabels = [15, 20, 25, 30, 35, 40].map((v) => {
-    const p = polar(R - BW / 2 - 18, angleFor(v))
+  // Category labels curved along each band segment (inside the color)
+  const labelEls = ZONES.map((z, i) => {
+    const a1 = bounds[i] - (i === 0 ? 0 : TRIM) - 1.5
+    const a2 = bounds[i + 1] + (i === ZONES.length - 1 ? 0 : TRIM) + 1.5
+    const spanRad = ((a1 - a2) * Math.PI) / 180
+    const avail = R * spanRad * 0.86
+    const fs = Math.max(8, Math.min(11, avail / (0.6 * z.label.length)))
     return (
-      <text
-        key={`l${v}`}
-        x={p.x}
-        y={p.y}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fontSize={13}
-        fontWeight={800}
-        fill="var(--text)"
-        opacity={0.85}
-      >
-        {v}
-      </text>
+      <g key={`lb${i}`}>
+        <path id={`bmizl${uid}${i}`} d={arcPath(R, a1, a2)} fill="none" stroke="none" />
+        <text fontSize={fs} fontWeight={800} fill={z.dark ? "#3a3000" : "#ffffff"} letterSpacing={0.4}>
+          <textPath href={`#bmizl${uid}${i}`} startOffset="50%" textAnchor="middle" dominantBaseline="central">
+            {z.label}
+          </textPath>
+        </text>
+      </g>
     )
   })
 
-  // Needle: white with dark outline + colored tip, Spotify style
-  const needleColor =
-    bmi < 18.5 ? "#00a0f0" : bmi < 25 ? "#1db954" : bmi < 30 ? "#f5c400" : "#fc0000"
-  const needleAngle = angleFor(Math.max(MIN, Math.min(MAX, bmi)))
-  const tip0 = polar(R - 30, START)
-  const tail0 = polar(-16, START)
-  const catLabel = category?.label_bm || category?.label_en || ""
-  const catColor = category?.color === "red" ? "#fc0000" : category?.color === "amber" ? "#f5c400" : category?.color === "amber" ? "#f5c400" : "#1db954"
-  // amber maps to the yellow zone color; normal->green; blue handled below
-  const catColor2 =
-    bmi < 18.5 ? "#00a0f0" : bmi < 25 ? "#1db954" : bmi < 30 ? "#f5c400" : "#fc0000"
-  void catColor
+  // Small triangular pointer riding on the arc (drawn at top, CSS-rotated)
+  const theta = angleFor(Math.max(MIN, Math.min(MAX, bmi)))
+  const rot = 90 - theta
+  const tipR = R + BW / 2 + 4
+  const baseR2 = tipR + 11
+  const triPts = `${cx},${cy - tipR} ${cx - 6.5},${cy - baseR2} ${cx + 6.5},${cy - baseR2}`
+
+  const catLabel = (isBm ? category?.label_bm : category?.label_en) || ZONES[activeIdx].label
 
   return (
     <div className={className}>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" className="block" role="img" aria-label={`BMI ${bmi}`}>
-        {/* Color band */}
-        {zoneEls}
-        {/* Outer minor ticks */}
-        {tickEls}
-        {/* Scale numbers inside the band */}
-        {scaleLabels}
+        {/* Color segments */}
+        {segEls}
+        {/* Curved category labels inside the bands */}
+        {labelEls}
 
-        {/* Needle group rotated via CSS for animation */}
+        {/* Triangular pointer on the arc */}
         <g
           style={{
-            transform: `rotate(${needleAngle - START}deg)`,
+            transform: `rotate(${rot}deg)`,
             transformOrigin: `${cx}px ${cy}px`,
-            transition: "transform 1000ms cubic-bezier(0.34, 1.25, 0.64, 1)",
+            transition: "transform 900ms cubic-bezier(0.34, 1.3, 0.64, 1)",
           }}
         >
-          <line
-            x1={tail0.x}
-            y1={tail0.y}
-            x2={tip0.x}
-            y2={tip0.y}
-            stroke="var(--text)"
-            strokeWidth={5}
-            strokeLinecap="round"
-          />
-          <circle cx={tip0.x} cy={tip0.y} r={4} fill={needleColor} />
+          <polygon points={triPts} fill="var(--text)" />
         </g>
-        {/* Hub */}
-        <circle cx={cx} cy={cy} r={11} fill="var(--text)" />
-        <circle cx={cx} cy={cy} r={5} fill="var(--card)" />
 
-        {/* Center readout */}
-        <text x={cx} y={cy + 62} textAnchor="middle" fontSize={38} fontWeight={900} fill="var(--text)">
+        {/* Center readout in the empty middle area */}
+        <text x={cx} y={cy - 88} textAnchor="middle" fontSize={10} fontWeight={800} letterSpacing={2.5} fill="var(--muted)">
+          BMI
+        </text>
+        <text x={cx} y={cy - 42} textAnchor="middle" fontSize={46} fontWeight={900} fill="var(--text)">
           {bmi.toFixed(1)}
         </text>
-        <text x={cx} y={cy + 82} textAnchor="middle" fontSize={12} fontWeight={800} letterSpacing={1} fill={catColor2}>
+        <text x={cx} y={cy - 16} textAnchor="middle" fontSize={13} fontWeight={800} fill={activeColor}>
           {catLabel.toUpperCase()}
-        </text>
-        <text x={cx} y={cy + 97} textAnchor="middle" fontSize={9} fontWeight={700} fill="var(--muted)">
-          kg/m²
         </text>
       </svg>
     </div>
   )
 }
 
-
 /** Legend for the BMI gauge zones: color + WHO range. */
 export function BmiGaugeLegend({ isBm }: { isBm: boolean }) {
   const zones = [
-    { color: "#38bdf8", range: "< 18.5", label: isBm ? "Kurus" : "Underweight" },
-    { color: "#22c55e", range: "18.5–24.9", label: isBm ? "Normal" : "Normal" },
-    { color: "#facc15", range: "25–29.9", label: isBm ? "Berlebihan" : "Overweight" },
-    { color: "#ef4444", range: "≥ 30", label: isBm ? "Obes" : "Obese" },
+    { color: "#00a0f0", range: "< 18.5", label: isBm ? "Kurus" : "Underweight" },
+    { color: "#1db954", range: "18.5–24.9", label: isBm ? "Normal" : "Normal" },
+    { color: "#f5c400", range: "25–29.9", label: isBm ? "Berlebihan" : "Overweight" },
+    { color: "#fc0000", range: "≥ 30", label: isBm ? "Obes" : "Obese" },
   ]
   return (
     <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
