@@ -16,7 +16,7 @@ import {
   SkipForward,
   Stethoscope,
 } from "lucide-react"
-import { BmiRing, HealthSparkline, METRIC_HEX } from "@/components/health/HealthCharts"
+import { BmiGauge, BmiGaugeLegend, HealthSparkline, METRIC_HEX } from "@/components/health/HealthCharts"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
@@ -283,64 +283,50 @@ export default function HealthDashboardPage() {
               <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-emerald-500/10 blur-3xl" />
               <div className="pointer-events-none absolute -bottom-10 left-6 h-36 w-36 rounded-full bg-sky-500/10 blur-3xl" />
               <div className="relative z-10 space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                      {isBm ? "Papan Kesihatan" : "Health Dashboard"}
-                    </p>
-                    {dash?.bmi != null ? (
-                      <div className="mt-2 space-y-2">
-                        <div className="flex items-baseline gap-1.5">
-                          <span className="text-xl font-black tracking-tight text-[var(--text)]">
-                            {isBm ? "Indeks Jisim Badan" : "Body Mass Index"}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span
-                            className={cn(
-                              "inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold",
-                              dash.bmi_category?.color === "red"
-                                ? "bg-red-500/15 text-red-500"
-                                : dash.bmi_category?.color === "amber"
-                                ? "bg-amber-500/15 text-amber-500"
-                                : "bg-emerald-500/15 text-emerald-500",
-                            )}
-                          >
-                            {isBm ? dash.bmi_category?.label_bm : dash.bmi_category?.label_en}
-                          </span>
-                          {dash.weight_kg != null && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2.5 py-0.5 text-[11px] font-bold text-[var(--text)]">
-                              {dash.weight_kg} kg
-                            </span>
-                          )}
-                          {dash.height_cm != null && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2.5 py-0.5 text-[11px] font-bold text-[var(--text)]">
-                              {dash.height_cm} cm
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-[var(--muted)]">
-                          {dash?.metrics?.length ?? 0} {isBm ? "bacaan" : "readings"} · {today.length}{" "}
-                          {isBm ? "ubat hari ini" : "meds today"}
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="mt-2">
-                        <span className="text-3xl font-black tracking-tight text-[var(--text)]">—</span>
-                        <p className="mt-0.5 text-[11px] text-[var(--muted)]">
-                          {isBm ? "Tambah berat & tinggi untuk kira BMI" : "Add weight & height to compute BMI"}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                  {dash?.bmi != null ? (
-                    <BmiRing bmi={dash.bmi} category={dash.bmi_category} />
-                  ) : (
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-tint)]">
-                      <HeartPulse className="h-8 w-8 text-[var(--muted)]" />
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                  {isBm ? "Papan Kesihatan" : "Health Dashboard"}
+                </p>
+                {dash?.bmi != null ? (
+                  <>
+                    {/* Speedometer gauge */}
+                    <div className="mx-auto -mt-1 max-w-[300px]">
+                      <BmiGauge bmi={dash.bmi} category={dash.bmi_category} />
                     </div>
-                  )}
-                </div>
+                    <BmiGaugeLegend isBm={isBm} />
+                    <div className="flex flex-wrap items-center justify-center gap-1.5">
+                      {dash.weight_kg != null && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2.5 py-1 text-[11px] font-bold text-[var(--text)]">
+                          ⬇ {dash.weight_kg} kg
+                        </span>
+                      )}
+                      {dash.height_cm != null && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2.5 py-1 text-[11px] font-bold text-[var(--text)]">
+                          ↔ {dash.height_cm} cm
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2.5 py-1 text-[11px] font-bold text-[var(--text)]">
+                        {dash?.metrics?.length ?? 0} {isBm ? "bacaan" : "readings"}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2.5 py-1 text-[11px] font-bold text-[var(--text)]">
+                        {today.length} {isBm ? "ubat" : "meds"}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--border)] px-4 py-8 text-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-tint)]">
+                      <HeartPulse className="h-7 w-7 text-[var(--muted)]" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black text-[var(--text)]">
+                        {isBm ? "Indeks Jisim Badan" : "Body Mass Index"}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-[var(--muted)]">
+                        {isBm ? "Tambah berat & tinggi untuk kira BMI" : "Add weight & height to compute BMI"}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Quick sub-module links */}
                 <div className="grid grid-cols-3 gap-2">
@@ -500,27 +486,77 @@ export default function HealthDashboardPage() {
           </div>
         ) : (
           <div className="mx-auto w-full max-w-[1100px] space-y-5 p-4">
+            {/* BMI speedometer card */}
+            <section className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
+              <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-emerald-500/8 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-16 -left-10 h-44 w-44 rounded-full bg-sky-500/8 blur-3xl" />
+              {dash?.bmi != null ? (
+                <div className="relative z-10 grid grid-cols-[minmax(0,340px)_1fr] items-center gap-6">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                      {isBm ? "Indeks Jisim Badan" : "Body Mass Index"}
+                    </p>
+                    <div className="mx-auto mt-1 max-w-[320px]">
+                      <BmiGauge bmi={dash.bmi} category={dash.bmi_category} />
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <BmiGaugeLegend isBm={isBm} />
+                    <div className="flex flex-wrap gap-2">
+                      {dash.weight_kg != null && (
+                        <div className="rounded-xl border border-[var(--border)] bg-[var(--page-bg)] px-3.5 py-2">
+                          <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
+                            {isBm ? "Berat" : "Weight"}
+                          </div>
+                          <div className="text-lg font-black text-[var(--text)]">
+                            {dash.weight_kg} <span className="text-xs font-bold text-[var(--muted)]">kg</span>
+                          </div>
+                        </div>
+                      )}
+                      {dash.height_cm != null && (
+                        <div className="rounded-xl border border-[var(--border)] bg-[var(--page-bg)] px-3.5 py-2">
+                          <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
+                            {isBm ? "Tinggi" : "Height"}
+                          </div>
+                          <div className="text-lg font-black text-[var(--text)]">
+                            {dash.height_cm} <span className="text-xs font-bold text-[var(--muted)]">cm</span>
+                          </div>
+                        </div>
+                      )}
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--page-bg)] px-3.5 py-2">
+                        <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
+                          {isBm ? "Bacaan" : "Readings"}
+                        </div>
+                        <div className="text-lg font-black text-[var(--text)]">{dash?.metrics?.length ?? 0}</div>
+                      </div>
+                      <div className="rounded-xl border border-[var(--border)] bg-[var(--page-bg)] px-3.5 py-2">
+                        <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
+                          {isBm ? "Ubat Hari Ini" : "Meds Today"}
+                        </div>
+                        <div className="text-lg font-black text-[var(--text)]">{today.length}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2 py-6 text-center">
+                  <HeartPulse className="h-8 w-8 text-[var(--muted)]" />
+                  <p className="text-sm font-black text-[var(--text)]">
+                    {isBm ? "Indeks Jisim Badan" : "Body Mass Index"}
+                  </p>
+                  <p className="text-xs text-[var(--muted)]">
+                    {isBm ? "Tambah berat & tinggi untuk kira BMI" : "Add weight & height to compute BMI"}
+                  </p>
+                </div>
+              )}
+            </section>
+
             <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="flex items-center gap-2 text-base font-black text-[var(--text)]">
                   <Stethoscope size={18} className="text-[var(--accent2)]" />
                   {isBm ? "Monitor Kesihatan" : "Health Monitor"}
                 </h2>
-                {dash?.bmi != null && (
-                  <span
-                    className={cn(
-                      "rounded-full bg-[var(--accent2)]/15 px-2.5 py-1 text-xs font-bold text-[var(--accent2)]",
-                      dash.bmi_category?.color === "red"
-                        ? "!bg-red-500/15 !text-red-500"
-                        : dash.bmi_category?.color === "amber"
-                        ? "!bg-amber-500/15 !text-amber-500"
-                        : "",
-                    )}
-                  >
-                    BMI {dash.bmi}
-                    {dash.bmi_category ? ` · ${isBm ? dash.bmi_category.label_bm : dash.bmi_category.label_en}` : ""}
-                  </span>
-                )}
               </div>
               {!dash?.metrics?.length ? (
                 <p className="py-6 text-center text-sm text-[var(--muted)]">

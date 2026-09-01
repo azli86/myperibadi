@@ -228,6 +228,183 @@ export function BmiRing({ bmi, category }: { bmi: number; category?: { color: st
   )
 }
 
+/**
+ * Car-speedometer BMI gauge.
+ * 270° arc with 4 color zones (blue/green/yellow/red), needle with smooth
+ * transition, tick marks and scale numbers. WHO zone boundaries.
+ */
+export function BmiGauge({
+  bmi,
+  category,
+  className = "",
+}: {
+  bmi: number
+  category?: { color: string; label_bm?: string; label_en?: string } | null
+  className?: string
+}) {
+  const MIN = 14
+  const MAX = 40
+  const ZONES: Array<[number, number, string]> = [
+    [MIN, 18.5, "#38bdf8"], // blue - underweight
+    [18.5, 25, "#22c55e"], // green - normal
+    [25, 30, "#facc15"], // yellow - overweight
+    [30, MAX, "#ef4444"], // red - obese
+  ]
+  const START = -225 // deg, bottom-left
+  const SWEEP = 270
+  const W = 280
+  const H = 236
+  const cx = W / 2
+  const cy = 128
+  const zoneR = 112
+  const zoneW = 17
+
+  const angleFor = (v: number) => {
+    const t = Math.max(0, Math.min(1, (v - MIN) / (MAX - MIN)))
+    return START + t * SWEEP
+  }
+  const polar = (r: number, deg: number) => {
+    const rad = (deg * Math.PI) / 180
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
+  }
+  const arcPath = (r: number, a1: number, a2: number) => {
+    const p1 = polar(r, a1)
+    const p2 = polar(r, a2)
+    const large = a2 - a1 > 180 ? 1 : 0
+    return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`
+  }
+
+  const zoneEls = ZONES.map(([from, to, color], i) => {
+    const a1 = i === 0 ? START : angleFor(from) + 0.8
+    const a2 = i === ZONES.length - 1 ? START + SWEEP : angleFor(to) - 0.8
+    return <path key={i} d={arcPath(zoneR, a1, a2)} stroke={color} strokeWidth={zoneW} fill="none" strokeLinecap="round" />
+  })
+
+  // Ticks every 0.5 (minor), every 1 (medium), every 5 (major + label)
+  const tickEls: React.ReactNode[] = []
+  for (let v = MIN; v <= MAX; v += 0.5) {
+    const a = angleFor(v)
+    const isFive = Math.abs(v % 5) < 0.01
+    const isInt = Number.isInteger(v)
+    const len = isFive ? 12 : isInt ? 8 : 4.5
+    const w = isFive ? 2 : isInt ? 1.3 : 1
+    const p1 = polar(zoneR + zoneW / 2 + 4, a)
+    const p2 = polar(zoneR + zoneW / 2 + 4 - len, a)
+    tickEls.push(
+      <line
+        key={`t${v}`}
+        x1={p1.x}
+        y1={p1.y}
+        x2={p2.x}
+        y2={p2.y}
+        stroke={isFive ? "var(--text)" : "var(--muted)"}
+        strokeWidth={w}
+        opacity={isFive ? 0.9 : isInt ? 0.55 : 0.35}
+        strokeLinecap="round"
+      />,
+    )
+  }
+  const scaleLabels = [15, 20, 25, 30, 35, 40].map((v) => {
+    const p = polar(zoneR - 26, angleFor(v))
+    return (
+      <text
+        key={`l${v}`}
+        x={p.x}
+        y={p.y}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fontSize={11}
+        fontWeight={800}
+        fill="var(--muted)"
+      >
+        {v}
+      </text>
+    )
+  })
+
+  const needleColor =
+    bmi < 18.5 ? "#38bdf8" : bmi < 25 ? "#22c55e" : bmi < 30 ? "#facc15" : "#ef4444"
+  const needleAngle = angleFor(bmi)
+  // Needle drawn pointing at START, rotated by CSS for smooth animation.
+  const tip0 = polar(90, START)
+  const tail0 = polar(-13, START)
+  const catLabel = category?.label_bm || category?.label_en || ""
+  const catColor = category?.color === "red" ? "#ef4444" : category?.color === "amber" ? "#f59e0b" : "#22c55e"
+
+  return (
+    <div className={className}>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" className="block" role="img" aria-label={`BMI ${bmi}`}>
+        {/* Soft inner disc */}
+        <circle cx={cx} cy={cy} r={zoneR - zoneW / 2 - 4} fill="var(--page-bg)" opacity={0.55} />
+
+        {/* Color zones */}
+        {zoneEls}
+
+        {/* Ticks + scale numbers */}
+        {tickEls}
+        {scaleLabels}
+
+        {/* Needle (rotated group) */}
+        <g
+          style={{
+            transform: `rotate(${needleAngle - START}deg)`,
+            transformOrigin: `${cx}px ${cy}px`,
+            transition: "transform 900ms cubic-bezier(0.34, 1.3, 0.64, 1)",
+            filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.22))",
+          }}
+        >
+          <line
+            x1={tail0.x}
+            y1={tail0.y}
+            x2={tip0.x}
+            y2={tip0.y}
+            stroke={needleColor}
+            strokeWidth={4.5}
+            strokeLinecap="round"
+          />
+        </g>
+        {/* Hub */}
+        <circle cx={cx} cy={cy} r={10} fill="var(--text)" />
+        <circle cx={cx} cy={cy} r={4.5} fill="var(--card)" />
+
+        {/* Center readout */}
+        <text x={cx} y={cy + 54} textAnchor="middle" fontSize={34} fontWeight={900} fill="var(--text)">
+          {bmi.toFixed(1)}
+        </text>
+        <text x={cx} y={cy + 73} textAnchor="middle" fontSize={11} fontWeight={800} letterSpacing={1} fill={catColor}>
+          {catLabel.toUpperCase()}
+        </text>
+        <text x={cx} y={cy + 88} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="var(--muted)">
+          kg/m²
+        </text>
+      </svg>
+    </div>
+  )
+}
+
+/** Legend for the BMI gauge zones: color + WHO range. */
+export function BmiGaugeLegend({ isBm }: { isBm: boolean }) {
+  const zones = [
+    { color: "#38bdf8", range: "< 18.5", label: isBm ? "Kurus" : "Underweight" },
+    { color: "#22c55e", range: "18.5–24.9", label: isBm ? "Normal" : "Normal" },
+    { color: "#facc15", range: "25–29.9", label: isBm ? "Berlebihan" : "Overweight" },
+    { color: "#ef4444", range: "≥ 30", label: isBm ? "Obes" : "Obese" },
+  ]
+  return (
+    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+      {zones.map((z) => (
+        <div key={z.range} className="flex items-center gap-1.5 rounded-lg bg-[var(--page-bg)] px-2 py-1.5">
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: z.color }} />
+          <div className="min-w-0 leading-tight">
+            <div className="truncate text-[11px] font-black text-[var(--text)]">{z.label}</div>
+            <div className="text-[10px] font-semibold text-[var(--muted)]">BMI {z.range}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /** Pick the right gradient chart for a metric. */
 export function MetricChart({
   metricKey,
