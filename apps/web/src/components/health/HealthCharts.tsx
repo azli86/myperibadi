@@ -263,7 +263,7 @@ export function BmiGauge({
   const cx = 162
   const cy = 176
   const R = 130 // band center radius
-  const BW = 30 // band thickness
+  const BW = 40 // band thickness
 
   // Piecewise value -> angle (180 left ... 0 right)
   const angleFor = (v: number) => {
@@ -303,6 +303,29 @@ export function BmiGauge({
     />
   ))
 
+  // White markings: start at the band's inner edge, extend halfway in
+  const tickEls: React.ReactNode[] = []
+  for (let v = MIN; v <= MAX; v += 1) {
+    const isMajor = v % 5 === 0
+    const a = angleFor(v)
+    const r1 = R - BW / 2 // inner edge
+    const r2 = R - BW / 2 + BW / 2 // halfway in
+    const p1 = polar(r1, a)
+    const p2 = polar(r2, a)
+    tickEls.push(
+      <line
+        key={`tk${v}`}
+        x1={p1.x}
+        y1={p1.y}
+        x2={p2.x}
+        y2={p2.y}
+        stroke="#ffffff"
+        strokeWidth={isMajor ? 2.4 : 1.3}
+        opacity={isMajor ? 0.95 : 0.65}
+      />,
+    )
+  }
+
   // Category labels curved along each band segment (inside the color)
   const labelEls = ZONES.map((z, i) => {
     const a1 = bounds[i]
@@ -336,6 +359,8 @@ export function BmiGauge({
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" className="block" role="img" aria-label={`BMI ${bmi}`}>
         {/* Color segments (butt caps) */}
         {segEls}
+        {/* White markings halfway into the band */}
+        {tickEls}
         {/* Curved category labels inside the bands */}
         {labelEls}
 
