@@ -9,6 +9,13 @@ import {
   Plus,
   Stethoscope,
 } from "lucide-react"
+import { Line, LineChart as ReLineChart, XAxis, YAxis, CartesianGrid } from "recharts"
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
@@ -46,6 +53,62 @@ const METRICS: { key: string; labelBM: string; labelEN: string; unit: string; fi
 ]
 
 const RANGES = ["7d", "30d", "3m", "1y"]
+
+const METRIC_COLORS: Record<string, string> = {
+  weight: "#3b82f6",
+  height: "#6366f1",
+  bp: "#ef4444",
+  glucose: "#f59e0b",
+  pulse: "#ec4899",
+  spo2: "#10b981",
+  temperature: "#8b5cf6",
+}
+
+function ReadingsChart({ metric, points }: { metric: string; points: Reading[] }) {
+  const color = METRIC_COLORS[metric] || "#3b82f6"
+  const isBp = metric === "bp"
+  const data = points.map((r) => ({
+    label: new Date(r.measured_at).toLocaleDateString([], { day: "2-digit", month: "2-digit" }),
+    value: isBp && r.systolic != null ? r.systolic : (r.value ?? undefined),
+    systolic: r.systolic ?? undefined,
+    diastolic: r.diastolic ?? undefined,
+  }))
+  const config: ChartConfig = isBp
+    ? { systolic: { label: "SYS", color }, diastolic: { label: "DIA", color: "#f59e0b" } }
+    : { value: { label: "", color } }
+  if (!data.length) return null
+  return (
+    <ChartContainer config={config} className="h-44 w-full">
+      <ReLineChart data={data} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+        <XAxis
+          dataKey="label"
+          tickLine={false}
+          axisLine={false}
+          tick={{ fontSize: 10, fill: "var(--muted)" }}
+          interval="preserveStartEnd"
+        />
+        <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "var(--muted)" }} width={40} />
+        <ChartTooltip
+          content={
+            <ChartTooltipContent
+              indicator="dot"
+              labelFormatter={(_, payload) => payload?.[0]?.payload?.label ?? ""}
+            />
+          }
+        />
+        {isBp ? (
+          <>
+            <Line type="monotone" dataKey="systolic" stroke={color} strokeWidth={2} dot={false} name="SYS" />
+            <Line type="monotone" dataKey="diastolic" stroke="#f59e0b" strokeWidth={2} dot={false} name="DIA" />
+          </>
+        ) : (
+          <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} name="value" />
+        )}
+      </ReLineChart>
+    </ChartContainer>
+  )
+}
 
 export default function HealthReadingsPage() {
   const params = useParams()
@@ -130,18 +193,15 @@ export default function HealthReadingsPage() {
     }
   }, [authHeaders, meta, metric, form, loadReadings, isBm])
 
-  const chartData = useMemo(() => {
+  const chartPoints = useMemo(() => {
     if (!readings.length) return []
     const sorted = [...readings].reverse()
-    const vals = sorted.map((r) =>
-      metric === "bp" && r.systolic != null ? r.systolic : r.value,
-    )
-    const max = Math.max(...vals.filter((v): v is number => v != null), 1)
-    return sorted.map((r, i) => ({
+    return sorted.map((r) => ({
       id: r.id,
-      v: metric === "bp" && r.systolic != null ? r.systolic : r.value,
-      pct: ((metric === "bp" && r.systolic != null ? r.systolic : r.value ?? 0) / max) * 100,
-      time: new Date(r.measured_at).toLocaleDateString([], { day: "2-digit", month: "2-digit" }),
+      label: new Date(r.measured_at).toLocaleDateString([], { day: "2-digit", month: "2-digit" }),
+      value: metric === "bp" && r.systolic != null ? r.systolic : (r.value ?? undefined),
+      systolic: r.systolic ?? undefined,
+      diastolic: r.diastolic ?? undefined,
     }))
   }, [readings, metric])
 
@@ -218,18 +278,8 @@ export default function HealthReadingsPage() {
           </div>
           {showDataSkeleton ? (
             <div className="h-40 animate-pulse rounded-xl bg-[var(--page-bg)]" />
-          ) : chartData.length ? (
-            <div className="flex h-40 items-end gap-1">
-              {chartData.map((p) => (
-                <div key={p.id} className="group relative flex flex-1 flex-col items-center">
-                  <div
-                    className="w-full rounded-t-md bg-[var(--accent2)]/80 transition group-hover:bg-[var(--accent2)]"
-                    style={{ height: `${Math.max(p.pct, 4)}%` }}
-                  />
-                  <div className="mt-1 hidden text-[9px] text-[var(--muted)] group-hover:block">{p.time}</div>
-                </div>
-              ))}
-            </div>
+          ) : chartPoints.length ? (
+            <ReadingsChart metric={metric} points={readings} />
           ) : (
             <p className="py-8 text-center text-sm text-[var(--muted)]">
               {isBm ? "Tiada bacaan untuk julat ini." : "No readings for this range."}
@@ -316,18 +366,8 @@ export default function HealthReadingsPage() {
             </h2>
             {showDataSkeleton ? (
               <div className="h-40 animate-pulse rounded-xl bg-[var(--page-bg)]" />
-            ) : chartData.length ? (
-              <div className="flex h-40 items-end gap-1">
-                {chartData.map((p) => (
-                  <div key={p.id} className="group relative flex flex-1 flex-col items-center">
-                    <div
-                      className="w-full rounded-t-md bg-[var(--accent2)]/80 transition group-hover:bg-[var(--accent2)]"
-                      style={{ height: `${Math.max(p.pct, 4)}%` }}
-                    />
-                    <div className="mt-1 hidden text-[9px] text-[var(--muted)] group-hover:block">{p.time}</div>
-                  </div>
-                ))}
-              </div>
+            ) : chartPoints.length ? (
+              <ReadingsChart metric={metric} points={readings} />
             ) : (
               <p className="py-8 text-center text-sm text-[var(--muted)]">
                 {isBm ? "Tiada bacaan untuk julat ini." : "No readings for this range."}
