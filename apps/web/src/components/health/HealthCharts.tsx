@@ -229,9 +229,9 @@ export function BmiRing({ bmi, category }: { bmi: number; category?: { color: st
 }
 
 /**
- * Car-speedometer BMI gauge.
- * 270° arc with 4 color zones (blue/green/yellow/red), needle with smooth
- * transition, tick marks and scale numbers. WHO zone boundaries.
+ * Spotify-style speedometer BMI gauge (thick rounded arc segments with gaps,
+ * saturated colors, scale numbers inside the arc).
+ * 4 zones: blue <18.5, green 18.5-24.9, yellow 25-29.9, red >=30.
  */
 export function BmiGauge({
   bmi,
@@ -244,20 +244,21 @@ export function BmiGauge({
 }) {
   const MIN = 14
   const MAX = 40
+  // [from, to, color]
   const ZONES: Array<[number, number, string]> = [
-    [MIN, 18.5, "#38bdf8"], // blue - underweight
-    [18.5, 25, "#22c55e"], // green - normal
-    [25, 30, "#facc15"], // yellow - overweight
-    [30, MAX, "#ef4444"], // red - obese
+    [MIN, 18.5, "#00a0f0"],
+    [18.5, 25, "#1db954"],
+    [25, 30, "#f5c400"],
+    [30, MAX, "#fc0000"],
   ]
-  const START = -225 // deg, bottom-left
-  const SWEEP = 270
-  const W = 280
-  const H = 236
+  const START = -235 // deg
+  const SWEEP = 290 // total sweep
+  const W = 300
+  const H = 252
   const cx = W / 2
-  const cy = 128
-  const zoneR = 112
-  const zoneW = 17
+  const cy = 138
+  const R = 118 // band radius (center of stroke)
+  const BW = 21 // band width
 
   const angleFor = (v: number) => {
     const t = Math.max(0, Math.min(1, (v - MIN) / (MAX - MIN)))
@@ -274,22 +275,30 @@ export function BmiGauge({
     return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`
   }
 
+  // Thick rounded segments with gaps between zones
+  const GAP_DEG = 2.5
   const zoneEls = ZONES.map(([from, to, color], i) => {
-    const a1 = i === 0 ? START : angleFor(from) + 0.8
-    const a2 = i === ZONES.length - 1 ? START + SWEEP : angleFor(to) - 0.8
-    return <path key={i} d={arcPath(zoneR, a1, a2)} stroke={color} strokeWidth={zoneW} fill="none" strokeLinecap="round" />
+    const a1 = i === 0 ? START : angleFor(from) + GAP_DEG
+    const a2 = i === ZONES.length - 1 ? START + SWEEP : angleFor(to) - GAP_DEG
+    return (
+      <path
+        key={i}
+        d={arcPath(R, a1, a2)}
+        stroke={color}
+        strokeWidth={BW}
+        fill="none"
+        strokeLinecap="round"
+        style={{ filter: "drop-shadow(0 3px 5px rgba(0,0,0,0.16))" }}
+      />
+    )
   })
 
-  // Ticks every 0.5 (minor), every 1 (medium), every 5 (major + label)
+  // Minor tick marks on the outside edge of the band (subtle)
   const tickEls: React.ReactNode[] = []
-  for (let v = MIN; v <= MAX; v += 0.5) {
+  for (let v = MIN; v <= MAX; v += 1) {
     const a = angleFor(v)
-    const isFive = Math.abs(v % 5) < 0.01
-    const isInt = Number.isInteger(v)
-    const len = isFive ? 12 : isInt ? 8 : 4.5
-    const w = isFive ? 2 : isInt ? 1.3 : 1
-    const p1 = polar(zoneR + zoneW / 2 + 4, a)
-    const p2 = polar(zoneR + zoneW / 2 + 4 - len, a)
+    const p1 = polar(R + BW / 2 + 2, a)
+    const p2 = polar(R + BW / 2 + 7, a)
     tickEls.push(
       <line
         key={`t${v}`}
@@ -297,15 +306,16 @@ export function BmiGauge({
         y1={p1.y}
         x2={p2.x}
         y2={p2.y}
-        stroke={isFive ? "var(--text)" : "var(--muted)"}
-        strokeWidth={w}
-        opacity={isFive ? 0.9 : isInt ? 0.55 : 0.35}
-        strokeLinecap="round"
+        stroke="var(--muted)"
+        strokeWidth={1}
+        opacity={0.4}
       />,
     )
   }
+
+  // Scale numbers INSIDE the arc (like the reference)
   const scaleLabels = [15, 20, 25, 30, 35, 40].map((v) => {
-    const p = polar(zoneR - 26, angleFor(v))
+    const p = polar(R - BW / 2 - 18, angleFor(v))
     return (
       <text
         key={`l${v}`}
@@ -313,44 +323,45 @@ export function BmiGauge({
         y={p.y}
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize={11}
+        fontSize={13}
         fontWeight={800}
-        fill="var(--muted)"
+        fill="var(--text)"
+        opacity={0.85}
       >
         {v}
       </text>
     )
   })
 
+  // Needle: white with dark outline + colored tip, Spotify style
   const needleColor =
-    bmi < 18.5 ? "#38bdf8" : bmi < 25 ? "#22c55e" : bmi < 30 ? "#facc15" : "#ef4444"
-  const needleAngle = angleFor(bmi)
-  // Needle drawn pointing at START, rotated by CSS for smooth animation.
-  const tip0 = polar(90, START)
-  const tail0 = polar(-13, START)
+    bmi < 18.5 ? "#00a0f0" : bmi < 25 ? "#1db954" : bmi < 30 ? "#f5c400" : "#fc0000"
+  const needleAngle = angleFor(Math.max(MIN, Math.min(MAX, bmi)))
+  const tip0 = polar(R - 30, START)
+  const tail0 = polar(-16, START)
   const catLabel = category?.label_bm || category?.label_en || ""
-  const catColor = category?.color === "red" ? "#ef4444" : category?.color === "amber" ? "#f59e0b" : "#22c55e"
+  const catColor = category?.color === "red" ? "#fc0000" : category?.color === "amber" ? "#f5c400" : category?.color === "amber" ? "#f5c400" : "#1db954"
+  // amber maps to the yellow zone color; normal->green; blue handled below
+  const catColor2 =
+    bmi < 18.5 ? "#00a0f0" : bmi < 25 ? "#1db954" : bmi < 30 ? "#f5c400" : "#fc0000"
+  void catColor
 
   return (
     <div className={className}>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" className="block" role="img" aria-label={`BMI ${bmi}`}>
-        {/* Soft inner disc */}
-        <circle cx={cx} cy={cy} r={zoneR - zoneW / 2 - 4} fill="var(--page-bg)" opacity={0.55} />
-
-        {/* Color zones */}
+        {/* Color band */}
         {zoneEls}
-
-        {/* Ticks + scale numbers */}
+        {/* Outer minor ticks */}
         {tickEls}
+        {/* Scale numbers inside the band */}
         {scaleLabels}
 
-        {/* Needle (rotated group) */}
+        {/* Needle group rotated via CSS for animation */}
         <g
           style={{
             transform: `rotate(${needleAngle - START}deg)`,
             transformOrigin: `${cx}px ${cy}px`,
-            transition: "transform 900ms cubic-bezier(0.34, 1.3, 0.64, 1)",
-            filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.22))",
+            transition: "transform 1000ms cubic-bezier(0.34, 1.25, 0.64, 1)",
           }}
         >
           <line
@@ -358,29 +369,31 @@ export function BmiGauge({
             y1={tail0.y}
             x2={tip0.x}
             y2={tip0.y}
-            stroke={needleColor}
-            strokeWidth={4.5}
+            stroke="var(--text)"
+            strokeWidth={5}
             strokeLinecap="round"
           />
+          <circle cx={tip0.x} cy={tip0.y} r={4} fill={needleColor} />
         </g>
         {/* Hub */}
-        <circle cx={cx} cy={cy} r={10} fill="var(--text)" />
-        <circle cx={cx} cy={cy} r={4.5} fill="var(--card)" />
+        <circle cx={cx} cy={cy} r={11} fill="var(--text)" />
+        <circle cx={cx} cy={cy} r={5} fill="var(--card)" />
 
         {/* Center readout */}
-        <text x={cx} y={cy + 54} textAnchor="middle" fontSize={34} fontWeight={900} fill="var(--text)">
+        <text x={cx} y={cy + 62} textAnchor="middle" fontSize={38} fontWeight={900} fill="var(--text)">
           {bmi.toFixed(1)}
         </text>
-        <text x={cx} y={cy + 73} textAnchor="middle" fontSize={11} fontWeight={800} letterSpacing={1} fill={catColor}>
+        <text x={cx} y={cy + 82} textAnchor="middle" fontSize={12} fontWeight={800} letterSpacing={1} fill={catColor2}>
           {catLabel.toUpperCase()}
         </text>
-        <text x={cx} y={cy + 88} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="var(--muted)">
+        <text x={cx} y={cy + 97} textAnchor="middle" fontSize={9} fontWeight={700} fill="var(--muted)">
           kg/m²
         </text>
       </svg>
     </div>
   )
 }
+
 
 /** Legend for the BMI gauge zones: color + WHO range. */
 export function BmiGaugeLegend({ isBm }: { isBm: boolean }) {
