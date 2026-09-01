@@ -8,6 +8,7 @@ import {
   Check,
   Clock,
   Loader2,
+  Pencil,
   Pill,
   Plus,
   Trash2,
@@ -57,11 +58,50 @@ export default function HealthMedicationsPage() {
   const [loading, setLoading] = useState(true)
   const [hasLoaded, setHasLoaded] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
+  const [editing, setEditing] = useState<Medication | null>(null)
   const [saving, setSaving] = useState(false)
   const [tickingId, setTickingId] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   const showDataSkeleton = useDelayedSkeleton(loading && !hasLoaded)
-  const addSwipe = useSwipeDownToClose(() => setShowAdd(false))
+  const closeSheet = useCallback(() => {
+    setShowAdd(false)
+    setEditing(null)
+  }, [])
+  const addSwipe = useSwipeDownToClose(closeSheet)
+
+  const openAdd = useCallback(() => {
+    setEditing(null)
+    setName("")
+    setDosage("")
+    setPillCount("")
+    setTiming("anytime")
+    setTimes(["08:00"])
+    setReminderEnabled(true)
+    setShowAdd(true)
+  }, [])
+
+  const openEdit = useCallback((med: Medication) => {
+    // Parse stored dosage back into pill count + dosage text ("2 pil · 500mg" | "2 pil" | "500mg")
+    const d = med.dosage || ""
+    const pillMatch = d.match(/^(\d+)\s*pil\s*·\s*(.+)$/) || d.match(/^(\d+)\s*pil$/)
+    if (pillMatch) {
+      setPillCount(pillMatch[1])
+      setDosage(pillMatch[2] || "")
+    } else {
+      setPillCount("")
+      setDosage(d)
+    }
+    setName(med.name)
+    setTiming(med.timing || "anytime")
+    setReminderEnabled(med.reminder_enabled)
+    setTimes(
+      med.schedules.length
+        ? med.schedules.map((s) => s.time)
+        : ["08:00"],
+    )
+    setEditing(med)
+    setShowAdd(false)
+  }, [])
 
   // add form
   const [name, setName] = useState("")
@@ -126,25 +166,31 @@ export default function HealthMedicationsPage() {
         reminder_enabled: reminderEnabled,
         schedules: times.filter((t) => t).map((t) => ({ time: t, enabled: true })),
       }
-      const res = await fetch("/api/health/medications", {
-        method: "POST",
-        headers: { ...authHeaders(), "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      })
+      const isEdit = editing != null
+      const res = await fetch(
+        isEdit ? `/api/health/medications/${editing.id}` : "/api/health/medications",
+        {
+          method: isEdit ? "PATCH" : "POST",
+          headers: { ...authHeaders(), "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(body),
+        },
+      )
       if (!res.ok) throw new Error()
       setName("")
       setDosage("")
       setPillCount("")
       setTimes(["08:00"])
-      setShowAdd(false)
+      setTiming("anytime")
+      setReminderEnabled(true)
+      closeSheet()
       await loadMeds()
     } catch {
       showAlertRef.current(isBm ? "Ralat" : "Error", isBm ? "Gagal simpan ubat." : "Failed to save medication.", "error")
     } finally {
       setSaving(false)
     }
-  }, [name, dosage, timing, reminderEnabled, times, authHeaders, loadMeds, isBm])
+  }, [name, dosage, pillCount, timing, reminderEnabled, times, editing, authHeaders, loadMeds, closeSheet, isBm])
 
   const toggleReminder = useCallback(
     async (med: Medication) => {
@@ -226,7 +272,7 @@ export default function HealthMedicationsPage() {
           title={isBm ? "Ubat" : "Medications"}
           fallbackHref={`/${sessionId}/health`}
           action={
-            <MobileIconButton label={isBm ? "Tambah ubat" : "Add medication"} onClick={() => setShowAdd(true)}>
+            <MobileIconButton label={isBm ? "Tambah ubat" : "Add medication"} onClick={openAdd}>
               <Plus />
             </MobileIconButton>
           }
@@ -239,7 +285,7 @@ export default function HealthMedicationsPage() {
           homeHref={`/${sessionId}`}
           breadcrumbs={[{ label: isBm ? "Kesihatan" : "Health", href: `/${sessionId}/health` }]}
           actions={
-            <DesktopPageAction onClick={() => setShowAdd(true)}>
+            <DesktopPageAction onClick={openAdd}>
               <Plus />
               {isBm ? "Tambah Ubat" : "Add Medication"}
             </DesktopPageAction>
@@ -264,7 +310,7 @@ export default function HealthMedicationsPage() {
             </p>
             <button
               type="button"
-              onClick={() => setShowAdd(true)}
+              onClick={openAdd}
               className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-4 py-2.5 text-xs font-bold text-[var(--bg)] shadow-sm transition active:scale-[0.98]"
             >
               <Plus className="h-4 w-4" />
@@ -296,6 +342,13 @@ export default function HealthMedicationsPage() {
                     aria-label={isBm ? "Toggle reminder" : "Toggle reminder"}
                   >
                     {med.reminder_enabled ? <Bell size={16} /> : <BellOff size={16} />}
+                  </button>
+                  <button
+                    onClick={() => openEdit(med)}
+                    className="rounded-lg p-1.5 text-[var(--muted)] transition hover:text-[var(--accent2)]"
+                    aria-label={isBm ? "Edit" : "Edit"}
+                  >
+                    <Pencil size={16} />
                   </button>
                   <button
                     onClick={() => deleteMed(med)}
@@ -401,6 +454,13 @@ export default function HealthMedicationsPage() {
                       {med.reminder_enabled ? <Bell size={16} /> : <BellOff size={16} />}
                     </button>
                     <button
+                      onClick={() => openEdit(med)}
+                      className="rounded-lg p-1.5 text-[var(--muted)] transition hover:text-[var(--accent2)]"
+                      aria-label={isBm ? "Edit" : "Edit"}
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
                       onClick={() => deleteMed(med)}
                       className="rounded-lg p-1.5 text-[var(--muted)] transition hover:text-rose-500"
                       aria-label={isBm ? "Padam" : "Delete"}
@@ -470,10 +530,10 @@ export default function HealthMedicationsPage() {
       </div>
 
       {/* Add medication sheet */}
-      {showAdd ? (
+      {showAdd || editing != null ? (
         <div
           className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-[var(--overlay)] p-0 sm:items-center"
-          onClick={() => setShowAdd(false)}
+          onClick={closeSheet}
           onTouchMove={(e) => e.preventDefault()}
         >
           <div
@@ -483,9 +543,9 @@ export default function HealthMedicationsPage() {
             className="app-sheet-panel app-sheet-panel--lg w-full max-h-[90dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[32rem] sm:rounded-2xl"
           >
             <AppSheetHeader
-              title={isBm ? "Tambah Ubat" : "Add Medication"}
+              title={editing ? (isBm ? "Edit Ubat" : "Edit Medication") : isBm ? "Tambah Ubat" : "Add Medication"}
               eyebrow={isBm ? "Ubat" : "Medications"}
-              onClose={() => setShowAdd(false)}
+              onClose={closeSheet}
               action={
                 <button
                   type="button"

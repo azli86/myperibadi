@@ -6,8 +6,10 @@ import {
   Activity,
   HeartPulse,
   LineChart,
+  Pencil,
   Plus,
   Stethoscope,
+  Trash2,
 } from "lucide-react"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
@@ -76,11 +78,38 @@ export default function HealthReadingsPage() {
   const [loading, setLoading] = useState(true)
   const [hasLoaded, setHasLoaded] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
+  const [editing, setEditing] = useState<Reading | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState<Record<string, string>>({})
+  const sheetOpen = showAdd || editing != null
   const [mounted, setMounted] = useState(false)
   const showDataSkeleton = useDelayedSkeleton(loading && !hasLoaded)
-  const addSwipe = useSwipeDownToClose(() => setShowAdd(false))
+  const addSwipe = useSwipeDownToClose(() => {
+    setShowAdd(false)
+    setEditing(null)
+  })
+
+  const openAdd = useCallback(() => {
+    setEditing(null)
+    setForm({})
+    setShowAdd(true)
+  }, [])
+
+  const openEdit = useCallback((r: Reading) => {
+    const f: Record<string, string> = {}
+    if (r.value != null) f.value = String(r.value)
+    if (r.systolic != null) f.systolic = String(r.systolic)
+    if (r.diastolic != null) f.diastolic = String(r.diastolic)
+    if (r.note) f.note = r.note
+    setForm(f)
+    setEditing(r)
+    setShowAdd(false)
+  }, [])
+
+  const closeSheet = useCallback(() => {
+    setShowAdd(false)
+    setEditing(null)
+  }, [])
 
   const meta = useMemo(() => METRICS.find((m) => m.key === metric) || METRICS[0], [metric])
 
@@ -123,27 +152,49 @@ export default function HealthReadingsPage() {
   const saveReading = useCallback(async () => {
     setSaving(true)
     try {
-      const body: Record<string, unknown> = { metric_type: metric }
+      const body: Record<string, unknown> = {}
       if (meta.fields.includes("value") && form.value) body.value = parseFloat(form.value)
       if (meta.fields.includes("systolic") && form.systolic) body.systolic = parseFloat(form.systolic)
       if (meta.fields.includes("diastolic") && form.diastolic) body.diastolic = parseFloat(form.diastolic)
       if (form.note) body.note = form.note
-      const res = await fetch("/api/health/readings", {
-        method: "POST",
-        headers: { ...authHeaders(), "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(body),
-      })
+      const isEdit = editing != null
+      const res = await fetch(
+        isEdit ? `/api/health/readings/${editing.id}` : "/api/health/readings",
+        {
+          method: isEdit ? "PATCH" : "POST",
+          headers: { ...authHeaders(), "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(isEdit ? body : { metric_type: metric, ...body }),
+        },
+      )
       if (!res.ok) throw new Error()
       setForm({})
-      setShowAdd(false)
+      closeSheet()
       await loadReadings()
     } catch {
       showAlertRef.current(isBm ? "Ralat" : "Error", isBm ? "Gagal simpan bacaan." : "Failed to save reading.", "error")
     } finally {
       setSaving(false)
     }
-  }, [authHeaders, meta, metric, form, loadReadings, isBm])
+  }, [authHeaders, meta, metric, form, editing, closeSheet, loadReadings, isBm])
+
+  const deleteReading = useCallback(
+    async (r: Reading) => {
+      if (!confirm(isBm ? `Padam bacaan ini?` : "Delete this reading?")) return
+      try {
+        const res = await fetch(`/api/health/readings/${r.id}`, {
+          method: "DELETE",
+          headers: authHeaders(),
+          credentials: "include",
+        })
+        if (!res.ok) throw new Error()
+        await loadReadings()
+      } catch {
+        showAlertRef.current(isBm ? "Ralat" : "Error", isBm ? "Gagal padam bacaan." : "Failed to delete reading.", "error")
+      }
+    },
+    [authHeaders, loadReadings, isBm],
+  )
 
   const chartPoints = useMemo(() => {
     if (!readings.length) return []
@@ -165,7 +216,7 @@ export default function HealthReadingsPage() {
           title={isBm ? "Monitor" : "Monitor"}
           fallbackHref={`/${sessionId}/health`}
           action={
-            <MobileIconButton label={isBm ? "Tambah bacaan" : "Add reading"} onClick={() => setShowAdd(true)}>
+            <MobileIconButton label={isBm ? "Tambah bacaan" : "Add reading"} onClick={openAdd}>
               <Plus />
             </MobileIconButton>
           }
@@ -178,7 +229,7 @@ export default function HealthReadingsPage() {
           homeHref={`/${sessionId}`}
           breadcrumbs={[{ label: isBm ? "Kesihatan" : "Health", href: `/${sessionId}/health` }]}
           actions={
-            <DesktopPageAction onClick={() => setShowAdd(true)}>
+            <DesktopPageAction onClick={openAdd}>
               <Plus />
               {isBm ? "Tambah" : "Add"}
             </DesktopPageAction>
@@ -252,7 +303,7 @@ export default function HealthReadingsPage() {
               </p>
               <button
                 type="button"
-                onClick={() => setShowAdd(true)}
+                onClick={openAdd}
                 className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-4 py-2 text-xs font-bold text-[var(--bg)] transition active:scale-95"
               >
                 <Plus size={14} />
@@ -287,9 +338,25 @@ export default function HealthReadingsPage() {
                     </div>
                     {r.note ? <div className="text-xs text-[var(--muted)]">{r.note}</div> : null}
                   </div>
-                  <div className="shrink-0 text-xs text-[var(--muted)]">
-                    {new Date(r.measured_at).toLocaleDateString([], { day: "2-digit", month: "2-digit" })}{" "}
-                    {new Date(r.measured_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
+                  <div className="flex shrink-0 items-center gap-1">
+                    <div className="text-right text-xs text-[var(--muted)]">
+                      {new Date(r.measured_at).toLocaleDateString([], { day: "2-digit", month: "2-digit" })}{" "}
+                      {new Date(r.measured_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
+                    </div>
+                    <button
+                      onClick={() => openEdit(r)}
+                      className="rounded-lg p-1.5 text-[var(--muted)] transition hover:text-[var(--accent2)]"
+                      aria-label={isBm ? "Edit" : "Edit"}
+                    >
+                      <Pencil size={15} />
+                    </button>
+                    <button
+                      onClick={() => deleteReading(r)}
+                      className="rounded-lg p-1.5 text-[var(--muted)] transition hover:text-rose-500"
+                      aria-label={isBm ? "Padam" : "Delete"}
+                    >
+                      <Trash2 size={15} />
+                    </button>
                   </div>
                 </li>
               ))}
@@ -379,7 +446,7 @@ export default function HealthReadingsPage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => setShowAdd(true)}
+                  onClick={openAdd}
                   className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-bold text-[var(--btn-primary-text)] transition hover:opacity-90"
                 >
                   <Plus size={14} />
@@ -413,9 +480,25 @@ export default function HealthReadingsPage() {
                       </div>
                       {r.note ? <div className="text-xs text-[var(--muted)]">{r.note}</div> : null}
                     </div>
-                    <div className="text-xs text-[var(--muted)]">
-                      {new Date(r.measured_at).toLocaleDateString([], { day: "2-digit", month: "2-digit", year: "numeric" })}{" "}
-                      {new Date(r.measured_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
+                    <div className="flex shrink-0 items-center gap-1">
+                      <div className="text-xs text-[var(--muted)]">
+                        {new Date(r.measured_at).toLocaleDateString([], { day: "2-digit", month: "2-digit", year: "numeric" })}{" "}
+                        {new Date(r.measured_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
+                      </div>
+                      <button
+                        onClick={() => openEdit(r)}
+                        className="rounded-lg p-1.5 text-[var(--muted)] transition hover:text-[var(--accent2)]"
+                        aria-label={isBm ? "Edit" : "Edit"}
+                      >
+                        <Pencil size={15} />
+                      </button>
+                      <button
+                        onClick={() => deleteReading(r)}
+                        className="rounded-lg p-1.5 text-[var(--muted)] transition hover:text-rose-500"
+                        aria-label={isBm ? "Padam" : "Delete"}
+                      >
+                        <Trash2 size={15} />
+                      </button>
                     </div>
                   </li>
                 ))}
@@ -426,11 +509,11 @@ export default function HealthReadingsPage() {
         </DesktopPageBody>
       </div>
 
-      {/* Add reading sheet */}
-      {showAdd ? (
+      {/* Add/Edit reading sheet */}
+      {sheetOpen ? (
         <div
           className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-[var(--overlay)] p-0 sm:items-center"
-          onClick={() => setShowAdd(false)}
+          onClick={closeSheet}
           onTouchMove={(e) => e.preventDefault()}
         >
           <div
@@ -440,9 +523,9 @@ export default function HealthReadingsPage() {
             className="app-sheet-panel app-sheet-panel--lg w-full max-h-[90dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[32rem] sm:rounded-2xl"
           >
             <AppSheetHeader
-              title={isBm ? "Tambah Bacaan" : "Add Reading"}
+              title={editing ? (isBm ? "Edit Bacaan" : "Edit Reading") : isBm ? "Tambah Bacaan" : "Add Reading"}
               eyebrow={isBm ? meta.labelBM : meta.labelEN}
-              onClose={() => setShowAdd(false)}
+              onClose={closeSheet}
               action={
                 <button
                   type="button"
