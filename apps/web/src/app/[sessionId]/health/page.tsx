@@ -209,6 +209,7 @@ export default function HealthDashboardPage() {
         <MobilePageHeader
           className="border-b border-[color:var(--border)] pb-4"
           title={isBm ? "Kesihatan" : "Health"}
+          beta
           fallbackHref={`/${sessionId}`}
           action={
             <MobileIconButton label={isBm ? "Tambah bacaan" : "Add reading"} onClick={() => router.push(`/${sessionId}/health/readings`)}>
@@ -221,6 +222,7 @@ export default function HealthDashboardPage() {
       <div className="hidden md:block">
         <DesktopPageHeader
           title={isBm ? "Kesihatan" : "Health"}
+          beta
           homeHref={`/${sessionId}`}
           actions={
             <DesktopPageAction onClick={() => router.push(`/${sessionId}/health/readings`)}>

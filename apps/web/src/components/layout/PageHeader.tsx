@@ -13,6 +13,7 @@ export function MobilePageHeader({
   className,
   backPreferHistory,
   alignLeft,
+  beta,
 }: {
   title: string
   fallbackHref: string
@@ -20,6 +21,7 @@ export function MobilePageHeader({
   className?: string
   backPreferHistory?: boolean
   alignLeft?: boolean
+  beta?: boolean
 }) {
   const headerRef = useRef<HTMLDivElement>(null)
   const [spacer, setSpacer] = useState(0)
@@ -46,9 +48,16 @@ export function MobilePageHeader({
         )}
       >
         <div className={cn("flex items-center gap-2.5 pt-0.5", alignLeft ? "justify-start" : "justify-between")}>
-          <h1 className={cn("truncate text-left text-[30px] font-black leading-[1.05] tracking-tight text-[var(--text)]", !alignLeft && "min-w-0 flex-1")}>
-            {title}
-          </h1>
+          <div className={cn("flex min-w-0 items-center gap-2", !alignLeft && "flex-1")}>
+            <h1 className="truncate text-left text-[30px] font-black leading-[1.05] tracking-tight text-[var(--text)]">
+              {title}
+            </h1>
+            {beta && (
+              <span className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-[var(--muted)]">
+                Beta
+              </span>
+            )}
+          </div>
           <div className={cn("flex shrink-0 items-center gap-1.5", !alignLeft && "justify-end")}>
             {action ?? <span className="h-10 w-10" aria-hidden />}
           </div>
@@ -181,6 +190,7 @@ export function DesktopPageHeader({
   breadcrumbs,
   homeHref,
   showBack,
+  beta,
 }: {
   title: string
   actions?: React.ReactNode
@@ -190,6 +200,7 @@ export function DesktopPageHeader({
   breadcrumbs?: Array<string | { label: string; href?: string }>
   homeHref?: string
   showBack?: boolean
+  beta?: boolean
 }) {
   const rawItems = breadcrumbs ?? []
   const breadcrumbItems: Array<{ label: string; href?: string }> = [
@@ -227,6 +238,11 @@ export function DesktopPageHeader({
               )
             })}
           </nav>
+          {beta && (
+            <span className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-[var(--muted)]">
+              Beta
+            </span>
+          )}
         </div>
         {actions ? <div className="flex shrink-0 items-center gap-2.5">{actions}</div> : null}
       </div>
