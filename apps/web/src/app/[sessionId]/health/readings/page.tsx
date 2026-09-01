@@ -9,13 +9,6 @@ import {
   Plus,
   Stethoscope,
 } from "lucide-react"
-import { Line, LineChart as ReLineChart, XAxis, YAxis, CartesianGrid } from "recharts"
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
@@ -28,8 +21,10 @@ import {
   MobilePageHeader,
 } from "@/components/layout/PageHeader"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
+import { useSearchParams } from "next/navigation"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
+import { MetricChart, TrendStats, METRIC_HEX } from "@/components/health/HealthCharts"
 
 type Reading = {
   id: number
@@ -54,62 +49,6 @@ const METRICS: { key: string; labelBM: string; labelEN: string; unit: string; fi
 
 const RANGES = ["7d", "30d", "3m", "1y"]
 
-const METRIC_COLORS: Record<string, string> = {
-  weight: "#3b82f6",
-  height: "#6366f1",
-  bp: "#ef4444",
-  glucose: "#f59e0b",
-  pulse: "#ec4899",
-  spo2: "#10b981",
-  temperature: "#8b5cf6",
-}
-
-function ReadingsChart({ metric, points }: { metric: string; points: Reading[] }) {
-  const color = METRIC_COLORS[metric] || "#3b82f6"
-  const isBp = metric === "bp"
-  const data = points.map((r) => ({
-    label: new Date(r.measured_at).toLocaleDateString([], { day: "2-digit", month: "2-digit" }),
-    value: isBp && r.systolic != null ? r.systolic : (r.value ?? undefined),
-    systolic: r.systolic ?? undefined,
-    diastolic: r.diastolic ?? undefined,
-  }))
-  const config: ChartConfig = isBp
-    ? { systolic: { label: "SYS", color }, diastolic: { label: "DIA", color: "#f59e0b" } }
-    : { value: { label: "", color } }
-  if (!data.length) return null
-  return (
-    <ChartContainer config={config} className="h-44 w-full">
-      <ReLineChart data={data} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-        <XAxis
-          dataKey="label"
-          tickLine={false}
-          axisLine={false}
-          tick={{ fontSize: 10, fill: "var(--muted)" }}
-          interval="preserveStartEnd"
-        />
-        <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fill: "var(--muted)" }} width={40} />
-        <ChartTooltip
-          content={
-            <ChartTooltipContent
-              indicator="dot"
-              labelFormatter={(_, payload) => payload?.[0]?.payload?.label ?? ""}
-            />
-          }
-        />
-        {isBp ? (
-          <>
-            <Line type="monotone" dataKey="systolic" stroke={color} strokeWidth={2} dot={false} name="SYS" />
-            <Line type="monotone" dataKey="diastolic" stroke="#f59e0b" strokeWidth={2} dot={false} name="DIA" />
-          </>
-        ) : (
-          <Line type="monotone" dataKey="value" stroke={color} strokeWidth={2} dot={false} name="value" />
-        )}
-      </ReLineChart>
-    </ChartContainer>
-  )
-}
-
 export default function HealthReadingsPage() {
   const params = useParams()
   const { lang } = useLang()
@@ -118,7 +57,20 @@ export default function HealthReadingsPage() {
   const showAlertRef = useRef(showAlert)
   const isBm = lang === "BM"
 
-  const [metric, setMetric] = useState("weight")
+  // Deep-link support: /health/readings?metric=bp
+  const searchParams = useSearchParams()
+  const initialMetric = searchParams.get("metric")
+  const [metric, setMetricState] = useState(
+    initialMetric && METRICS.some((m) => m.key === initialMetric) ? initialMetric : "weight",
+  )
+  const setMetric = useCallback((k: string) => {
+    setMetricState(k)
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href)
+      url.searchParams.set("metric", k)
+      window.history.replaceState(null, "", url.toString())
+    }
+  }, [])
   const [range, setRange] = useState("30d")
   const [readings, setReadings] = useState<Reading[]>([])
   const [loading, setLoading] = useState(true)
@@ -256,11 +208,16 @@ export default function HealthReadingsPage() {
 
         {/* Chart */}
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-base font-black text-[var(--text)]">
-              <LineChart size={18} className="text-[var(--accent2)]" />
-              {isBm ? meta.labelBM : meta.labelEN}
-            </h2>
+          <div className="mb-3 flex items-start justify-between gap-2">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                {isBm ? "Trend" : "Trend"}
+              </p>
+              <h2 className="text-lg font-black tracking-tight text-[var(--text)]">
+                {isBm ? meta.labelBM : meta.labelEN}
+                {meta.unit ? <span className="ml-1 text-xs font-semibold text-[var(--muted)]">({meta.unit})</span> : null}
+              </h2>
+            </div>
             <div className="flex gap-1">
               {RANGES.map((r) => (
                 <button
@@ -268,7 +225,7 @@ export default function HealthReadingsPage() {
                   onClick={() => setRange(r)}
                   className={cn(
                     "rounded-lg px-2 py-1 text-[11px] font-bold transition",
-                    range === r ? "bg-[var(--accent2)] text-white" : "bg-[var(--page-bg)] text-[var(--muted)]",
+                    range === r ? "bg-[var(--text)] text-[var(--bg)]" : "bg-[var(--page-bg)] text-[var(--muted)]",
                   )}
                 >
                   {r}
@@ -277,13 +234,31 @@ export default function HealthReadingsPage() {
             </div>
           </div>
           {showDataSkeleton ? (
-            <div className="h-40 animate-pulse rounded-xl bg-[var(--page-bg)]" />
+            <div className="h-44 animate-pulse rounded-xl bg-[var(--page-bg)]" />
           ) : chartPoints.length ? (
-            <ReadingsChart metric={metric} points={readings} />
+            <>
+              <MetricChart metricKey={metric} points={chartPoints} className="h-48" />
+              <TrendStats
+                values={chartPoints.map((p) => p.value ?? 0).filter((v) => v != null)}
+                unit={metric === "bp" ? "" : meta.unit}
+                isBm={isBm}
+              />
+            </>
           ) : (
-            <p className="py-8 text-center text-sm text-[var(--muted)]">
-              {isBm ? "Tiada bacaan untuk julat ini." : "No readings for this range."}
-            </p>
+            <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-10 text-center">
+              <LineChart size={26} className="mx-auto text-[var(--muted)]" />
+              <p className="mt-2 text-sm font-semibold text-[var(--text)]">
+                {isBm ? "Tiada bacaan untuk julat ini" : "No readings for this range"}
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowAdd(true)}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-4 py-2 text-xs font-bold text-[var(--bg)] transition active:scale-95"
+              >
+                <Plus size={14} />
+                {isBm ? "Tambah Bacaan" : "Add Reading"}
+              </button>
+            </div>
           )}
         </section>
 
@@ -359,19 +334,58 @@ export default function HealthReadingsPage() {
             ))}
           </div>
 
-          <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
-            <h2 className="mb-3 flex items-center gap-2 text-base font-black text-[var(--text)]">
-              <LineChart size={18} className="text-[var(--accent2)]" />
-              {isBm ? meta.labelBM : meta.labelEN} — {isBm ? "Sejarah" : "History"}
-            </h2>
+          <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                  {isBm ? "Trend" : "Trend"}
+                </p>
+                <h2 className="text-lg font-black tracking-tight text-[var(--text)]">
+                  {isBm ? meta.labelBM : meta.labelEN}
+                  {meta.unit ? <span className="ml-1 text-xs font-semibold text-[var(--muted)]">({meta.unit})</span> : null}
+                </h2>
+              </div>
+              <div className="flex gap-1">
+                {RANGES.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setRange(r)}
+                    className={cn(
+                      "rounded-lg px-3 py-1 text-xs font-bold transition",
+                      range === r ? "bg-[var(--text)] text-[var(--bg)]" : "bg-[var(--card)] text-[var(--muted)]",
+                    )}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </div>
             {showDataSkeleton ? (
-              <div className="h-40 animate-pulse rounded-xl bg-[var(--page-bg)]" />
+              <div className="h-44 animate-pulse rounded-xl bg-[var(--page-bg)]" />
             ) : chartPoints.length ? (
-              <ReadingsChart metric={metric} points={readings} />
+              <>
+                <MetricChart metricKey={metric} points={chartPoints} className="h-52" />
+                <TrendStats
+                  values={chartPoints.map((p) => p.value ?? 0).filter((v) => v != null)}
+                  unit={metric === "bp" ? "" : meta.unit}
+                  isBm={isBm}
+                />
+              </>
             ) : (
-              <p className="py-8 text-center text-sm text-[var(--muted)]">
-                {isBm ? "Tiada bacaan untuk julat ini." : "No readings for this range."}
-              </p>
+              <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-10 text-center">
+                <LineChart size={26} className="mx-auto text-[var(--muted)]" />
+                <p className="mt-2 text-sm font-semibold text-[var(--text)]">
+                  {isBm ? "Tiada bacaan untuk julat ini" : "No readings for this range"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowAdd(true)}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-bold text-[var(--btn-primary-text)] transition hover:opacity-90"
+                >
+                  <Plus size={14} />
+                  {isBm ? "Tambah Bacaan" : "Add Reading"}
+                </button>
+              </div>
             )}
           </section>
 

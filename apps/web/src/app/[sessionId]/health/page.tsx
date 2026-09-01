@@ -16,13 +16,7 @@ import {
   SkipForward,
   Stethoscope,
 } from "lucide-react"
-import { Line as ReLine, LineChart as ReLineChart, ResponsiveContainer } from "recharts"
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart"
+import { BmiRing, HealthSparkline, METRIC_HEX } from "@/components/health/HealthCharts"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
@@ -81,16 +75,6 @@ const METRIC_META: Record<string, { icon: React.ComponentType<any>; color: strin
   height: { icon: LineChart, color: "text-indigo-500" },
 }
 
-const METRIC_HEX: Record<string, string> = {
-  weight: "#0ea5e9",
-  bp: "#f43f5e",
-  glucose: "#8b5cf6",
-  pulse: "#f59e0b",
-  spo2: "#10b981",
-  temperature: "#f97316",
-  height: "#6366f1",
-}
-
 function fmtTime(iso?: string | null): string {
   if (!iso) return ""
   const d = new Date(iso)
@@ -104,67 +88,6 @@ function fmtMetric(m: Metric): string {
     return m.value != null ? String(m.value) : "—"
   }
   return m.value != null ? String(m.value) : "—"
-}
-
-function bmiColor(key?: string | null): string {
-  if (key === "red") return "#ef4444"
-  if (key === "amber") return "#f59e0b"
-  return "#22c55e"
-}
-
-/** Circular BMI progress ring (Apple-Health style). */
-function BmiRing({ bmi, category }: { bmi: number; category?: { color: string } | null }) {
-  const size = 120
-  const stroke = 10
-  const r = (size - stroke) / 2
-  const c = 2 * Math.PI * r
-  // Map BMI 14-40 onto the ring arc (clamp).
-  const frac = Math.max(0, Math.min(1, (bmi - 14) / (40 - 14)))
-  const color = bmiColor(category?.color)
-  return (
-    <div className="relative h-[120px] w-[120px]">
-      <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={stroke} />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          fill="none"
-          stroke={color}
-          strokeWidth={stroke}
-          strokeLinecap="round"
-          strokeDasharray={c}
-          strokeDashoffset={c * (1 - frac)}
-          className="transition-all duration-700"
-        />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-black tracking-tight text-[var(--text)]">{bmi}</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">BMI</span>
-      </div>
-    </div>
-  )
-}
-
-/** Mini sparkline for a metric card using shadcn chart. */
-function Sparkline({ points, color }: { points: Array<{ label: string; value: number }>; color: string }) {
-  const config: ChartConfig = { value: { label: "", color } }
-  if (!points.length) return null
-  return (
-    <ChartContainer config={config} className="h-10 w-full">
-      <ReLineChart data={points} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
-        <ReLine
-          type="monotone"
-          dataKey="value"
-          stroke={color}
-          strokeWidth={2}
-          dot={false}
-          isAnimationActive={false}
-          name="value"
-        />
-      </ReLineChart>
-    </ChartContainer>
-  )
 }
 
 export default function HealthDashboardPage() {
@@ -355,6 +278,11 @@ export default function HealthDashboardPage() {
               <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-emerald-500/10 blur-3xl" />
               <div className="pointer-events-none absolute -bottom-10 left-6 h-36 w-36 rounded-full bg-sky-500/10 blur-3xl" />
               <div className="relative z-10 space-y-4">
+            {/* Mobile Hero Card (Apple-Health style) */}
+            <section className="relative overflow-hidden rounded-[1.85rem] border border-[var(--border)] bg-[var(--card)] p-4 text-[var(--text)] shadow-sm">
+              <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-emerald-500/10 blur-3xl" />
+              <div className="pointer-events-none absolute -bottom-10 left-6 h-36 w-36 rounded-full bg-sky-500/10 blur-3xl" />
+              <div className="relative z-10 space-y-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
@@ -364,21 +292,33 @@ export default function HealthDashboardPage() {
                       <div className="mt-2 space-y-2">
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-xl font-black tracking-tight text-[var(--text)]">
-                            Indeks Jisim Badan
+                            {isBm ? "Indeks Jisim Badan" : "Body Mass Index"}
                           </span>
                         </div>
-                        <span
-                          className={cn(
-                            "inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold",
-                            dash.bmi_category?.color === "red"
-                              ? "bg-red-500/15 text-red-500"
-                              : dash.bmi_category?.color === "amber"
-                              ? "bg-amber-500/15 text-amber-500"
-                              : "bg-emerald-500/15 text-emerald-500",
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={cn(
+                              "inline-block rounded-full px-2.5 py-0.5 text-[11px] font-bold",
+                              dash.bmi_category?.color === "red"
+                                ? "bg-red-500/15 text-red-500"
+                                : dash.bmi_category?.color === "amber"
+                                ? "bg-amber-500/15 text-amber-500"
+                                : "bg-emerald-500/15 text-emerald-500",
+                            )}
+                          >
+                            {isBm ? dash.bmi_category?.label_bm : dash.bmi_category?.label_en}
+                          </span>
+                          {dash.weight_kg != null && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2.5 py-0.5 text-[11px] font-bold text-[var(--text)]">
+                              {dash.weight_kg} kg
+                            </span>
                           )}
-                        >
-                          {isBm ? dash.bmi_category?.label_bm : dash.bmi_category?.label_en}
-                        </span>
+                          {dash.height_cm != null && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2.5 py-0.5 text-[11px] font-bold text-[var(--text)]">
+                              {dash.height_cm} cm
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[11px] text-[var(--muted)]">
                           {dash?.metrics?.length ?? 0} {isBm ? "bacaan" : "readings"} · {today.length}{" "}
                           {isBm ? "ubat hari ini" : "meds today"}
@@ -405,21 +345,28 @@ export default function HealthDashboardPage() {
                 {/* Quick sub-module links */}
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { label: isBm ? "Monitor" : "Monitor", href: `/${sessionId}/health/readings`, icon: LineChart },
-                    { label: isBm ? "Ubat" : "Medications", href: `/${sessionId}/health/medications`, icon: Pill },
-                    { label: isBm ? "History" : "History", href: `/${sessionId}/health/history`, icon: Activity },
+                    { label: isBm ? "Monitor" : "Monitor", href: `/${sessionId}/health/readings`, icon: LineChart, hex: "#0ea5e9" },
+                    { label: isBm ? "Ubat" : "Meds", href: `/${sessionId}/health/medications`, icon: Pill, hex: "#10b981" },
+                    { label: isBm ? "Sejarah" : "History", href: `/${sessionId}/health/history`, icon: Activity, hex: "#8b5cf6" },
                   ].map((m) => (
                     <button
                       key={m.href}
                       type="button"
                       onClick={() => router.push(m.href)}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-2.5 text-xs font-bold text-[var(--text)] transition active:scale-[0.98]"
+                      className="group flex flex-col items-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-3 transition active:scale-[0.97]"
                     >
-                      <m.icon className="h-4 w-4 text-[var(--accent2)]" />
-                      <span>{m.label}</span>
+                      <span
+                        className="flex h-8 w-8 items-center justify-center rounded-xl"
+                        style={{ backgroundColor: `${m.hex}1f`, color: m.hex }}
+                      >
+                        <m.icon size={17} />
+                      </span>
+                      <span className="text-[11px] font-bold text-[var(--text)]">{m.label}</span>
                     </button>
                   ))}
                 </div>
+              </div>
+            </section>
               </div>
             </section>
 
@@ -443,26 +390,36 @@ export default function HealthDashboardPage() {
                     const hex = METRIC_HEX[m.metric_type] || "#3b82f6"
                     const sparkPoints = spark[m.metric_type] || []
                     return (
-                      <div key={m.metric_type} className="rounded-xl border border-[var(--border)] bg-[var(--page-bg)] p-3">
-                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--muted)]">
-                          <Icon size={13} className={meta.color} />
-                          {m.label || m.metric_type}
+                      <button
+                        key={m.metric_type}
+                        type="button"
+                        onClick={() => router.push(`/${sessionId}/health/readings?metric=${m.metric_type}`)}
+                        className="rounded-2xl border border-[var(--border)] bg-[var(--page-bg)] p-3 text-left transition active:scale-[0.98]"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span
+                            className="flex h-7 w-7 items-center justify-center rounded-lg"
+                            style={{ backgroundColor: `${hex}1f`, color: hex }}
+                          >
+                            <Icon size={14} />
+                          </span>
+                          {m.measured_at && (
+                            <span className="text-[10px] font-semibold text-[var(--muted)]">{fmtTime(m.measured_at)}</span>
+                          )}
                         </div>
-                        <div className="mt-1 text-lg font-black text-[var(--text)]">
+                        <div className="mt-2 text-base font-black text-[var(--text)]">
                           {fmtMetric(m)}
                           {m.metric_type !== "bp" && m.unit && m.value != null ? (
-                            <span className="ml-1 text-xs font-semibold text-[var(--muted)]">{m.unit}</span>
+                            <span className="ml-1 text-[11px] font-semibold text-[var(--muted)]">{m.unit}</span>
                           ) : null}
                         </div>
-                        {m.measured_at && (
-                          <div className="mt-0.5 text-[10px] text-[var(--muted)]">{fmtTime(m.measured_at)}</div>
-                        )}
+                        <div className="text-[10px] font-semibold text-[var(--muted)]">{m.label || m.metric_type}</div>
                         {sparkPoints.length > 1 && (
                           <div className="mt-2">
-                            <Sparkline points={sparkPoints} color={hex} />
+                            <HealthSparkline points={sparkPoints} color={hex} />
                           </div>
                         )}
-                      </div>
+                      </button>
                     )
                   })}
                 </div>
@@ -570,33 +527,43 @@ export default function HealthDashboardPage() {
                   {isBm ? "Belum ada bacaan. Tambah bacaan pertama anda." : "No readings yet. Add your first reading."}
                 </p>
               ) : (
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {dash.metrics.map((m) => {
                     const meta = METRIC_META[m.metric_type] || { icon: Activity, color: "text-sky-500" }
                     const Icon = meta.icon
                     const hex = METRIC_HEX[m.metric_type] || "#3b82f6"
                     const sparkPoints = spark[m.metric_type] || []
                     return (
-                      <div key={m.metric_type} className="rounded-xl border border-[var(--border)] bg-[var(--page-bg)] p-3">
-                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--muted)]">
-                          <Icon size={13} className={meta.color} />
-                          {m.label || m.metric_type}
+                      <button
+                        key={m.metric_type}
+                        type="button"
+                        onClick={() => router.push(`/${sessionId}/health/readings?metric=${m.metric_type}`)}
+                        className="rounded-2xl border border-[var(--border)] bg-[var(--page-bg)] p-3.5 text-left transition hover:border-[var(--input-focus)]"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span
+                            className="flex h-8 w-8 items-center justify-center rounded-xl"
+                            style={{ backgroundColor: `${hex}1f`, color: hex }}
+                          >
+                            <Icon size={15} />
+                          </span>
+                          {m.measured_at && (
+                            <span className="text-[10px] font-semibold text-[var(--muted)]">{fmtTime(m.measured_at)}</span>
+                          )}
                         </div>
-                        <div className="mt-1 text-lg font-black text-[var(--text)]">
+                        <div className="mt-2.5 text-xl font-black text-[var(--text)]">
                           {fmtMetric(m)}
                           {m.metric_type !== "bp" && m.unit && m.value != null ? (
                             <span className="ml-1 text-xs font-semibold text-[var(--muted)]">{m.unit}</span>
                           ) : null}
                         </div>
-                        {m.measured_at && (
-                          <div className="mt-0.5 text-[10px] text-[var(--muted)]">{fmtTime(m.measured_at)}</div>
-                        )}
+                        <div className="text-[11px] font-semibold text-[var(--muted)]">{m.label || m.metric_type}</div>
                         {sparkPoints.length > 1 && (
                           <div className="mt-2">
-                            <Sparkline points={sparkPoints} color={hex} />
+                            <HealthSparkline points={sparkPoints} color={hex} />
                           </div>
                         )}
-                      </div>
+                      </button>
                     )
                   })}
                 </div>

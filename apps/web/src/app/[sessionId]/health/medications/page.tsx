@@ -275,8 +275,10 @@ export default function HealthMedicationsPage() {
           meds.map((med) => (
             <section key={med.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
               <div className="mb-2 flex items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
-                  <Pill size={18} className="shrink-0 text-[var(--accent2)]" />
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-500">
+                    <Pill size={15} />
+                  </span>
                   <h2 className="truncate text-base font-black text-[var(--text)]">{med.name}</h2>
                   {med.dosage ? (
                     <span className="shrink-0 text-xs font-semibold text-[var(--muted)]">{med.dosage}</span>
@@ -376,8 +378,10 @@ export default function HealthMedicationsPage() {
             meds.map((med) => (
               <section key={med.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Pill size={18} className="shrink-0 text-[var(--accent2)]" />
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-500">
+                      <Pill size={15} />
+                    </span>
                     <h2 className="truncate text-base font-black text-[var(--text)]">{med.name}</h2>
                     {med.dosage ? (
                       <span className="shrink-0 text-xs font-semibold text-[var(--muted)]">{med.dosage}</span>
