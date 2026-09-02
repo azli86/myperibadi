@@ -16,7 +16,7 @@ import {
   SkipForward,
   Stethoscope,
 } from "lucide-react"
-import { BmiGauge, BmiGaugeLegend, HealthSparkline, METRIC_HEX } from "@/components/health/HealthCharts"
+import { BmiGauge, HealthSparkline, METRIC_HEX } from "@/components/health/HealthCharts"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
@@ -285,7 +285,6 @@ export default function HealthDashboardPage() {
                     <div className="mx-auto -mt-1 max-w-[300px]">
                       <BmiGauge bmi={dash.bmi} category={dash.bmi_category} isBm={isBm} />
                     </div>
-                    <BmiGaugeLegend isBm={isBm} />
                     <div className="flex flex-wrap items-center justify-center gap-1.5">
                       {dash.weight_kg != null && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2.5 py-1 text-[11px] font-bold text-[var(--text)]">
@@ -490,7 +489,6 @@ export default function HealthDashboardPage() {
                     </div>
                   </div>
                   <div className="space-y-3">
-                    <BmiGaugeLegend isBm={isBm} />
                     <div className="flex flex-wrap gap-2">
                       {dash.weight_kg != null && (
                         <div className="rounded-xl border border-[var(--border)] bg-[var(--page-bg)] px-3.5 py-2">
