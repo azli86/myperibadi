@@ -323,13 +323,21 @@ export function BmiGauge({
     )
   })
 
-  // White arrow: starts in the hollow (just inside the band's inner edge),
-  // tip extends halfway into the band. CSS-rotated to the BMI angle.
+  // Arrow: starts in the hollow (just inside the band's inner edge), tip
+  // extends halfway into the band. Outer part uses var(--text) so it adapts
+  // to dark/light page background; the part inside the colored band is
+  // overlaid white for contrast on every zone color.
   const theta = angleFor(Math.max(MIN, Math.min(MAX, bmi)))
   const rot = 90 - theta
   const tipR = R // halfway into the band
   const baseR2 = R - BW / 2 - 6 // just inside the band's inner edge
   const triPts = `${cx},${cy - tipR} ${cx - 6},${cy - baseR2} ${cx + 6},${cy - baseR2}`
+  // Sub-triangle covering only the band part (inner edge -> tip)
+  const innerEdgeR = R - BW / 2
+  const spanTotal = tipR - baseR2 // 26
+  const spanBand = tipR - innerEdgeR // 20
+  const halfWBand = (6 * spanBand) / spanTotal
+  const triBandPts = `${cx},${cy - tipR} ${cx - halfWBand.toFixed(2)},${cy - innerEdgeR} ${cx + halfWBand.toFixed(2)},${cy - innerEdgeR}`
 
   const catLabel = (isBm ? category?.label_bm : category?.label_en) || ZONES[activeIdx].label
 
@@ -349,7 +357,8 @@ export function BmiGauge({
             transition: "transform 900ms cubic-bezier(0.34, 1.3, 0.64, 1)",
           }}
         >
-          <polygon points={triPts} fill="#ffffff" />
+          <polygon points={triPts} fill="var(--text)" />
+          <polygon points={triBandPts} fill="#ffffff" />
         </g>
 
         {/* Center readout in the empty middle area */}
