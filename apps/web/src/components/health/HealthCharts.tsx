@@ -349,7 +349,7 @@ export function BmiGauge({
             transition: "transform 900ms cubic-bezier(0.34, 1.3, 0.64, 1)",
           }}
         >
-          <polygon points={triPts} fill="#ffffff" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.35))" }} />
+          <polygon points={triPts} fill="#ffffff" />
         </g>
 
         {/* Center readout in the empty middle area */}
