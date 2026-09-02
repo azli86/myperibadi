@@ -60,6 +60,7 @@ type ProfileData = {
   avatar_url: string | null
   cycle_start_day: number
   cycle_mode: "day" | "category"
+  auth_provider?: string
   has_password?: boolean
 }
 
@@ -88,6 +89,10 @@ export default function SettingsPage() {
 
   // Profile & System States
   const [profile, setProfile] = useState<ProfileData | null>(null)
+  // Google sign-in accounts don't need a typed password for reset/delete -
+  // being logged in via Google is the identity proof.
+  const isGoogleSignIn = profile?.auth_provider === "google"
+  const needsDangerPassword = !!(profile?.has_password && !isGoogleSignIn)
   const [name, setName] = useState("")
   const [botPersonality, setBotPersonality] = useState("")
   const [stats, setStats] = useState({ balance: 0 })
@@ -172,6 +177,7 @@ export default function SettingsPage() {
             avatar_url: data.avatar_url || null,
             cycle_start_day: Number(data.cycle_start_day) || 1,
             cycle_mode: data.cycle_mode === "category" ? "category" : "day",
+            auth_provider: data.auth_provider || "email",
             has_password: data.has_password,
           }
           setProfile(norm)
@@ -491,7 +497,9 @@ export default function SettingsPage() {
           tr("Semua data transaksi dan rekod telah dikosongkan.", "All transaction data has been cleared."),
           "success"
         )
-        router.refresh()
+        // Reset flips onboarding_done to false; route to the dashboard where
+        // onboarding auto-shows, instead of staying on this page.
+        setTimeout(() => router.push(`/${sessionId}`), 600)
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : tr("Tindakan gagal.", "Action failed.")
@@ -2038,18 +2046,24 @@ export default function SettingsPage() {
 
               {/* Confirmation Inputs Form */}
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-3">
-                <div>
-                  <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                    {tr("Kata Laluan Semasa", "Current Password")}
-                  </label>
-                  <input
-                    type="password"
-                    value={dangerPassword}
-                    onChange={(e) => setDangerPassword(e.target.value)}
-                    placeholder={tr("Masukkan kata laluan", "Enter password")}
-                    className="mt-1 w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-2 text-xs text-[var(--text)] outline-none"
-                  />
-                </div>
+                {needsDangerPassword ? (
+                  <div>
+                    <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                      {tr("Kata Laluan Semasa", "Current Password")}
+                    </label>
+                    <input
+                      type="password"
+                      value={dangerPassword}
+                      onChange={(e) => setDangerPassword(e.target.value)}
+                      placeholder={tr("Masukkan kata laluan", "Enter password")}
+                      className="mt-1 w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-2 text-xs text-[var(--text)] outline-none"
+                    />
+                  </div>
+                ) : (
+                  <p className="rounded-xl bg-[var(--surface-tint)] px-3 py-2 text-[11px] font-semibold text-[var(--muted)]">
+                    {tr("Anda log masuk dengan Google — log masuk semasa sudah cukup pengesahan. Teruskan sahaja.", "You signed in with Google — your current sign-in is already verified. Just continue.")}
+                  </p>
+                )}
 
                 <div>
                   <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
@@ -2085,7 +2099,7 @@ export default function SettingsPage() {
                 type="button"
                 disabled={
                   dangerBusy ||
-                  !dangerPassword ||
+                  (needsDangerPassword && !dangerPassword) ||
                   confirmText.trim().toUpperCase() !== activeDangerWord
                 }
                 onClick={executeDangerAction}
