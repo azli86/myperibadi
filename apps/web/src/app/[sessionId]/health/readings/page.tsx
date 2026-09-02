@@ -27,7 +27,6 @@ import { useSearchParams } from "next/navigation"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { MetricChart, TrendStats, METRIC_HEX } from "@/components/health/HealthCharts"
-import { BodyFigure } from "@/components/health/BodyFigure"
 
 type Reading = {
   id: number
@@ -314,11 +313,6 @@ export default function HealthReadingsPage() {
           )}
         </section>
 
-        {/* Body figure */}
-        <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm">
-          <BodyFigure metric={metric} isBm={isBm} />
-        </section>
-
         {/* Reading list */}
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
           <h2 className="mb-3 text-base font-black text-[var(--text)]">{isBm ? "Senarai Bacaan" : "Readings"}</h2>
@@ -407,8 +401,7 @@ export default function HealthReadingsPage() {
             ))}
           </div>
 
-          <div className="grid grid-cols-[1fr_minmax(220px,280px)] items-start gap-4">
-            <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
+          <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
@@ -462,12 +455,6 @@ export default function HealthReadingsPage() {
                 </div>
               )}
             </section>
-
-            {/* Body figure card (right) */}
-            <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm">
-              <BodyFigure metric={metric} isBm={isBm} />
-            </section>
-          </div>
 
           <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
             <h2 className="mb-3 text-base font-black text-[var(--text)]">{isBm ? "Senarai Bacaan" : "Readings"}</h2>
