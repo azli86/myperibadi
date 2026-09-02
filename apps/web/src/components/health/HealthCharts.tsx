@@ -336,8 +336,8 @@ export function BmiGauge({
   const innerEdgeR = R - BW / 2
   const spanTotal = tipR - baseR2 // 26
   const spanBand = tipR - innerEdgeR // 20
-  const halfWBand = (6 * spanBand) / spanTotal
-  const triBandPts = `${cx},${cy - tipR} ${cx - halfWBand.toFixed(2)},${cy - innerEdgeR} ${cx + halfWBand.toFixed(2)},${cy - innerEdgeR}`
+  const halfW = (6 * spanBand) / spanTotal
+  const triBandPts = `${cx},${cy - tipR} ${(cx - halfW).toFixed(2)},${cy - innerEdgeR} ${(cx + halfW).toFixed(2)},${cy - innerEdgeR}`
 
   const catLabel = (isBm ? category?.label_bm : category?.label_en) || ZONES[activeIdx].label
 
