@@ -273,13 +273,8 @@ export default function HealthDashboardPage() {
           </div>
         ) : (
           <>
-            {/* Mobile Hero Card (Monochrome) */}
-            <section className="relative overflow-hidden rounded-[1.85rem] border border-[var(--border)] bg-[var(--card)] p-4 text-[var(--text)] shadow-sm">
-              <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-emerald-500/10 blur-3xl" />
-              <div className="pointer-events-none absolute -bottom-10 left-6 h-36 w-36 rounded-full bg-sky-500/10 blur-3xl" />
-              <div className="relative z-10 space-y-4">
-            {/* Mobile Hero Card (Apple-Health style) */}
-            <section className="relative overflow-hidden rounded-[1.85rem] border border-[var(--border)] bg-[var(--card)] p-4 text-[var(--text)] shadow-sm">
+            {/* Mobile hero — flat / cardless */}
+            <section className="relative">
               <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-emerald-500/10 blur-3xl" />
               <div className="pointer-events-none absolute -bottom-10 left-6 h-36 w-36 rounded-full bg-sky-500/10 blur-3xl" />
               <div className="relative z-10 space-y-4">
@@ -290,7 +285,7 @@ export default function HealthDashboardPage() {
                   <>
                     {/* Speedometer gauge */}
                     <div className="mx-auto -mt-1 max-w-[300px]">
-                      <BmiGauge bmi={dash.bmi} category={dash.bmi_category} />
+                      <BmiGauge bmi={dash.bmi} category={dash.bmi_category} isBm={isBm} />
                     </div>
                     <BmiGaugeLegend isBm={isBm} />
                     <div className="flex flex-wrap items-center justify-center gap-1.5">
@@ -339,7 +334,7 @@ export default function HealthDashboardPage() {
                       key={m.href}
                       type="button"
                       onClick={() => router.push(m.href)}
-                      className="group flex flex-col items-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-3 transition active:scale-[0.97]"
+                      className="group flex flex-col items-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-2 py-3 transition active:scale-[0.97]"
                     >
                       <span
                         className="flex h-8 w-8 items-center justify-center rounded-xl"
@@ -353,11 +348,9 @@ export default function HealthDashboardPage() {
                 </div>
               </div>
             </section>
-              </div>
-            </section>
 
-            {/* Monitor Kesihatan */}
-            <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+            {/* Monitor Kesihatan — flat */}
+            <section>
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="flex items-center gap-2 text-base font-black text-[var(--text)]">
                   <Stethoscope size={18} className="text-[var(--accent2)]" />
@@ -380,7 +373,7 @@ export default function HealthDashboardPage() {
                         key={m.metric_type}
                         type="button"
                         onClick={() => router.push(`/${sessionId}/health/readings?metric=${m.metric_type}`)}
-                        className="rounded-2xl border border-[var(--border)] bg-[var(--page-bg)] p-3 text-left transition active:scale-[0.98]"
+                        className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 text-left transition active:scale-[0.98]"
                       >
                         <div className="flex items-center justify-between">
                           <span
@@ -412,8 +405,8 @@ export default function HealthDashboardPage() {
               )}
             </section>
 
-            {/* Ubat Hari Ini */}
-            <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+            {/* Ubat Hari Ini — flat */}
+            <section>
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="flex items-center gap-2 text-base font-black text-[var(--text)]">
                   <Pill size={18} className="text-[var(--accent2)]" />
@@ -436,7 +429,7 @@ export default function HealthDashboardPage() {
                   {today.map((item) => (
                     <li
                       key={`${item.medication_id}-${item.schedule_id}`}
-                      className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--page-bg)] p-3"
+                      className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3"
                     >
                       <button
                         type="button"
@@ -497,7 +490,7 @@ export default function HealthDashboardPage() {
                       {isBm ? "Indeks Jisim Badan" : "Body Mass Index"}
                     </p>
                     <div className="mx-auto mt-1 max-w-[320px]">
-                      <BmiGauge bmi={dash.bmi} category={dash.bmi_category} />
+                      <BmiGauge bmi={dash.bmi} category={dash.bmi_category} isBm={isBm} />
                     </div>
                   </div>
                   <div className="space-y-3">
