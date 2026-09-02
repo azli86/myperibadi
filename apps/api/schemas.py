@@ -51,6 +51,7 @@ class UserResponse(UserBase):
     cycle_start_day: int = 1
     cycle_mode: str = "day"
     onboarding_done: bool = True
+    auth_provider: str = "email"
     has_password: bool = False
     created_at: datetime
     email_verified: Optional[bool] = None

@@ -272,8 +272,11 @@ async def delete_my_account_route(
     account_cleanup: Callable[..., Awaitable[None]],
     clear_user_refresh_token: Callable[..., Awaitable[None]],
 ) -> dict[str, str]:
-    # Google sign-in accounts have no password_hash — being logged in is enough.
-    if current_user.password_hash:
+    # Google sign-in accounts don't need a password to delete - being logged in
+    # (the verified Google session) is the proof of identity. Some Google users
+    # also carry a leftover password_hash from an earlier email signup, so gate
+    # on auth_provider rather than password_hash alone.
+    if current_user.auth_provider != "google" and current_user.password_hash:
         if not auth_utils.verify_password(payload.current_password, current_user.password_hash):
             raise HTTPException(status_code=400, detail="Current password is incorrect")
 
@@ -295,8 +298,11 @@ async def reset_my_account_route(
     current_user: models.User,
     account_cleanup: Callable[..., Awaitable[None]],
 ) -> dict[str, str]:
-    # Google sign-in accounts have no password_hash — being logged in is enough.
-    if current_user.password_hash:
+    # Google sign-in accounts don't need a password to reset - being logged in
+    # (the verified Google session) is the proof of identity. Some Google users
+    # also carry a leftover password_hash from an earlier email signup, so gate
+    # on auth_provider rather than password_hash alone.
+    if current_user.auth_provider != "google" and current_user.password_hash:
         if not auth_utils.verify_password(payload.current_password, current_user.password_hash):
             raise HTTPException(status_code=400, detail="Current password is incorrect")
 

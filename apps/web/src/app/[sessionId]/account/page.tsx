@@ -42,6 +42,7 @@ type Profile = {
   name: string
   email: string
   bot_personality: string
+  auth_provider?: string
   has_password?: boolean
   avatar_url?: string | null
 }
@@ -59,6 +60,11 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter()
 
   const [profile, setProfile] = useState<Profile | null>(null)
+  // Google sign-in accounts authenticate via the Google session - a typed
+  // password is never required for reset/delete, even if a leftover
+  // password_hash exists from an earlier email signup.
+  const isGoogleSignIn = profile?.auth_provider === "google"
+  const needsDangerPassword = !!(profile?.has_password && !isGoogleSignIn)
   const [name, setName] = useState("")
   const [botPersonality, setBotPersonality] = useState("")
   const [personalityOpen, setPersonalityOpen] = useState(false)
@@ -122,6 +128,8 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
           name: data.name || "",
           email: data.email || "",
           bot_personality: data.bot_personality || "",
+          auth_provider: data.auth_provider || "email",
+          has_password: !!data.has_password,
           avatar_url: data.avatar_url || null,
         }
         setProfile(normalized)
@@ -180,6 +188,8 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
         name: updated.name || "",
         email: updated.email || "",
         bot_personality: updated.bot_personality || "",
+        auth_provider: updated.auth_provider || "email",
+        has_password: !!updated.has_password,
         avatar_url: updated.avatar_url || null,
       }
       setProfile(normalized)
@@ -326,7 +336,7 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
   async function handleDangerAction(e: React.FormEvent) {
     e.preventDefault()
     if (!dangerAction) return
-    if (profile?.has_password && !dangerPassword) return
+    if (needsDangerPassword && !dangerPassword) return
     setDangerBusy(true)
     setDangerError("")
     try {
@@ -977,7 +987,7 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
                     </p>
 
                     <div className="space-y-3">
-                      {profile?.has_password ? (
+                      {needsDangerPassword ? (
                         <input
                           type="password"
                           value={dangerPassword}
@@ -1017,7 +1027,7 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
                         type="submit"
                         disabled={
                           dangerBusy ||
-                          (profile?.has_password && !dangerPassword) ||
+                          (needsDangerPassword && !dangerPassword) ||
                           confirmText.trim().toUpperCase() !== activeConfirmWord
                         }
                         className={cn(
@@ -1221,7 +1231,7 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
                           ? tr("Taip PADAM untuk padam akaun secara kekal.", "Type DELETE to delete account.")
                           : tr("Taip RESET untuk padam semua data.", "Type RESET to reset all data.")}
                       </p>
-                      {profile?.has_password ? (
+                      {needsDangerPassword ? (
                         <input
                           type="password"
                           value={dangerPassword}
@@ -1246,7 +1256,7 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
                         type="submit"
                         disabled={
                           dangerBusy ||
-                          (profile?.has_password && !dangerPassword) ||
+                          (needsDangerPassword && !dangerPassword) ||
                           confirmText.trim().toUpperCase() !== activeConfirmWord
                         }
                         className={cn(
