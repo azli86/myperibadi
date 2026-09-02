@@ -275,8 +275,6 @@ export default function HealthDashboardPage() {
           <>
             {/* Mobile hero — flat / cardless */}
             <section className="relative">
-              <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full bg-emerald-500/10 blur-3xl" />
-              <div className="pointer-events-none absolute -bottom-10 left-6 h-36 w-36 rounded-full bg-sky-500/10 blur-3xl" />
               <div className="relative z-10 space-y-4">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
                   {isBm ? "Papan Kesihatan" : "Health Dashboard"}
@@ -481,8 +479,6 @@ export default function HealthDashboardPage() {
           <div className="mx-auto w-full max-w-[1100px] space-y-5 p-4">
             {/* BMI speedometer card */}
             <section className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
-              <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-emerald-500/8 blur-3xl" />
-              <div className="pointer-events-none absolute -bottom-16 -left-10 h-44 w-44 rounded-full bg-sky-500/8 blur-3xl" />
               {dash?.bmi != null ? (
                 <div className="relative z-10 grid grid-cols-[minmax(0,340px)_1fr] items-center gap-6">
                   <div>
