@@ -402,7 +402,9 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
           tr("Semua data akaun telah dikosongkan. Anda akan mula semula dari onboarding.", "All account data has been cleared. You will start fresh from onboarding."),
           "success"
         )
-        router.refresh()
+        // Reset flips onboarding_done to false; route to the dashboard where
+        // onboarding auto-shows, instead of staying on this page.
+        setTimeout(() => router.push(`/${sessionId}`), 600)
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : ""
