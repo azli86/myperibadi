@@ -27,6 +27,7 @@ import { useSearchParams } from "next/navigation"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { MetricChart, TrendStats, METRIC_HEX } from "@/components/health/HealthCharts"
+import { BodyFigure } from "@/components/health/BodyFigure"
 
 type Reading = {
   id: number
@@ -313,6 +314,11 @@ export default function HealthReadingsPage() {
           )}
         </section>
 
+        {/* Body figure */}
+        <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm">
+          <BodyFigure metric={metric} isBm={isBm} />
+        </section>
+
         {/* Reading list */}
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
           <h2 className="mb-3 text-base font-black text-[var(--text)]">{isBm ? "Senarai Bacaan" : "Readings"}</h2>
@@ -401,60 +407,67 @@ export default function HealthReadingsPage() {
             ))}
           </div>
 
-          <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                  {isBm ? "Trend" : "Trend"}
-                </p>
-                <h2 className="text-lg font-black tracking-tight text-[var(--text)]">
-                  {isBm ? meta.labelBM : meta.labelEN}
-                  {meta.unit ? <span className="ml-1 text-xs font-semibold text-[var(--muted)]">({meta.unit})</span> : null}
-                </h2>
+          <div className="grid grid-cols-[1fr_minmax(220px,280px)] items-start gap-4">
+            <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    {isBm ? "Trend" : "Trend"}
+                  </p>
+                  <h2 className="text-lg font-black tracking-tight text-[var(--text)]">
+                    {isBm ? meta.labelBM : meta.labelEN}
+                    {meta.unit ? <span className="ml-1 text-xs font-semibold text-[var(--muted)]">({meta.unit})</span> : null}
+                  </h2>
+                </div>
+                <div className="flex gap-1">
+                  {RANGES.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setRange(r)}
+                      className={cn(
+                        "rounded-lg px-3 py-1 text-xs font-bold transition",
+                        range === r ? "bg-[var(--text)] text-[var(--bg)]" : "bg-[var(--card)] text-[var(--muted)]",
+                      )}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex gap-1">
-                {RANGES.map((r) => (
+              {showDataSkeleton ? (
+                <div className="h-44 animate-pulse rounded-xl bg-[var(--page-bg)]" />
+              ) : chartPoints.length ? (
+                <>
+                  <MetricChart metricKey={metric} points={chartPoints} className="h-52" />
+                  <TrendStats
+                    values={chartPoints.map((p) => p.value ?? 0).filter((v) => v != null)}
+                    unit={metric === "bp" ? "" : meta.unit}
+                    isBm={isBm}
+                  />
+                </>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-10 text-center">
+                  <LineChart size={26} className="mx-auto text-[var(--muted)]" />
+                  <p className="mt-2 text-sm font-semibold text-[var(--text)]">
+                    {isBm ? "Tiada bacaan untuk julat ini" : "No readings for this range"}
+                  </p>
                   <button
-                    key={r}
-                    onClick={() => setRange(r)}
-                    className={cn(
-                      "rounded-lg px-3 py-1 text-xs font-bold transition",
-                      range === r ? "bg-[var(--text)] text-[var(--bg)]" : "bg-[var(--card)] text-[var(--muted)]",
-                    )}
+                    type="button"
+                    onClick={openAdd}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-bold text-[var(--btn-primary-text)] transition hover:opacity-90"
                   >
-                    {r}
+                    <Plus size={14} />
+                    {isBm ? "Tambah Bacaan" : "Add Reading"}
                   </button>
-                ))}
-              </div>
-            </div>
-            {showDataSkeleton ? (
-              <div className="h-44 animate-pulse rounded-xl bg-[var(--page-bg)]" />
-            ) : chartPoints.length ? (
-              <>
-                <MetricChart metricKey={metric} points={chartPoints} className="h-52" />
-                <TrendStats
-                  values={chartPoints.map((p) => p.value ?? 0).filter((v) => v != null)}
-                  unit={metric === "bp" ? "" : meta.unit}
-                  isBm={isBm}
-                />
-              </>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-10 text-center">
-                <LineChart size={26} className="mx-auto text-[var(--muted)]" />
-                <p className="mt-2 text-sm font-semibold text-[var(--text)]">
-                  {isBm ? "Tiada bacaan untuk julat ini" : "No readings for this range"}
-                </p>
-                <button
-                  type="button"
-                  onClick={openAdd}
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-bold text-[var(--btn-primary-text)] transition hover:opacity-90"
-                >
-                  <Plus size={14} />
-                  {isBm ? "Tambah Bacaan" : "Add Reading"}
-                </button>
-              </div>
-            )}
-          </section>
+                </div>
+              )}
+            </section>
+
+            {/* Body figure card (right) */}
+            <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm">
+              <BodyFigure metric={metric} isBm={isBm} />
+            </section>
+          </div>
 
           <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
             <h2 className="mb-3 text-base font-black text-[var(--text)]">{isBm ? "Senarai Bacaan" : "Readings"}</h2>
