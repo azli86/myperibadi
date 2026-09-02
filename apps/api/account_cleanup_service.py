@@ -25,6 +25,10 @@ _EARLY_USER_TABLES = [
     "warranty_attachments",     # child of warranty_devices
     "warranty_devices",         # references households
     "removed_business_inbox_messages",  # child of threads
+    "biz_inbox_messages",
+    "biz_inbox_threads",
+    "biz_notifications",
+    "biz_themes",
     "business_order_items",     # child of orders + products
     "removed_business_notifications",   # child of orders
     "business_orders",          # references products (SET NULL) + riders (nullable)
@@ -259,6 +263,7 @@ async def hard_delete_account(db: AsyncSession, user: models.User) -> None:
     await _delete_owned_households(db, user.id)           # wallets/categories/households
     # Final safety: null out references to this user where FK allows NULL.
     await db.execute(text("UPDATE ip_bans SET created_by_user_id = NULL WHERE created_by_user_id = :uid"), {"uid": user.id})
+    await db.execute(text("UPDATE business_audit_logs SET actor_user_id = NULL WHERE actor_user_id = :uid"), {"uid": user.id})
     # Wallets may be owned directly by the user outside owned households.
     await db.execute(text("DELETE FROM wallets WHERE owner_user_id = :uid"), {"uid": user.id})
     await db.execute(text("DELETE FROM user_auth_sessions WHERE user_id = :uid"), {"uid": user.id})

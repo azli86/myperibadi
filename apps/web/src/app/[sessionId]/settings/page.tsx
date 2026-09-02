@@ -2099,7 +2099,6 @@ export default function SettingsPage() {
                 type="button"
                 disabled={
                   dangerBusy ||
-                  (needsDangerPassword && !dangerPassword) ||
                   confirmText.trim().toUpperCase() !== activeDangerWord
                 }
                 onClick={executeDangerAction}
