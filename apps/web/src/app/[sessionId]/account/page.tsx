@@ -976,17 +976,20 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
                         : tr("Kosongkan semua data perbelanjaan dan rekod. Taip RESET untuk teruskan.", "Wipes all expense records and data. Type RESET to proceed.")}
                     </p>
 
-                    <div>
-                      <input
-                        type="password"
-                        value={dangerPassword}
-                        onChange={(e) => setDangerPassword(e.target.value)}
-                        placeholder={tr("Kata laluan semasa", "Current password")}
-                        className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-2 text-xs text-[var(--text)] outline-none focus:border-[var(--input-focus)]"
-                      />
-                    </div>
-
-                    <div>
+                    <div className="space-y-3">
+                      {profile?.has_password ? (
+                        <input
+                          type="password"
+                          value={dangerPassword}
+                          onChange={(e) => setDangerPassword(e.target.value)}
+                          placeholder={tr("Kata laluan semasa", "Current password")}
+                          className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-2 text-xs text-[var(--text)] outline-none focus:border-[var(--input-focus)]"
+                        />
+                      ) : (
+                        <p className="rounded-xl bg-[var(--surface-tint)] px-3 py-2 text-[11px] font-semibold text-[var(--muted)]">
+                          {tr("Anda log masuk dengan Google — log masuk semasa sudah cukup pengesahan. Teruskan sahaja.", "You signed in with Google — your current sign-in is already verified. Just continue.")}
+                        </p>
+                      )}
                       <input
                         type="text"
                         value={confirmText}
@@ -1218,13 +1221,19 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
                           ? tr("Taip PADAM untuk padam akaun secara kekal.", "Type DELETE to delete account.")
                           : tr("Taip RESET untuk padam semua data.", "Type RESET to reset all data.")}
                       </p>
-                      <input
-                        type="password"
-                        value={dangerPassword}
-                        onChange={(e) => setDangerPassword(e.target.value)}
-                        placeholder={tr("Kata laluan semasa", "Password")}
-                        className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-2 text-xs text-[var(--text)] outline-none"
-                      />
+                      {profile?.has_password ? (
+                        <input
+                          type="password"
+                          value={dangerPassword}
+                          onChange={(e) => setDangerPassword(e.target.value)}
+                          placeholder={tr("Kata laluan semasa", "Password")}
+                          className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3 py-2 text-xs text-[var(--text)] outline-none"
+                        />
+                      ) : (
+                        <p className="rounded-xl bg-[var(--surface-tint)] px-3 py-2 text-[0.68rem] font-semibold text-[var(--muted)]">
+                          {tr("Log masuk Google anda sudah cukup — teruskan sahaja.", "Your Google sign-in is already enough — just continue.")}
+                        </p>
+                      )}
                       <input
                         type="text"
                         value={confirmText}
