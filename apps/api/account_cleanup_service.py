@@ -50,8 +50,10 @@ _EARLY_USER_TABLES = [
 # Tables with a direct user_id, deleted after children.
 _USER_DIRECT_TABLES = [
     "subscriptions",
-    "loans",
-    "debtors",
+    "loan_payments",            # references loans + transactions
+    "loans",                    # references categories (kept)
+    "debts",                    # references debtors + transactions
+    "debtors",                  # references only users - delete AFTER debts
     "commitments",
     "user_location_contexts",
     "whatsapp_links",
@@ -65,10 +67,72 @@ _USER_DIRECT_TABLES = [
     "push_devices",
     "user_api_keys",
     "user_settings",
-    "loan_payments",            # references loans + transactions
-    "debts",                    # references transactions + debtors
     "transactions",
     "access_logs",
+]
+
+# User-owned tables added after earlier modules shipped (tax, health,
+# medications, split bills, BNPL, events, inventory, support). Many reference
+# transactions/wallets, so they are deleted up-front, BEFORE those parents are
+# removed. Order is child-first per the live FK graph.
+_EXTRA_USER_TABLES = [
+    "tax_transaction_links",   # -> transactions (CASCADE)
+    "tax_reliefs",             # -> tax_rules (kept)
+    "tax_rebates",             # -> tax_documents + transactions
+    "tax_income",              # -> tax_employers + tax_profiles
+    "tax_ea_forms",            # -> tax_documents + tax_employers
+    "tax_employers",
+    "tax_documents",
+    "tax_profiles",
+    "tax_calculations",
+    "support_tickets",
+    "split_bill_payments",     # -> split_bills + transactions + wallets
+    "split_bills",             # -> transactions
+    "inventory_movements",     # -> inventory_items (CASCADE)
+    "inventory_items",
+    "inventory_conversation_states",
+    "inventory_containers",
+    "inventory_locations",
+    "health_readings",
+    "events",                  # -> wallets (kept)
+    "bnpl_payments",           # -> bnpl + transactions + wallets
+    "bnpl",                    # -> categories (kept)
+]
+
+# Children without a user_id column that are CASCADE-cleared off the rows
+# above. They are deleted with subqueries BEFORE their parents so no orphaned
+# rows violate the FKs (the live schema resolves these as NO ACTION). The
+# medication chain (dose_logs -> schedules -> medications) is fully spelled out
+# here because dose_logs must go first.
+_NO_UID_SUBQUERIES = [
+    # medication_dose_logs has user_id - delete before schedules it references.
+    ("medication_dose_logs", "DELETE FROM medication_dose_logs WHERE user_id = :uid"),
+    # medication_schedules -> medications (no user_id)
+    (
+        "medication_schedules",
+        "DELETE FROM medication_schedules WHERE medication_id IN "
+        "(SELECT id FROM medications WHERE user_id = :uid)",
+    ),
+    # medications has user_id - last of the medication chain.
+    ("medications", "DELETE FROM medications WHERE user_id = :uid"),
+    # tax_dependants -> tax_profiles
+    (
+        "tax_dependants",
+        "DELETE FROM tax_dependants WHERE tax_profile_id IN "
+        "(SELECT id FROM tax_profiles WHERE user_id = :uid)",
+    ),
+    # tax_relief_items -> tax_reliefs / tax_documents
+    (
+        "tax_relief_items",
+        "DELETE FROM tax_relief_items WHERE tax_relief_id IN "
+        "(SELECT id FROM tax_reliefs WHERE user_id = :uid)",
+    ),
+    # support_ticket_replies -> support_tickets
+    (
+        "support_ticket_replies",
+        "DELETE FROM support_ticket_replies WHERE ticket_id IN "
+        "(SELECT id FROM support_tickets WHERE user_id = :uid)",
+    ),
 ]
 
 # Tables that use a different user key column.
@@ -126,6 +190,13 @@ async def _delete_user_rows(db: AsyncSession, user_id: str, *, include_user_sett
     )
 
     for table in _EARLY_USER_TABLES:
+        await db.execute(text(f'DELETE FROM "{table}" WHERE user_id = :uid'), {"uid": user_id})
+    # Children that have no user_id column - clear via parent subquery first.
+    for _name, sql in _NO_UID_SUBQUERIES:
+        await db.execute(text(sql), {"uid": user_id})
+    # Newer modules' tables reference transactions/wallets, so delete them here
+    # before those parents are removed in _USER_DIRECT_TABLES below.
+    for table in _EXTRA_USER_TABLES:
         await db.execute(text(f'DELETE FROM "{table}" WHERE user_id = :uid'), {"uid": user_id})
     for table in _USER_DIRECT_TABLES:
         if not include_user_settings and table in {"user_settings", "access_logs"}:
