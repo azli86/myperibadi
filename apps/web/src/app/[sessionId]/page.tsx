@@ -619,6 +619,7 @@ export default function Dashboard() {
     })
   }, [])
   useEffect(() => {
+    if (!mounted) return
     const fetchMonthBudgets = async () => {
       try {
         const token = getAccessToken()
@@ -632,7 +633,7 @@ export default function Dashboard() {
       }
     }
     void fetchMonthBudgets()
-  }, [selectedDashboardMonthKey])
+  }, [mounted, selectedDashboardMonthKey])
 
 
   useEffect(() => {

@@ -314,7 +314,7 @@ export function BmiGauge({
     return (
       <g key={`lb${i}`}>
         <path id={`bmizl${uid}${i}`} d={arcPath(R, a1, a2)} fill="none" stroke="none" />
-        <text fontSize={fs} fontWeight={800} fill={z.dark ? "#3a3000" : "#ffffff"} letterSpacing={0.4}>
+        <text fontSize={fs} fontWeight={800} fill="#ffffff" letterSpacing={0.4}>
           <textPath href={`#bmizl${uid}${i}`} startOffset="50%" textAnchor="middle" dominantBaseline="central">
             {z.label}
           </textPath>

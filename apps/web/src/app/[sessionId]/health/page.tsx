@@ -276,9 +276,6 @@ export default function HealthDashboardPage() {
             {/* Mobile hero — flat / cardless */}
             <section className="relative">
               <div className="relative z-10 space-y-4">
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                  {isBm ? "Papan Kesihatan" : "Health Dashboard"}
-                </p>
                 {dash?.bmi != null ? (
                   <>
                     {/* Speedometer gauge */}
@@ -477,51 +474,41 @@ export default function HealthDashboardPage() {
         ) : (
           <div className="mx-auto w-full max-w-[1100px] space-y-5 p-4">
             {/* BMI speedometer card */}
-            <section className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
+            <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
               {dash?.bmi != null ? (
-                <div className="relative z-10 grid grid-cols-[minmax(0,340px)_1fr] items-center gap-6">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                <div className="grid min-h-[280px] grid-cols-[minmax(360px,1.15fr)_minmax(320px,0.85fr)]">
+                  <div className="flex flex-col justify-center border-r border-[var(--border)] px-8 py-6">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
                       {isBm ? "Indeks Jisim Badan" : "Body Mass Index"}
                     </p>
-                    <div className="mx-auto mt-1 max-w-[320px]">
+                    <div className="mx-auto w-full max-w-[350px]">
                       <BmiGauge bmi={dash.bmi} category={dash.bmi_category} isBm={isBm} />
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap gap-2">
-                      {dash.weight_kg != null && (
-                        <div className="rounded-xl border border-[var(--border)] bg-[var(--page-bg)] px-3.5 py-2">
-                          <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
-                            {isBm ? "Berat" : "Weight"}
-                          </div>
-                          <div className="text-lg font-black text-[var(--text)]">
-                            {dash.weight_kg} <span className="text-xs font-bold text-[var(--muted)]">kg</span>
+
+                  <div className="flex flex-col justify-center px-7 py-6">
+                    <div className="mb-4">
+                      <p className="text-lg font-black text-[var(--text)]">
+                        {isBm ? "Ringkasan Kesihatan" : "Health Summary"}
+                      </p>
+                      <p className="mt-1 text-xs text-[var(--muted)]">
+                        {isBm ? "Maklumat terkini daripada rekod anda" : "Latest information from your records"}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { label: isBm ? "Berat" : "Weight", value: dash.weight_kg ?? "—", unit: dash.weight_kg != null ? "kg" : "" },
+                        { label: isBm ? "Tinggi" : "Height", value: dash.height_cm ?? "—", unit: dash.height_cm != null ? "cm" : "" },
+                        { label: isBm ? "Bacaan" : "Readings", value: dash.metrics?.length ?? 0, unit: "" },
+                        { label: isBm ? "Ubat Hari Ini" : "Meds Today", value: today.length, unit: "" },
+                      ].map((item) => (
+                        <div key={item.label} className="rounded-2xl border border-[var(--border)] bg-[var(--page-bg)] p-4">
+                          <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">{item.label}</div>
+                          <div className="mt-1 text-2xl font-black text-[var(--text)]">
+                            {item.value}{item.unit && <span className="ml-1 text-xs font-bold text-[var(--muted)]">{item.unit}</span>}
                           </div>
                         </div>
-                      )}
-                      {dash.height_cm != null && (
-                        <div className="rounded-xl border border-[var(--border)] bg-[var(--page-bg)] px-3.5 py-2">
-                          <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
-                            {isBm ? "Tinggi" : "Height"}
-                          </div>
-                          <div className="text-lg font-black text-[var(--text)]">
-                            {dash.height_cm} <span className="text-xs font-bold text-[var(--muted)]">cm</span>
-                          </div>
-                        </div>
-                      )}
-                      <div className="rounded-xl border border-[var(--border)] bg-[var(--page-bg)] px-3.5 py-2">
-                        <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
-                          {isBm ? "Bacaan" : "Readings"}
-                        </div>
-                        <div className="text-lg font-black text-[var(--text)]">{dash?.metrics?.length ?? 0}</div>
-                      </div>
-                      <div className="rounded-xl border border-[var(--border)] bg-[var(--page-bg)] px-3.5 py-2">
-                        <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
-                          {isBm ? "Ubat Hari Ini" : "Meds Today"}
-                        </div>
-                        <div className="text-lg font-black text-[var(--text)]">{today.length}</div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </div>

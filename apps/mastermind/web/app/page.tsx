@@ -1039,10 +1039,10 @@ export default function Home() {
               <div className="hero">
                 <div className="hero-header">
                   <span className="hero-badge">
-                    <DollarSign size={14} /> Volum Keseluruhan
+                    <DollarSign size={14} /> Volum Transaksi Pengguna
                   </span>
                   <span className="muted" style={{ fontSize: "12.5px" }}>
-                    Semua transaksi terkumpul
+                    Jumlah aliran masuk dan keluar semua pengguna
                   </span>
                 </div>
 
@@ -1060,7 +1060,7 @@ export default function Home() {
                     <div
                       className="hero-progress-inc"
                       style={{ width: `${incPercent}%` }}
-                      title={`Pendapatan: ${incPercent.toFixed(1)}%`}
+                      title={`Aliran masuk pengguna: ${incPercent.toFixed(1)}%`}
                     />
                     <div
                       className="hero-progress-exp"
@@ -1073,7 +1073,7 @@ export default function Home() {
                 <div className="hero-sub">
                   <div className="hero-stat-card">
                     <span className="hero-stat-label">
-                      <ArrowDownRight size={14} color="var(--emerald)" /> Pendapatan
+                      <ArrowDownRight size={14} color="var(--emerald)" /> Aliran Masuk Pengguna
                     </span>
                     <span className="hero-stat-val inc">
                       RM{" "}
@@ -1085,7 +1085,7 @@ export default function Home() {
 
                   <div className="hero-stat-card">
                     <span className="hero-stat-label">
-                      <ArrowUpRight size={14} color="var(--rose)" /> Perbelanjaan
+                      <ArrowUpRight size={14} color="var(--rose)" /> Aliran Keluar Pengguna
                     </span>
                     <span className="hero-stat-val exp">
                       RM{" "}
@@ -1621,7 +1621,7 @@ export default function Home() {
                     <div>
                       <h3 className="card-title">Transaksi Mengikut Bulan</h3>
                       <p className="card-subtitle">
-                        Perbandingan kekerapan transaksi, perbelanjaan dan pendapatan
+                        Bilangan transaksi masuk dan keluar pengguna
                       </p>
                     </div>
                   </div>
@@ -1632,8 +1632,8 @@ export default function Home() {
                       <tr>
                         <th>Bulan</th>
                         <th>Jumlah Transaksi</th>
-                        <th>Perbelanjaan (RM)</th>
-                        <th>Pendapatan (RM)</th>
+                        <th>Transaksi Keluar</th>
+                        <th>Transaksi Masuk</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1647,12 +1647,12 @@ export default function Home() {
                           </td>
                           <td>
                             <span style={{ color: "var(--rose-text)", fontWeight: 600 }}>
-                              RM {Number(r.expenses || 0).toLocaleString("ms-MY")}
+                              {Number(r.expenses || 0).toLocaleString("ms-MY")}
                             </span>
                           </td>
                           <td>
                             <span style={{ color: "var(--emerald-text)", fontWeight: 600 }}>
-                              RM {Number(r.income || 0).toLocaleString("ms-MY")}
+                              {Number(r.income || 0).toLocaleString("ms-MY")}
                             </span>
                           </td>
                         </tr>
