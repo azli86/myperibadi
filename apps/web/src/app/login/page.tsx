@@ -21,9 +21,28 @@ import {
 } from "@/lib/auth-session"
 import { initFirstAccount, initActiveAccount } from "@/lib/multi-account"
 import { PENDING_SHARED_CHAT_TOKEN_STORAGE_KEY, PENDING_SHARED_TRANSACTION_TOKEN_STORAGE_KEY, SHARED_CHAT_TOKEN_QUERY_KEY, getActiveSharedTransactionTokenStorageKey, getSharedTransactionPinBypassStorageKey } from "@/lib/share-target"
-import { signInWithGoogle } from "@/lib/firebase"
+import { signInWithGoogle, signInWithGoogleCredential } from "@/lib/firebase"
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_CLOUDFLARE_TURNSTILE_SITE_KEY
+
+/**
+ * Ask the Android WebView wrapper (AndroidApp bridge) to run the native Google
+ * account picker (Credential Manager). Resolves with the Google ID token, or
+ * with the sentinel "cancel" when the user dismisses the picker, or null when
+ * the native bridge is unavailable (plain browser / PWA).
+ */
+function getNativeGoogleToken(): Promise<string | null> {
+  const a = (window as unknown as { AndroidApp?: { nativeGoogleSignIn?: () => void } }).AndroidApp
+  if (!a?.nativeGoogleSignIn) return Promise.resolve(null)
+  return new Promise<string>((resolve) => {
+    ;(window as unknown as { __googleNativeResolve?: (t: string) => void }).__googleNativeResolve = resolve
+    a.nativeGoogleSignIn!()
+  })
+}
+
+function isJwtLike(t: string | null): t is string {
+  return !!t && t.split(".").length === 3
+}
 
 export default function LoginPage() {
   const router = useRouter()
@@ -149,7 +168,14 @@ export default function LoginPage() {
     setError("")
     setGoogleLoading(true)
     try {
-      const idToken = await signInWithGoogle()
+      // Prefer the native on-device Google account picker when running inside the
+      // Android WebView wrapper (no typing / no OAuth popup). Falls back to the
+      // regular Firebase popup on desktop browsers or if the native path fails.
+      const nativeToken = await getNativeGoogleToken()
+      if (nativeToken === "cancel") return
+      const idToken = isJwtLike(nativeToken)
+        ? (await signInWithGoogleCredential(nativeToken as string)).idToken
+        : await signInWithGoogle()
       const sessionId = ensureSessionId()
       const res = await fetch("/api/auth/google", {
         method: "POST",

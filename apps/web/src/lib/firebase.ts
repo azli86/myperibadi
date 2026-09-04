@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from "firebase/app"
 import { getMessaging, getToken, onMessage, type Messaging } from "firebase/messaging"
-import { getAuth, GoogleAuthProvider, signInWithPopup, type Auth } from "firebase/auth"
+import { getAuth, GoogleAuthProvider, signInWithCredential, signInWithPopup, type Auth } from "firebase/auth"
 
 const firebaseConfig = {
   apiKey: "AIzaSyDl7ZC5T3hdRaGlaP6qMYOQyx3u8xUbvEs",
@@ -29,6 +29,20 @@ export function getFirebaseAuth(): Auth {
 export async function signInWithGoogle(): Promise<string> {
   const profile = await signInWithGoogleProfile()
   return profile.idToken
+}
+
+/**
+ * Exchange a Google ID token obtained natively (Android Credential Manager) for
+ * a Firebase session, then an ID token. No popup/redirect involved, so this is
+ * the path the WebView wrapper uses to pick an on-device Google account.
+ */
+export async function signInWithGoogleCredential(googleIdToken: string): Promise<{ idToken: string; email: string; name: string }> {
+  const googleAuth = getFirebaseAuth()
+  const result = await signInWithCredential(googleAuth, GoogleAuthProvider.credential(googleIdToken))
+  const idToken = await result.user.getIdToken()
+  const email = (result.user.email || "").trim().toLowerCase()
+  const name = (result.user.displayName || email.split("@")[0] || "User").trim()
+  return { idToken, email, name }
 }
 
 export async function signInWithGoogleProfile(): Promise<{
