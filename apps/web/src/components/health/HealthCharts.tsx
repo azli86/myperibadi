@@ -237,11 +237,13 @@ export function BmiRing({ bmi, category }: { bmi: number; category?: { color: st
 export function BmiGauge({
   bmi,
   category,
+  heightCm,
   isBm = true,
   className = "",
 }: {
   bmi: number
   category?: { color: string; label_bm?: string; label_en?: string } | null
+  heightCm?: number | null
   isBm?: boolean
   className?: string
 }) {
@@ -263,7 +265,7 @@ export function BmiGauge({
   const cx = 162
   const cy = 176
   const R = 130 // band center radius
-  const BW = 40 // band thickness
+  const BW = 46 // band thickness
 
   // Piecewise value -> angle (180 left ... 0 right)
   const angleFor = (v: number) => {
@@ -340,10 +342,26 @@ export function BmiGauge({
   const triBandPts = `${cx},${cy - tipR} ${(cx - halfW).toFixed(2)},${cy - innerEdgeR} ${(cx + halfW).toFixed(2)},${cy - innerEdgeR}`
 
   const catLabel = (isBm ? category?.label_bm : category?.label_en) || ZONES[activeIdx].label
+  const heightM = heightCm && heightCm > 0 ? heightCm / 100 : null
+  const weightLabelEls = heightM ? ZONES.map((z, i) => {
+    const kg = (value: number) => (value * heightM * heightM).toFixed(1)
+    const label = i === 0 ? `< ${kg(z.to)} kg` : i === ZONES.length - 1 ? `≥ ${kg(z.from)} kg` : `${kg(z.from)}–${kg(z.to)} kg`
+    const pathId = `bmikg${uid}${i}`
+    return (
+      <g key={`kg${i}`}>
+        <path id={pathId} d={arcPath(R + BW / 2 + 16, bounds[i], bounds[i + 1])} fill="none" stroke="none" />
+        <text fontSize={11} fontWeight={900} fill={z.color} letterSpacing={0.15}>
+          <textPath href={`#${pathId}`} startOffset="50%" textAnchor="middle">{label}</textPath>
+        </text>
+      </g>
+    )
+  }) : null
 
   return (
     <div className={className}>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" className="block" role="img" aria-label={`BMI ${bmi}`}>
+      <svg viewBox={`-16 0 ${W + 32} ${H}`} width="100%" className="block overflow-visible" role="img" aria-label={`BMI ${bmi}`}>
+        {/* Weight ranges derived from the user's height, one above each zone. */}
+        {weightLabelEls}
         {/* Color segments (butt caps) */}
         {segEls}
         {/* Curved category labels inside the bands */}

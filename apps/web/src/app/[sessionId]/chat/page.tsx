@@ -1587,6 +1587,12 @@ export default function ChatPage() {
                   }}
                   placeholder={lang === "EN" ? "Type message..." : "Tulis mesej..."}
                   rows={1}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                      e.preventDefault()
+                      if (canSend) sendCurrentInput()
+                    }
+                  }}
                   className="chat-composer-textarea min-h-6 w-full resize-none bg-transparent py-1 text-[1rem] leading-6 text-[var(--text)] placeholder:text-[var(--muted)] focus:outline-none md:text-base"
                   style={{ overflowWrap: "anywhere" }}
                 />

@@ -112,6 +112,7 @@ export default function HealthReadingsPage() {
   }, [])
 
   const meta = useMemo(() => METRICS.find((m) => m.key === metric) || METRICS[0], [metric])
+  const currentReading = readings[0]
 
   const authHeaders = useCallback((): HeadersInit => {
     const token = getAccessToken()
@@ -238,15 +239,15 @@ export default function HealthReadingsPage() {
       </div>
 
       {/* ── MOBILE VIEW ── */}
-      <div className="md:hidden px-1 pb-24 pt-1 space-y-4">
+      <div className="space-y-5 px-1 pb-28 pt-1 md:hidden">
         {/* Metric picker */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
           {METRICS.map((m) => (
             <button
               key={m.key}
               onClick={() => setMetric(m.key)}
               className={cn(
-                "inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95",
+                "inline-flex min-h-10 shrink-0 items-center rounded-full px-4 py-2 text-xs font-bold transition active:scale-95",
                 metric === m.key
                   ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
                   : "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]",
@@ -257,8 +258,32 @@ export default function HealthReadingsPage() {
           ))}
         </div>
 
+        <section className="overflow-hidden rounded-[1.75rem] bg-[var(--text)] p-5 text-[var(--bg)] shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] opacity-60">{isBm ? "Bacaan Terkini" : "Current Reading"}</p>
+              {currentReading ? (
+                <div className="mt-2 text-4xl font-black tracking-tight">
+                  {metric === "bp" && currentReading.systolic != null && currentReading.diastolic != null
+                    ? `${currentReading.systolic} / ${currentReading.diastolic}`
+                    : currentReading.value}
+                  <span className="ml-2 text-sm font-bold opacity-60">{currentReading.unit || meta.unit}</span>
+                </div>
+              ) : (
+                <p className="mt-3 text-lg font-black">{isBm ? "Belum ada bacaan" : "No reading yet"}</p>
+              )}
+              <p className="mt-1 text-sm font-bold opacity-75">{isBm ? meta.labelBM : meta.labelEN}</p>
+            </div>
+            <Activity className="h-7 w-7 opacity-60" />
+          </div>
+          <div className="mt-5 flex items-end justify-between gap-3 border-t border-current/15 pt-3 text-xs opacity-70">
+            <span className="truncate">{currentReading?.note || (currentReading ? (isBm ? "Tiada nota" : "No note") : (isBm ? "Tambah bacaan pertama anda" : "Add your first reading"))}</span>
+            {currentReading ? <time className="shrink-0">{new Date(currentReading.measured_at).toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false })}</time> : null}
+          </div>
+        </section>
+
         {/* Chart */}
-        <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
+        <section className="rounded-[1.75rem] bg-[var(--card)] p-4 shadow-sm">
           <div className="mb-3 flex items-start justify-between gap-2">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
@@ -314,8 +339,11 @@ export default function HealthReadingsPage() {
         </section>
 
         {/* Reading list */}
-        <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
-          <h2 className="mb-3 text-base font-black text-[var(--text)]">{isBm ? "Senarai Bacaan" : "Readings"}</h2>
+        <section>
+          <div className="mb-3 flex items-end justify-between">
+            <h2 className="text-base font-black text-[var(--text)]">{isBm ? "Senarai Bacaan" : "Readings"}</h2>
+            <span className="text-xs font-semibold text-[var(--muted)]">{readings.length} {isBm ? "rekod" : "records"}</span>
+          </div>
           {!readings.length ? (
             <p className="py-6 text-center text-sm text-[var(--muted)]">
               {isBm ? "Belum ada bacaan." : "No readings yet."}
@@ -325,7 +353,7 @@ export default function HealthReadingsPage() {
               {readings.map((r) => (
                 <li
                   key={r.id}
-                  className="flex items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--page-bg)] p-3"
+                  className="flex min-h-20 items-center justify-between gap-3 rounded-[1.35rem] bg-[var(--card)] p-4 shadow-sm"
                 >
                   <div>
                     <div className="text-sm font-bold text-[var(--text)]">
@@ -368,14 +396,14 @@ export default function HealthReadingsPage() {
       {/* ── DESKTOP VIEW ── */}
       <div className="hidden md:block">
         <DesktopPageBody>
-        <div className="mx-auto w-full max-w-[900px] space-y-4 p-4">
-          <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="mx-auto w-full max-w-[1180px] space-y-6 p-6 xl:px-8">
+          <div className="flex gap-2 overflow-x-auto rounded-2xl bg-[var(--card)] p-2 shadow-sm">
             {METRICS.map((m) => (
               <button
                 key={m.key}
                 onClick={() => setMetric(m.key)}
                 className={cn(
-                  "shrink-0 rounded-full px-3 py-1.5 text-xs font-bold transition",
+                  "min-h-10 shrink-0 rounded-xl px-4 py-2 text-xs font-bold transition",
                   metric === m.key
                     ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
                     : "bg-[var(--card)] text-[var(--muted)]",
@@ -386,22 +414,31 @@ export default function HealthReadingsPage() {
             ))}
           </div>
 
-          <div className="flex gap-1">
-            {RANGES.map((r) => (
-              <button
-                key={r}
-                onClick={() => setRange(r)}
-                className={cn(
-                  "rounded-lg px-3 py-1 text-xs font-bold transition",
-                  range === r ? "bg-[var(--accent2)] text-white" : "bg-[var(--card)] text-[var(--muted)]",
+          <section className="grid min-h-52 grid-cols-[1fr_auto] overflow-hidden rounded-[2rem] bg-[var(--text)] p-8 text-[var(--bg)] shadow-sm">
+            <div className="flex flex-col justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.18em] opacity-60">{isBm ? "Bacaan Terkini" : "Current Reading"}</p>
+                {currentReading ? (
+                  <div className="mt-3 text-6xl font-black tracking-tight">
+                    {metric === "bp" && currentReading.systolic != null && currentReading.diastolic != null
+                      ? `${currentReading.systolic} / ${currentReading.diastolic}`
+                      : currentReading.value}
+                    <span className="ml-3 text-base font-bold opacity-60">{currentReading.unit || meta.unit}</span>
+                  </div>
+                ) : (
+                  <p className="mt-4 text-3xl font-black">{isBm ? "Belum ada bacaan" : "No reading yet"}</p>
                 )}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
+                <p className="mt-2 text-lg font-bold opacity-75">{isBm ? meta.labelBM : meta.labelEN}</p>
+              </div>
+              <div className="flex gap-6 text-sm opacity-65">
+                {currentReading ? <time>{new Date(currentReading.measured_at).toLocaleString([], { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })}</time> : null}
+                <span>{currentReading?.note || (currentReading ? (isBm ? "Tiada nota" : "No note") : (isBm ? "Tambah bacaan pertama anda" : "Add your first reading"))}</span>
+              </div>
+            </div>
+            <Activity className="h-12 w-12 opacity-50" />
+          </section>
 
-          <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
+          <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
@@ -431,7 +468,7 @@ export default function HealthReadingsPage() {
                 <div className="h-44 animate-pulse rounded-xl bg-[var(--page-bg)]" />
               ) : chartPoints.length ? (
                 <>
-                  <MetricChart metricKey={metric} points={chartPoints} className="h-52" />
+                  <MetricChart metricKey={metric} points={chartPoints} className="h-72" />
                   <TrendStats
                     values={chartPoints.map((p) => p.value ?? 0).filter((v) => v != null)}
                     unit={metric === "bp" ? "" : meta.unit}
@@ -456,8 +493,8 @@ export default function HealthReadingsPage() {
               )}
             </section>
 
-          <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
-            <h2 className="mb-3 text-base font-black text-[var(--text)]">{isBm ? "Senarai Bacaan" : "Readings"}</h2>
+          <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+            <h2 className="mb-4 text-base font-black text-[var(--text)]">{isBm ? "Senarai Bacaan" : "Readings"}</h2>
             {!readings.length ? (
               <p className="py-6 text-center text-sm text-[var(--muted)]">
                 {isBm ? "Belum ada bacaan." : "No readings yet."}
@@ -467,7 +504,7 @@ export default function HealthReadingsPage() {
                 {readings.map((r) => (
                   <li
                     key={r.id}
-                    className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--page-bg)] p-3"
+                    className="flex min-h-20 items-center justify-between rounded-[1.35rem] bg-[var(--page-bg)] p-4"
                   >
                     <div>
                       <div className="text-sm font-bold text-[var(--text)]">
@@ -564,6 +601,7 @@ export default function HealthReadingsPage() {
               )}
               <Field
                 label={isBm ? "Nota (pilihan)" : "Note (optional)"}
+                text
                 value={form.note || ""}
                 onChange={(v) => setForm((f) => ({ ...f, note: v }))}
               />
@@ -581,23 +619,25 @@ function Field({
   suffix,
   value,
   onChange,
+  text = false,
 }: {
   label: string
   suffix?: string
   value: string
   onChange: (v: string) => void
+  text?: boolean
 }) {
   return (
     <div>
       <label className="mb-1 block text-xs font-bold text-[var(--muted)]">{label}</label>
       <div className="flex items-center gap-2">
         <input
-          type="number"
-          inputMode="decimal"
+          type={text ? "text" : "number"}
+          inputMode={text ? "text" : "decimal"}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="0"
-          className="w-full rounded-xl border border-[var(--border)] bg-[var(--page-bg)] px-3 py-2.5 text-sm text-[var(--text)] outline-none focus:border-[var(--accent2)]"
+          className="min-h-12 w-full rounded-2xl border border-[var(--border)] bg-[var(--page-bg)] px-4 py-3 text-base text-[var(--text)] outline-none focus:border-[var(--accent2)]"
         />
         {suffix ? <span className="shrink-0 text-xs font-bold text-[var(--muted)]">{suffix}</span> : null}
       </div>

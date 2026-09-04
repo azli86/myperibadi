@@ -124,8 +124,7 @@ function applyTheme(theme: ThemeMode, resolvedTheme: ResolvedTheme) {
   document.documentElement.style.colorScheme = resolvedTheme
   storeThemePreference(theme, resolvedTheme)
 
-  const cssThemeColor = getComputedStyle(document.documentElement).getPropertyValue("--page-bg").trim()
-  const pwaThemeColor = cssThemeColor || getPwaThemeColor(resolvedTheme)
+  const pwaThemeColor = getPwaThemeColor(resolvedTheme)
   document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
     meta.content = pwaThemeColor
   })

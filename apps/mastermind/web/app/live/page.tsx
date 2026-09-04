@@ -50,6 +50,16 @@ export default function LivePage() {
     return `${day} ${time}`;
   };
 
+  const channelMeta = (c?: string) => {
+    const ch = (c || "").toLowerCase();
+    if (ch === "whatsapp" || ch === "whatsapp_group") return { label: "WA", title: "WhatsApp", cls: "chan-wa" };
+    if (ch === "telegram") return { label: "TG", title: "Telegram", cls: "chan-tg" };
+    if (ch === "chat") return { label: "WC", title: "WebChat", cls: "chan-wc" };
+    if (ch === "web") return { label: "WEB", title: "App", cls: "chan-web" };
+    if (ch) return { label: ch.toUpperCase().slice(0, 4), title: ch, cls: "chan-ot" };
+    return null;
+  };
+
   if (auth === null) return <div className="lv-load">Memuatkan Live Feed…</div>;
   if (auth === false) return <div className="lv-load"><a href="/">Sila log masuk Mastermind dahulu.</a></div>;
 
@@ -76,10 +86,7 @@ export default function LivePage() {
           if (r.kind === "TXN") {
             badge = r.detail1 === "income" ? "IN" : "OUT";
             cls = r.detail1 === "income" ? "inc" : "exp";
-            const parts: string[] = [];
-            if (r.category_name) parts.push(r.category_name);
-            if (r.household_name) parts.push(`[${r.household_name}]`);
-            main = parts.join(" · ");
+            main = r.category_name || "";
           } else if (r.kind === "LOGIN") {
             badge = "LOGIN";
             cls = "log";
@@ -113,11 +120,14 @@ export default function LivePage() {
             cls = "sig";
             main = "Akaun baharu";
           }
+          const chan = channelMeta(r.kind === "TXN" ? r.channel : "");
           return (
             <div className="lv-line" key={r.kind + r.created_at + (r.detail2 || "")}>
               <span className="lv-time">[{fmtStamp(r.created_at)}]</span>
               <span className={"lv-badge " + cls}>{badge}</span>
               {main && <span className="lv-main">{main}</span>}
+              {chan && <span className={"lv-chan " + chan.cls} title={chan.title}>{chan.label}</span>}
+              {r.kind === "TXN" && r.household_name && <span className="lv-house" title="Household">[{r.household_name}]</span>}
               <span className="lv-user">{r.user_name}</span>
               {r.user_email && <span className="lv-mail">{r.user_email}</span>}
             </div>

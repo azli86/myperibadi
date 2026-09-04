@@ -39,7 +39,6 @@ import { useParams } from "next/navigation"
 import { cn, getTodayDateInTimeZone } from "@/lib/utils"
 import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
-import { getPwaThemeColor } from "@/lib/theme"
 import { usePageAlert } from "@/hooks/usePageAlert"
 import { CategoryIconGlyph } from "@/lib/category-icons"
 import { splitWalletTaggedDescription } from "@/lib/transaction-display"
@@ -635,42 +634,6 @@ export default function Dashboard() {
     void fetchMonthBudgets()
   }, [mounted, selectedDashboardMonthKey])
 
-
-  useEffect(() => {
-    const metaTheme = document.querySelector('meta[name="theme-color"]')
-    if (!metaTheme) return
-
-    const previousThemeColor = metaTheme.getAttribute("content")
-    const mobileQuery = window.matchMedia("(max-width: 767px)")
-
-    const applyThemeColor = () => {
-      metaTheme.setAttribute("content", getPwaThemeColor(resolvedTheme))
-    }
-
-    applyThemeColor()
-
-    const handleThemeColorChange = () => {
-      applyThemeColor()
-    }
-
-    if (typeof mobileQuery.addEventListener === "function") {
-      mobileQuery.addEventListener("change", handleThemeColorChange)
-    } else {
-      mobileQuery.addListener(handleThemeColorChange)
-    }
-
-    return () => {
-      if (typeof mobileQuery.removeEventListener === "function") {
-        mobileQuery.removeEventListener("change", handleThemeColorChange)
-      } else {
-        mobileQuery.removeListener(handleThemeColorChange)
-      }
-
-      if (previousThemeColor) {
-        metaTheme.setAttribute("content", previousThemeColor)
-      }
-    }
-  }, [resolvedTheme])
 
   useEffect(() => {
     const hidden = showAddModal || showMobileWalletDeck

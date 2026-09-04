@@ -4461,7 +4461,9 @@ async def _process_whatsapp_message_impl(
                 balance=balance_text,
             ), debt_txn
 
-        if lowered.startswith("lend") or lowered.startswith("borrow") or lowered.startswith("pay") or lowered.startswith("balance"):
+        # Word-boundary match so merchant names like "paypal ..." / "paynet ..."
+        # are not misrouted as the `pay` debt command (bare command alone still errors).
+        if re.match(r"^(lend|borrow|pay|balance)(?:\s|$)", lowered):
             return t["debt_syntax_err"], None
         
         if lowered == "checkwallet" or lowered == "semak wallet":

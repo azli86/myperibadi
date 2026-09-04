@@ -39,6 +39,18 @@ const securityHeaders = [
       ]
     : []),
   {
+    key: "Accept-CH",
+    value: "Sec-CH-Prefers-Color-Scheme",
+  },
+  {
+    key: "Cache-Control",
+    value: "no-store, no-cache, must-revalidate, proxy-revalidate",
+  },
+  {
+    key: "Vary",
+    value: "Sec-CH-Prefers-Color-Scheme",
+  },
+  {
     key: "Content-Security-Policy",
     value: cspDirectives.join("; "),
   },

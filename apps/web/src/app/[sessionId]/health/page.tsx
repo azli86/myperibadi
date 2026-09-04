@@ -65,14 +65,14 @@ type TodayItem = {
   taken_at?: string | null
 }
 
-const METRIC_META: Record<string, { icon: React.ComponentType<any>; color: string }> = {
-  weight: { icon: Activity, color: "text-sky-500" },
-  bp: { icon: HeartPulse, color: "text-rose-500" },
-  glucose: { icon: Activity, color: "text-violet-500" },
-  pulse: { icon: HeartPulse, color: "text-amber-500" },
-  spo2: { icon: Activity, color: "text-emerald-500" },
-  temperature: { icon: Stethoscope, color: "text-orange-500" },
-  height: { icon: LineChart, color: "text-indigo-500" },
+const METRIC_META: Record<string, { icon: React.ComponentType<any>; color: string; bm: string; en: string }> = {
+  weight: { icon: Activity, color: "text-sky-500", bm: "Berat", en: "Weight" },
+  bp: { icon: HeartPulse, color: "text-rose-500", bm: "Tekanan Darah", en: "Blood Pressure" },
+  glucose: { icon: Activity, color: "text-violet-500", bm: "Gula Darah", en: "Blood Glucose" },
+  pulse: { icon: HeartPulse, color: "text-amber-500", bm: "Denyutan Nadi", en: "Pulse" },
+  spo2: { icon: Activity, color: "text-emerald-500", bm: "Oksigen Darah", en: "Blood Oxygen" },
+  temperature: { icon: Stethoscope, color: "text-orange-500", bm: "Suhu Badan", en: "Body Temperature" },
+  height: { icon: LineChart, color: "text-indigo-500", bm: "Tinggi", en: "Height" },
 }
 
 function fmtTime(iso?: string | null): string {
@@ -265,7 +265,7 @@ export default function HealthDashboardPage() {
       </div>
 
       {/* ── MOBILE VIEW ── */}
-      <div className="md:hidden px-1 pb-24 pt-1 space-y-4">
+      <div className="space-y-5 px-1 pb-24 pt-1 md:hidden">
         {showDataSkeleton ? (
           <div className="space-y-4">
             <div className="h-28 animate-pulse rounded-[1.85rem] bg-[var(--card)]" />
@@ -279,8 +279,8 @@ export default function HealthDashboardPage() {
                 {dash?.bmi != null ? (
                   <>
                     {/* Speedometer gauge */}
-                    <div className="mx-auto -mt-1 max-w-[300px]">
-                      <BmiGauge bmi={dash.bmi} category={dash.bmi_category} isBm={isBm} />
+                    <div className="mx-auto -mt-1 max-w-[320px]">
+                      <BmiGauge bmi={dash.bmi} category={dash.bmi_category} heightCm={dash.height_cm} isBm={isBm} />
                     </div>
                     <div className="flex flex-wrap items-center justify-center gap-1.5">
                       {dash.weight_kg != null && (
@@ -318,7 +318,7 @@ export default function HealthDashboardPage() {
                 )}
 
                 {/* Quick sub-module links */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-2.5">
                   {[
                     { label: isBm ? "Monitor" : "Monitor", href: `/${sessionId}/health/readings`, icon: LineChart, hex: "#0ea5e9" },
                     { label: isBm ? "Ubat" : "Meds", href: `/${sessionId}/health/medications`, icon: Pill, hex: "#10b981" },
@@ -328,7 +328,7 @@ export default function HealthDashboardPage() {
                       key={m.href}
                       type="button"
                       onClick={() => router.push(m.href)}
-                      className="group flex flex-col items-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-2 py-3 transition active:scale-[0.97]"
+                      className="group flex min-h-20 flex-col items-center justify-center gap-2 rounded-[var(--m3-shape-lg)] bg-[var(--card)] px-2 py-3 shadow-[var(--shadow-soft)] transition active:scale-[0.97]"
                     >
                       <span
                         className="flex h-8 w-8 items-center justify-center rounded-xl"
@@ -358,7 +358,7 @@ export default function HealthDashboardPage() {
               ) : (
                 <div className="grid grid-cols-2 gap-2">
                   {dash.metrics.map((m) => {
-                    const meta = METRIC_META[m.metric_type] || { icon: Activity, color: "text-sky-500" }
+                    const meta = METRIC_META[m.metric_type] || { icon: Activity, color: "text-sky-500", bm: m.label || m.metric_type, en: m.label || m.metric_type }
                     const Icon = meta.icon
                     const hex = METRIC_HEX[m.metric_type] || "#3b82f6"
                     const sparkPoints = spark[m.metric_type] || []
@@ -367,7 +367,7 @@ export default function HealthDashboardPage() {
                         key={m.metric_type}
                         type="button"
                         onClick={() => router.push(`/${sessionId}/health/readings?metric=${m.metric_type}`)}
-                        className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 text-left transition active:scale-[0.98]"
+                        className="min-h-32 rounded-[var(--m3-shape-lg)] bg-[var(--card)] p-3.5 text-left shadow-[var(--shadow-soft)] transition active:scale-[0.98]"
                       >
                         <div className="flex items-center justify-between">
                           <span
@@ -386,7 +386,7 @@ export default function HealthDashboardPage() {
                             <span className="ml-1 text-[11px] font-semibold text-[var(--muted)]">{m.unit}</span>
                           ) : null}
                         </div>
-                        <div className="text-[10px] font-semibold text-[var(--muted)]">{m.label || m.metric_type}</div>
+                        <div className="text-[10px] font-semibold text-[var(--muted)]">{isBm ? meta.bm : meta.en}</div>
                         {sparkPoints.length > 1 && (
                           <div className="mt-2">
                             <HealthSparkline points={sparkPoints} color={hex} />
@@ -423,7 +423,7 @@ export default function HealthDashboardPage() {
                   {today.map((item) => (
                     <li
                       key={`${item.medication_id}-${item.schedule_id}`}
-                      className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-3"
+                      className="flex min-h-16 items-center gap-3 rounded-[var(--m3-shape-lg)] bg-[var(--card)] p-3.5 shadow-[var(--shadow-soft)]"
                     >
                       <button
                         type="button"
@@ -472,17 +472,17 @@ export default function HealthDashboardPage() {
             <div className="h-24 animate-pulse rounded-2xl bg-[var(--card)]" />
           </div>
         ) : (
-          <div className="mx-auto w-full max-w-[1100px] space-y-5 p-4">
+          <div className="mx-auto w-full max-w-[1180px] space-y-6 p-6 xl:px-8">
             {/* BMI speedometer card */}
-            <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
+            <section className="overflow-hidden rounded-[var(--m3-shape-xl)] border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-soft)]">
               {dash?.bmi != null ? (
-                <div className="grid min-h-[280px] grid-cols-[minmax(360px,1.15fr)_minmax(320px,0.85fr)]">
+                <div className="grid min-h-[310px] grid-cols-[minmax(400px,1.15fr)_minmax(340px,0.85fr)]">
                   <div className="flex flex-col justify-center border-r border-[var(--border)] px-8 py-6">
                     <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
                       {isBm ? "Indeks Jisim Badan" : "Body Mass Index"}
                     </p>
-                    <div className="mx-auto w-full max-w-[350px]">
-                      <BmiGauge bmi={dash.bmi} category={dash.bmi_category} isBm={isBm} />
+                    <div className="mx-auto w-full max-w-[390px]">
+                      <BmiGauge bmi={dash.bmi} category={dash.bmi_category} heightCm={dash.height_cm} isBm={isBm} />
                     </div>
                   </div>
 
@@ -502,7 +502,7 @@ export default function HealthDashboardPage() {
                         { label: isBm ? "Bacaan" : "Readings", value: dash.metrics?.length ?? 0, unit: "" },
                         { label: isBm ? "Ubat Hari Ini" : "Meds Today", value: today.length, unit: "" },
                       ].map((item) => (
-                        <div key={item.label} className="rounded-2xl border border-[var(--border)] bg-[var(--page-bg)] p-4">
+                        <div key={item.label} className="rounded-[var(--m3-shape-lg)] bg-[var(--page-bg)] p-5">
                           <div className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">{item.label}</div>
                           <div className="mt-1 text-2xl font-black text-[var(--text)]">
                             {item.value}{item.unit && <span className="ml-1 text-xs font-bold text-[var(--muted)]">{item.unit}</span>}
@@ -525,8 +525,8 @@ export default function HealthDashboardPage() {
               )}
             </section>
 
-            <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between">
+            <section className="rounded-[var(--m3-shape-xl)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[var(--shadow-soft)]">
+              <div className="mb-5 flex items-center justify-between">
                 <h2 className="flex items-center gap-2 text-base font-black text-[var(--text)]">
                   <Stethoscope size={18} className="text-[var(--accent2)]" />
                   {isBm ? "Monitor Kesihatan" : "Health Monitor"}
@@ -537,9 +537,9 @@ export default function HealthDashboardPage() {
                   {isBm ? "Belum ada bacaan. Tambah bacaan pertama anda." : "No readings yet. Add your first reading."}
                 </p>
               ) : (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
                   {dash.metrics.map((m) => {
-                    const meta = METRIC_META[m.metric_type] || { icon: Activity, color: "text-sky-500" }
+                    const meta = METRIC_META[m.metric_type] || { icon: Activity, color: "text-sky-500", bm: m.label || m.metric_type, en: m.label || m.metric_type }
                     const Icon = meta.icon
                     const hex = METRIC_HEX[m.metric_type] || "#3b82f6"
                     const sparkPoints = spark[m.metric_type] || []
@@ -548,7 +548,7 @@ export default function HealthDashboardPage() {
                         key={m.metric_type}
                         type="button"
                         onClick={() => router.push(`/${sessionId}/health/readings?metric=${m.metric_type}`)}
-                        className="rounded-2xl border border-[var(--border)] bg-[var(--page-bg)] p-3.5 text-left transition hover:border-[var(--input-focus)]"
+                        className="min-h-36 rounded-[var(--m3-shape-lg)] bg-[var(--page-bg)] p-4 text-left transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-card)]"
                       >
                         <div className="flex items-center justify-between">
                           <span
@@ -567,7 +567,7 @@ export default function HealthDashboardPage() {
                             <span className="ml-1 text-xs font-semibold text-[var(--muted)]">{m.unit}</span>
                           ) : null}
                         </div>
-                        <div className="text-[11px] font-semibold text-[var(--muted)]">{m.label || m.metric_type}</div>
+                        <div className="text-[11px] font-semibold text-[var(--muted)]">{isBm ? meta.bm : meta.en}</div>
                         {sparkPoints.length > 1 && (
                           <div className="mt-2">
                             <HealthSparkline points={sparkPoints} color={hex} />
@@ -580,8 +580,8 @@ export default function HealthDashboardPage() {
               )}
             </section>
 
-            <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between">
+            <section className="rounded-[var(--m3-shape-xl)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[var(--shadow-soft)]">
+              <div className="mb-5 flex items-center justify-between">
                 <h2 className="flex items-center gap-2 text-base font-black text-[var(--text)]">
                   <Pill size={18} className="text-[var(--accent2)]" />
                   {isBm ? "Ubat Hari Ini" : "Today's Medications"}
@@ -599,11 +599,11 @@ export default function HealthDashboardPage() {
                   {isBm ? "Tiada ubat untuk hari ini." : "No medications for today."}
                 </p>
               ) : (
-                <ul className="space-y-2">
+                <ul className="grid gap-3 lg:grid-cols-2">
                   {today.map((item) => (
                     <li
                       key={`${item.medication_id}-${item.schedule_id}`}
-                      className="flex items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--page-bg)] p-3"
+                      className="flex min-h-20 items-center gap-3 rounded-[var(--m3-shape-lg)] bg-[var(--page-bg)] p-4"
                     >
                       <button
                         type="button"

@@ -368,14 +368,15 @@ async def live_api(limit: int = 25, db: AsyncSession = Depends(db_session)):
     """Live user activity feed: transactions + logins + new signups."""
     limit = max(1, min(limit, 60))
     rows = (await db.execute(text("""
-        SELECT kind, created_at, detail1, detail2, amount, user_name, user_email, status, category_name, household_name
+        SELECT kind, created_at, detail1, detail2, amount, user_name, user_email, status, category_name, household_name, channel
         FROM (
           SELECT 'TXN' AS kind, t.created_at, t.type AS detail1,
                  coalesce(t.vendor_or_source,'') AS detail2,
                  t.amount::float AS amount,
                  coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
                  '' AS status, coalesce(c.name,'') AS category_name,
-                 coalesce(h.name,'') AS household_name
+                 coalesce(h.name,'') AS household_name,
+                 coalesce(t.source_channel,'') AS channel
           FROM transactions t LEFT JOIN users u ON u.id = t.user_id
                             LEFT JOIN categories c ON c.id = t.category_id
                             LEFT JOIN households h ON h.id = t.household_id
@@ -383,26 +384,26 @@ async def live_api(limit: int = 25, db: AsyncSession = Depends(db_session)):
           SELECT 'LOGIN' AS kind, l.created_at, l.status AS detail1,
                  coalesce(l.email,'') AS detail2, NULL AS amount,
                  coalesce(u.name,'') AS user_name, coalesce(l.email,'') AS user_email,
-                 l.status AS status, '' AS category_name, '' AS household_name
+                 l.status AS status, '' AS category_name, '' AS household_name, '' AS channel
           FROM login_logs l LEFT JOIN users u ON u.id = l.user_id
           UNION ALL
           SELECT 'SIGNUP' AS kind, u.created_at, '' AS detail1,
                  coalesce(u.email,'') AS detail2, NULL AS amount,
                  coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
-                 '' AS status, '' AS category_name, '' AS household_name
+                 '' AS status, '' AS category_name, '' AS household_name, '' AS channel
           FROM users u WHERE u.created_at >= now() - interval '7 days'
           UNION ALL
           SELECT 'UPDATE' AS kind, u.updated_at, 'profil' AS detail1,
                  coalesce(u.email,'') AS detail2, NULL AS amount,
                  coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
-                 '' AS status, '' AS category_name, '' AS household_name
+                 '' AS status, '' AS category_name, '' AS household_name, '' AS channel
           FROM users u
           WHERE u.updated_at > u.created_at AND u.updated_at >= now() - interval '7 days'
           UNION ALL
           SELECT 'WALLET' AS kind, w.created_at, coalesce(w.name,'') AS detail1,
                  coalesce(w.label,'') AS detail2, NULL AS amount,
                  coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
-                 '' AS status, '' AS category_name, coalesce(h.name,'') AS household_name
+                 '' AS status, '' AS category_name, coalesce(h.name,'') AS household_name, '' AS channel
           FROM wallets w
           LEFT JOIN users u ON u.id = w.owner_user_id
           LEFT JOIN households h ON h.id = w.household_id
@@ -411,28 +412,28 @@ async def live_api(limit: int = 25, db: AsyncSession = Depends(db_session)):
           SELECT 'ITEM' AS kind, i.created_at, coalesce(i.name,'') AS detail1,
                  coalesce(i.category,'') AS detail2, NULL AS amount,
                  coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
-                 '' AS status, '' AS category_name, '' AS household_name
+                 '' AS status, '' AS category_name, '' AS household_name, '' AS channel
           FROM inventory_items i LEFT JOIN users u ON u.id = i.user_id
           WHERE i.deleted_at IS NULL AND i.created_at >= now() - interval '7 days'
           UNION ALL
           SELECT 'HOUSE' AS kind, h.created_at, coalesce(h.name,'') AS detail1,
                  'household' AS detail2, NULL AS amount,
                  coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
-                 '' AS status, '' AS category_name, '' AS household_name
+                 '' AS status, '' AS category_name, '' AS household_name, '' AS channel
           FROM households h LEFT JOIN users u ON u.id = h.owner_user_id
           WHERE h.created_at >= now() - interval '7 days'
           UNION ALL
           SELECT 'LOAN' AS kind, l.created_at, coalesce(l.name,'') AS detail1,
                  coalesce(l.record_kind,'') AS detail2, NULL AS amount,
                  coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
-                 '' AS status, '' AS category_name, '' AS household_name
+                 '' AS status, '' AS category_name, '' AS household_name, '' AS channel
           FROM loans l LEFT JOIN users u ON u.id = l.user_id
           WHERE l.created_at >= now() - interval '7 days'
           UNION ALL
           SELECT 'JOIN' AS kind, hm.joined_at, coalesce(h.name,'') AS detail1,
                  coalesce(hm.role,'') AS detail2, NULL AS amount,
                  coalesce(u.name,'') AS user_name, coalesce(u.email,'') AS user_email,
-                 '' AS status, '' AS category_name, '' AS household_name
+                 '' AS status, '' AS category_name, '' AS household_name, '' AS channel
           FROM household_members hm
           LEFT JOIN users u ON u.id = hm.user_id
           LEFT JOIN households h ON h.id = hm.household_id

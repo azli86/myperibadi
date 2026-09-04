@@ -1440,32 +1440,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [categories, setCategories] = useState<ShellCategory[]>([]);
   const [wallets, setWallets] = useState<ShellWallet[]>([]);
   const [transactions, setTransactions] = useState<ShellTransaction[]>([]);
-  const [sidebarCalendarNow, setSidebarCalendarNow] = useState<Date | null>(null);
-  useEffect(() => setSidebarCalendarNow(new Date()), []);
-  const sidebarCalendar = useMemo(() => {
-    if (!sidebarCalendarNow) return { label: "", cells: [] };
-    const now = sidebarCalendarNow;
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    const totals = transactions.reduce((map, tx) => {
-      const key = String(tx.txn_date || "").slice(0, 10);
-      if (!key || tx.is_wallet_transfer || tx.is_debt_movement) return map;
-      const current = map.get(key) || { amount: 0, count: 0 };
-      current.amount += Number(tx.amount || 0);
-      current.count += 1;
-      map.set(key, current);
-      return map;
-    }, new Map<string, { amount: number; count: number }>());
-    const days = new Date(year, month + 1, 0).getDate();
-    return {
-      label: now.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", { month: "long", year: "numeric" }),
-      cells: [...Array(new Date(year, month, 1).getDay()).fill(null), ...Array.from({ length: days }, (_, i) => {
-        const day = i + 1;
-        const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-        return { day, key, ...(totals.get(key) || { amount: 0, count: 0 }) };
-      })],
-    };
-  }, [lang, sidebarCalendarNow, transactions]);
   const [budgetItems, setBudgetItems] = useState<ShellBudgetItem[]>([]);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileSheetAccountSwitcher, setShowMobileSheetAccountSwitcher] = useState(false);
@@ -3774,34 +3748,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     {lang === "EN" ? "Live" : "Kini"}
                   </span>
                 </div>
-                <div className="mt-4 border-t border-white/15 pt-3">
-                  <div className="mb-2 flex items-center justify-between">
-                    <div>
-                      <p className="balance-hero-label text-[0.52rem] font-bold uppercase tracking-[0.14em] text-[#c5d0e0]">
-                        {lang === "EN" ? "Transaction calendar" : "Kalendar transaksi"}
-                      </p>
-                      <p className="mt-0.5 text-xs font-bold text-white">{sidebarCalendar.label}</p>
-                    </div>
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 ring-1 ring-white/15">
-                      <CalendarDays size={13} className="text-cyan-200" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-7 gap-1 text-center">
-                    {(lang === "EN" ? ["S", "M", "T", "W", "T", "F", "S"] : ["A", "I", "S", "R", "K", "J", "S"]).map((day, index) => (
-                      <span key={`${day}-${index}`} className="balance-hero-label py-0.5 text-[0.48rem] font-bold text-[#c5d0e0]">{day}</span>
-                    ))}
-                    {sidebarCalendar.cells.map((cell, index) => cell ? (
-                      <Link
-                        key={cell.key}
-                        href={`/${sessionId}/transactions?date=${cell.key}`}
-                        title={`${cell.count} ${lang === "EN" ? "transactions" : "transaksi"}${user?.show_hero_amounts !== false ? ` · RM ${cell.amount.toFixed(2)}` : ""}`}
-                        className={cn("mx-auto flex h-8 w-8 items-center justify-center rounded-full transition", cell.count ? "bg-amber-400 text-slate-950 shadow-sm hover:bg-amber-300" : "bg-[#232323] text-white hover:bg-[#303030]")} 
-                      >
-                        <span className="block text-[0.62rem] font-bold">{cell.day}</span>
-                      </Link>
-                    ) : <span key={`blank-${index}`} />)}
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -4039,7 +3985,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           </span>
                         </div>
                         <span className="rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--muted)]">
-                          11 {lang === "BM" ? "modul" : "modules"}
+                          10 {lang === "BM" ? "modul" : "modules"}
                         </span>
                       </div>
 
@@ -4049,7 +3995,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           { name: t.walletSettings, href: `/${sessionId}/wallet-settings`, icon: CreditCard, badge: "" },
                           { name: lang === "BM" ? "Rekonsiliasi" : "Reconcile", href: `/${sessionId}/bank-reconciliation`, icon: FileSpreadsheet, badge: "AI" },
                           { name: lang === "BM" ? "Cukai" : "Tax", href: `/${sessionId}/tax`, icon: Landmark, badge: "" },
-                          { name: lang === "BM" ? "Analisis" : "Analysis", href: `/${sessionId}/financial-analysis`, icon: BarChart3, badge: "" },
                           { name: t.categories, href: `/${sessionId}/categories`, icon: Grid2X2, badge: "" },
                           { name: "Subscription", href: `/${sessionId}/subscription`, icon: CreditCard, badge: "" },
                           { name: "Loan", href: `/${sessionId}/loan`, icon: Landmark, badge: "" },

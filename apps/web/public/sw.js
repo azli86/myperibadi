@@ -35,14 +35,12 @@ try {
   console.error("[sw.js] Firebase init failed:", e)
 }
 
-const CACHE_NAME = "budget-by-digitalport-shell-v42"
+const CACHE_NAME = "budget-by-digitalport-shell-v53"
 const APP_SHELL = [
   "/offline",
-  "/manifest.webmanifest",
   "/icon-192-v3.png",
   "/icon-512-v3.png",
   "/assets/lock/keypadbanner-v5.png",
-  "/assets/videos/myperibadivideointro.mp4",
 ]
 
 self.addEventListener("install", (event) => {
@@ -82,7 +80,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return
 
   const url = new URL(request.url)
-  if (url.pathname.startsWith("/api/") || url.pathname === "/build-version.json") return
+  if (url.pathname.startsWith("/api/") || url.pathname === "/build-version.json" || url.pathname === "/manifest.webmanifest") return
 
   if (request.mode === "navigate") {
     event.respondWith((async () => {

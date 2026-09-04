@@ -6,7 +6,6 @@ import ZoomLock from "@/components/layout/ZoomLock";
 import { LangProvider } from "@/lib/lang";
 import PWARegister from "@/components/pwa/PWARegister";
 import PWAInstallGate from "@/components/pwa/PWAInstallGate";
-import MobileIntroSplash from "@/components/layout/MobileIntroSplash";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import AuthSessionSync from "@/components/auth/AuthSessionSync";
 import {
@@ -26,6 +25,13 @@ function resolveThemeMode(theme: ThemeMode, cookieResolvedTheme?: string): Resol
 }
 
 export async function generateMetadata(): Promise<Metadata> {
+  const cookieStore = await cookies()
+  const theme = cookieStore.get(THEME_COOKIE_KEY)?.value
+  const resolved = resolveThemeMode(
+    isThemeMode(theme) ? theme : "system",
+    cookieStore.get(THEME_RESOLVED_COOKIE_KEY)?.value,
+  )
+  const themeColor = getPwaThemeColor(resolved)
   return {
     title: "MyPeribadi",
     description: "Manage your personal budget, receipts, and daily expenses with ease.",
@@ -51,12 +57,12 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     appleWebApp: {
       capable: true,
-      statusBarStyle: "black-translucent",
+      statusBarStyle: resolved === "dark" ? "black-translucent" : "default",
       title: "MyPeribadi",
     },
     other: {
-      "navigation-bar-color": "#0d0d0d",
-      "msapplication-navbutton-color": "#0d0d0d",
+      "navigation-bar-color": themeColor,
+      "msapplication-navbutton-color": themeColor,
     },
     formatDetection: {
       telephone: false,
@@ -65,7 +71,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export async function generateViewport(): Promise<Viewport> {
-
+  const cookieStore = await cookies()
+  const theme = cookieStore.get(THEME_COOKIE_KEY)?.value
+  const resolved = resolveThemeMode(
+    isThemeMode(theme) ? theme : "system",
+    cookieStore.get(THEME_RESOLVED_COOKIE_KEY)?.value,
+  )
   return {
     width: "device-width",
     initialScale: 1,
@@ -73,10 +84,7 @@ export async function generateViewport(): Promise<Viewport> {
     maximumScale: 1,
     userScalable: false,
     viewportFit: "cover",
-    themeColor: [
-      { media: "(prefers-color-scheme: light)", color: getPwaThemeColor("light") },
-      { media: "(prefers-color-scheme: dark)", color: getPwaThemeColor("dark") },
-    ],
+    themeColor: getPwaThemeColor(resolved),
   }
 }
 
@@ -110,7 +118,6 @@ export default async function RootLayout({
             <ZoomLock />
             <PWARegister />
             <PWAInstallGate />
-            <MobileIntroSplash />
             <AuthSessionSync />
             <AppShellBoundary>
               {children}

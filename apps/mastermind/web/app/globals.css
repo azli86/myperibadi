@@ -1449,6 +1449,13 @@ h1 {
 .lv-line .lv-main{color:#7dda8a;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lv-line .lv-user{color:#5bbf74}
 .lv-line .lv-mail{color:#3fae5a;opacity:.75}
+.lv-line .lv-chan{font-weight:800;font-size:11px;padding:1px 6px;border-radius:4px;white-space:nowrap}
+.lv-line .lv-chan.chan-wa{color:#2dd4bf;border:1px solid rgba(45,212,191,.35);background:rgba(45,212,191,.08)}
+.lv-line .lv-chan.chan-tg{color:#60a5fa;border:1px solid rgba(96,165,250,.35);background:rgba(96,165,250,.08)}
+.lv-line .lv-chan.chan-wc{color:#fbbf24;border:1px solid rgba(251,191,36,.35);background:rgba(251,191,36,.08)}
+.lv-line .lv-chan.chan-web{color:#c084fc;border:1px solid rgba(192,132,252,.35);background:rgba(192,132,252,.08)}
+.lv-line .lv-chan.chan-ot{color:#9ca3af;border:1px solid rgba(156,163,175,.35);background:rgba(156,163,175,.08)}
+.lv-line .lv-house{color:#22d3ee;opacity:.7;white-space:nowrap;margin-left:2px}
 .lv-pause{padding:5px 12px;border:1px solid #3f3f46;border-radius:8px;background:transparent;color:#d4d4d8;cursor:pointer;font-family:ui-monospace,monospace;font-size:12px}
 .lv-pause:hover{background:#18181b}
 

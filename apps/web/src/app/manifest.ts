@@ -1,6 +1,10 @@
-import { cookies } from "next/headers"
+import { cookies, headers } from "next/headers"
 import type { MetadataRoute } from "next"
-import { THEME_COOKIE_KEY, getPwaThemeColor } from "@/lib/theme"
+import { THEME_COOKIE_KEY, THEME_RESOLVED_COOKIE_KEY, getPwaThemeColor, isResolvedTheme } from "@/lib/theme"
+
+function isResolved(value: string | null | undefined): value is "light" | "dark" {
+  return value === "light" || value === "dark"
+}
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const name = "MyPeribadi"
@@ -9,7 +13,16 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
 
   const cookieStore = await cookies()
   const themeCookie = cookieStore.get(THEME_COOKIE_KEY)?.value
-  const effectiveTheme = themeCookie === "light" ? "light" : "dark"
+  const resolvedCookie = cookieStore.get(THEME_RESOLVED_COOKIE_KEY)?.value
+  const headerStore = await headers()
+  // Chrome sends this OS color-scheme client hint when opted in via Accept-CH.
+  const osPrefers = headerStore.get("sec-ch-prefers-color-scheme")
+  const effectiveTheme =
+    themeCookie === "light" || themeCookie === "dark"
+      ? themeCookie
+      : isResolved(osPrefers)
+        ? osPrefers
+        : isResolvedTheme(resolvedCookie) ? resolvedCookie : "light"
   const pwaThemeColor = getPwaThemeColor(effectiveTheme)
 
   const appManifest = {
