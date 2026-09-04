@@ -27,7 +27,6 @@ import {
   Settings,
   Sparkle,
   Mic,
-  Square,
   type LucideIcon,
 } from "lucide-react"
 import { motion } from "framer-motion"
@@ -291,8 +290,21 @@ export default function ChatPage() {
   const [errorText, setErrorText] = useState("")
   const [isVoiceRecording, setIsVoiceRecording] = useState(false)
   const [voiceBusy, setVoiceBusy] = useState(false)
+  const [voicePopupOpen, setVoicePopupOpen] = useState(false)
+  const [voiceSecs, setVoiceSecs] = useState(0)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const voiceChunksRef = useRef<Blob[]>([])
+  const voiceReadyRef = useRef(false)
+  const voiceReleaseRef = useRef(false)
+  const voiceSubmitRef = useRef(false)
+  const voiceHoldRef = useRef(false)
+
+  // Voice hold timer
+  useEffect(() => {
+    if (!isVoiceRecording) return
+    const id = window.setInterval(() => setVoiceSecs((s) => s + 1), 1000)
+    return () => window.clearInterval(id)
+  }, [isVoiceRecording])
   const { showAlert, alertModal } = usePageAlert(lang)
 
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -974,14 +986,45 @@ export default function ChatPage() {
     })
   }
 
-  // ── Voice input: record → transcribe → fill composer ──
-  const toggleVoiceRecording = async () => {
+  // ── Voice: mic popup → hold to record → release auto-submits ──
+  const openVoicePopup = () => {
+    if (voiceBusy || isLocating) return
+    setIsAttachmentMenuOpen(false)
+    setIsCommandMenuOpen(false)
+    setVoiceSecs(0)
+    voiceSubmitRef.current = true
+    voiceReleaseRef.current = false
+    setVoicePopupOpen(true)
+  }
+  const closeVoicePopup = () => {
+    if (isVoiceRecording || voiceBusy) return
+    setVoicePopupOpen(false)
+  }
+  const stopVoice = (submit: boolean) => {
+    if (!mediaRecorderRef.current) return
+    voiceSubmitRef.current = submit
+    try {
+      mediaRecorderRef.current.stop()
+    } catch {}
+  }
+  const endVoiceHold = () => {
+    voiceHoldRef.current = false
     if (isVoiceRecording) {
-      try {
-        mediaRecorderRef.current?.stop()
-      } catch {}
-      return
+      stopVoice(true)
+    } else {
+      voiceReleaseRef.current = true
     }
+  }
+  const cancelVoice = () => {
+    voiceHoldRef.current = false
+    if (isVoiceRecording) {
+      stopVoice(false)
+    } else {
+      setVoicePopupOpen(false)
+    }
+  }
+  const startVoiceHold = async () => {
+    if (isVoiceRecording || voiceBusy || isLocating) return
     if (!navigator.mediaDevices?.getUserMedia) {
       showAlert(
         lang === "EN" ? "Voice unsupported" : "Suara tidak disokong",
@@ -1003,6 +1046,7 @@ export default function ChatPage() {
             : "Kebenaran mikrofon telah disekat. Ketik ikon kunci/laman di bar alamat dan benarkan mikrofon, kemudian cuba lagi.",
           "error",
         )
+        setVoicePopupOpen(false)
         return
       }
     } catch {}
@@ -1010,23 +1054,35 @@ export default function ChatPage() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const recorder = new MediaRecorder(stream)
       voiceChunksRef.current = []
+      voiceReleaseRef.current = false
       mediaRecorderRef.current = recorder
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) voiceChunksRef.current.push(e.data)
       }
       recorder.onstop = async () => {
         stream.getTracks().forEach((tr) => tr.stop())
+        mediaRecorderRef.current = null
+        const submit = voiceSubmitRef.current
         setIsVoiceRecording(false)
         const blob = new Blob(voiceChunksRef.current, { type: recorder.mimeType || "audio/webm" })
         voiceChunksRef.current = []
-        if (blob.size < 200) {
-          showAlert(lang === "EN" ? "Too short" : "Terlalu pendek", lang === "EN" ? "Audio was too short." : "Audio terlalu pendek.", "error")
+        if (!submit || blob.size < 200) {
+          if (blob.size < 200) {
+            showAlert(lang === "EN" ? "Too short" : "Terlalu pendek", lang === "EN" ? "Hold longer to record your voice." : "Tekan lama untuk rakam suara.", "error")
+          }
+          setVoicePopupOpen(false)
           return
         }
-        await transcribeVoiceBlob(blob)
+        await sendVoiceBlob(blob)
       }
       recorder.start()
+      voiceReadyRef.current = true
+      setVoiceSecs(0)
       setIsVoiceRecording(true)
+      // Released before mic warmed up → stop immediately so it never records silently.
+      if (voiceReleaseRef.current) {
+        stopVoice(true)
+      }
     } catch (err: any) {
       const denied =
         err?.name === "NotAllowedError" ||
@@ -1036,17 +1092,18 @@ export default function ChatPage() {
         denied ? (lang === "EN" ? "Mic denied" : "Mikrofon dinafikan") : (lang === "EN" ? "Mic error" : "Ralat mikrofon"),
         denied
           ? (lang === "EN"
-              ? "Microphone access was not granted. Tap the lock/site icon in the address bar, allow microphone, then try again."
-              : "Akses mikrofon tidak dibenarkan. Ketik ikon kunci/laman di bar alamat, benarkan mikrofon, kemudian cuba lagi.")
+              ? "Microphone access was not granted. Allow microphone access and try again."
+              : "Akses mikrofon tidak dibenarkan. Benarkan akses mikrofon dan cuba lagi.")
           : (lang === "EN"
               ? "Could not start microphone. Please try again."
               : "Tidak dapat memulakan mikrofon. Sila cuba lagi."),
         "error",
       )
+      setVoicePopupOpen(false)
     }
   }
 
-  const transcribeVoiceBlob = async (blob: Blob) => {
+  const sendVoiceBlob = async (blob: Blob) => {
     setVoiceBusy(true)
     try {
       const token = getAccessToken()
@@ -1067,16 +1124,12 @@ export default function ChatPage() {
         showAlert(lang === "EN" ? "No text" : "Tiada teks", lang === "EN" ? "No text detected in audio." : "Tiada teks dikesan dalam audio.", "error")
         return
       }
-      setInput(spoken)
-      setIsAttachmentMenuOpen(false)
-      window.requestAnimationFrame(() => {
-        textareaRef.current?.focus()
-        resizeComposerTextarea()
-      })
+      await submitMessage(undefined, spoken)
     } catch {
       showAlert(lang === "EN" ? "Error" : "Ralat", lang === "EN" ? "Error reading audio. Try again." : "Ralat membaca audio. Cuba lagi.", "error")
     } finally {
       setVoiceBusy(false)
+      setVoicePopupOpen(false)
     }
   }
 
@@ -1553,19 +1606,16 @@ export default function ChatPage() {
                     type="button"
                     role="menuitem"
                     disabled={voiceBusy || isLocating}
-                    onClick={() => {
-                      setIsAttachmentMenuOpen(false)
-                      void toggleVoiceRecording()
-                    }}
+                    onClick={openVoicePopup}
                     className="flex w-full items-center gap-3 rounded-full px-3 py-2.5 text-left transition-colors hover:bg-[color:var(--surface-tint)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", composerIconBg)}>
-                      {voiceBusy ? <Loader2 size={16} className="animate-spin" /> : isVoiceRecording ? <Square size={14} fill="currentColor" /> : <Mic size={16} />}
+                      {voiceBusy ? <Loader2 size={16} className="animate-spin" /> : <Mic size={16} />}
                     </span>
                     <span className="min-w-0">
                       <span className={cn("block truncate text-sm font-semibold", titleText)}>{lang === "EN" ? "Voice" : "Suara"}</span>
                       <span className={cn("block truncate text-[0.6875rem]", subtleText)}>
-                        {lang === "EN" ? "Record a transaction by voice" : "Rakam transaksi dengan suara"}
+                        {lang === "EN" ? "Hold the mic to talk, release to send" : "Tekan lama ikut untuk bercakap, lepas untuk hantar"}
                       </span>
                     </span>
                   </button>
@@ -1603,15 +1653,13 @@ export default function ChatPage() {
                 aria-label={lang === "EN" ? "Add by voice" : "Tambah dengan suara"}
                 title={lang === "EN" ? "Add by voice" : "Tambah dengan suara"}
                 disabled={voiceBusy || isLocating}
-                onClick={toggleVoiceRecording}
+                onClick={openVoicePopup}
                 className={cn(
                   "chatgpt-composer-control flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                  isVoiceRecording
-                    ? "border-[#f87171]/40 bg-[#f87171]/15 text-[#f87171] animate-pulse"
-                    : mobileControlButton
+                  mobileControlButton
                 )}
               >
-                {voiceBusy ? <Loader2 size={14} className="animate-spin" /> : isVoiceRecording ? <Square size={13} fill="currentColor" /> : <Mic size={15} />}
+                {voiceBusy ? <Loader2 size={14} className="animate-spin" /> : <Mic size={15} />}
               </button>
 
               <button
@@ -1636,6 +1684,94 @@ export default function ChatPage() {
         </div>
       </div>
       <TxnFxOverlay kind={txnFxKind} onDone={() => setTxnFxKind(null)} />
+      {voicePopupOpen && (
+        <div className="fixed inset-0 z-[700] flex items-end justify-center sm:items-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={closeVoicePopup}
+            aria-hidden="true"
+          />
+          <div
+            role="dialog"
+            className={cn(
+              "relative w-full max-w-md rounded-t-3xl border border-[color:var(--border)] bg-[var(--card)] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center shadow-2xl sm:rounded-3xl sm:pb-6",
+              voiceBusy || isVoiceRecording ? "" : "chatgpt-voice-popup"
+            )}
+          >
+            <button
+              type="button"
+              aria-label={lang === "EN" ? "Close" : "Tutup"}
+              onClick={closeVoicePopup}
+              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[color:var(--surface-tint)]"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="mb-1 text-base font-bold text-[var(--text)]">
+              {voiceBusy
+                ? lang === "EN"
+                  ? "Sending..."
+                  : "Menghantar..."
+                : lang === "EN"
+                  ? "Voice message"
+                  : "Mesej suara"}
+            </div>
+            <p className={cn("mb-6 text-xs", "text-[var(--muted)]")}>
+              {voiceBusy
+                ? ""
+                : isVoiceRecording
+                  ? lang === "EN"
+                    ? "Release to send"
+                    : "Lepas untuk hantar"
+                  : lang === "EN"
+                    ? "Press and hold the mic, release to send"
+                    : "Tekan dan tahan ikut, lepas untuk hantar"}
+            </p>
+
+            {voiceBusy ? (
+              <div className="flex flex-col items-center gap-3 py-6">
+                <Loader2 size={30} className="animate-spin text-[var(--muted)]" />
+              </div>
+            ) : isVoiceRecording ? (
+              <div className="flex flex-col items-center gap-4 py-2">
+                <div className="flex items-center gap-2 text-sm font-semibold tabular-nums text-[#f87171]">
+                  <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#f87171]" />
+                  {Math.floor(voiceSecs / 60)}:{String(voiceSecs % 60).padStart(2, "0")}
+                </div>
+                <button
+                  type="button"
+                  onPointerDown={(e) => {
+                    e.preventDefault()
+                    ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
+                    cancelVoice()
+                  }}
+                  className="text-xs font-semibold text-[var(--muted)] underline underline-offset-4"
+                >
+                  {lang === "EN" ? "Cancel" : "Batal"}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.preventDefault()
+                  try {
+                    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+                  } catch {}
+                  voiceHoldRef.current = true
+                  void startVoiceHold()
+                }}
+                onPointerUp={() => endVoiceHold()}
+                onPointerCancel={() => cancelVoice()}
+                onContextMenu={(e) => e.preventDefault()}
+                className="group mx-auto flex h-24 w-24 touch-none select-none items-center justify-center rounded-full bg-[var(--brand-blue)] text-white shadow-lg transition-transform active:scale-90"
+              >
+                <Mic size={40} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
       {alertModal}
     </div>
   )
