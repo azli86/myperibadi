@@ -1017,6 +1017,7 @@ export default function ChatPage() {
   }
   const cancelVoice = () => {
     voiceHoldRef.current = false
+    if (voiceBusy) return
     if (isVoiceRecording) {
       stopVoice(false)
     } else {
@@ -1732,42 +1733,57 @@ export default function ChatPage() {
               <div className="flex flex-col items-center gap-3 py-6">
                 <Loader2 size={30} className="animate-spin text-[var(--muted)]" />
               </div>
-            ) : isVoiceRecording ? (
-              <div className="flex flex-col items-center gap-4 py-2">
-                <div className="flex items-center gap-2 text-sm font-semibold tabular-nums text-[#f87171]">
-                  <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#f87171]" />
-                  {Math.floor(voiceSecs / 60)}:{String(voiceSecs % 60).padStart(2, "0")}
-                </div>
+            ) : (
+              <div className="flex flex-col items-center gap-4 py-1">
+                {isVoiceRecording && (
+                  <div className="flex items-center gap-2 text-sm font-semibold tabular-nums text-[#f87171]">
+                    <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#f87171]" />
+                    {Math.floor(voiceSecs / 60)}:{String(voiceSecs % 60).padStart(2, "0")}
+                  </div>
+                )}
                 <button
                   type="button"
+                  aria-label={
+                    isVoiceRecording
+                      ? lang === "EN"
+                        ? "Release to send voice message"
+                        : "Lepas untuk hantar mesej suara"
+                      : lang === "EN"
+                        ? "Hold to record"
+                        : "Tekan lama untuk rakam"
+                  }
                   onPointerDown={(e) => {
                     e.preventDefault()
-                    ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
-                    cancelVoice()
+                    try {
+                      e.currentTarget.setPointerCapture(e.pointerId)
+                    } catch {}
+                    voiceHoldRef.current = true
+                    void startVoiceHold()
                   }}
-                  className="text-xs font-semibold text-[var(--muted)] underline underline-offset-4"
+                  onPointerUp={() => endVoiceHold()}
+                  onPointerCancel={() => cancelVoice()}
+                  onContextMenu={(e) => e.preventDefault()}
+                  className={cn(
+                    "mx-auto flex h-24 w-24 touch-none select-none items-center justify-center rounded-full text-white shadow-lg transition-transform active:scale-95",
+                    isVoiceRecording ? "animate-pulse bg-[#ef4444]" : "bg-[var(--brand-blue)]"
+                  )}
                 >
-                  {lang === "EN" ? "Cancel" : "Batal"}
+                  <Mic size={40} />
                 </button>
+                {isVoiceRecording ? (
+                  <button
+                    type="button"
+                    onClick={() => cancelVoice()}
+                    className="text-xs font-semibold text-[var(--muted)] underline underline-offset-4"
+                  >
+                    {lang === "EN" ? "Cancel & discard" : "Batal & buang"}
+                  </button>
+                ) : (
+                  <span className="text-[0.6875rem] font-medium text-[var(--muted)]">
+                    {lang === "EN" ? "Press and hold" : "Tekan dan tahan"}
+                  </span>
+                )}
               </div>
-            ) : (
-              <button
-                type="button"
-                onPointerDown={(e) => {
-                  e.preventDefault()
-                  try {
-                    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-                  } catch {}
-                  voiceHoldRef.current = true
-                  void startVoiceHold()
-                }}
-                onPointerUp={() => endVoiceHold()}
-                onPointerCancel={() => cancelVoice()}
-                onContextMenu={(e) => e.preventDefault()}
-                className="group mx-auto flex h-24 w-24 touch-none select-none items-center justify-center rounded-full bg-[var(--brand-blue)] text-white shadow-lg transition-transform active:scale-90"
-              >
-                <Mic size={40} />
-              </button>
             )}
           </div>
         </div>
