@@ -1972,6 +1972,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           const token = getAccessToken();
           const formData = new FormData();
           formData.append("file", blob, "voice.webm");
+          const res = await fetch("/api/transcribe", {
+            credentials: "include",
+            method: "POST",
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            body: formData,
+          });
+          if (!res.ok) throw new Error("transcribe failed");
+          const data = await res.json();
+          const spoken = String(data?.text || "").trim();
           const showResult = (
             ok: boolean,
             income: boolean,
@@ -1983,31 +1992,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             setVoicePhase("recording");
             setVoiceResult({ ok, income, title, body });
           };
-          const res = await fetch("/api/transcribe", {
-            credentials: "include",
-            method: "POST",
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-            body: formData,
-          });
-          if (!res.ok) {
-            const errBody = await res.json().catch(() => null);
-            const detail = String(errBody?.detail || "");
-            showResult(
-              false,
-              false,
-              /dikesan|not detected/i.test(detail)
-                ? lang === "BM"
-                  ? "Transaksi suara tidak dikesan"
-                  : "Voice transaction not detected"
-                : lang === "BM"
-                  ? "Ralat membaca audio"
-                  : "Error reading audio",
-              /dikesan|not detected/i.test(detail) ? "" : detail,
-            );
-            return;
-          }
-          const data = await res.json();
-          const spoken = String(data?.text || "").trim();
           if (!spoken) {
             showResult(
               false,
