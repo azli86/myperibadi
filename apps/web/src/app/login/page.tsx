@@ -173,8 +173,18 @@ export default function LoginPage() {
       // regular Firebase popup on desktop browsers or if the native path fails.
       const nativeToken = await getNativeGoogleToken()
       if (nativeToken === "cancel") return
-      const idToken = isJwtLike(nativeToken)
-        ? (await signInWithGoogleCredential(nativeToken as string)).idToken
+      if (nativeToken !== null && !isJwtLike(nativeToken)) {
+        // Native path failed inside the wrapper — surface the real cause instead
+        // of silently falling back to the OAuth popup.
+        console.warn("[google] native failure:", nativeToken)
+        throw new Error(
+          lang === "BM"
+            ? `Ralat log masuk Google peranti (${nativeToken}). Cuba sekali lagi.`
+            : `Device Google sign-in failed (${nativeToken}). Try again.`
+        )
+      }
+      const idToken = nativeToken
+        ? (await signInWithGoogleCredential(nativeToken)).idToken
         : await signInWithGoogle()
       const sessionId = ensureSessionId()
       const res = await fetch("/api/auth/google", {
