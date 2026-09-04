@@ -261,6 +261,31 @@ function createDefaultAddItems(): AddItemState[] {
   return [{ name: "", quantity: "1", unit_price: "0" }];
 }
 
+/** Pull the concise fields out of the bot's saved-transaction reply. */
+function parseVoiceSavedReply(reply: string, fallbackNote: string) {
+  const value = (name: string) => {
+    const match = reply.match(
+      new RegExp(`^\\s*(?:•\\s*)?(?:${name})\\s*:\\s*(.+)$`, "im"),
+    );
+    if (!match) return "";
+    return (match[1] || "").replace(/\*+/g, "").replace(/\s+/g, " ").trim();
+  };
+  const amount =
+    value("Amount|Amaun") ||
+    ((reply.match(/RM\s*([\d][\d.,]*)/) || ["", ""])[1] || "").trim();
+  const note = value("Note|Nota|Perihal|Description") || fallbackNote;
+  const category = value("Category|Kategori");
+  const wallet = value("Wallet|Dompet");
+  const refMatch = reply.match(/\b(TXN\d{2}-[A-Z0-9]{6})\b/);
+  return {
+    amount: amount.replace(/^RM\s*/i, ""),
+    note,
+    category,
+    wallet,
+    ref: refMatch ? refMatch[1] : "",
+  };
+}
+
 function getPreferredCategoryName(
   categories: ShellCategory[],
   type: AddFormState["type"],
@@ -4541,59 +4566,119 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               className="w-full max-w-sm overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div
-                className={`flex items-center gap-3 px-5 py-4 ${
-                  voiceResult.ok
-                    ? voiceResult.income
-                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                      : "bg-rose-500/12 text-rose-600 dark:text-rose-400"
-                    : "bg-amber-500/12 text-amber-600 dark:text-amber-400"
-                }`}
-              >
-                <span
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                    voiceResult.ok
-                      ? voiceResult.income
-                        ? "bg-emerald-500 text-white"
-                        : "bg-rose-500 text-white"
-                      : "bg-amber-500 text-white"
-                  }`}
-                >
-                  {voiceResult.ok ? (
-                    <Check size={18} strokeWidth={3} />
-                  ) : (
-                    <Mic size={17} strokeWidth={2.4} />
-                  )}
-                </span>
-                <p className="text-base font-black tracking-tight">{voiceResult.title}</p>
-              </div>
-              <div className="max-h-[45vh] overflow-y-auto px-5 py-4">
-                <p className="whitespace-pre-line text-sm font-semibold leading-relaxed text-[var(--text)]">
-                  {voiceResult.body}
-                </p>
-                {!voiceResult.ok && !voiceResult.body && (
-                  <p className="text-sm font-medium text-[var(--muted)]">
-                    {lang === "BM"
-                      ? "Tiada suara atau teks dikesan. Cuba lagi."
-                      : "No speech or text detected. Try again."}
-                  </p>
-                )}
-              </div>
-              <div className="px-5 pb-5">
-                <button
-                  type="button"
-                  onClick={() => setVoiceResult(null)}
-                  className="w-full rounded-2xl bg-[var(--brand-blue)] py-3 text-sm font-black text-white transition-transform active:scale-[0.98]"
-                >
-                  {voiceResult.ok
-                    ? lang === "BM"
-                      ? "Siap"
-                      : "Done"
-                    : lang === "BM"
-                      ? "Cuba lagi"
-                      : "Try again"}
-                </button>
-              </div>
+              {voiceResult.ok ? (
+                (() => {
+                  const parsed = parseVoiceSavedReply(voiceResult.body, "");
+                  const amountText = parsed.amount
+                    ? `RM ${parsed.amount}`
+                    : "";
+                  return (
+                    <div>
+                      <div
+                        className={`flex items-center gap-3 px-5 py-4 ${
+                          voiceResult.income
+                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                            : "bg-rose-500/12 text-rose-600 dark:text-rose-400"
+                        }`}
+                      >
+                        <span
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                            voiceResult.income
+                              ? "bg-emerald-500 text-white"
+                              : "bg-rose-500 text-white"
+                          }`}
+                        >
+                          <Check size={18} strokeWidth={3} />
+                        </span>
+                        <p className="text-base font-black tracking-tight">
+                          {voiceResult.title}
+                        </p>
+                      </div>
+                      <div className="max-h-[45vh] overflow-y-auto px-5 py-4">
+                        {amountText && (
+                          <p
+                            className={`text-3xl font-black tabular-nums tracking-tight ${
+                              voiceResult.income
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-rose-600 dark:text-rose-400"
+                            }`}
+                          >
+                            {amountText}
+                          </p>
+                        )}
+                        {parsed.note && (
+                          <p className="mt-1 text-sm font-semibold text-[var(--text)]">
+                            {parsed.note}
+                          </p>
+                        )}
+                        {(parsed.category || parsed.wallet) && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {parsed.category && (
+                              <span className="rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-1 text-xs font-bold text-[var(--text)]">
+                                {parsed.category}
+                              </span>
+                            )}
+                            {parsed.wallet && (
+                              <span className="rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-1 text-xs font-bold text-[var(--text)]">
+                                {parsed.wallet}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {parsed.ref && (
+                          <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                            {parsed.ref}
+                          </p>
+                        )}
+                        {!parsed.note && !amountText && (
+                          <p className="whitespace-pre-line text-sm font-semibold leading-relaxed text-[var(--text)]">
+                            {voiceResult.body}
+                          </p>
+                        )}
+                      </div>
+                      <div className="px-5 pb-5">
+                        <button
+                          type="button"
+                          onClick={() => setVoiceResult(null)}
+                          className="w-full rounded-2xl bg-[var(--brand-blue)] py-3 text-sm font-black text-white transition-transform active:scale-[0.98]"
+                        >
+                          {lang === "BM" ? "Siap" : "Done"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div>
+                  <div className="flex items-center gap-3 bg-amber-500/12 px-5 py-4 text-amber-600 dark:text-amber-400">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white">
+                      <Mic size={17} strokeWidth={2.4} />
+                    </span>
+                    <p className="text-base font-black tracking-tight">{voiceResult.title}</p>
+                  </div>
+                  <div className="max-h-[45vh] overflow-y-auto px-5 py-4">
+                    <p className="text-sm font-semibold leading-relaxed text-[var(--text)]">
+                      {voiceResult.body}
+                    </p>
+                    {!voiceResult.body && (
+                      <p className="text-sm font-medium text-[var(--muted)]">
+                        {lang === "BM"
+                          ? "Tiada suara atau teks dikesan. Cuba lagi."
+                          : "No speech or text detected. Try again."}
+                      </p>
+                    )}
+                  </div>
+                  <div className="px-5 pb-5">
+                    <button
+                      type="button"
+                      onClick={() => setVoiceResult(null)}
+                      className="w-full rounded-2xl bg-[var(--brand-blue)] py-3 text-sm font-black text-white transition-transform active:scale-[0.98]"
+                    >
+                      {lang === "BM" ? "Tutup" : "Close"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
