@@ -152,6 +152,14 @@ function applyTheme(theme: ThemeMode, resolvedTheme: ResolvedTheme) {
   if (manifest) {
     manifest.setAttribute("href", `/manifest.webmanifest?t=${resolvedTheme}-${pwaThemeColor.replace("#", "")}`)
   }
+
+  if (typeof window !== "undefined" && typeof (window as any).AndroidApp?.onThemeChange === "function") {
+    try {
+      (window as any).AndroidApp.onThemeChange(resolvedTheme)
+    } catch {
+      // Ignore if native bridge is not available
+    }
+  }
 }
 
 async function saveThemeToServer(theme: ThemeMode) {

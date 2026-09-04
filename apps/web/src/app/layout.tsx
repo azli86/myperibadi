@@ -84,7 +84,7 @@ export async function generateViewport(): Promise<Viewport> {
   } else if (initialThemeSetting === "dark") {
     themeColorConfig = getPwaThemeColor("dark")
   } else {
-    // Mode system: mengikut prefers-color-scheme peranti secara automatik
+    // System mode: automatically respects device prefers-color-scheme media query
     themeColorConfig = [
       { media: "(prefers-color-scheme: light)", color: getPwaThemeColor("light") },
       { media: "(prefers-color-scheme: dark)", color: getPwaThemeColor("dark") },
