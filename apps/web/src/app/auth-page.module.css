@@ -19,8 +19,9 @@
   --auth-input-text: #d7deea;
   --auth-input-placeholder: #929cad;
   background:
-    linear-gradient(rgba(15, 17, 23, 0.88), rgba(15, 17, 23, 0.92)),
-    url(https://r2-data-upload.budget.digitalport.my/assets/images/wallpaper/wall.png) center / cover fixed !important;
+    radial-gradient(1100px 700px at 12% -8%, rgba(244, 247, 251, 0.05), transparent 55%),
+    radial-gradient(900px 600px at 105% 18%, rgba(56, 189, 248, 0.06), transparent 55%),
+    var(--page-bg, #0f1117);
 }
 
 :global(html[data-theme="light"]) .screen {
@@ -44,8 +45,9 @@
   --auth-input-text: #4b5563;
   --auth-input-placeholder: #98a2b3;
   background:
-    linear-gradient(rgba(244, 246, 250, 0.82), rgba(244, 246, 250, 0.88)),
-    url(https://r2-data-upload.budget.digitalport.my/assets/images/wallpaper/wall.png) center / cover fixed !important;
+    radial-gradient(1100px 700px at 12% -8%, rgba(2, 13, 43, 0.05), transparent 55%),
+    radial-gradient(900px 600px at 105% 18%, rgba(37, 99, 235, 0.05), transparent 55%),
+    var(--page-bg, #f4f6fa);
 }
 
 .input {
@@ -89,10 +91,6 @@
     --auth-control-border: rgba(238, 243, 247, 0.22);
     --auth-input-text: #eef3f7;
     --auth-input-placeholder: #728093;
-    background:
-      radial-gradient(circle at 12% 18%, rgba(238, 243, 247, 0.07), transparent 28rem),
-      linear-gradient(135deg, rgba(17, 24, 32, 0.92), rgba(23, 33, 43, 0.94), rgba(16, 22, 29, 0.95)),
-      url(https://r2-data-upload.budget.digitalport.my/assets/images/wallpaper/wall.png) center / cover fixed !important;
   }
 
   :global(html[data-theme="light"]) .screen {
@@ -112,10 +110,6 @@
     --auth-control-border: rgba(20, 32, 35, 0.18);
     --auth-input-text: #142023;
     --auth-input-placeholder: #7c8789;
-    background:
-      radial-gradient(circle at 14% 20%, rgba(20, 32, 35, 0.06), transparent 28rem),
-      linear-gradient(135deg, rgba(238, 241, 237, 0.88), rgba(227, 232, 226, 0.9), rgba(246, 247, 243, 0.92)),
-      url(https://r2-data-upload.budget.digitalport.my/assets/images/wallpaper/wall.png) center / cover fixed !important;
   }
 
   .screen > div:nth-of-type(2) {
