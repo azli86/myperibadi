@@ -26,12 +26,14 @@ function resolveThemeMode(theme: ThemeMode, cookieResolvedTheme?: string): Resol
 
 export async function generateMetadata(): Promise<Metadata> {
   const cookieStore = await cookies()
-  const theme = cookieStore.get(THEME_COOKIE_KEY)?.value
-  const resolved = resolveThemeMode(
-    isThemeMode(theme) ? theme : "system",
+  const cookieTheme = cookieStore.get(THEME_COOKIE_KEY)?.value
+  const initialThemeSetting: ThemeMode = isThemeMode(cookieTheme) ? cookieTheme : "system"
+  const initialResolvedTheme = resolveThemeMode(
+    initialThemeSetting,
     cookieStore.get(THEME_RESOLVED_COOKIE_KEY)?.value,
   )
-  const themeColor = getPwaThemeColor(resolved)
+  const navColor = getPwaThemeColor(initialResolvedTheme)
+
   return {
     title: "MyPeribadi",
     description: "Manage your personal budget, receipts, and daily expenses with ease.",
@@ -57,12 +59,12 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     appleWebApp: {
       capable: true,
-      statusBarStyle: resolved === "dark" ? "black-translucent" : "default",
+      statusBarStyle: initialResolvedTheme === "dark" ? "black-translucent" : "default",
       title: "MyPeribadi",
     },
     other: {
-      "navigation-bar-color": themeColor,
-      "msapplication-navbutton-color": themeColor,
+      "navigation-bar-color": navColor,
+      "msapplication-navbutton-color": navColor,
     },
     formatDetection: {
       telephone: false,
@@ -72,11 +74,23 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export async function generateViewport(): Promise<Viewport> {
   const cookieStore = await cookies()
-  const theme = cookieStore.get(THEME_COOKIE_KEY)?.value
-  const resolved = resolveThemeMode(
-    isThemeMode(theme) ? theme : "system",
-    cookieStore.get(THEME_RESOLVED_COOKIE_KEY)?.value,
-  )
+  const cookieTheme = cookieStore.get(THEME_COOKIE_KEY)?.value
+  const initialThemeSetting: ThemeMode = isThemeMode(cookieTheme) ? cookieTheme : "system"
+
+  let themeColorConfig: Viewport["themeColor"]
+
+  if (initialThemeSetting === "light") {
+    themeColorConfig = getPwaThemeColor("light")
+  } else if (initialThemeSetting === "dark") {
+    themeColorConfig = getPwaThemeColor("dark")
+  } else {
+    // Mode system: mengikut prefers-color-scheme peranti secara automatik
+    themeColorConfig = [
+      { media: "(prefers-color-scheme: light)", color: getPwaThemeColor("light") },
+      { media: "(prefers-color-scheme: dark)", color: getPwaThemeColor("dark") },
+    ]
+  }
+
   return {
     width: "device-width",
     initialScale: 1,
@@ -84,7 +98,7 @@ export async function generateViewport(): Promise<Viewport> {
     maximumScale: 1,
     userScalable: false,
     viewportFit: "cover",
-    themeColor: getPwaThemeColor(resolved),
+    themeColor: themeColorConfig,
   }
 }
 

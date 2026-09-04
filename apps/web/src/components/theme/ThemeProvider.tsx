@@ -125,9 +125,19 @@ function applyTheme(theme: ThemeMode, resolvedTheme: ResolvedTheme) {
   storeThemePreference(theme, resolvedTheme)
 
   const pwaThemeColor = getPwaThemeColor(resolvedTheme)
-  document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((meta) => {
-    meta.content = pwaThemeColor
-  })
+
+  const existingMetaThemeColors = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')
+  if (existingMetaThemeColors.length > 0) {
+    existingMetaThemeColors.forEach((meta) => {
+      if (theme !== "system") {
+        meta.removeAttribute("media")
+      }
+      meta.content = pwaThemeColor
+    })
+  } else {
+    setMetaContent("theme-color", pwaThemeColor)
+  }
+
   setMetaContent("theme-color", pwaThemeColor)
   setMetaContent("navigation-bar-color", pwaThemeColor)
   setMetaContent("msapplication-navbutton-color", pwaThemeColor)
