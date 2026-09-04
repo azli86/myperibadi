@@ -14066,6 +14066,25 @@ async def transcribe_voice_route(
     return {"text": normalized, "language": result.language}
 
 
+def _looks_like_foreign_script_hallucination(text: str) -> bool:
+    """True when the transcript is dominated by non-Latin scripts (Tamil,
+    Chinese, Thai, Devanagari, Arabic, ...) — a sign Whisper hallucinated
+    instead of transcribing Malay/English speech."""
+    latin = 0
+    foreign = 0
+    for ch in text:
+        if ch.isspace():
+            continue
+        o = ord(ch)
+        if (0x0041 <= o <= 0x007A) or (0x00C0 <= o <= 0x02AF) or ch.isdigit():
+            latin += 1
+        elif (0x0900 <= o <= 0x0DFF) or (0x0E00 <= o <= 0x0E7F) or (0x4E00 <= o <= 0x9FFF) or \
+             (0x3040 <= o <= 0x30FF) or (0xAC00 <= o <= 0xD7AF) or (0x0600 <= o <= 0x06FF) or \
+             (0x0370 <= o <= 0x03FF) or (0x0590 <= o <= 0x05FF):
+            foreign += 1
+    return foreign > 0 and foreign > latin
+
+
 @app.get("/support/tickets/mine", response_model=List[schemas.SupportTicketResponse])
 async def my_support_tickets(
     current_user: models.User = Depends(get_current_user),
