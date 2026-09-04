@@ -14026,7 +14026,16 @@ async def transcribe_voice_route(
     result = await audio_transcription_service.transcribe_audio(payload, mime_type)
     if result is None or not result.text:
         raise HTTPException(status_code=422, detail="Audio tidak dapat ditranskripsi. Sila cuba audio yang lebih jelas.")
-    return {"text": result.text, "language": result.language}
+    if _looks_like_foreign_script_hallucination(result.text):
+        # Latin-speaking user got a Tamil/Chinese/etc. transcription = Whisper
+        # hallucination, not speech. Treat as not-detected so the caller can
+        # prompt the user to try again instead of saving nonsense.
+        raise HTTPException(status_code=422, detail="Transaksi suara tidak dikesan. Sila cuba lagi dengan jelas.")
+    # Bot parser only reads digit amounts, so turn spelled-out Malay/English
+    # money into digits here (web voice hits /api/transcribe directly, unlike
+    # the WhatsApp/Telegram media path which already normalises).
+    normalized = whatsapp_service.normalize_spoken_amounts(result.text)
+    return {"text": normalized, "language": result.language}
 
 
 @app.get("/support/tickets/mine", response_model=List[schemas.SupportTicketResponse])

@@ -51,12 +51,15 @@ async def transcribe_audio(
     """
     if not payload:
         return None
+    _debug_save_voice(payload, mime_type)
     api_key = (os.getenv("OCR_OPENAI_API_KEY") or "").strip()
     base_url = (os.getenv("OCR_OPENAI_BASE_URL") or "https://api.openai.com/v1").strip().rstrip("/")
     if not api_key:
         return None
 
-    model = (os.getenv("WHISPER_MODEL") or "whisper-1").strip()
+    # gpt-4o-transcribe: same $/min as whisper-1 but far better on short
+    # accented Bahasa Melayu clips and does not hallucinate on silence.
+    model = (os.getenv("WHISPER_MODEL") or "gpt-4o-transcribe").strip()
     # Mime may carry parameters like "audio/ogg; codecs=opus" which OpenAI
     # rejects and which break our extension lookup — use the base mime only.
     base_mime = (mime_type or "").split(";", 1)[0].strip().lower()
@@ -106,7 +109,65 @@ async def transcribe_audio(
     text = str(body.get("text") or "").strip()
     if not text:
         return None
+    # Whisper is trained mostly on Indonesian audio, so short Bahasa Melayu
+    # clips often come back spelled Indonesian-style — including "Rp" (rupiah)
+    # injected before amounts. Rewrite Indonesian currency tokens to Malaysian
+    # so downstream parsers never record a Rupiah amount by mistake.
+    text = _malaysianize_currency(text)
     return TranscriptionResult(text=text, language=body.get("language"))
+
+
+def _debug_save_voice(payload: bytes, mime_type: str) -> None:
+    """Keep recent raw voice uploads under /tmp so failed transcriptions can be
+    re-analysed offline (pruned by age + count on every save)."""
+    import hashlib
+    import time
+
+    try:
+        d = "/tmp/voice_dbg"
+        os.makedirs(d, exist_ok=True)
+        ext = ".bin"
+        base = (mime_type or "").split(";", 1)[0].strip().lower()
+        ext_map = {"audio/ogg": ".ogg", "audio/webm": ".webm", "audio/mp4": ".m4a",
+                   "audio/mpeg": ".mp3", "audio/wav": ".wav", "audio/x-wav": ".wav"}
+        if base in ext_map:
+            ext = ext_map[base]
+        h = hashlib.sha1(payload).hexdigest()[:10]
+        path = os.path.join(d, f"{time.time():.0f}-{h}{ext}")
+        with open(path, "wb") as f:
+            f.write(payload)
+        # Prune: older than 2 hours or more than 150 files.
+        cutoff = time.time() - 7200
+        try:
+            for name in os.listdir(d):
+                p = os.path.join(d, name)
+                try:
+                    if os.path.getmtime(p) < cutoff:
+                        os.unlink(p)
+                except OSError:
+                    pass
+            files = sorted(os.listdir(d))
+            for name in files[:-150]:
+                try:
+                    os.unlink(os.path.join(d, name))
+                except OSError:
+                    pass
+        except OSError:
+            pass
+    except Exception:
+        pass
+
+
+def _malaysianize_currency(text: str) -> str:
+    """Map Indonesian currency spellings in a transcript to Malaysian ones."""
+    import re
+
+    # "makan rp 10 tng" / "rp10" / "Rp. 10" -> "makan RM 10 tng" (drop
+    # nothing: RM is stripped by amount parsers and keeps the digit intact).
+    text = re.sub(r"\brp\.?\s*([0-9][0-9.,]*)\b", r"RM \1", text, flags=re.I)
+    text = re.sub(r"\brp\b", "RM", text, flags=re.I)
+    text = re.sub(r"\brupiah\b", "ringgit", text, flags=re.I)
+    return text
 
 
 def _normalize_language_hint(language_hint: str | None) -> str | None:
@@ -164,7 +225,14 @@ def _maybe_convert_to_wav(payload: bytes, mime_type: str) -> tuple[bytes, str, s
                 [
                     ffmpeg, "-y", "-i", in_path,
                     "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le",
-                    "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
+                    "-af", (
+                        # NO loudnorm: its compressor distorts short voice clips
+                        # (raises noise, pumps gain) and confuses Whisper. Strip
+                        # leading + trailing silence only, since Whisper
+                        # hallucinates English filler on quiet margins.
+                        "silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.4:"
+                        "stop_periods=-1:stop_threshold=-50dB:stop_silence=0.5"
+                    ),
                     out_path,
                 ],
                 capture_output=True,
@@ -175,6 +243,11 @@ def _maybe_convert_to_wav(payload: bytes, mime_type: str) -> tuple[bytes, str, s
                     wav_bytes = fout.read()
                 if wav_bytes:
                     print(f"[voice-dbg] converted {base} to wav bytes={len(wav_bytes)}")
+                    # Post-trim clip collapsed to near-nothing = pure silence.
+                    # Whisper would hallucinate on it; return empty so the
+                    # caller skips transcription instead.
+                    if len(wav_bytes) < 5000:
+                        return b"", ".wav", "audio/wav"
                     return wav_bytes, ".wav", "audio/wav"
         finally:
             for p in (in_path, out_path):
