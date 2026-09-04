@@ -18,10 +18,7 @@
   --auth-control-text: #dbe3ef;
   --auth-input-text: #d7deea;
   --auth-input-placeholder: #929cad;
-  background:
-    radial-gradient(1100px 700px at 12% -8%, rgba(244, 247, 251, 0.05), transparent 55%),
-    radial-gradient(900px 600px at 105% 18%, rgba(56, 189, 248, 0.06), transparent 55%),
-    var(--page-bg, #0f1117);
+  background: var(--bottom-nav-surface, #161616);
 }
 
 :global(html[data-theme="light"]) .screen {
@@ -44,10 +41,7 @@
   --auth-control-text: #111827;
   --auth-input-text: #4b5563;
   --auth-input-placeholder: #98a2b3;
-  background:
-    radial-gradient(1100px 700px at 12% -8%, rgba(2, 13, 43, 0.05), transparent 55%),
-    radial-gradient(900px 600px at 105% 18%, rgba(37, 99, 235, 0.05), transparent 55%),
-    var(--page-bg, #f4f6fa);
+  background: var(--bottom-nav-surface, #ffffff);
 }
 
 .input {
