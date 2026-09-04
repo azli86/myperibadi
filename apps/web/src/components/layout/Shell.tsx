@@ -80,6 +80,7 @@ import {
   Car,
   Users,
   Heart,
+  Mic,
   Pill,
   type LucideIcon,
 } from "lucide-react";
@@ -1841,6 +1842,248 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     resetAddForm();
   }, [clearSharedAddAttachment, resetAddForm]);
 
+  // ── Voice record (long-press the centre chat nav button) ───────────────
+  // Record while held; on release the clip is transcribed and the result is
+  // prefilled into the existing Add-Transaction sheet (amount/type/category/
+  // wallet) so the user can confirm before saving. No page navigation.
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voicePhase, setVoicePhase] = useState<"recording" | "busy" | "error">("recording");
+  const [voiceSeconds, setVoiceSeconds] = useState(0);
+  const [voiceError, setVoiceError] = useState("");
+  const voiceRecorderRef = React.useRef<MediaRecorder | null>(null);
+  const voiceChunksRef = React.useRef<Blob[]>([]);
+  const voiceStreamRef = React.useRef<MediaStream | null>(null);
+  const voiceTickRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const closeVoiceRecorder = React.useCallback(() => {
+    if (voiceTickRef.current) {
+      clearInterval(voiceTickRef.current);
+      voiceTickRef.current = null;
+    }
+    voiceRecorderRef.current = null;
+    voiceChunksRef.current = [];
+    const stream = voiceStreamRef.current;
+    voiceStreamRef.current = null;
+    stream?.getTracks().forEach((tr) => tr.stop());
+    setVoiceOpen(false);
+    setVoiceSeconds(0);
+    setVoicePhase("recording");
+  }, []);
+
+  const fillAddFromSpeech = React.useCallback(
+    (spoken: string) => {
+      const lower = spoken.toLowerCase();
+      const isIncome =
+        lower.includes("gaji") ||
+        lower.includes("salary") ||
+        lower.includes("income") ||
+        lower.includes("terima") ||
+        lower.includes("receive") ||
+        lower.includes("masuk") ||
+        lower.includes("duit masuk") ||
+        lower.includes("dividen") ||
+        lower.includes("bonus");
+      const amounts = spoken.match(/(?:rm\s*)?([0-9]+(?:[.,][0-9]+)?)/gi) || [];
+      let amount = "";
+      let description = spoken;
+      if (amounts.length) {
+        const first = amounts[0] || "";
+        const cleaned = first
+          .replace(/rm/gi, "")
+          .replace(/\s/g, "")
+          .replace(/,/g, ".")
+          .trim();
+        const num = parseFloat(cleaned);
+        if (!isNaN(num) && num > 0) {
+          amount = String(num);
+          description = spoken
+            .replace(first, "")
+            .replace(/rm/gi, "")
+            .replace(/\s+/g, " ")
+            .trim();
+        }
+      }
+      description = description.replace(/\.$/g, "").trim();
+      if (isIncome) {
+        description = description || (lang === "BM" ? "Pendapatan" : "Income");
+        setAddItems(createDefaultAddItems());
+      } else {
+        // Expense flow saves line items, so put the spoken description into a
+        // single line item priced at the total amount.
+        setAddItems([
+          {
+            name: description || (lang === "BM" ? "Perbelanjaan" : "Expense"),
+            quantity: "1",
+            unit_price: amount,
+          },
+        ]);
+      }
+      setAddForm((f) => ({
+        ...f,
+        type: isIncome ? "income" : "expense",
+        description: description || f.description,
+        amount: amount || f.amount,
+      }));
+    },
+    [setAddForm, setAddItems, lang],
+  );
+
+  const stopAndTranscribe = React.useCallback(async () => {
+    setVoicePhase("busy");
+    const recorder = voiceRecorderRef.current;
+    try {
+      recorder?.stop();
+    } catch {}
+    // onstop does the rest (see beginVoiceHold).
+  }, []);
+
+  const beginVoiceHold = React.useCallback(async () => {
+    if (voiceOpen) return;
+    setVoiceError("");
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setVoiceError(
+        lang === "BM"
+          ? "Rakaman suara tidak disokong pada pelayar ini."
+          : "Voice recording is not supported on this browser.",
+      );
+      setVoicePhase("error");
+      setVoiceOpen(true);
+      window.setTimeout(() => setVoiceOpen(false), 2600);
+      return;
+    }
+    try {
+      const perm = (navigator.permissions as any)?.query
+        ? await (navigator.permissions as any).query({ name: "microphone" as any })
+        : null;
+      if (perm?.state === "denied") {
+        setVoiceError(
+          lang === "BM"
+            ? "Kebenaran mikrofon disekat. Benarkan mikrofon, kemudian cuba lagi."
+            : "Microphone permission was blocked. Allow microphone, then try again.",
+        );
+        setVoicePhase("error");
+        setVoiceOpen(true);
+        window.setTimeout(() => setVoiceOpen(false), 2600);
+        return;
+      }
+    } catch {}
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      voiceStreamRef.current = stream;
+      voiceChunksRef.current = [];
+      voiceRecorderRef.current = recorder;
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) voiceChunksRef.current.push(e.data);
+      };
+      recorder.onstop = async () => {
+        const streamNow = voiceStreamRef.current;
+        voiceStreamRef.current = null;
+        streamNow?.getTracks().forEach((tr) => tr.stop());
+        if (voiceTickRef.current) {
+          clearInterval(voiceTickRef.current);
+          voiceTickRef.current = null;
+        }
+        const blob = new Blob(voiceChunksRef.current, { type: recorder.mimeType || "audio/webm" });
+        voiceChunksRef.current = [];
+        if (blob.size < 200) {
+          setVoicePhase("error");
+          setVoiceError(lang === "BM" ? "Audio terlalu pendek." : "Audio too short.");
+          window.setTimeout(() => setVoiceOpen(false), 2000);
+          return;
+        }
+        setVoicePhase("busy");
+        try {
+          const token = getAccessToken();
+          const formData = new FormData();
+          formData.append("file", blob, "voice.webm");
+          const res = await fetch("/api/transcribe", {
+            credentials: "include",
+            method: "POST",
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            body: formData,
+          });
+          if (!res.ok) throw new Error("transcribe failed");
+          const data = await res.json();
+          const spoken = String(data?.text || "").trim();
+          if (!spoken) {
+            setVoiceError(
+              lang === "BM" ? "Tiada teks dikesan dalam audio." : "No text detected in audio.",
+            );
+            setVoicePhase("error");
+            window.setTimeout(() => setVoiceOpen(false), 2000);
+            return;
+          }
+          fillAddFromSpeech(spoken);
+          setVoiceOpen(false);
+          setVoiceSeconds(0);
+          setVoicePhase("recording");
+          // Open the existing confirm sheet so the user checks amount,
+          // type (expense/income), category and wallet before saving.
+          setShowAddModal(true);
+        } catch {
+          setVoiceError(
+            lang === "BM" ? "Ralat membaca audio. Cuba lagi." : "Error reading audio. Try again.",
+          );
+          setVoicePhase("error");
+          window.setTimeout(() => setVoiceOpen(false), 2000);
+        }
+      };
+      recorder.start();
+      setVoiceSeconds(0);
+      setVoicePhase("recording");
+      setVoiceOpen(true);
+      voiceTickRef.current = setInterval(() => {
+        setVoiceSeconds((s) => s + 1);
+      }, 1000);
+    } catch (err: any) {
+      const denied =
+        err?.name === "NotAllowedError" ||
+        err?.name === "PermissionDeniedError" ||
+        err?.name === "SecurityError";
+      setVoiceError(
+        denied
+          ? (lang === "BM"
+              ? "Akses mikrofon tidak dibenarkan."
+              : "Microphone access was not granted.")
+          : (lang === "BM" ? "Tidak dapat memulakan mikrofon." : "Could not start microphone."),
+      );
+      setVoicePhase("error");
+      setVoiceOpen(true);
+      window.setTimeout(() => setVoiceOpen(false), 2200);
+    }
+  }, [fillAddFromSpeech, lang, voiceOpen]);
+
+  const finishVoiceHold = React.useCallback(() => {
+    if (!voiceRecorderRef.current) {
+      closeVoiceRecorder();
+      return;
+    }
+    void stopAndTranscribe();
+  }, [closeVoiceRecorder, stopAndTranscribe]);
+
+  const cancelVoiceHold = React.useCallback(() => {
+    const recorder = voiceRecorderRef.current;
+    try {
+      recorder?.stop();
+    } catch {}
+    // Swallow onstop: recording must be discarded, so clear the stop handler
+    // before stopping and tear everything down ourselves.
+    if (recorder) recorder.onstop = null;
+    voiceStreamRef.current?.getTracks().forEach((tr) => tr.stop());
+    voiceStreamRef.current = null;
+    if (voiceTickRef.current) {
+      clearInterval(voiceTickRef.current);
+      voiceTickRef.current = null;
+    }
+    voiceRecorderRef.current = null;
+    voiceChunksRef.current = [];
+    setVoiceOpen(false);
+    setVoiceSeconds(0);
+    setVoicePhase("recording");
+    setVoiceError("");
+  }, []);
+
   const handleBottomNavLinkClick = React.useCallback(
     (event: React.MouseEvent<HTMLAnchorElement>, href: string) => {
       if (pathname === href) {
@@ -1854,12 +2097,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     [pathname, router],
   );
 
-  // Long-press the centre chat button: on the chat page this starts recording
-  // straight away (ChatPage listens for the events); elsewhere it navigates to
-  // chat with ?voice=1 so the page auto-opens the voice recorder.
+  // Long-press the centre chat button → record a voice transaction in place
+  // (no navigation); release submits. chatSuppressClick swallows the synthetic
+  // click that follows the release so we never navigate to the chat page.
   const chatHoldTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const chatHoldFired = React.useRef(false);
-  const chatHoldOnChat = React.useRef(false);
   const chatSuppressClick = React.useRef(false);
   const releaseChatHold = React.useCallback(() => {
     if (chatHoldTimer.current) {
@@ -1867,39 +2109,30 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       chatHoldTimer.current = null;
     }
   }, []);
-  const armChatVoiceHold = React.useCallback(
-    (href: string) => {
-      chatHoldFired.current = false;
-      releaseChatHold();
-      const onChat =
-        pathname === href || (href !== "/" && href !== `/${sessionId}` && pathname.startsWith(href));
-      chatHoldTimer.current = setTimeout(() => {
-        chatHoldTimer.current = null;
-        chatHoldFired.current = true;
-        chatHoldOnChat.current = onChat;
-        if (onChat) {
-          window.dispatchEvent(new CustomEvent("myperibadi:voice-open"));
-        } else {
-          router.push(href + (href.includes("?") ? "&voice=1" : "?voice=1"), { scroll: true });
-        }
-      }, 550);
-    },
-    [pathname, router, releaseChatHold, sessionId],
-  );
-  const finishChatHold = React.useCallback((cancel: boolean) => {
+  const armChatVoiceHold = React.useCallback(() => {
+    chatHoldFired.current = false;
     releaseChatHold();
-    if (chatHoldFired.current) {
-      const onChat = chatHoldOnChat.current;
+    chatHoldTimer.current = setTimeout(() => {
+      chatHoldTimer.current = null;
+      chatHoldFired.current = true;
+      chatSuppressClick.current = true;
+      void beginVoiceHold();
+    }, 550);
+  }, [beginVoiceHold, releaseChatHold]);
+  const finishChatHold = React.useCallback(
+    (cancel: boolean) => {
+      releaseChatHold();
+      if (!chatHoldFired.current) return;
       chatHoldFired.current = false;
-      chatHoldOnChat.current = false;
-      // A synthetic click follows the release; swallow it so we do not
-      // navigate away and kill the recording/submit that just happened.
-      if (onChat) chatSuppressClick.current = true;
-      window.dispatchEvent(
-        new CustomEvent(cancel ? "myperibadi:voice-cancel" : "myperibadi:voice-release"),
-      );
-    }
-  }, [releaseChatHold]);
+      if (cancel) {
+        chatSuppressClick.current = false; // pointer-cancel sends no click; stay clear for next tap
+        cancelVoiceHold();
+      } else {
+        finishVoiceHold();
+      }
+    },
+    [releaseChatHold, cancelVoiceHold, finishVoiceHold],
+  );
 
   const {
     requestClose: requestMobileMenuClose,
@@ -3711,7 +3944,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     }}
                     onPointerDown={(event) => {
                       if (event.pointerType === "mouse" && event.button !== 0) return;
-                      armChatVoiceHold(chatItem.href);
+                      armChatVoiceHold();
                     }}
                     onPointerUp={() => finishChatHold(false)}
                     onPointerCancel={() => finishChatHold(true)}
@@ -4269,6 +4502,46 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       
 
       
+        {voiceOpen && (
+          <div className="pointer-events-none fixed inset-0 z-[130] flex items-center justify-center bg-black/50">
+            {voicePhase === "recording" && (
+              <div className="flex flex-col items-center gap-6 px-8 text-center">
+                <div className="relative flex h-28 w-28 items-center justify-center">
+                  <span className="absolute inset-0 animate-ping rounded-full bg-[var(--brand-blue)] opacity-25" />
+                  <span
+                    className="absolute inset-3 animate-ping rounded-full bg-[var(--brand-blue)] opacity-30"
+                    style={{ animationDelay: "0.25s" }}
+                  />
+                  <span className="flex h-20 w-20 items-center justify-center rounded-full bg-[var(--brand-blue)] text-white shadow-2xl">
+                    <Mic size={34} strokeWidth={2.2} />
+                  </span>
+                </div>
+                <div className="text-3xl font-black tabular-nums tracking-tight text-white">
+                  {`${String(Math.floor(voiceSeconds / 60)).padStart(2, "0")}:${String(voiceSeconds % 60).padStart(2, "0")}`}
+                </div>
+                <p className="text-sm font-bold text-white/90">
+                  {lang === "BM"
+                    ? "Lepas butang Chat untuk hantar"
+                    : "Release the Chat button to send"}
+                </p>
+              </div>
+            )}
+            {voicePhase === "busy" && (
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-9 w-9 animate-spin text-white" />
+                <p className="text-sm font-bold text-white">
+                  {lang === "BM" ? "Membaca audio…" : "Reading audio…"}
+                </p>
+              </div>
+            )}
+            {voicePhase === "error" && (
+              <div className="mx-8 max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] px-5 py-4 text-center">
+                <p className="text-sm font-bold text-[var(--text)]">{voiceError}</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {showAddModal && (
           <div
             className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center"
