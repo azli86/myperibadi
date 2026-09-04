@@ -57,9 +57,9 @@ async def transcribe_audio(
     if not api_key:
         return None
 
-    # gpt-4o-transcribe: same $/min as whisper-1 but far better on short
-    # accented Bahasa Melayu clips and does not hallucinate on silence.
-    model = (os.getenv("WHISPER_MODEL") or "gpt-4o-transcribe").strip()
+    # Default whisper-1 + the EQ chain above is the best proven combo for the
+    # muffled web-PTT clips (gpt-4o-transcribe kept garbling them in tests).
+    model = (os.getenv("WHISPER_MODEL") or "whisper-1").strip()
     # Mime may carry parameters like "audio/ogg; codecs=opus" which OpenAI
     # rejects and which break our extension lookup — use the base mime only.
     base_mime = (mime_type or "").split(";", 1)[0].strip().lower()
@@ -227,9 +227,15 @@ def _maybe_convert_to_wav(payload: bytes, mime_type: str) -> tuple[bytes, str, s
                     "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le",
                     "-af", (
                         # NO loudnorm: its compressor distorts short voice clips
-                        # (raises noise, pumps gain) and confuses Whisper. Strip
-                        # leading + trailing silence only, since Whisper
-                        # hallucinates English filler on quiet margins.
+                        # (raises noise, pumps gain) and confuses Whisper.
+                        # Web PTT clips arrive muffled (harmonics above ~1.2 kHz
+                        # missing) so boost treble, then strip leading + trailing
+                        # silence: Whisper hallucinates English filler on quiet
+                        # margins. EQ proven against real clips: whisper-1 then
+                        # returns "maka 10 Ringgit TNG" instead of gibberish.
+                        "highpass=f=80,"
+                        "highshelf=f=2500:gain=15,"
+                        "alimiter=limit=0.95,"
                         "silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.4:"
                         "stop_periods=-1:stop_threshold=-50dB:stop_silence=0.5"
                     ),

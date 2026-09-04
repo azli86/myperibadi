@@ -275,7 +275,9 @@ function parseVoiceSavedReply(reply: string, fallbackNote: string) {
     ((reply.match(/RM\s*([\d][\d.,]*)/) || ["", ""])[1] || "").trim();
   const note = value("Note|Nota|Perihal|Description") || fallbackNote;
   const category = value("Category|Kategori");
-  const wallet = value("Wallet|Dompet");
+  // Bullet is "• Wallet: *TOUCH & GO | RM -16.72*" — the balance after " | "
+  // is wallet state, not part of the wallet name; drop it.
+  const wallet = (value("Wallet|Dompet") || "").split(/\s*\|\s*/)[0];
   const refMatch = reply.match(/\b(TXN\d{2}-[A-Z0-9]{6})\b/);
   return {
     amount: amount.replace(/^RM\s*/i, ""),
@@ -1944,6 +1946,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       /gaji|salary|income|terima|receive|masuk|dividen|bonus/i.test(s);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Released/cancelled while the mic was warming up → never start recording.
+      if (!chatHoldFired.current) {
+        stream.getTracks().forEach((tr) => tr.stop());
+        return;
+      }
       const recorder = new MediaRecorder(stream);
       voiceStreamRef.current = stream;
       voiceChunksRef.current = [];
@@ -2044,6 +2051,19 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           window.setTimeout(() => setVoiceOpen(false), 2000);
         }
       };
+      // Safety: released during setup → discard, never record without a hold.
+      if (!chatHoldFired.current) {
+        recorder.onstop = null;
+        stream.getTracks().forEach((tr) => tr.stop());
+        voiceStreamRef.current = null;
+        voiceRecorderRef.current = null;
+        if (voiceTickRef.current) {
+          clearInterval(voiceTickRef.current);
+          voiceTickRef.current = null;
+        }
+        setVoiceOpen(false);
+        return;
+      }
       recorder.start();
       setVoiceSeconds(0);
       setVoicePhase("recording");
@@ -2125,6 +2145,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     }
   }, []);
   const armChatVoiceHold = React.useCallback(() => {
+    // Never stack: already recording (or mic warming up) → ignore new hold.
+    if (voiceOpen || voiceRecorderRef.current) return;
     chatHoldFired.current = false;
     releaseChatHold();
     chatHoldTimer.current = setTimeout(() => {
@@ -2133,7 +2155,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       chatSuppressClick.current = true;
       void beginVoiceHold();
     }, 550);
-  }, [beginVoiceHold, releaseChatHold]);
+  }, [beginVoiceHold, releaseChatHold, voiceOpen]);
   const finishChatHold = React.useCallback(
     (cancel: boolean) => {
       releaseChatHold();
@@ -3964,7 +3986,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     onPointerUp={() => finishChatHold(false)}
                     onPointerCancel={() => finishChatHold(true)}
                     onPointerLeave={() => {
-                      if (!chatHoldFired.current) releaseChatHold();
+                      if (chatHoldFired.current) {
+                        // Finger/mouse slid off while recording → cancel (no
+                        // pointerup will reach this button for mouse users).
+                        finishChatHold(true);
+                      } else {
+                        releaseChatHold();
+                      }
                     }}
                     className={cn(
                       "absolute left-1/2 top-1/2 z-10 flex h-14 w-[54px] -translate-x-1/2 -translate-y-1/2 items-center justify-center text-[var(--bottom-nav-text)] transition-all duration-250 active:scale-95",

@@ -988,28 +988,38 @@ export default function ChatPage() {
 
   // ── Voice: mic popup → hold to record → release auto-submits ──
   const openVoicePopup = () => {
-    if (voiceBusy || isLocating) return
+    if (voiceBusy || isLocating || voiceReadyRef.current) return
     setIsAttachmentMenuOpen(false)
     setIsCommandMenuOpen(false)
     setVoiceSecs(0)
     voiceSubmitRef.current = true
     voiceReleaseRef.current = false
+    voiceReadyRef.current = false
     setVoicePopupOpen(true)
   }
   const closeVoicePopup = () => {
-    if (isVoiceRecording || voiceBusy) return
+    // Use voiceReadyRef (not React state) so a close during mic warm-up is
+    // rejected consistently — React state may still be stale mid-async.
+    if (voiceReadyRef.current || voiceBusy) return
     setVoicePopupOpen(false)
   }
   const stopVoice = (submit: boolean) => {
-    if (!mediaRecorderRef.current) return
     voiceSubmitRef.current = submit
+    if (!voiceReadyRef.current || !mediaRecorderRef.current) {
+      // Released/cancelled while mic was still warming up → mark it so the
+      // pending startVoiceHold discards instead of recording silently.
+      voiceReleaseRef.current = true
+      return
+    }
     try {
-      mediaRecorderRef.current.stop()
+      if (mediaRecorderRef.current.state === "recording") {
+        mediaRecorderRef.current.stop()
+      }
     } catch {}
   }
   const endVoiceHold = () => {
     voiceHoldRef.current = false
-    if (isVoiceRecording) {
+    if (voiceReadyRef.current) {
       stopVoice(true)
     } else {
       voiceReleaseRef.current = true
@@ -1018,14 +1028,15 @@ export default function ChatPage() {
   const cancelVoice = () => {
     voiceHoldRef.current = false
     if (voiceBusy) return
-    if (isVoiceRecording) {
+    if (voiceReadyRef.current) {
       stopVoice(false)
     } else {
+      voiceReleaseRef.current = true
       setVoicePopupOpen(false)
     }
   }
   const startVoiceHold = async () => {
-    if (isVoiceRecording || voiceBusy || isLocating) return
+    if (voiceReadyRef.current || isVoiceRecording || voiceBusy || isLocating) return
     if (!navigator.mediaDevices?.getUserMedia) {
       showAlert(
         lang === "EN" ? "Voice unsupported" : "Suara tidak disokong",
@@ -1063,6 +1074,7 @@ export default function ChatPage() {
       recorder.onstop = async () => {
         stream.getTracks().forEach((tr) => tr.stop())
         mediaRecorderRef.current = null
+        voiceReadyRef.current = false
         const submit = voiceSubmitRef.current
         setIsVoiceRecording(false)
         const blob = new Blob(voiceChunksRef.current, { type: recorder.mimeType || "audio/webm" })
@@ -1080,9 +1092,10 @@ export default function ChatPage() {
       voiceReadyRef.current = true
       setVoiceSecs(0)
       setIsVoiceRecording(true)
-      // Released before mic warmed up → stop immediately so it never records silently.
+      // Released/cancelled before mic warmed up → discard immediately so it
+      // never records silently after the user already let go.
       if (voiceReleaseRef.current) {
-        stopVoice(true)
+        stopVoice(false)
       }
     } catch (err: any) {
       const denied =

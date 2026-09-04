@@ -14023,9 +14023,37 @@ async def transcribe_voice_route(
     if not audio_transcription_service.is_transcribable(mime_type):
         # Accept raw voice uploads even without a precise mime by forcing audio/ogg.
         mime_type = "audio/ogg"
-    result = await audio_transcription_service.transcribe_audio(payload, mime_type)
-    if result is None or not result.text:
+    # Profile language is the UI language, not necessarily the speech language
+    # (azli has UI=EN yet dictates Malay). Forcing it alone gave gibberish on
+    # Malay clips. Strategy: try the profile hint first, then Malay (`ms`), and
+    # prefer whichever transcript actually contains a digit/currency marker —
+    # that is the sign Whisper heard an amount instead of confabulating.
+    user_lang = (getattr(current_user, "language", "") or "").strip()
+    hints = []
+    if user_lang and user_lang.lower() not in ("ms", "bm", "msa", "my"):
+        hints.append(user_lang)
+    hints.append("ms")  # Malay dictated even when UI language is English
+    candidates = []
+    auto_tried = False
+    for hint in hints:
+        result = await audio_transcription_service.transcribe_audio(
+            payload, mime_type, language_hint=hint
+        )
+        if result is None or not result.text:
+            if auto_tried:
+                continue
+            auto_tried = True
+            result = await audio_transcription_service.transcribe_audio(payload, mime_type)
+        if result is not None and result.text:
+            candidates.append(result)
+    if not candidates:
         raise HTTPException(status_code=422, detail="Audio tidak dapat ditranskripsi. Sila cuba audio yang lebih jelas.")
+    # Prefer the transcript that contains a digit/currency marker (Whisper heard
+    # a real amount); otherwise fall back to the Malay pass.
+    import re as _re
+    def _has_amount(text: str) -> bool:
+        return bool(_re.search(r"\d|rm|ringgit|tng|sen|dollar|rupiah", text, _re.I))
+    result = next((c for c in candidates if _has_amount(c.text)), candidates[-1])
     if _looks_like_foreign_script_hallucination(result.text):
         # Latin-speaking user got a Tamil/Chinese/etc. transcription = Whisper
         # hallucination, not speech. Treat as not-detected so the caller can

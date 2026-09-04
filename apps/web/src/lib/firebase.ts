@@ -52,7 +52,8 @@ export async function signInWithGoogleProfile(): Promise<{
 }> {
   const googleAuth = getFirebaseAuth()
   const provider = new GoogleAuthProvider()
-  provider.setCustomParameters({ prompt: "select_account" })
+  // No custom `select_account` prompt: reuse the Google account already on the
+  // device (Android/iOS) or last authorized in the browser, skipping the chooser.
   const result = await signInWithPopup(googleAuth, provider)
   const idToken = await result.user.getIdToken()
   const email = (result.user.email || "").trim().toLowerCase()
