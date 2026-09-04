@@ -1104,6 +1104,32 @@ export default function ChatPage() {
     }
   }
 
+  // Long-press the centre chat bottom-nav button (Shell dispatches these):
+  // open the voice popup and start recording right away; releasing / cancelling
+  // the nav hold mirrors the popup's own hold-to-record release/cancel.
+  useEffect(() => {
+    const open = () => {
+      openVoicePopup()
+      void startVoiceHold()
+    }
+    window.addEventListener("myperibadi:voice-open", open)
+    window.addEventListener("myperibadi:voice-release", endVoiceHold)
+    window.addEventListener("myperibadi:voice-cancel", cancelVoice)
+    return () => {
+      window.removeEventListener("myperibadi:voice-open", open)
+      window.removeEventListener("myperibadi:voice-release", endVoiceHold)
+      window.removeEventListener("myperibadi:voice-cancel", cancelVoice)
+    }
+  }, [openVoicePopup, startVoiceHold, endVoiceHold, cancelVoice])
+
+  // Holding the nav button while on another page lands here with ?voice=1.
+  useEffect(() => {
+    if (searchParams?.get("voice") === "1") {
+      openVoicePopup()
+      window.history.replaceState(null, "", window.location.pathname)
+    }
+  }, [searchParams, openVoicePopup])
+
   const sendVoiceBlob = async (blob: Blob) => {
     setVoiceBusy(true)
     try {

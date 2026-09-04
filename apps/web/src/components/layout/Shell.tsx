@@ -1854,6 +1854,53 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     [pathname, router],
   );
 
+  // Long-press the centre chat button: on the chat page this starts recording
+  // straight away (ChatPage listens for the events); elsewhere it navigates to
+  // chat with ?voice=1 so the page auto-opens the voice recorder.
+  const chatHoldTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const chatHoldFired = React.useRef(false);
+  const chatHoldOnChat = React.useRef(false);
+  const chatSuppressClick = React.useRef(false);
+  const releaseChatHold = React.useCallback(() => {
+    if (chatHoldTimer.current) {
+      clearTimeout(chatHoldTimer.current);
+      chatHoldTimer.current = null;
+    }
+  }, []);
+  const armChatVoiceHold = React.useCallback(
+    (href: string) => {
+      chatHoldFired.current = false;
+      releaseChatHold();
+      const onChat =
+        pathname === href || (href !== "/" && href !== `/${sessionId}` && pathname.startsWith(href));
+      chatHoldTimer.current = setTimeout(() => {
+        chatHoldTimer.current = null;
+        chatHoldFired.current = true;
+        chatHoldOnChat.current = onChat;
+        if (onChat) {
+          window.dispatchEvent(new CustomEvent("myperibadi:voice-open"));
+        } else {
+          router.push(href + (href.includes("?") ? "&voice=1" : "?voice=1"), { scroll: true });
+        }
+      }, 550);
+    },
+    [pathname, router, releaseChatHold, sessionId],
+  );
+  const finishChatHold = React.useCallback((cancel: boolean) => {
+    releaseChatHold();
+    if (chatHoldFired.current) {
+      const onChat = chatHoldOnChat.current;
+      chatHoldFired.current = false;
+      chatHoldOnChat.current = false;
+      // A synthetic click follows the release; swallow it so we do not
+      // navigate away and kill the recording/submit that just happened.
+      if (onChat) chatSuppressClick.current = true;
+      window.dispatchEvent(
+        new CustomEvent(cancel ? "myperibadi:voice-cancel" : "myperibadi:voice-release"),
+      );
+    }
+  }, [releaseChatHold]);
+
   const {
     requestClose: requestMobileMenuClose,
     requestCloseThen: requestMobileMenuCloseThen,
@@ -3654,7 +3701,23 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     aria-label={chatItem.label}
                     scroll={true}
                     prefetch
-                    onClick={(event) => handleBottomNavLinkClick(event, chatItem.href)}
+                    onClick={(event) => {
+                      if (chatSuppressClick.current) {
+                        chatSuppressClick.current = false;
+                        event.preventDefault();
+                        return;
+                      }
+                      handleBottomNavLinkClick(event, chatItem.href);
+                    }}
+                    onPointerDown={(event) => {
+                      if (event.pointerType === "mouse" && event.button !== 0) return;
+                      armChatVoiceHold(chatItem.href);
+                    }}
+                    onPointerUp={() => finishChatHold(false)}
+                    onPointerCancel={() => finishChatHold(true)}
+                    onPointerLeave={() => {
+                      if (!chatHoldFired.current) releaseChatHold();
+                    }}
                     className={cn(
                       "absolute left-1/2 top-1/2 z-10 flex h-14 w-[54px] -translate-x-1/2 -translate-y-1/2 items-center justify-center text-[var(--bottom-nav-text)] transition-all duration-250 active:scale-95",
                       isChatActive
