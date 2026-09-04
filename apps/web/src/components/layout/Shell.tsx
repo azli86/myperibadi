@@ -1961,6 +1961,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       recorder.onstop = async () => {
         const streamNow = voiceStreamRef.current;
         voiceStreamRef.current = null;
+        voiceRecorderRef.current = null;
         streamNow?.getTracks().forEach((tr) => tr.stop());
         if (voiceTickRef.current) {
           clearInterval(voiceTickRef.current);
