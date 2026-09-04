@@ -173,6 +173,13 @@ export default function LoginPage() {
       // regular Firebase popup on desktop browsers or if the native path fails.
       const nativeToken = await getNativeGoogleToken()
       if (nativeToken === "cancel") return
+      if (nativeToken === "no_account") {
+        throw new Error(
+          lang === "BM"
+            ? "Tiada akaun Google pada telefon. Tambah akaun Google dalam Tetapan yang terbuka, kemudian tekan Google sekali lagi."
+            : "No Google account on this device. Add one in the Settings screen that just opened, then tap Google again."
+        )
+      }
       if (nativeToken !== null && !isJwtLike(nativeToken)) {
         // Native path failed inside the wrapper — surface the real cause instead
         // of silently falling back to the OAuth popup.
