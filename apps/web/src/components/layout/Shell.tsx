@@ -1850,6 +1850,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [voicePhase, setVoicePhase] = useState<"recording" | "busy" | "error">("recording");
   const [voiceSeconds, setVoiceSeconds] = useState(0);
   const [voiceError, setVoiceError] = useState("");
+  const [voiceResult, setVoiceResult] = useState<{
+    ok: boolean;
+    income: boolean;
+    title: string;
+    body: string;
+  } | null>(null);
   const voiceRecorderRef = React.useRef<MediaRecorder | null>(null);
   const voiceChunksRef = React.useRef<Blob[]>([]);
   const voiceStreamRef = React.useRef<MediaStream | null>(null);
@@ -1869,64 +1875,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     setVoiceSeconds(0);
     setVoicePhase("recording");
   }, []);
-
-  const fillAddFromSpeech = React.useCallback(
-    (spoken: string) => {
-      const lower = spoken.toLowerCase();
-      const isIncome =
-        lower.includes("gaji") ||
-        lower.includes("salary") ||
-        lower.includes("income") ||
-        lower.includes("terima") ||
-        lower.includes("receive") ||
-        lower.includes("masuk") ||
-        lower.includes("duit masuk") ||
-        lower.includes("dividen") ||
-        lower.includes("bonus");
-      const amounts = spoken.match(/(?:rm\s*)?([0-9]+(?:[.,][0-9]+)?)/gi) || [];
-      let amount = "";
-      let description = spoken;
-      if (amounts.length) {
-        const first = amounts[0] || "";
-        const cleaned = first
-          .replace(/rm/gi, "")
-          .replace(/\s/g, "")
-          .replace(/,/g, ".")
-          .trim();
-        const num = parseFloat(cleaned);
-        if (!isNaN(num) && num > 0) {
-          amount = String(num);
-          description = spoken
-            .replace(first, "")
-            .replace(/rm/gi, "")
-            .replace(/\s+/g, " ")
-            .trim();
-        }
-      }
-      description = description.replace(/\.$/g, "").trim();
-      if (isIncome) {
-        description = description || (lang === "BM" ? "Pendapatan" : "Income");
-        setAddItems(createDefaultAddItems());
-      } else {
-        // Expense flow saves line items, so put the spoken description into a
-        // single line item priced at the total amount.
-        setAddItems([
-          {
-            name: description || (lang === "BM" ? "Perbelanjaan" : "Expense"),
-            quantity: "1",
-            unit_price: amount,
-          },
-        ]);
-      }
-      setAddForm((f) => ({
-        ...f,
-        type: isIncome ? "income" : "expense",
-        description: description || f.description,
-        amount: amount || f.amount,
-      }));
-    },
-    [setAddForm, setAddItems, lang],
-  );
 
   const stopAndTranscribe = React.useCallback(async () => {
     setVoicePhase("busy");
@@ -1967,6 +1915,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         return;
       }
     } catch {}
+    const isIncomeSpoken = (s: string) =>
+      /gaji|salary|income|terima|receive|masuk|dividen|bonus/i.test(s);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
@@ -2006,21 +1956,61 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           if (!res.ok) throw new Error("transcribe failed");
           const data = await res.json();
           const spoken = String(data?.text || "").trim();
+          const showResult = (
+            ok: boolean,
+            income: boolean,
+            title: string,
+            body: string,
+          ) => {
+            setVoiceOpen(false);
+            setVoiceSeconds(0);
+            setVoicePhase("recording");
+            setVoiceResult({ ok, income, title, body });
+          };
           if (!spoken) {
-            setVoiceError(
-              lang === "BM" ? "Tiada teks dikesan dalam audio." : "No text detected in audio.",
+            showResult(
+              false,
+              false,
+              lang === "BM" ? "Transaksi suara tidak dikesan" : "Voice transaction not detected",
+              "",
             );
-            setVoicePhase("error");
-            window.setTimeout(() => setVoiceOpen(false), 2000);
             return;
           }
-          fillAddFromSpeech(spoken);
-          setVoiceOpen(false);
-          setVoiceSeconds(0);
-          setVoicePhase("recording");
-          // Open the existing confirm sheet so the user checks amount,
-          // type (expense/income), category and wallet before saving.
-          setShowAddModal(true);
+          // Let the chat/transaction engine detect & save the transaction from
+          // the spoken text (same path as chat's voice button, but headless —
+          // no navigation, no chat page). Its reply marks a saved transaction.
+          const chatForm = new FormData();
+          chatForm.append("text", spoken);
+          const chatRes = await fetch("/api/chat/message", {
+            credentials: "include",
+            method: "POST",
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+            body: chatForm,
+          });
+          if (!chatRes.ok) throw new Error("chat detect failed");
+          const chatData = await chatRes.json().catch(() => null);
+          const reply = String(chatData?.reply || "").trim();
+          const isTxn = reply.startsWith("*Done!") || /\bTXN\d{2}-/.test(reply);
+          if (reply && isTxn) {
+            window.dispatchEvent(
+              new CustomEvent("app:data-changed", {
+                detail: { resource: "transactions" },
+              }),
+            );
+            showResult(
+              true,
+              isIncomeSpoken(spoken) || /pendapatan|\bincome\b/i.test(reply),
+              lang === "BM" ? "Transaksi Direkod" : "Transaction Recorded",
+              reply,
+            );
+          } else {
+            showResult(
+              false,
+              false,
+              lang === "BM" ? "Transaksi suara tidak dikesan" : "Voice transaction not detected",
+              spoken,
+            );
+          }
         } catch {
           setVoiceError(
             lang === "BM" ? "Ralat membaca audio. Cuba lagi." : "Error reading audio. Try again.",
@@ -2052,7 +2042,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       setVoiceOpen(true);
       window.setTimeout(() => setVoiceOpen(false), 2200);
     }
-  }, [fillAddFromSpeech, lang, voiceOpen]);
+  }, [lang, voiceOpen]);
 
   const finishVoiceHold = React.useCallback(() => {
     if (!voiceRecorderRef.current) {
@@ -4530,7 +4520,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <div className="flex flex-col items-center gap-4">
                 <Loader2 className="h-9 w-9 animate-spin text-white" />
                 <p className="text-sm font-bold text-white">
-                  {lang === "BM" ? "Membaca audio…" : "Reading audio…"}
+                  {lang === "BM" ? "Mengesan transaksi…" : "Detecting transaction…"}
                 </p>
               </div>
             )}
@@ -4539,6 +4529,72 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 <p className="text-sm font-bold text-[var(--text)]">{voiceError}</p>
               </div>
             )}
+          </div>
+        )}
+
+        {voiceResult && (
+          <div
+            className="fixed inset-0 z-[135] flex items-center justify-center bg-black/50 px-6"
+            onClick={() => setVoiceResult(null)}
+          >
+            <div
+              className="w-full max-w-sm overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className={`flex items-center gap-3 px-5 py-4 ${
+                  voiceResult.ok
+                    ? voiceResult.income
+                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                      : "bg-rose-500/12 text-rose-600 dark:text-rose-400"
+                    : "bg-amber-500/12 text-amber-600 dark:text-amber-400"
+                }`}
+              >
+                <span
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                    voiceResult.ok
+                      ? voiceResult.income
+                        ? "bg-emerald-500 text-white"
+                        : "bg-rose-500 text-white"
+                      : "bg-amber-500 text-white"
+                  }`}
+                >
+                  {voiceResult.ok ? (
+                    <Check size={18} strokeWidth={3} />
+                  ) : (
+                    <Mic size={17} strokeWidth={2.4} />
+                  )}
+                </span>
+                <p className="text-base font-black tracking-tight">{voiceResult.title}</p>
+              </div>
+              <div className="max-h-[45vh] overflow-y-auto px-5 py-4">
+                <p className="whitespace-pre-line text-sm font-semibold leading-relaxed text-[var(--text)]">
+                  {voiceResult.body}
+                </p>
+                {!voiceResult.ok && !voiceResult.body && (
+                  <p className="text-sm font-medium text-[var(--muted)]">
+                    {lang === "BM"
+                      ? "Tiada suara atau teks dikesan. Cuba lagi."
+                      : "No speech or text detected. Try again."}
+                  </p>
+                )}
+              </div>
+              <div className="px-5 pb-5">
+                <button
+                  type="button"
+                  onClick={() => setVoiceResult(null)}
+                  className="w-full rounded-2xl bg-[var(--brand-blue)] py-3 text-sm font-black text-white transition-transform active:scale-[0.98]"
+                >
+                  {voiceResult.ok
+                    ? lang === "BM"
+                      ? "Siap"
+                      : "Done"
+                    : lang === "BM"
+                      ? "Cuba lagi"
+                      : "Try again"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
