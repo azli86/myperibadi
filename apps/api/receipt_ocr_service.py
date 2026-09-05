@@ -134,10 +134,18 @@ async def extract_receipt(payload: bytes, mime_type: str, language: str, categor
         ]}],
     }
     print(f"[receipt-ocr] request model={model} bytes={len(payload)}", flush=True)
-    async with httpx.AsyncClient(timeout=max(config.timeout_seconds, 30)) as client:
-        response = await client.post(f"{base_url}/chat/completions", headers={"Authorization": f"Bearer {api_key}"}, json=body)
-        response.raise_for_status()
+    for attempt in range(4):
+        async with httpx.AsyncClient(timeout=max(config.timeout_seconds, 30)) as client:
+            response = await client.post(f"{base_url}/chat/completions", headers={"Authorization": f"Bearer {api_key}"}, json=body)
+        if response.status_code in {429, 500, 502, 503, 504} and attempt < 3:
+            await asyncio.sleep(2 ** attempt)
+            continue
+        break
     print(f"[receipt-ocr] response status={response.status_code}", flush=True)
+    if response.status_code != 200:
+        snippet = response.text[:600].replace("\n", " ")
+        print(f"[receipt-ocr] ERROR status={response.status_code} body={snippet}", flush=True)
+        raise RuntimeError(f"Vision model HTTP {response.status_code}")
     content = response.json()["choices"][0]["message"]["content"]
     data = _json_object(content)
     description = str(data.get("description") or "").strip()
