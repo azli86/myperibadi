@@ -2653,41 +2653,6 @@ export default function Dashboard() {
                   </button>
                 )
               })()}
-
-              {heroWallets.length > 1 && (
-                <div className="mt-1 flex justify-center">
-                  <button
-                    type="button"
-                    aria-label={lang === "BM" ? "Lihat semua wallet" : "View all wallets"}
-                    aria-expanded={showMobileWalletDeck}
-                    onClick={() => setShowMobileWalletDeck(true)}
-                    className="inline-flex h-8 w-12 items-center justify-center bg-transparent p-0 text-[var(--muted)] shadow-none transition-colors active:text-[var(--text)]"
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="relative flex h-7 w-8 flex-col items-center justify-center"
-                    >
-                      {[0, 1].map((i) => (
-                        <span
-                          key={i}
-                          className="absolute left-1/2 -translate-x-1/2"
-                          style={{ top: `${i * 8}px` }}
-                        >
-                          <svg viewBox="0 0 24 10" className="h-2.5 w-6" fill="none">
-                            <path
-                              d="M2 2L12 8L22 2"
-                              stroke="currentColor"
-                              strokeWidth="2.6"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        </span>
-                      ))}
-                    </span>
-                  </button>
-                </div>
-              )}
             </div>
           ) : null}
 
