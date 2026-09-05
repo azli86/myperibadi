@@ -33,7 +33,6 @@ import {
   Layers,
   Mic,
   Square,
-  GripVertical,
 } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
@@ -456,7 +455,20 @@ export default function Dashboard() {
   const { requestClose: requestBadgeClose } = useOverlayBackClose({ id: "dashboard-badges", isOpen: showBadgeModal, onClose: () => setShowBadgeModal(false) })
   const dashboardAddSheetSwipe = useSwipeDownToClose(requestDashboardAddClose)
   const walletSheetSwipe = useSwipeDownToClose(requestWalletDeckClose)
-  const deckDragRef = useRef<{ kind: "regular" | "saving"; from: number } | null>(null)
+  const deckDragRef = useRef<{
+    kind: "regular" | "saving"
+    startIndex: number
+    index: number
+    startY: number
+    startX: number
+    rowH: number
+    pointerId: number
+    activated: boolean
+    el: HTMLElement | null
+  } | null>(null)
+  const deckHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [deckDraggingId, setDeckDraggingId] = useState<number | null>(null)
+  const [deckDragY, setDeckDragY] = useState(0)
   useEffect(() => {
     deckDragRef.current = null
     if (!showMobileWalletDeck) setDeckRows(null)
@@ -482,51 +494,100 @@ export default function Dashboard() {
       body: JSON.stringify({ ordered_ids: orderedIds }),
     }).catch(() => {})
   }
-  const startDeckDrag = (e: React.PointerEvent, kind: "regular" | "saving", wallet: DashboardWallet) => {
-    if (e.button !== undefined && e.button !== 0) return
-    e.preventDefault()
-    e.stopPropagation()
-    const from = deckRowsByKind(kind).findIndex((w) => w.id === wallet.id)
-    if (from < 0) return
-    deckDragRef.current = { kind, from }
-    ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+  const clearDeckHoldTimer = () => {
+    if (deckHoldTimerRef.current) {
+      clearTimeout(deckHoldTimerRef.current)
+      deckHoldTimerRef.current = null
+    }
   }
-  const moveDeckDrag = (e: React.PointerEvent) => {
+  const activateDeckDrag = (kind: "regular" | "saving", wallet: DashboardWallet) => {
+    const meta = deckDragRef.current
+    if (!meta || meta.activated) return
+    const el = meta.el
+    if (!el) return
+    meta.activated = true
+    meta.rowH = el.getBoundingClientRect().height || 72
+    el.setPointerCapture?.(meta.pointerId)
+    setDeckDraggingId(wallet.id)
+    setDeckDragY(0)
+  }
+  const downDeckRow = (e: React.PointerEvent, kind: "regular" | "saving", wallet: DashboardWallet) => {
+    if (e.button !== undefined && e.button !== 0) return
+    const idx = deckRowsByKind(kind).findIndex((w) => w.id === wallet.id)
+    if (idx < 0) return
+    e.stopPropagation()
+    clearDeckHoldTimer()
+    deckDragRef.current = {
+      kind,
+      startIndex: idx,
+      index: idx,
+      startY: e.clientY,
+      startX: e.clientX,
+      rowH: 0,
+      pointerId: e.pointerId,
+      activated: false,
+      el: e.currentTarget as HTMLElement,
+    }
+    deckHoldTimerRef.current = setTimeout(() => {
+      activateDeckDrag(kind, wallet)
+    }, 230)
+  }
+  const moveDeckRow = (e: React.PointerEvent) => {
     const meta = deckDragRef.current
     if (!meta) return
+    if (!meta.activated) {
+      const moved = Math.hypot(e.clientX - meta.startX, e.clientY - meta.startY)
+      if (moved > 8) {
+        clearDeckHoldTimer()
+        deckDragRef.current = null
+      }
+      return
+    }
     e.preventDefault()
+    const dy = e.clientY - meta.startY
+    let target = -1
     const els = Array.from(
       document.querySelectorAll<HTMLElement>(`[data-deck-kind="${meta.kind}"]`),
     )
-    let target = -1
     els.forEach((el, idx) => {
-      if (idx === meta.from) return
+      if (idx === meta.index) return
       const r = el.getBoundingClientRect()
-      if (Math.abs(r.top + r.height / 2 - e.clientY) < Math.min(r.height, 60)) {
+      if (Math.abs(r.top + r.height / 2 - e.clientY) < Math.min(r.height, 64)) {
         if (target < 0) target = idx
       }
     })
-    if (target < 0 || target === meta.from) return
-    setDeckRows((prev) => {
-      const base = prev ?? heroWallets
-      const regulars = base.filter((w) => !w.is_saving)
-      const savings = base.filter((w) => !!w.is_saving)
-      const arr = meta.kind === "regular" ? regulars : savings
-      const item = arr[meta.from]
-      const next = arr.slice()
-      next.splice(meta.from, 1)
-      next.splice(target, 0, item)
-      const rebuilt = meta.kind === "regular" ? [...next, ...savings] : [...regulars, ...next]
-      meta.from = target
-      return rebuilt
-    })
+    if (target >= 0 && target !== meta.index) {
+      setDeckRows((prev) => {
+        const base = prev ?? heroWallets
+        const regulars = base.filter((w) => !w.is_saving)
+        const savings = base.filter((w) => !!w.is_saving)
+        const arr = meta.kind === "regular" ? regulars : savings
+        const item = arr[meta.index]
+        const next = arr.slice()
+        next.splice(meta.index, 1)
+        next.splice(target, 0, item)
+        const rebuilt = meta.kind === "regular" ? [...next, ...savings] : [...regulars, ...next]
+        meta.index = target
+        return rebuilt
+      })
+    }
+    setDeckDragY(dy - (meta.index - meta.startIndex) * meta.rowH)
   }
-  const endDeckDrag = () => {
+  const endDeckRow = () => {
     const meta = deckDragRef.current
     if (!meta) return
+    clearDeckHoldTimer()
     deckDragRef.current = null
-    if (deckRows && deckRows.length > 1) commitDeckOrder(deckRows)
+    setDeckDraggingId(null)
+    setDeckDragY(0)
+    if (meta.activated && deckRows && deckRows.length > 1) commitDeckOrder(deckRows)
     setDeckRows(null)
+  }
+  const cancelDeckRow = () => {
+    clearDeckHoldTimer()
+    deckDragRef.current = null
+    setDeckDraggingId(null)
+    setDeckDragY(0)
   }
   const walletDragStateRef = useRef({
     pointerId: -1,
@@ -3448,33 +3509,37 @@ export default function Dashboard() {
                         const walletLabel =
                           wallet.label || wallet.name || (lang === "BM" ? "Dompet" : "Wallet")
                         const walletType = walletTypeLabel(wallet.type)
+                        const isDragging = deckDraggingId === wallet.id
                         return (
                           <div
                             key={`${wallet.id || index}-wallet-sheet-row`}
                             data-deck-row
                             data-deck-kind={kind}
-                            className="relative overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-4"
+                            data-rid={wallet.id}
+                            onPointerDown={(e) => downDeckRow(e, kind, wallet)}
+                            onPointerMove={moveDeckRow}
+                            onPointerUp={endDeckRow}
+                            onPointerCancel={cancelDeckRow}
+                            className="relative cursor-grab touch-none select-none overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-4 active:cursor-grabbing"
                             style={{
                               background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 14%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 6%, var(--card)) 100%)`,
+                              WebkitTouchCallout: "none",
+                              WebkitUserSelect: "none",
+                              ...(isDragging
+                                ? {
+                                    transform: `translateY(${deckDragY}px) scale(1.03)`,
+                                    zIndex: 20,
+                                    boxShadow: "0 18px 40px -12px rgba(0,0,0,0.45)",
+                                    borderColor: "var(--border-strong, var(--border))",
+                                  }
+                                : { transition: "transform 120ms ease" }),
                             }}
                           >
                             
                             <div className="absolute -right-6 -top-8 h-20 w-20 rounded-full opacity-15 blur-2xl" style={{ backgroundColor: accent.color }} />
-                            <div className="relative flex items-center gap-2.5">
-                              <button
-                                type="button"
-                                aria-label={lang === "BM" ? "Susun semula" : "Reorder"}
-                                onPointerDown={(e) => startDeckDrag(e, kind, wallet)}
-                                onPointerMove={moveDeckDrag}
-                                onPointerUp={endDeckDrag}
-                                onPointerCancel={() => { deckDragRef.current = null }}
-                                style={{ touchAction: "none" }}
-                                className="-ml-2 flex h-10 w-6 shrink-0 cursor-grab touch-none items-center justify-center rounded-lg text-[var(--muted)] transition-colors hover:text-[var(--text)] active:cursor-grabbing"
-                              >
-                                <GripVertical size={16} strokeWidth={2.2} />
-                              </button>
+                            <div className="relative flex items-center gap-3">
                               <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)]">
-                                {wallet.image_url ? <img src={wallet.image_url} alt="" className="h-full w-full object-cover" /> : <Wallet size={17} strokeWidth={2.3} />}
+                                {wallet.image_url ? <img src={wallet.image_url} alt="" draggable={false} className="pointer-events-none h-full w-full object-cover" /> : <Wallet size={17} strokeWidth={2.3} />}
                                 {wallet.is_bot_default ? (
                                   <span className="absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[0.5rem] font-black leading-none text-white ring-2 ring-[var(--card)]">
                                     B
@@ -3518,8 +3583,8 @@ export default function Dashboard() {
                             {regularWallets.length > 1 ? (
                               <p className="px-1 pb-0.5 text-[10px] font-semibold text-[var(--muted)]">
                                 {lang === "BM"
-                                  ? "Tarik ikon ⠿ untuk susun — atas sekali = kad utama dashboard"
-                                  : "Drag the ⠿ grip to sort — top row = main dashboard card"}
+                                  ? "Tekan & tahan kad, kemudian seret — atas sekali = kad utama dashboard"
+                                  : "Press & hold a card, then drag — top row = main dashboard card"}
                               </p>
                             ) : null}
                             {regularWallets.map((wallet, index) => renderWalletRow(wallet, index, "regular"))}
