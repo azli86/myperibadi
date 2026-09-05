@@ -4676,7 +4676,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           {voiceResult.title}
                         </p>
                       </div>
-                      <div className="max-h-[45vh] overflow-y-auto px-5 py-4">
+                      <div className="max-h-[380px] max-h-[50dvh] overflow-y-auto px-5 py-4">
                         {amountText && (
                           <p
                             className={`text-3xl font-black tabular-nums tracking-tight ${
@@ -4743,7 +4743,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     </span>
                     <p className="text-base font-black tracking-tight">{voiceResult.title}</p>
                   </div>
-                  <div className="max-h-[45vh] overflow-y-auto px-5 py-4">
+                  <div className="max-h-[380px] max-h-[50dvh] overflow-y-auto px-5 py-4">
                     <p className="text-sm font-semibold leading-relaxed text-[var(--text)]">
                       {voiceResult.body}
                     </p>
