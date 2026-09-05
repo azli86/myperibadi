@@ -288,6 +288,24 @@ function parseVoiceSavedReply(reply: string, fallbackNote: string) {
   };
 }
 
+/**
+ * Preferred WebM/Opus recorder config so every client (incl. Android WebView)
+ * lands on the server's ogg/webm→WAV conversion chain (EQ + trim). WebView
+ * defaults can pick AAC/mp4 which skips that chain. Falls back to the engine
+ * default when Opus is unsupported. `true` ideal-style constraint booleans
+ * degrade silently rather than throwing OverconstrainedError.
+ */
+function preferredVoiceMime(): MediaRecorderOptions | undefined {
+  if (
+    typeof MediaRecorder !== "undefined" &&
+    typeof MediaRecorder.isTypeSupported === "function" &&
+    MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+  ) {
+    return { mimeType: "audio/webm;codecs=opus" };
+  }
+  return undefined;
+}
+
 function getPreferredCategoryName(
   categories: ShellCategory[],
   type: AddFormState["type"],
@@ -1945,13 +1963,27 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     const isIncomeSpoken = (s: string) =>
       /gaji|salary|income|terima|receive|masuk|dividen|bonus/i.test(s);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      // WebView (Android app) has no platform AGC by default: raw mic input
+      // arrives low/muffled. Explicit AGC/NS above keeps volume up so the
+      // server trim (-50dB) doesn't eat words. `true` is an ideal, not exact,
+      // constraint — unsupported flags fall back silently instead of failing.
       // Released/cancelled while the mic was warming up → never start recording.
       if (!chatHoldFired.current) {
         stream.getTracks().forEach((tr) => tr.stop());
         return;
       }
-      const recorder = new MediaRecorder(stream);
+      const voiceMime = preferredVoiceMime();
+      const recorder = voiceMime
+        ? new MediaRecorder(stream, voiceMime)
+        : new MediaRecorder(stream);
       console.warn("[voice] MediaRecorder mime=" + recorder.mimeType, "sampleRate=" + (stream.getAudioTracks()[0]?.getSettings?.().sampleRate ?? "?"));
       voiceStreamRef.current = stream;
       voiceChunksRef.current = [];
@@ -3938,7 +3970,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       prefetch
                       onClick={(event) => handleBottomNavLinkClick(event, item.href)}
                       className={cn(
-                        "group relative flex h-14 w-full items-center justify-center transition-all duration-250 active:scale-95",
+                        "group relative flex h-14 w-full items-center justify-center select-none touch-none transition-all duration-250 active:scale-95",
                         isActive
                           ? "text-[var(--bottom-nav-active-detail)]"
                           : "text-[var(--bottom-nav-muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--bottom-nav-text)]",
@@ -3999,7 +4031,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       }
                     }}
                     className={cn(
-                      "absolute left-1/2 top-1/2 z-10 flex h-14 w-[54px] -translate-x-1/2 -translate-y-1/2 items-center justify-center text-[var(--bottom-nav-text)] transition-all duration-250 active:scale-95",
+                      "absolute left-1/2 top-1/2 z-10 flex h-14 w-[54px] -translate-x-1/2 -translate-y-1/2 items-center justify-center select-none touch-none text-[var(--bottom-nav-text)] transition-all duration-250 active:scale-95",
                       isChatActive
                         ? "text-[var(--bottom-nav-active-detail)]"
                         : "text-[var(--bottom-nav-text)]",

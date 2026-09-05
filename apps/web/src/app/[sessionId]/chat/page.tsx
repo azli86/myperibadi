@@ -104,6 +104,23 @@ type ChatMenuItem = {
   icon: LucideIcon
 }
 
+/**
+ * Prefer WebM/Opus so every client (incl. Android WebView) hits the server's
+ * ogg/webm→WAV conversion chain (EQ + trim). WebView defaults can pick
+ * AAC/mp4, which skips that chain. Falls back to the engine default when Opus
+ * is unsupported.
+ */
+const preferredVoiceMime = (): MediaRecorderOptions | undefined => {
+  if (
+    typeof MediaRecorder !== "undefined" &&
+    typeof MediaRecorder.isTypeSupported === "function" &&
+    MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+  ) {
+    return { mimeType: "audio/webm;codecs=opus" }
+  }
+  return undefined
+}
+
 const COMMAND_ITEMS: CommandItem[] = [
   { command: "help", insert: "help", labelBM: "Bantuan bot", labelEN: "Bot help", hintBM: "Tunjuk panduan command ringkas.", hintEN: "Show a short command guide." },
   { command: "summary", insert: "summary", labelBM: "Ringkasan bulan", labelEN: "Monthly summary", hintBM: "Pendapatan, belanja dan baki bulan semasa.", hintEN: "Income, expenses and current month balance." },
@@ -1063,8 +1080,18 @@ export default function ChatPage() {
       }
     } catch {}
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const recorder = new MediaRecorder(stream)
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      })
+      const voiceMime = preferredVoiceMime()
+      const recorder = voiceMime
+        ? new MediaRecorder(stream, voiceMime)
+        : new MediaRecorder(stream)
       voiceChunksRef.current = []
       voiceReleaseRef.current = false
       mediaRecorderRef.current = recorder

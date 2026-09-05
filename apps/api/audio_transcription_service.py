@@ -207,9 +207,18 @@ def _maybe_convert_to_wav(payload: bytes, mime_type: str) -> tuple[bytes, str, s
 
     Returns (payload, extension, content_type)."""
     base = (mime_type or "").lower()
-    # Only convert OGG (and optionally webm) voice; leave mp3/wav/m4a as-is
-    # since they're already well supported.
-    if base not in ("audio/ogg", "audio/webm", "audio/opus"):
+    # Convert OGG/WebM voice (and AAC/mp4 containers some WebViews produce)
+    # to WAV so Whisper sees uniform 16 kHz mono through the EQ chain; leave
+    # mp3/wav as-is since they're already well supported.
+    if base not in (
+        "audio/ogg",
+        "audio/webm",
+        "audio/opus",
+        "audio/mp4",
+        "audio/aac",
+        "audio/m4a",
+        "audio/x-m4a",
+    ):
         return payload, _guess_extension(base) or ".bin", base or "application/octet-stream"
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg or not payload:
