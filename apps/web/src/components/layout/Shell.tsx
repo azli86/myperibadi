@@ -4026,21 +4026,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       }
                       handleBottomNavLinkClick(event, chatItem.href);
                     }}
-                    onPointerDown={(event) => {
-                      if (event.pointerType === "mouse" && event.button !== 0) return;
-                      armChatVoiceHold();
-                    }}
-                    onPointerUp={() => finishChatHold(false)}
-                    onPointerCancel={() => finishChatHold(true)}
-                    onPointerLeave={() => {
-                      if (chatHoldFired.current) {
-                        // Finger/mouse slid off while recording → cancel (no
-                        // pointerup will reach this button for mouse users).
-                        finishChatHold(true);
-                      } else {
-                        releaseChatHold();
-                      }
-                    }}
                     className={cn(
                       "absolute left-1/2 top-1/2 z-10 flex h-14 w-[54px] -translate-x-1/2 -translate-y-1/2 items-center justify-center select-none touch-none text-[var(--bottom-nav-text)] transition-all duration-250 active:scale-95",
                       isChatActive
