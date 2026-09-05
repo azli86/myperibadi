@@ -1382,10 +1382,21 @@ export default function WalletSettingsPage() {
                           <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                             {tr("Imej Dompet", "Wallet Image")}
                           </p>
-                          <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-[var(--border-strong)] bg-[var(--card)] text-xs font-semibold text-[var(--muted)]">
-                            <Upload size={14} /> {uploadingDraftImage ? tr("Sedang upload…", "Uploading…") : tr("Upload imej (maks 512 KB)", "Upload image (max 512 KB)")}
-                            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadDraftWalletImage(file); e.target.value = "" }} />
-                          </label>
+                          <div className="flex items-center gap-2">
+                            <label className="flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-[var(--border-strong)] bg-[var(--card)] text-xs font-semibold text-[var(--muted)]">
+                              <Upload size={14} /> {uploadingDraftImage ? tr("Sedang upload…", "Uploading…") : tr("Upload imej (maks 512 KB)", "Upload image (max 512 KB)")}
+                              <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadDraftWalletImage(file); e.target.value = "" }} />
+                            </label>
+                            {draft.image_url ? (
+                              <button
+                                type="button"
+                                onClick={() => setDraft((prev) => ({ ...prev, image_url: "" }))}
+                                className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius)] border border-rose-500/25 bg-rose-500/10 px-3 text-xs font-black text-rose-500 transition active:scale-[0.97]"
+                              >
+                                <Trash2 size={14} /> {tr("Buang", "Remove")}
+                              </button>
+                            ) : null}
+                          </div>
                         </div>
                         <button
                           type="button"
@@ -1503,10 +1514,21 @@ export default function WalletSettingsPage() {
                     <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                       {tr("Penampilan", "Appearance")}
                     </p>
-                    <label className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-[var(--border-strong)] bg-[var(--card)] text-xs font-semibold text-[var(--muted)]">
-                      <Upload size={14} /> {uploadingWalletId === activeWallet.id ? tr("Sedang upload…", "Uploading…") : tr("Upload imej (maks 512 KB)", "Upload image (max 512 KB)")}
-                      <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadWalletImage(file, activeWallet); e.target.value = "" }} />
-                    </label>
+                    <div className="flex items-center gap-2">
+                      <label className="flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-[var(--border-strong)] bg-[var(--card)] text-xs font-semibold text-[var(--muted)]">
+                        <Upload size={14} /> {uploadingWalletId === activeWallet.id ? tr("Sedang upload…", "Uploading…") : tr("Upload imej (maks 512 KB)", "Upload image (max 512 KB)")}
+                        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadWalletImage(file, activeWallet); e.target.value = "" }} />
+                      </label>
+                      {activeWallet.image_url ? (
+                        <button
+                          type="button"
+                          onClick={() => updateActiveWallet({ image_url: "" })}
+                          className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-[var(--radius)] border border-rose-500/25 bg-rose-500/10 px-3 text-xs font-black text-rose-500 transition active:scale-[0.97]"
+                        >
+                          <Trash2 size={14} /> {tr("Buang", "Remove")}
+                        </button>
+                      ) : null}
+                    </div>
                     <div className="flex flex-wrap items-center justify-center gap-3">
                       {CARD_ACCENTS.map((accent) => {
                         const isSelected = activeWallet.card_color === accent.key
