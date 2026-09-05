@@ -1952,6 +1952,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         return;
       }
       const recorder = new MediaRecorder(stream);
+      console.warn("[voice] MediaRecorder mime=" + recorder.mimeType, "sampleRate=" + (stream.getAudioTracks()[0]?.getSettings?.().sampleRate ?? "?"));
       voiceStreamRef.current = stream;
       voiceChunksRef.current = [];
       voiceRecorderRef.current = recorder;
@@ -1989,6 +1990,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           if (!res.ok) throw new Error("transcribe failed");
           const data = await res.json();
           const spoken = String(data?.text || "").trim();
+          console.warn("[voice] transcript=" + JSON.stringify(spoken));
           const showResult = (
             ok: boolean,
             income: boolean,
@@ -2023,6 +2025,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           if (!chatRes.ok) throw new Error("chat detect failed");
           const chatData = await chatRes.json().catch(() => null);
           const reply = String(chatData?.reply || "").trim();
+          console.warn("[voice] reply=" + JSON.stringify(reply));
           const isTxn = reply.startsWith("*Done!") || /\bTXN\d{2}-/.test(reply);
           if (reply && isTxn) {
             window.dispatchEvent(

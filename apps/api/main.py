@@ -14054,6 +14054,12 @@ async def transcribe_voice_route(
     def _has_amount(text: str) -> bool:
         return bool(_re.search(r"\d|rm|ringgit|tng|sen|dollar|rupiah", text, _re.I))
     result = next((c for c in candidates if _has_amount(c.text)), candidates[-1])
+    print(
+        f"[voice-transcribe] ua={str(request.headers.get('user-agent'))[:60]!r} "
+        f"mime={mime_type} bytes={len(payload)} "
+        f"candidates={[c.text for c in candidates]!r} picked={result.text!r}",
+        flush=True,
+    )
     if _looks_like_foreign_script_hallucination(result.text):
         # Latin-speaking user got a Tamil/Chinese/etc. transcription = Whisper
         # hallucination, not speech. Treat as not-detected so the caller can
