@@ -70,8 +70,8 @@ async def update_transaction_route(
         resolved_wallet = await select_transaction_wallet(db, current_user, None)
     resolved_wallet_id = resolved_wallet.id
 
-    if getattr(resolved_wallet, "is_saving", False):
-        raise HTTPException(status_code=400, detail="Saving wallet hanya boleh digunakan untuk transfer")
+    if getattr(resolved_wallet, "is_saving", False) and resolved_type == "expense":
+        raise HTTPException(status_code=400, detail="Dompet simpanan hanya terima deposit (masuk) dan transfer")
 
     if resolved_type == "expense":
         await ensure_wallet_can_cover_expense(
@@ -448,11 +448,28 @@ async def create_transaction_route(
     publish_realtime_to_household: Callable[..., Awaitable[None]],
 ) -> models.Transaction:
     wallet = await select_transaction_wallet(db, current_user, txn_in.wallet_id)
-    if getattr(wallet, "is_saving", False):
-        raise HTTPException(status_code=400, detail="Saving wallet hanya boleh digunakan untuk transfer")
     normalized_items, computed_amount = normalize_transaction_items_payload(txn_in.items)
     resolved_amount = computed_amount if normalized_items else txn_in.amount
     txn_type = validate_transaction_type(txn_in.type)
+    resolved_category_id = await resolve_transaction_category_id(
+        txn_in.category_id,
+        current_user=current_user,
+        db=db,
+    )
+
+    # Saving wallets accept deposits (income) and internal transfers only.
+    if getattr(wallet, "is_saving", False):
+        vendor = (txn_in.vendor_or_source or "").strip().lower()
+        is_transfer = vendor.startswith(("transfer to ", "transfer from ")) or vendor == "transfer"
+        if resolved_category_id:
+            cat_code = await db.scalar(
+                select(models.Category.system_code).where(models.Category.id == resolved_category_id)
+            )
+            if cat_code == "wallet_transfer":
+                is_transfer = True
+        if txn_type == "expense" and not is_transfer:
+            raise HTTPException(status_code=400, detail="Dompet simpanan hanya terima deposit (masuk) dan transfer")
+
     if txn_type == "expense":
         await ensure_wallet_can_cover_expense(
             db,
@@ -460,11 +477,6 @@ async def create_transaction_route(
             current_user=current_user,
             amount=resolved_amount,
         )
-    resolved_category_id = await resolve_transaction_category_id(
-        txn_in.category_id,
-        current_user=current_user,
-        db=db,
-    )
     latitude, longitude, location_name = normalize_transaction_location(
         latitude=txn_in.latitude,
         longitude=txn_in.longitude,
