@@ -1992,11 +1992,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       const recorder = voiceMime
         ? new MediaRecorder(voiceSetup.stream, voiceMime)
         : new MediaRecorder(voiceSetup.stream);
-      console.warn(
-        "[voice] MediaRecorder mime=" + recorder.mimeType,
-        "sampleRate=" + (voiceSetup.stream.getAudioTracks()[0]?.getSettings?.().sampleRate ?? "?"),
-        "boost=" + voiceSetup.boosted,
-      );
       voiceCleanupRef.current = voiceSetup.cleanup;
       voiceStreamRef.current = voiceSetup.stream;
       voiceChunksRef.current = [];
@@ -2037,7 +2032,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           if (!res.ok) throw new Error("transcribe failed");
           const data = await res.json();
           const spoken = String(data?.text || "").trim();
-          console.warn("[voice] transcript=" + JSON.stringify(spoken));
           const showResult = (
             ok: boolean,
             income: boolean,
@@ -2072,7 +2066,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           if (!chatRes.ok) throw new Error("chat detect failed");
           const chatData = await chatRes.json().catch(() => null);
           const reply = String(chatData?.reply || "").trim();
-          console.warn("[voice] reply=" + JSON.stringify(reply));
           const isTxn = reply.startsWith("*Done!") || /\bTXN\d{2}-/.test(reply);
           if (reply && isTxn) {
             window.dispatchEvent(
@@ -4710,11 +4703,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         {parsed.ref && (
                           <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                             {parsed.ref}
-                          </p>
-                        )}
-                        {(!parsed.note || !parsed.category) && (parsed.note || amountText) && (
-                          <p className="mt-3 whitespace-pre-line rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-[11px] font-medium leading-relaxed text-[var(--muted)]">
-                            {voiceResult.body}
                           </p>
                         )}
                         {!parsed.note && !amountText && (
