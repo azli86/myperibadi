@@ -4641,11 +4641,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
         {voiceResult && (
           <div
-            className="fixed inset-0 z-[135] flex items-center justify-center bg-black/50 px-6"
+            className="fixed inset-0 z-[135] flex bg-black/50 px-6 py-4 overflow-y-auto"
             onClick={() => setVoiceResult(null)}
           >
             <div
-              className="w-full max-w-sm overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-2xl"
+              className="m-auto w-full max-w-sm overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               {voiceResult.ok ? (
