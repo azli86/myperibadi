@@ -264,15 +264,20 @@ function createDefaultAddItems(): AddItemState[] {
 
 /** Pull the concise fields out of the bot's saved-transaction reply. */
 function parseVoiceSavedReply(reply: string, fallbackNote: string) {
+  // Tolerate any leading decoration: bullet (•, -, ·, ▪), bold markers (*),
+  // bold-wrapped labels (*Nota:*), plus BM/EN label aliases.
   const value = (name: string) => {
     const match = reply.match(
-      new RegExp(`^\\s*(?:•\\s*)?(?:${name})\\s*:\\s*(.+)$`, "im"),
+      new RegExp(
+        `^[\\s\\u2022\\u2023\\u2219\\u00b7\\u25aa*\\-]*\\*?(?:${name})\\*?\\s*:\\s*(.+)$`,
+        "im",
+      ),
     );
     if (!match) return "";
     return (match[1] || "").replace(/\*+/g, "").replace(/\s+/g, " ").trim();
   };
   const amount =
-    value("Amount|Amaun") ||
+    value("Amount|Amaun|Jumlah") ||
     ((reply.match(/RM\s*([\d][\d.,]*)/) || ["", ""])[1] || "").trim();
   const note = value("Note|Nota|Perihal|Description") || fallbackNote;
   const category = value("Category|Kategori");
@@ -4705,6 +4710,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         {parsed.ref && (
                           <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
                             {parsed.ref}
+                          </p>
+                        )}
+                        {(!parsed.note || !parsed.category) && (parsed.note || amountText) && (
+                          <p className="mt-3 whitespace-pre-line rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-[11px] font-medium leading-relaxed text-[var(--muted)]">
+                            {voiceResult.body}
                           </p>
                         )}
                         {!parsed.note && !amountText && (
