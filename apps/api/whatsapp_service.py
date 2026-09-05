@@ -5061,13 +5061,15 @@ async def _process_whatsapp_message_impl(
                     )
 
         # 7. Save transaction
-        if getattr(wallet, "is_saving", False):
+        # Saving wallets: allow deposits (income/top-up), block normal spending.
+        # Money can leave a saving wallet via the `transfer` command (keluar).
+        if getattr(wallet, "is_saving", False) and txn_type == "expense":
             return t.get(
                 "expense_saving_wallet_blocked",
-                "*Saving wallet* hanya boleh digunakan untuk transfer masuk/keluar.\n\nUntuk masukkan atau keluarkan duit, guna arahan: `transfer <jumlah> dari <wallet> ke <wallet-saving>`",
+                "*Saving wallet* tak boleh belanja terus. Masuk duit (income) dibenarkan; untuk keluarkan, guna arahan: `transfer <jumlah> dari <wallet-saving> ke <wallet>`",
             ) if user_lang == "BM" else t.get(
                 "expense_saving_wallet_blocked",
-                "*Saving wallet* can only be used for transfers in/out.\n\nTo move money in or out, use: `transfer <amount> from <wallet> to <saving-wallet>`",
+                "*Saving wallet* cannot be spent directly. Deposits (income) are allowed; to withdraw, use: `transfer <amount> from <saving-wallet> to <wallet>`",
             ), None
         txn_date = explicit_txn_date or current_business_date()
         parsed_txn_time = None
