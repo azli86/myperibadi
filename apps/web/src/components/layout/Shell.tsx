@@ -11,6 +11,7 @@ import {
 } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ChatNavIcon } from "@/components/navigation/ChatNavIcon";
+import { setupVoiceMedia } from "@/lib/voice-media";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import {
@@ -1904,6 +1905,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const voiceRecorderRef = React.useRef<MediaRecorder | null>(null);
   const voiceChunksRef = React.useRef<Blob[]>([]);
   const voiceStreamRef = React.useRef<MediaStream | null>(null);
+  const voiceCleanupRef = React.useRef<(() => void) | null>(null);
   const voiceTickRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
 
   const closeVoiceRecorder = React.useCallback(() => {
@@ -1971,21 +1973,27 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           autoGainControl: true,
         },
       });
-      // WebView (Android app) has no platform AGC by default: raw mic input
-      // arrives low/muffled. Explicit AGC/NS above keeps volume up so the
-      // server trim (-50dB) doesn't eat words. `true` is an ideal, not exact,
-      // constraint — unsupported flags fall back silently instead of failing.
+      // WebView (Android app) has no platform AGC — the constraints above are
+      // ideals WebView may ignore, leaving raw ~25 dB-quiet input that Whisper
+      // can't hear. setupVoiceMedia() boosts + compresses through WebAudio in
+      // the wrapper only; Chrome/PWA (real AGC) passes through untouched.
       // Released/cancelled while the mic was warming up → never start recording.
       if (!chatHoldFired.current) {
         stream.getTracks().forEach((tr) => tr.stop());
         return;
       }
+      const voiceSetup = setupVoiceMedia(stream);
       const voiceMime = preferredVoiceMime();
       const recorder = voiceMime
-        ? new MediaRecorder(stream, voiceMime)
-        : new MediaRecorder(stream);
-      console.warn("[voice] MediaRecorder mime=" + recorder.mimeType, "sampleRate=" + (stream.getAudioTracks()[0]?.getSettings?.().sampleRate ?? "?"));
-      voiceStreamRef.current = stream;
+        ? new MediaRecorder(voiceSetup.stream, voiceMime)
+        : new MediaRecorder(voiceSetup.stream);
+      console.warn(
+        "[voice] MediaRecorder mime=" + recorder.mimeType,
+        "sampleRate=" + (voiceSetup.stream.getAudioTracks()[0]?.getSettings?.().sampleRate ?? "?"),
+        "boost=" + voiceSetup.boosted,
+      );
+      voiceCleanupRef.current = voiceSetup.cleanup;
+      voiceStreamRef.current = voiceSetup.stream;
       voiceChunksRef.current = [];
       voiceRecorderRef.current = recorder;
       recorder.ondataavailable = (e) => {
@@ -1996,6 +2004,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         voiceStreamRef.current = null;
         voiceRecorderRef.current = null;
         streamNow?.getTracks().forEach((tr) => tr.stop());
+        voiceCleanupRef.current?.();
+        voiceCleanupRef.current = null;
         if (voiceTickRef.current) {
           clearInterval(voiceTickRef.current);
           voiceTickRef.current = null;
@@ -2090,7 +2100,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       // Safety: released during setup → discard, never record without a hold.
       if (!chatHoldFired.current) {
         recorder.onstop = null;
-        stream.getTracks().forEach((tr) => tr.stop());
+        voiceCleanupRef.current?.();
+        voiceCleanupRef.current = null;
         voiceStreamRef.current = null;
         voiceRecorderRef.current = null;
         if (voiceTickRef.current) {
@@ -2143,6 +2154,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     if (recorder) recorder.onstop = null;
     voiceStreamRef.current?.getTracks().forEach((tr) => tr.stop());
     voiceStreamRef.current = null;
+    voiceCleanupRef.current?.();
+    voiceCleanupRef.current = null;
     if (voiceTickRef.current) {
       clearInterval(voiceTickRef.current);
       voiceTickRef.current = null;
