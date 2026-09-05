@@ -405,11 +405,15 @@ class WalletUpdate(BaseModel):
     is_saving: Optional[bool] = None
     show_on_dashboard: Optional[bool] = None
 
+class WalletDashboardOrder(BaseModel):
+    ordered_ids: List[int]
+
 class WalletResponse(WalletBase):
     id: int
     owner_user_id: Optional[str] = None
     household_id: Optional[int] = None
     is_bot_default: bool = False
+    dashboard_rank: Optional[int] = None
     balance: float = 0.0
     transaction_count: int = 0
 

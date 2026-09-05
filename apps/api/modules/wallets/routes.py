@@ -22,7 +22,7 @@ async def get_wallets_route(
     result = await db.execute(
         select(models.Wallet)
         .where(models.Wallet.owner_user_id == user_id)
-        .order_by(models.Wallet.created_at.asc(), models.Wallet.id.asc())
+        .order_by(models.Wallet.dashboard_rank.asc().nulls_last(), models.Wallet.created_at.asc(), models.Wallet.id.asc())
     )
     wallets = result.scalars().all()
 
@@ -166,6 +166,43 @@ async def update_wallet_route(
     await db.refresh(wallet)
     return wallet
 
+
+async def set_wallet_dashboard_order_route(
+    *,
+    ordered_ids: list[int],
+    db: AsyncSession,
+    current_user: models.User,
+) -> dict[str, str]:
+    """Persist the user's dashboard wallet order (top row = primary card).
+    Provided ids get dashboard_rank = list index; the owner's other wallets
+    have their rank cleared so they fall back to balance ordering."""
+    if len(set(ordered_ids)) != len(ordered_ids):
+        raise HTTPException(status_code=400, detail="Duplicate wallet ids")
+    user_id = current_user.id
+    if ordered_ids:
+        owned = await db.execute(
+            select(models.Wallet.id).where(
+                models.Wallet.owner_user_id == user_id,
+                models.Wallet.id.in_(ordered_ids),
+            )
+        )
+        owned_ids = {row[0] for row in owned.all()}
+        if owned_ids != set(ordered_ids):
+            raise HTTPException(status_code=400, detail="Some wallets are not yours")
+    # Clear ranks on every wallet of the user first, then apply the new order.
+    await db.execute(
+        update(models.Wallet)
+        .where(models.Wallet.owner_user_id == user_id)
+        .values(dashboard_rank=None)
+    )
+    for index, wallet_id in enumerate(ordered_ids):
+        await db.execute(
+            update(models.Wallet)
+            .where(models.Wallet.id == wallet_id, models.Wallet.owner_user_id == user_id)
+            .values(dashboard_rank=index)
+        )
+    await db.commit()
+    return {"message": "ok"}
 
 async def delete_wallet_route(
     *,

@@ -152,6 +152,7 @@ class Wallet(Base):
     type: Mapped[str] = mapped_column(String(20))  # cash / bank / bank_digital / ewallet / credit_card / saving (+ legacy shared)
     is_saving: Mapped[bool] = mapped_column(Boolean, default=False)  # saving wallet: transfers only, excluded from total balance
     show_on_dashboard: Mapped[bool] = mapped_column(Boolean, default=True)  # show saving wallet in dashboard wallet section
+    dashboard_rank: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # user-set dashboard order; lower = primary; null = by balance
     currency: Mapped[str] = mapped_column(String(10), default="MYR")
     status: Mapped[str] = mapped_column(String(20), default="active")
     is_bot_default: Mapped[bool] = mapped_column(Boolean, default=False)

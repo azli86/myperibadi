@@ -81,6 +81,7 @@ from modules.wallets import (
     create_wallet_route as _module_create_wallet_route,
     update_wallet_route as _module_update_wallet_route,
     delete_wallet_route as _module_delete_wallet_route,
+    set_wallet_dashboard_order_route as _module_set_wallet_dashboard_order_route,
 )
 from modules.categories import (
     get_categories_route as _module_get_categories_route,
@@ -1083,6 +1084,7 @@ async def ensure_database_schema():
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS cycle_mode VARCHAR(12) NOT NULL DEFAULT 'day'"))
             await conn.execute(text("ALTER TABLE categories ALTER COLUMN icon_name TYPE VARCHAR(500)"))
             await conn.execute(text("ALTER TABLE wallets ADD COLUMN IF NOT EXISTS image_url VARCHAR(500) NULL"))
+            await conn.execute(text("ALTER TABLE wallets ADD COLUMN IF NOT EXISTS dashboard_rank INTEGER NULL"))
             await conn.execute(text("ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL"))
             # Fix FK constraints so products can be deleted (SET NULL on referenced rows)
             await conn.execute(text("ALTER TABLE business_orders DROP CONSTRAINT IF EXISTS business_orders_product_id_fkey"))
@@ -10740,6 +10742,18 @@ async def create_wallet(
         db=db,
         current_user=current_user,
         resolve_wallet_type=_resolve_wallet_type,
+    )
+
+@app.patch("/wallets/dashboard-order")
+async def set_wallet_dashboard_order(
+    body: schemas.WalletDashboardOrder,
+    db: AsyncSession = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return await _module_set_wallet_dashboard_order_route(
+        ordered_ids=body.ordered_ids,
+        db=db,
+        current_user=current_user,
     )
 
 @app.patch("/wallets/{wallet_id}", response_model=schemas.WalletResponse)
