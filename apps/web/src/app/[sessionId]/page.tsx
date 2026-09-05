@@ -465,6 +465,7 @@ export default function Dashboard() {
     pointerId: number
     activated: boolean
     el: HTMLElement | null
+    kindIds: number[]
   } | null>(null)
   const deckHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [deckDraggingId, setDeckDraggingId] = useState<number | null>(null)
@@ -507,6 +508,7 @@ export default function Dashboard() {
     if (!el) return
     meta.activated = true
     meta.rowH = el.getBoundingClientRect().height || 72
+    meta.kindIds = deckRowsByKind(kind).map((w) => w.id)
     el.setPointerCapture?.(meta.pointerId)
     setDeckDraggingId(wallet.id)
     setDeckDragY(0)
@@ -527,6 +529,7 @@ export default function Dashboard() {
       pointerId: e.pointerId,
       activated: false,
       el: e.currentTarget as HTMLElement,
+      kindIds: [],
     }
     deckHoldTimerRef.current = setTimeout(() => {
       activateDeckDrag(kind, wallet)
@@ -544,34 +547,52 @@ export default function Dashboard() {
       return
     }
     e.preventDefault()
-    const dy = e.clientY - meta.startY
-    let target = -1
     const els = Array.from(
       document.querySelectorAll<HTMLElement>(`[data-deck-kind="${meta.kind}"]`),
     )
-    els.forEach((el, idx) => {
-      if (idx === meta.index) return
+    if (!els.length) return
+    const y = e.clientY
+    let target = els.findIndex((el) => {
       const r = el.getBoundingClientRect()
-      if (Math.abs(r.top + r.height / 2 - e.clientY) < Math.min(r.height, 64)) {
-        if (target < 0) target = idx
-      }
+      return y >= r.top && y <= r.bottom
     })
-    if (target >= 0 && target !== meta.index) {
-      setDeckRows((prev) => {
-        const base = prev ?? heroWallets
-        const regulars = base.filter((w) => !w.is_saving)
-        const savings = base.filter((w) => !!w.is_saving)
-        const arr = meta.kind === "regular" ? regulars : savings
-        const item = arr[meta.index]
-        const next = arr.slice()
-        next.splice(meta.index, 1)
-        next.splice(target, 0, item)
-        const rebuilt = meta.kind === "regular" ? [...next, ...savings] : [...regulars, ...next]
-        meta.index = target
-        return rebuilt
-      })
+    if (target < 0) {
+      const first = els[0].getBoundingClientRect()
+      target = y < first.top ? 0 : els.length - 1
     }
-    setDeckDragY(dy - (meta.index - meta.startIndex) * meta.rowH)
+    // Centre-line hysteresis: only swap once the pointer passes a neighbour's
+    // middle, so a boundary position never oscillates between two slots.
+    if (target !== meta.index) {
+      const nr = els[target]?.getBoundingClientRect()
+      if (nr) {
+        const mid = nr.top + nr.height / 2
+        if (target > meta.index && y < mid) target = meta.index
+        else if (target < meta.index && y > mid) target = meta.index
+      }
+    }
+    if (target === meta.index) {
+      setDeckDragY(e.clientY - meta.startY - (meta.index - meta.startIndex) * meta.rowH)
+      return
+    }
+    // Move the dragged id within the live kind snapshot (source of truth);
+    // index bookkeeping stays synchronous so the lift offset never lags a slot.
+    const id = meta.kindIds[meta.index]
+    meta.kindIds.splice(meta.index, 1)
+    meta.kindIds.splice(target, 0, id)
+    meta.index = target
+    setDeckDragY(e.clientY - meta.startY - (meta.index - meta.startIndex) * meta.rowH)
+    setDeckRows((prev) => {
+      const base = prev ?? heroWallets
+      const byId = new Map(base.map((w) => [w.id, w]))
+      const ordered = meta.kindIds
+        .map((kid) => byId.get(kid))
+        .filter((w): w is DashboardWallet => !!w)
+      const rebuilt =
+        meta.kind === "regular"
+          ? [...ordered, ...base.filter((w) => !!w.is_saving)]
+          : [...base.filter((w) => !w.is_saving), ...ordered]
+      return rebuilt
+    })
   }
   const endDeckRow = () => {
     const meta = deckDragRef.current
@@ -3580,13 +3601,6 @@ export default function Dashboard() {
                         const regularWallets = (deckRows ?? heroWallets).filter((wallet) => !wallet.is_saving)
                         return (
                           <>
-                            {regularWallets.length > 1 ? (
-                              <p className="px-1 pb-0.5 text-[10px] font-semibold text-[var(--muted)]">
-                                {lang === "BM"
-                                  ? "Tekan & tahan kad, kemudian seret — atas sekali = kad utama dashboard"
-                                  : "Press & hold a card, then drag — top row = main dashboard card"}
-                              </p>
-                            ) : null}
                             {regularWallets.map((wallet, index) => renderWalletRow(wallet, index, "regular"))}
                             {savingWallets.length > 0 ? (
                               <div className="pt-2">
