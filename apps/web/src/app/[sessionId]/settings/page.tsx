@@ -609,8 +609,8 @@ export default function SettingsPage() {
               <p className="mt-1.5 text-xs font-medium text-[var(--muted)]">{profile?.email || "—"}</p>
             </div>
 
-            {/* Avatar — kanan, keluar tepi kanan */}
-            <div className="relative shrink-0 -mr-2">
+            {/* Avatar — kanan, keluar tepi kanan (kemaskini via Edit Profil) */}
+            <div className="shrink-0 -mr-2">
               <div className="rounded-full p-1 ring-4 ring-[var(--surface-tint)] bg-[var(--card)] shadow-md">
                 <UserAvatar
                   name={name || profile?.name}
@@ -619,14 +619,6 @@ export default function SettingsPage() {
                   className="transition-transform"
                 />
               </div>
-              <button
-                type="button"
-                onClick={() => setAvatarSheetOpen(true)}
-                className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-md cursor-pointer active:scale-90 transition border-2 border-[var(--bg)]"
-                aria-label={tr("Tukar Gambar", "Change Avatar")}
-              >
-                <Camera size={12} />
-              </button>
             </div>
           </div>
 
