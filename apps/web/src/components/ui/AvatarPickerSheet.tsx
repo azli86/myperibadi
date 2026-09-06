@@ -298,16 +298,23 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
 
   if (!open) return null
 
-  // Display transform for the preview: image centered at boxC, scaled by k0*f.
+  // Display transform for the preview: image pre-scaled to baseW/H (smaller side
+  // fills the box) so CSS scale stays >= 1. Safari blanks huge downscaled layers
+  // (pinch zoom -> blank screen), so never render the raw multi-MB bitmap scaled
+  // <1. Pan/zoom stays visually identical (scale(f) * size(k0) == scale(k0*f)).
+  let stageW: number | undefined
+  let stageH: number | undefined
   let stageTransform: string | undefined
   if (cropDims && boxC > 0) {
     const k0 = Math.max(boxC / cropDims.iw, boxC / cropDims.ih)
-    const k = k0 * cropT.f
-    const halfX = Math.max(0, (cropDims.iw * k - boxC) / 2)
-    const halfY = Math.max(0, (cropDims.ih * k - boxC) / 2)
+    stageW = cropDims.iw * k0
+    stageH = cropDims.ih * k0
+    const f = cropT.f
+    const halfX = Math.max(0, (stageW * f - boxC) / 2)
+    const halfY = Math.max(0, (stageH * f - boxC) / 2)
     const x = clamp(cropT.x, -halfX, halfX)
     const y = clamp(cropT.y, -halfY, halfY)
-    stageTransform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${k})`
+    stageTransform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${f})`
   }
 
   return createPortal(
@@ -412,8 +419,8 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
                 style={
                   cropDims
                     ? {
-                        width: `${cropDims.iw}px`,
-                        height: `${cropDims.ih}px`,
+                        width: `${stageW}px`,
+                        height: `${stageH}px`,
                         transform: stageTransform,
                       }
                     : undefined
