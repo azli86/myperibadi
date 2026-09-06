@@ -57,25 +57,34 @@ async def transcribe_audio(
     if not api_key:
         return None
 
-    # Default whisper-1 + the EQ chain above is the best proven combo for the
-    # muffled web-PTT clips (gpt-4o-transcribe kept garbling them in tests).
-    model = (os.getenv("WHISPER_MODEL") or "whisper-1").strip()
+    # Default gpt-4o-transcribe: measured far more accurate than whisper-1 on
+    # short Malaysian voice clips (whisper-1 returned gibberish even though
+    # gpt-4o-transcribe heard the exact RM amount) at the same price. The
+    # money-word prompt is the single biggest lever, so always send one.
+    model = (os.getenv("WHISPER_MODEL") or "gpt-4o-transcribe").strip()
     # Mime may carry parameters like "audio/ogg; codecs=opus" which OpenAI
     # rejects and which break our extension lookup — use the base mime only.
     base_mime = (mime_type or "").split(";", 1)[0].strip().lower()
 
-    # Telegram voice notes are OGG Opus, which Whisper accepts but sometimes
-    # transcribes less accurately than a decoded WAV. Convert to 16 kHz mono
-    # WAV first (best format for Whisper) and fall back to the original bytes
-    # if ffmpeg is unavailable or conversion fails.
-    payload, ext, content_mime = _maybe_convert_to_wav(payload, base_mime)
+    # gpt-4o-* transcribe models are robust to the raw container (webm/ogg/mp3)
+    # and our ffmpeg EQ chain measurably distorts digit amounts (150 -> 170),
+    # so send bytes untouched and only run the EQ/WAV decode for whisper-1.
+    if model.startswith("gpt-4o"):
+        ext = _guess_extension(base_mime) or ".bin"
+        content_mime = base_mime or "application/octet-stream"
+    else:
+        payload, ext, content_mime = _maybe_convert_to_wav(payload, base_mime)
 
     files = {
         "file": ("voice" + ext, payload, content_mime or "application/octet-stream"),
     }
     data: dict[str, str] = {"model": model, "response_format": "json"}
-    # Guide Whisper toward common money/transaction words so short, accented
-    # voice notes are spelled more accurately ("direct", "ringgit", wallet names).
+    # Guide gpt-4o-transcribe toward common money/transaction words so short,
+    # accented voice notes are spelled accurately ("direct", "ringgit", "RM",
+    # wallet names). Measured: without this the model hallucinated, with it a
+    # test clip produced the exact "RM150.".
+    if not (prompt and prompt.strip()):
+        prompt = "ringgit sen RM maybank cimb cash tng grab payong gaji belanja makan nasi lemak topup transfer tambah keluar jumlah bayar"
     if prompt and prompt.strip():
         data["prompt"] = prompt.strip()
     # Only send a language hint when it looks like a valid ISO-639-1 code.
