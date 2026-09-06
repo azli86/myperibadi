@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { Component, useEffect, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { Camera, Image as ImageIcon, Trash2, Loader2, Check, X, ZoomIn, ZoomOut } from "lucide-react"
 import { useLang } from "@/lib/lang"
@@ -62,6 +62,39 @@ const clamp = (v: number, min: number, max: number) => {
 const dist = (a?: { x: number; y: number }, b?: { x: number; y: number }) => {
   if (!a || !b) return 0
   return Math.hypot(a.x - b.x, a.y - b.y)
+}
+
+// DEBUG: catch any client crash inside the picker/crop subtree so the whole app
+// isn't blown up by global-error (which shows a generic "500" screen). Instead
+// show the real error message so we can diagnose.
+class CropErrorBoundary extends Component<{ children: ReactNode }, { err: Error | null }> {
+  state = { err: null as Error | null }
+  static getDerivedStateFromError(err: Error) {
+    return { err }
+  }
+  componentDidCatch(err: Error) {
+    console.error("[crop] runtime error:", err)
+  }
+  render() {
+    if (this.state.err) {
+      return createPortal(
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 p-6 text-center">
+          <div className="max-w-sm rounded-2xl border border-red-500/30 bg-white/10 p-6 text-white">
+            <p className="text-sm font-bold">Ralat: {this.state.err.message || "Unknown"}</p>
+            <button
+              type="button"
+              onClick={() => this.setState({ err: null })}
+              className="mt-4 rounded-full bg-white/10 px-4 py-2 text-sm font-bold"
+            >
+              Cuba Lagi
+            </button>
+          </div>
+        </div>,
+        document.body
+      )
+    }
+    return this.props.children
+  }
 }
 
 export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged, notify }: Props) {
@@ -431,8 +464,9 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
   if (!open) return null
 
   return createPortal(
-    <>
-      <input ref={cameraRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={pick(cameraRef)} disabled={busy} />
+    <CropErrorBoundary>
+      <>
+        <input ref={cameraRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={pick(cameraRef)} disabled={busy} />
       <input ref={galleryRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={pick(galleryRef)} disabled={busy} />
       <div
         className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center"
@@ -569,7 +603,8 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
           </div>
         </div>
       )}
-    </>,
+      </>
+    </CropErrorBoundary>,
     document.body
   )
 }
