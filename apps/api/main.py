@@ -24,6 +24,24 @@ try:
 except Exception:
     pass
 
+import warnings
+# Python 3.12 deprecates datetime.utcnow() (cosmetic; naive-UTC semantics are
+# intentional across the codebase + DB timestamp columns). Suppress the noise
+# instead of churning 80+ call sites to aware datetimes (behaviour risk).
+warnings.filterwarnings(
+    "ignore",
+    message=r"datetime\.datetime\.utcnow\(\) is deprecated.*",
+    category=DeprecationWarning,
+)
+# FastAPI still fully supports @app.on_event("startup"); the framework merely
+# nudges toward lifespan. Converting 8 startup hooks to one lifespan is a bigger
+# refactor with zero functional gain — silence the one-time warning instead.
+warnings.filterwarnings(
+    "ignore",
+    message=r"(?s).*on_event is deprecated.*",
+    category=DeprecationWarning,
+)
+
 # Email verification grace: how long a new user has to verify before the account
 # is auto-disabled, and how long a verify link stays valid. Extended from 2 to 14
 # days because 2 days was trapping users whose verify link expired (token purged)
