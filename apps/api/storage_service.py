@@ -199,6 +199,8 @@ def upload_receipt_object(object_key: str, payload: bytes, content_type: str, *,
             Body=payload,
             ContentType=content_type,
             ContentDisposition=disposition,
+            # Let the CDN/browser cache media for a year — images are immutable.
+            CacheControl="public, max-age=31536000, immutable",
         )
     except (BotoCoreError, ClientError) as exc:
         raise StorageError(f"Failed to upload receipt to storage: {exc}") from exc
