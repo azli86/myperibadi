@@ -117,14 +117,14 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
           onClick={(e) => e.stopPropagation()}
           data-swipe-sheet
           {...swipe}
-          className="app-sheet-panel w-full max-h-[82dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[26rem]"
+          className="app-sheet-panel w-full h-auto border border-[var(--border)] bg-[var(--sheet-bg)] sm:max-w-[24rem]"
         >
           <AppSheetHeader
             title={tr("Gambar Profil", "Profile Picture")}
             subtitle={tr("Pilih sumber imej", "Choose an image source")}
             onClose={() => !busy && onClose()}
           />
-          <div className="px-4 pt-4">
+          <div className="px-4 pb-4 pt-3">
             <div className="grid grid-cols-2 gap-2.5">
               <button type="button" className={gridOpt} disabled={busy} onClick={() => cameraRef.current?.click()}>
                 <Camera size={22} className="shrink-0 text-[var(--text)]" />
