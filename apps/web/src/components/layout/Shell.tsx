@@ -120,7 +120,7 @@ import {
 import { getAccounts, getActiveEmail, switchToAccount, removeAccount, addAccount, syncCurrentAccountToProfile, type AccountProfile } from "@/lib/multi-account"
 import { signInWithGoogleProfile } from "@/lib/firebase"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose";
-import { fetchApiJson, readApiCache, writeApiCache } from "@/lib/api-cache";
+import { fetchApiJson, readApiCache, writeApiCache, invalidateApiCache } from "@/lib/api-cache";
 import Turnstile from "@/components/auth/Turnstile"
 import BadgeOverviewModal from "@/components/badges/BadgeOverviewModal";
 import Calculator from "@/components/calculator/Calculator";
@@ -2295,6 +2295,30 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => setIsMounted(true), [])
+
+  // Profile avatar re-uploaded (account/settings pages): drop cached user + refetch so the header avatar updates immediately, not after the 5-min api cache expires.
+  useEffect(() => {
+    const onAvatarUpdated = async () => {
+      try {
+        const token = getAccessToken();
+        invalidateApiCache("/api/users/me", token);
+        const res = await fetch("/api/users/me", {
+          cache: "no-store",
+          credentials: "include",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+          setEmailVerifiedState(data?.email_verified ?? false);
+        }
+      } catch {
+        // Non-critical: next scheduled fetchData will reconcile.
+      }
+    };
+    window.addEventListener("avatar-updated", onAvatarUpdated);
+    return () => window.removeEventListener("avatar-updated", onAvatarUpdated);
+  }, []);
 
   useEffect(() => {
     if (!isMounted) return

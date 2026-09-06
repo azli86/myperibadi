@@ -28,6 +28,7 @@ import {
 import { useLang } from "@/lib/lang"
 import { UserAvatar } from "@/components/ui/UserAvatar"
 import { getAccessToken, setAuthTokens, logoutAuthSession } from "@/lib/auth-session"
+import { invalidateApiCache } from "@/lib/api-cache"
 import { getAccounts, getActiveEmail, switchToAccount, type AccountProfile } from "@/lib/multi-account"
 import { MobilePageHeader, DesktopPageBody, DesktopPageHeader } from "@/components/layout/PageHeader"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
@@ -240,6 +241,8 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
       }
       const data = await res.json()
       setProfile((prev) => (prev ? { ...prev, avatar_url: data.avatar_url } : prev))
+      invalidateApiCache("/api/users/me", getAccessToken())
+      window.dispatchEvent(new Event("avatar-updated"))
       setMessage(tr("Gambar profil berjaya dikemaskini.", "Profile picture updated."))
       showAlert(tr("Berjaya", "Success"), tr("Gambar profil berjaya dikemaskini.", "Profile picture updated."), "success")
     } catch (err) {

@@ -44,6 +44,7 @@ import { usePageAlert } from "@/hooks/usePageAlert"
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/components/theme/ThemeProvider"
 import { getAccessToken, setAuthTokens, logoutAuthSession } from "@/lib/auth-session"
+import { invalidateApiCache } from "@/lib/api-cache"
 import { getAccounts, getActiveEmail, switchToAccount, type AccountProfile } from "@/lib/multi-account"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
@@ -303,6 +304,8 @@ export default function SettingsPage() {
       }
       const data = await res.json()
       setProfile((prev) => (prev ? { ...prev, avatar_url: data.avatar_url } : prev))
+      invalidateApiCache("/api/users/me", getAccessToken())
+      window.dispatchEvent(new Event("avatar-updated"))
       showAlert(tr("Gambar Dikemaskini", "Avatar Updated"), tr("Gambar profil anda telah berjaya dimuat naik.", "Your profile avatar has been updated."), "success")
     } catch (err) {
       const msg = err instanceof Error ? err.message : tr("Gagal memuat naik gambar.", "Upload failed.")
