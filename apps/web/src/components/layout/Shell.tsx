@@ -3897,8 +3897,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
               {/* ── Profile Card: avatar besar overlay kiri, nama kanan ── */}
               <div className="px-4 pt-1 pb-3">
-                <div className="relative w-full max-w-[340px] rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/60 py-3 pl-20 pr-4">
-                  <div className="absolute -left-4 top-1/2 -translate-y-1/2 shrink-0">
+                <div className="relative w-full max-w-[340px] rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/60 py-3 pl-4 pr-20">
+                  <div className="absolute -right-4 top-1/2 -translate-y-1/2 shrink-0">
                     <UserAvatar name={displayName || activeEmail} size={80} src={user?.avatar_url} />
                   </div>
 
