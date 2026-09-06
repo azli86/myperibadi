@@ -84,6 +84,7 @@ export default function TxnEditSheet({
   const swipe = useSwipeDownToClose(onClose)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+  const pdfInputRef = useRef<HTMLInputElement>(null)
   const [showImagePicker, setShowImagePicker] = useState(false)
   const [editFilePreview, setEditFilePreview] = useState<string | null>(null)
 
@@ -538,7 +539,14 @@ export default function TxnEditSheet({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,application/pdf"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => { handleFilePick(e.target.files?.[0] || null); e.target.value = "" }}
+            />
+            <input
+              ref={pdfInputRef}
+              type="file"
+              accept="application/pdf"
               className="hidden"
               onChange={(e) => { handleFilePick(e.target.files?.[0] || null); e.target.value = "" }}
             />
@@ -583,7 +591,7 @@ export default function TxnEditSheet({
             onClose={() => setShowImagePicker(false)}
             onCamera={() => { setShowImagePicker(false); cameraInputRef.current?.click() }}
             onGallery={() => { setShowImagePicker(false); fileInputRef.current?.click() }}
-            onPdf={() => { setShowImagePicker(false); fileInputRef.current?.click() }}
+            onPdf={() => { setShowImagePicker(false); pdfInputRef.current?.click() }}
           />
         </div>
       </div>
