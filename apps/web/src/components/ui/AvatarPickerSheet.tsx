@@ -17,6 +17,42 @@ type Props = {
   notify: (title: string, message: string, type?: "success" | "error" | "info" | "warning") => void
 }
 
+const AVATAR_MAX_BYTES = 10 * 1024 * 1024
+const AVATAR_COMPRESS_ABOVE = 1.5 * 1024 * 1024
+
+// Mobile photos are often >2 MB. Downscale client-side before upload so the
+// payload fits, then compare final size against the server cap BEFORE hitting R2.
+const compressAvatar = (file: File): Promise<Blob> =>
+  new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const MAX_DIM = 1440
+      const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height))
+      const canvas = document.createElement("canvas")
+      canvas.width = Math.max(1, Math.round(img.width * scale))
+      canvas.height = Math.max(1, Math.round(img.height * scale))
+      const ctx = canvas.getContext("2d")
+      if (!ctx) {
+        reject(new Error("canvas"))
+        return
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      const mime = file.type === "image/webp" ? "image/webp" : "image/jpeg"
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("encode"))),
+        mime,
+        0.86
+      )
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error("decode"))
+    }
+    img.src = url
+  })
+
 export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged, notify }: Props) {
   const { lang } = useLang()
   const isBm = lang === "BM"
@@ -37,17 +73,29 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
   const doUpload = async (file: File) => {
     setBusy(true)
     try {
-      if (file.size > 2 * 1024 * 1024) {
-        notify(tr("Saiz Terlalu Besar", "File Too Large"), tr("Maksimum saiz imej ialah 2 MB.", "Maximum image size is 2 MB."), "error")
-        return
-      }
       if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
         notify(tr("Format Tidak Sah", "Invalid Format"), tr("Sila muat naik format JPG, PNG atau WEBP.", "Please upload JPG, PNG or WEBP."), "error")
         return
       }
+      // Compare size BEFORE sending to R2: downscale big photos, then enforce cap.
+      let payload: Blob = file
+      let name = file.name
+      if (file.size > AVATAR_COMPRESS_ABOVE) {
+        try {
+          payload = await compressAvatar(file)
+          name = payload.type === "image/webp" ? "avatar.webp" : "avatar.jpg"
+        } catch {
+          notify(tr("Tidak Boleh Baca", "Cannot Read"), tr("Gambar tidak dapat diproses. Cuba gambar lain.", "Image could not be processed. Try another photo."), "error")
+          return
+        }
+      }
+      if (payload.size > AVATAR_MAX_BYTES) {
+        notify(tr("Saiz Terlalu Besar", "File Too Large"), tr("Imej terlalu besar walaupun selepas mampat. Cuba gambar lain.", "Image is still too large after compression. Try another photo."), "error")
+        return
+      }
       const token = getAccessToken()
       const form = new FormData()
-      form.append("file", file)
+      form.append("file", payload, name)
       const res = await fetch("/api/users/me/avatar", {
         method: "POST",
         credentials: "include",

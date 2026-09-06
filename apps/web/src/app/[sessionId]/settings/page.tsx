@@ -1452,7 +1452,7 @@ export default function SettingsPage() {
                         <Camera size={13} />
                         <span>{tr("Muat Naik Gambar", "Upload Photo")}</span>
                       </button>
-                      <p className="mt-1 text-[0.68rem] text-[var(--muted)]">JPG, PNG atau WEBP (&le; 2MB)</p>
+                      <p className="mt-1 text-[0.68rem] text-[var(--muted)]">JPG, PNG atau WEBP (&le; 10MB, foto besar diauto-mampat)</p>
                     </div>
                   </div>
 

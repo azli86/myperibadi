@@ -10813,9 +10813,9 @@ async def upload_user_avatar(
     db: AsyncSession = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    payload = await file.read(2_097_153)
-    if len(payload) > 2_097_152:
-        raise HTTPException(status_code=413, detail="Imej terlalu besar. Maksimum 2 MB.")
+    payload = await file.read(10_485_761)
+    if len(payload) > 10_485_760:
+        raise HTTPException(status_code=413, detail="Imej terlalu besar. Maksimum 10 MB.")
     try:
         mime_type, extension = storage_service.validate_receipt_file(file.filename, file.content_type, payload)
         if mime_type == "application/pdf":
