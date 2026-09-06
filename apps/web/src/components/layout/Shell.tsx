@@ -47,6 +47,7 @@ import {
   Search,
   Menu,
   X,
+  ArrowDown,
   Check,
   Delete,
   MinusCircle,
@@ -3025,13 +3026,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     );
   };
 
-  // Pull-to-refresh: mobile dashboard only — top-of-page vertical pull.
-  const pullRefreshOnlyDashboard = pathname === `/${sessionId}`;
+  // Pull-to-refresh: mobile dashboard + transactions — top-of-page vertical pull.
+  const pullRefreshEnabled = pathname === `/${sessionId}` || pathname === `/${sessionId}/transactions`;
+  const releaseReady = pullDistance >= 70;
   const isAtScrollTop = () =>
     (window.scrollY || document.documentElement.scrollTop || 0) <= 4;
 
   const onTouchStart = (event: React.TouchEvent) => {
-    if (!pullRefreshOnlyDashboard || isRefreshing) {
+    if (!pullRefreshEnabled || isRefreshing) {
       setStartY(null);
       return;
     }
@@ -3044,7 +3046,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   };
 
   const onTouchMove = (event: React.TouchEvent) => {
-    if (startY === null || !pullRefreshOnlyDashboard) return;
+    if (startY === null || !pullRefreshEnabled) return;
     const currentY = event.touches[0]?.clientY ?? startY;
     const delta = currentY - startY;
     if (delta <= 0) {
@@ -3509,32 +3511,51 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 ),
           )}
         >
-          {/* Pull to refresh indicator */}
-          {!isChatFullscreen && !isMapFullscreen && (
+          {/* Pull to refresh indicator (radial progress ring + arrow) */}
+          {pullRefreshEnabled && !isChatFullscreen && !isMapFullscreen && (
             <div
-              style={{ y: pullDistance - 40, opacity: pullDistance / 60 }}
-              className="absolute top-0 left-0 right-0 flex justify-center pointer-events-none z-50 pt-[calc(env(safe-area-inset-top,0px)+1rem)] md:pt-6"
+              style={{
+                transform: `translateY(${Math.min(pullDistance, 110) * 0.3}px)`,
+                opacity: Math.min(pullDistance / 60, 1),
+              }}
+              className="pointer-events-none absolute left-0 right-0 top-0 z-50 flex justify-center pt-[calc(env(safe-area-inset-top,0px)+1rem)] md:pt-6"
             >
-              <div
-                className={cn(
-                  "p-2 rounded-full shadow-xl border",
-                  isLight
-                    ? "bg-white border-slate-300 text-slate-900"
-                    : "bg-[#0f0f0f] border-white/10 text-white",
-                )}
-              >
-                <Loader2
-                  size={20}
-                  className={cn(
-                    isLight ? "text-slate-900" : "text-[var(--text)]",
-                    isRefreshing ? "animate-spin" : "",
+              <div className="relative h-12 w-12">
+                <svg viewBox="0 0 48 48" className={cn("-rotate-90", isRefreshing && "animate-[ptrspin_0.9s_linear_infinite]")}>
+                  <defs>
+                    <linearGradient id="ptr-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#6366f1" />
+                      <stop offset="100%" stopColor="#06b6d4" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="24" cy="24" r="20" fill="none" strokeWidth="3.5" stroke={isLight ? "rgba(15,23,42,0.12)" : "rgba(255,255,255,0.12)"} />
+                  <circle
+                    cx="24"
+                    cy="24"
+                    r="20"
+                    fill="none"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    stroke={releaseReady ? "#22c55e" : "url(#ptr-grad)"}
+                    strokeDasharray={2 * Math.PI * 20}
+                    strokeDashoffset={isRefreshing ? 0 : 2 * Math.PI * 20 * (1 - Math.min(pullDistance / 110, 1))}
+                    className="transition-[stroke-dashoffset,stroke] duration-100"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  {isRefreshing ? (
+                    <Loader2 size={18} className="animate-spin" style={{ color: "var(--text)" }} />
+                  ) : releaseReady ? (
+                    <Check size={18} className="text-emerald-500" strokeWidth={3} />
+                  ) : (
+                    <ArrowDown
+                      size={18}
+                      strokeWidth={2.5}
+                      className={isLight ? "text-slate-900" : "text-white"}
+                      style={{ transform: `rotate(${Math.min(pullDistance * 1.2, 180)}deg)` }}
+                    />
                   )}
-                  style={{
-                    transform: !isRefreshing
-                      ? `rotate(${pullDistance * 2}deg)`
-                      : undefined,
-                  }}
-                />
+                </div>
               </div>
             </div>
           )}

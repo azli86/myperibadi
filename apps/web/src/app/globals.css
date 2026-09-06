@@ -3153,3 +3153,5 @@ html[data-theme="light"] [class~="border-gray-300"] {
 .animate-wizard-in-right { animation: wizard-slide-in-right 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .animate-wizard-in-left { animation: wizard-slide-in-left 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .animate-wizard-fade-up { animation: wizard-fade-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes ptrspin { to { transform: rotate(360deg); } }
