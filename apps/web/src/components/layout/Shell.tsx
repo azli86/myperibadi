@@ -47,7 +47,6 @@ import {
   Search,
   Menu,
   X,
-  ArrowDown,
   Check,
   Delete,
   MinusCircle,
@@ -3028,7 +3027,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
   // Pull-to-refresh: mobile dashboard + transactions — top-of-page vertical pull.
   const pullRefreshEnabled = pathname === `/${sessionId}` || pathname === `/${sessionId}/transactions`;
-  const releaseReady = pullDistance >= 70;
   const isAtScrollTop = () =>
     (window.scrollY || document.documentElement.scrollTop || 0) <= 4;
 
@@ -3536,7 +3534,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     fill="none"
                     strokeWidth="3.5"
                     strokeLinecap="round"
-                    stroke={releaseReady ? "#22c55e" : "url(#ptr-grad)"}
+                    stroke="url(#ptr-grad)"
                     strokeDasharray={2 * Math.PI * 20}
                     strokeDashoffset={isRefreshing ? 0 : 2 * Math.PI * 20 * (1 - Math.min(pullDistance / 110, 1))}
                     className="transition-[stroke-dashoffset,stroke] duration-100"
@@ -3545,16 +3543,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 <div className="absolute inset-0 flex items-center justify-center">
                   {isRefreshing ? (
                     <Loader2 size={18} className="animate-spin" style={{ color: "var(--text)" }} />
-                  ) : releaseReady ? (
-                    <Check size={18} className="text-emerald-500" strokeWidth={3} />
-                  ) : (
-                    <ArrowDown
-                      size={18}
-                      strokeWidth={2.5}
-                      className={isLight ? "text-slate-900" : "text-white"}
-                      style={{ transform: `rotate(${Math.min(pullDistance * 1.2, 180)}deg)` }}
-                    />
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>
