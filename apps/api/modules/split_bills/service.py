@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, time
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Any, Optional
+import json
 
 from fastapi import HTTPException
 from sqlalchemy import select
@@ -26,6 +27,47 @@ def _dec(value: Any) -> Decimal:
     if value is None:
         return Decimal("0")
     return Decimal(str(value))
+
+def _parse_members(value: Optional[str]) -> list:
+    if not value:
+        return []
+    try:
+        data = json.loads(value)
+    except (ValueError, TypeError):
+        return []
+    return data if isinstance(data, list) else []
+
+def _custom_math(members: list, total_amount: Optional[float], am_i_included: bool):
+    if total_amount is None:
+        raise HTTPException(status_code=400, detail="Jumlah resit diperlukan untuk bahagian manual.")
+    cleaned = []
+    for m in members:
+        name = (m.name or "").strip()
+        if not name:
+            continue
+        amount = float(m.amount) if m.amount is not None else 0.0
+        cleaned.append({"name": name[:120], "amount": round(amount, 2)})
+    if not cleaned:
+        raise HTTPException(status_code=400, detail="Masukkan sekurang-kurangnya seorang ahli dengan nama.")
+    total_dec = Decimal(str(total_amount))
+    sum_dec = sum((Decimal(str(m["amount"])) for m in cleaned), Decimal("0"))
+    if am_i_included:
+        if sum_dec > total_dec + Decimal("0.011"):
+            raise HTTPException(status_code=400, detail="Amaun ahli melebihi jumlah resit.")
+        share = round(float(total_dec - sum_dec), 2)
+        collect = round(float(sum_dec), 2)
+        people_count = len(cleaned) + 1
+    else:
+        if abs(sum_dec - total_dec) > Decimal("0.011"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Jumlah amaun ahli ({float(sum_dec):.2f}) mesti sama dengan jumlah resit ({float(total_dec):.2f}).",
+            )
+        share = 0.0
+        collect = round(float(total_dec), 2)
+        people_count = len(cleaned)
+    return json.dumps(cleaned, ensure_ascii=False), share, collect, people_count
+
 
 
 def _num(value: Any) -> Optional[float]:
@@ -117,6 +159,7 @@ def serialize_split(row: models.SplitBill) -> dict:
         "amount_received": _num(row.amount_received),
         "balance_amount": _num(row.balance_amount),
         "am_i_included": bool(row.am_i_included),
+        "members": _parse_members(row.members),
         "status": compute_split_status(row),
         "notes": row.notes,
         "original_txn_date": _fmt_date(row.original_txn_date),
@@ -186,6 +229,14 @@ async def create_split(
         collect = 0.0
     collect = max(0.0, float(collect))
 
+    members_json = None
+    if payload.members is not None:
+        members_json, share, collect, people_count = _custom_math(
+            [m for m in payload.members if (m.name or "").strip()],
+            total_amount,
+            am_i_included,
+        )
+
     row = models.SplitBill(
         user_id=current_user.id,
         household_id=household_id,
@@ -199,6 +250,7 @@ async def create_split(
         amount_received=0.0,
         balance_amount=collect,
         am_i_included=am_i_included,
+        members=members_json,
         status="active",
         notes=(payload.notes or "").strip() or None,
         original_txn_date=(
@@ -240,7 +292,19 @@ async def update_split(
     if "am_i_included" in data:
         row.am_i_included = bool(payload.am_i_included)
 
-    if "share_amount" in data:
+    if "members" in data:
+        if payload.members:
+            members_json, share, collect, people_count = _custom_math(
+                [m for m in payload.members if (m.name or "").strip()],
+                row.total_amount,
+                bool(row.am_i_included),
+            )
+            row.members = members_json
+            row.share_amount = share
+            row.collect_amount = collect
+            row.people_count = people_count
+        elif payload.members is None:
+            row.members = None
         row.share_amount = payload.share_amount
     if "collect_amount" in data:
         row.collect_amount = max(0.0, float(payload.collect_amount) if payload.collect_amount is not None else 0.0)

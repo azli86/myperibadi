@@ -906,6 +906,7 @@ async def ensure_database_schema():
     async with database.engine.begin() as conn:
         await conn.run_sync(database.Base.metadata.create_all)
         if conn.dialect.name == "postgresql":
+            await conn.execute(text("ALTER TABLE split_bills ADD COLUMN IF NOT EXISTS members TEXT NULL"))
             await conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS subscription_id BIGINT NULL REFERENCES subscriptions(id) ON DELETE SET NULL"))
             await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_transactions_subscription_id ON transactions (subscription_id)"))
             await conn.execute(text("UPDATE transactions t SET subscription_id = s.id FROM subscriptions s WHERE t.subscription_id IS NULL AND t.user_id = s.user_id AND LOWER(TRIM(t.vendor_or_source)) = LOWER(TRIM('SUBX ' || s.name))"))

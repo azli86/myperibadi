@@ -1329,6 +1329,7 @@ class SplitBill(Base):
     amount_received: Mapped[float] = mapped_column(DECIMAL(14, 2), default=0.0)
     balance_amount: Mapped[float] = mapped_column(DECIMAL(14, 2), default=0.0)
     am_i_included: Mapped[bool] = mapped_column(Boolean, default=True)
+    members: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="active", index=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     original_txn_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)

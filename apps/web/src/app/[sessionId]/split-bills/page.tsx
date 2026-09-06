@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   Loader2,
+  Minus,
   Plus,
   Trash2,
   Upload,
@@ -52,6 +53,7 @@ type SplitBill = {
   amount_received: number
   balance_amount: number
   am_i_included: boolean
+  members?: { name: string; amount: number }[] | null
   status: string
   notes?: string | null
   original_txn_date?: string | null
@@ -124,12 +126,15 @@ export default function SplitBillsPage() {
   // Create sheet
   const [showCreateSheet, setShowCreateSheet] = useState(false)
   const [editingSplit, setEditingSplit] = useState<SplitBillDetail | null>(null)
+  const defaultMembers = () => [{ id: 1, name: "", amount: "" }, { id: 2, name: "", amount: "" }]
   const [form, setForm] = useState({
     transaction_id: "",
     title: "",
     people_count: "2",
     am_i_included: true,
     notes: "",
+    mode: "equal" as "equal" | "manual",
+    members: defaultMembers(),
   })
 
   // Detail sheet
@@ -241,7 +246,7 @@ export default function SplitBillsPage() {
 
   const openCreateSheet = useCallback(() => {
     setEditingSplit(null)
-    setForm({ transaction_id: "", title: "", people_count: "2", am_i_included: true, notes: "" })
+    setForm({ transaction_id: "", title: "", people_count: "2", am_i_included: true, notes: "", mode: "equal", members: defaultMembers() })
     setTxnDropdownOpen(false)
     setShowCreateSheet(true)
   }, [])
@@ -289,6 +294,10 @@ export default function SplitBillsPage() {
       people_count: String(detailSplit.people_count),
       am_i_included: detailSplit.am_i_included,
       notes: detailSplit.notes || "",
+      mode: detailSplit.members && detailSplit.members.length ? "manual" : "equal",
+      members: detailSplit.members && detailSplit.members.length
+        ? detailSplit.members.map((m, i) => ({ id: i + 1, name: m.name || "", amount: String(m.amount ?? "") }))
+        : defaultMembers(),
     })
     setTxnDropdownOpen(false)
     setShowCreateSheet(true)
@@ -342,6 +351,44 @@ export default function SplitBillsPage() {
         people_count: people,
         am_i_included: form.am_i_included,
         notes: form.notes.trim() || null,
+      }
+      if (form.mode === "manual") {
+        const rows = form.members.map((m, i) => {
+          const isLast = i === (form.members.length - 1)
+          const label = m.name.trim()
+          const amt = isLast && !form.am_i_included && (m.amount === "" || m.amount == null)
+            ? (mAutoVal ?? 0)
+            : parseFloat(m.amount) || 0
+          return { name: label, amount: amt }
+        })
+        const missing = rows.some((r) => !r.name)
+        if (missing) {
+          setSaving(false)
+          showAlert(tr("Maklumat tak lengkap", "Incomplete info"), tr("Sila isi nama setiap orang.", "Please fill in every person's name."), "error")
+          return
+        }
+        const sum = rows.reduce((s, r) => s + r.amount, 0)
+        const total = formTotal ?? 0
+        if (form.am_i_included) {
+          if (sum > total + 0.01) {
+            setSaving(false)
+            showAlert(tr("Jumlah melebihi resit", "Exceeds total"), tr("Amaun ahli melebihi jumlah resit.", "Member amounts exceed the receipt total."), "error")
+            return
+          }
+          body.collect_amount = round2(sum)
+          body.share_amount = round2(total - sum)
+          body.people_count = rows.length + 1
+        } else {
+          if (Math.abs(sum - total) > 0.01) {
+            setSaving(false)
+            showAlert(tr("Jumlah tak sepadan", "Total mismatch"), tr("Jumlah amaun ahli mesti sama dengan jumlah resit.", "Member amounts must add up to the receipt total."), "error")
+            return
+          }
+          body.collect_amount = round2(total)
+          body.share_amount = 0
+          body.people_count = rows.length
+        }
+        body.members = rows
       }
       if (editingSplit) {
         body.status = editingSplit.status
@@ -491,6 +538,27 @@ export default function SplitBillsPage() {
     ? (form.am_i_included && peopleCount > 1 ? round2(formTotal * (peopleCount - 1) / peopleCount) : form.am_i_included ? 0 : formTotal)
     : 0
   const createValid = form.title.trim() !== "" && peopleCount >= 1
+
+  // Manual (custom) split derivations
+  const memberNums = form.members.map((m) => parseFloat(m.amount) || 0)
+  const mLast = memberNums.length - 1
+  const memberSumOthers = memberNums.reduce((s, n, i) => (i === mLast ? s : s + n), 0)
+  const mAuto = form.mode === "manual" && !form.am_i_included && formTotal != null
+  const mAutoVal = mAuto ? round2(formTotal! - memberSumOthers) : null
+  const lastIsAuto = mAuto && (form.members[mLast].amount === "" || form.members[mLast].amount == null)
+  const mAllSum = lastIsAuto ? memberSumOthers + (mAutoVal || 0) : memberNums.reduce((a, b) => a + b, 0)
+  const mShare = form.mode === "manual"
+    ? (form.am_i_included && formTotal != null ? round2(formTotal - mAllSum) : 0)
+    : formShare
+  const mCollect = form.mode === "manual"
+    ? (form.am_i_included ? round2(mAllSum) : (formTotal ?? mAllSum))
+    : formCollect
+  const mOver = form.mode === "manual" && formTotal != null && (
+    (!form.am_i_included && mAutoVal != null && mAutoVal < -0.001) ||
+    (form.am_i_included && mAllSum > formTotal + 0.001)
+  )
+  const manualValid = form.mode !== "manual" || (formTotal != null && !mOver)
+  const createValidAll = createValid && manualValid
 
   // Summary
   const activeCount = splits.filter((s) => s.status === "active" || s.status === "partial").length
@@ -811,7 +879,7 @@ export default function SplitBillsPage() {
                     <button
                       type="submit"
                       form="split-sheet-form"
-                      disabled={saving || !createValid}
+                      disabled={saving || !createValidAll}
                       className="px-2 py-1 text-sm font-black text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-50"
                     >
                       {saving
@@ -938,41 +1006,124 @@ export default function SplitBillsPage() {
                       </p>
                     </div>
 
-                    {/* Number of people */}
+                    {/* Mode: Sama Rata / Manual */}
                     <div>
                       <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                        {tr("Bilangan Orang", "Number of People")} <span className="text-rose-500">*</span>
+                        {tr("Cara Bahagi", "Split Method")}
                       </label>
-                      <div className="flex items-center gap-2">
+                      <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-1">
                         <button
                           type="button"
-                          onClick={() => {
-                            const val = Math.max(1, (parseInt(form.people_count, 10) || 2) - 1)
-                            setForm((prev) => ({ ...prev, people_count: String(val) }))
-                          }}
-                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-lg font-bold text-[var(--text)] transition active:scale-95 hover:bg-[var(--surface-tint-strong)]"
+                          onClick={() => setForm((prev) => ({ ...prev, mode: "equal" }))}
+                          className={cn("rounded-xl py-2.5 text-xs font-black transition", form.mode === "equal" ? "bg-[var(--card)] text-[var(--text)] shadow" : "text-[var(--muted)]")}
                         >
-                          -
+                          {tr("Sama Rata", "Equal")}
                         </button>
-                        <input
-                          type="number"
-                          min={1}
-                          value={form.people_count}
-                          onChange={(e) => setForm((prev) => ({ ...prev, people_count: e.target.value }))}
-                          className="w-full text-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-base font-black text-[var(--text)] outline-none"
-                        />
                         <button
                           type="button"
-                          onClick={() => {
-                            const val = (parseInt(form.people_count, 10) || 2) + 1
-                            setForm((prev) => ({ ...prev, people_count: String(val) }))
-                          }}
-                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-lg font-bold text-[var(--text)] transition active:scale-95 hover:bg-[var(--surface-tint-strong)]"
+                          onClick={() => setForm((prev) => ({ ...prev, mode: "manual", am_i_included: false }))}
+                          className={cn("rounded-xl py-2.5 text-xs font-black transition", form.mode === "manual" ? "bg-[var(--card)] text-[var(--text)] shadow" : "text-[var(--muted)]")}
                         >
-                          +
+                          {tr("Manual", "Manual")}
                         </button>
                       </div>
+                      {form.mode === "manual" && (
+                        <p className="mt-1.5 text-[0.68rem] text-[var(--muted)]">
+                          {tr("Orang terakhir auto = baki jumlah. Contoh: Ali 12.50, Abu 8 → orang ke-3 dapat baki.", "Last person auto-fills with the remaining total. E.g. Ali 12.50, Abu 8 → 3rd person gets the balance.")}
+                        </p>
+                      )}
                     </div>
+
+                    {form.mode === "equal" && (
+                      <div>
+                        <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                          {tr("Bilangan Orang", "Number of People")} <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const val = Math.max(1, (parseInt(form.people_count, 10) || 2) - 1)
+                              setForm((prev) => ({ ...prev, people_count: String(val) }))
+                            }}
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-lg font-bold text-[var(--text)] transition active:scale-95 hover:bg-[var(--surface-tint-strong)]"
+                          >
+                            -
+                          </button>
+                          <input
+                            type="number"
+                            min={1}
+                            value={form.people_count}
+                            onChange={(e) => setForm((prev) => ({ ...prev, people_count: e.target.value }))}
+                            className="w-full text-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-base font-black text-[var(--text)] outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const val = (parseInt(form.people_count, 10) || 2) + 1
+                              setForm((prev) => ({ ...prev, people_count: String(val) }))
+                            }}
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-lg font-bold text-[var(--text)] transition active:scale-95 hover:bg-[var(--surface-tint-strong)]"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {form.mode === "manual" && (
+                      <div className="space-y-2">
+                        <label className="block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
+                          {tr("Orang Yang Perlu Bayar", "People To Collect From")}
+                        </label>
+                        {form.members.map((m, i) => {
+                          const isLast = i === mLast
+                          const showAuto = isLast && mAuto && (m.amount === "" || m.amount == null)
+                          return (
+                            <div key={m.id} className="flex items-center gap-2">
+                              <input
+                                value={m.name}
+                                onChange={(e) => setForm((prev) => ({ ...prev, members: prev.members.map((x) => (x.id === m.id ? { ...x, name: e.target.value } : x)) }))}
+                                placeholder={tr("Nama", "Name")}
+                                className="min-w-0 flex-1 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-3 text-sm font-medium text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
+                              />
+                              {showAuto ? (
+                                <div className="flex h-11 w-28 shrink-0 items-center justify-center gap-1 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-2 text-xs font-black text-emerald-600 dark:text-emerald-400">
+                                  {tr("Auto", "Auto")}: {mAutoVal != null ? mAutoVal.toFixed(2) : "0.00"}
+                                </div>
+                              ) : (
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step="0.01"
+                                  value={m.amount}
+                                  placeholder="0.00"
+                                  onChange={(e) => setForm((prev) => ({ ...prev, members: prev.members.map((x) => (x.id === m.id ? { ...x, amount: e.target.value } : x)) }))}
+                                  className="w-28 shrink-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-3 text-right text-sm font-black text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
+                                />
+                              )}
+                              {form.members.length > 1 ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setForm((prev) => ({ ...prev, members: prev.members.filter((x) => x.id !== m.id) }))}
+                                  className="flex h-11 w-9 shrink-0 items-center justify-center rounded-2xl border border-rose-500/20 bg-rose-500/5 text-rose-500 transition active:scale-95"
+                                  aria-label={tr("Buang orang", "Remove person")}
+                                >
+                                  <Minus size={16} />
+                                </button>
+                              ) : null}
+                            </div>
+                          )
+                        })}
+                        <button
+                          type="button"
+                          onClick={() => setForm((prev) => ({ ...prev, members: [...prev.members, { id: Date.now(), name: "", amount: "" }] }))}
+                          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)] py-3 text-xs font-bold text-[var(--muted)] transition active:scale-[0.98]"
+                        >
+                          <Plus size={15} /> {tr("Tambah Orang", "Add Person")}
+                        </button>
+                      </div>
+                    )}
 
                     {/* I am included toggle */}
                     <button
@@ -991,9 +1142,17 @@ export default function SplitBillsPage() {
                         <span className={cn("h-5 w-5 rounded-full bg-white transition", form.am_i_included && "translate-x-5")} />
                       </span>
                     </button>
+                    {form.mode === "manual" && form.am_i_included && formTotal != null && (
+                      <p className="text-[0.68rem] text-[var(--muted)]">
+                        {tr(
+                          `Baki RM ${mAllSum < formTotal ? (formTotal - mAllSum).toFixed(2) : "0.00"} ialah bahagian saya (tak perlu dikutip).`,
+                          `Remaining RM ${mAllSum < formTotal ? (formTotal - mAllSum).toFixed(2) : "0.00"} is your own share (not collected).`,
+                        )}
+                      </p>
+                    )}
 
                     {/* Live calculation breakdown */}
-                    {formTotal != null && (
+                    {formTotal != null && form.mode === "equal" && (
                       <div className="space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint-strong)] p-4 text-xs">
                         <div className="flex items-center justify-between">
                           <span className="text-[var(--muted)] font-semibold">{tr("Jumlah Dibayar", "Total Paid")}</span>
@@ -1014,6 +1173,42 @@ export default function SplitBillsPage() {
                         <div className="flex items-center justify-between border-t border-[var(--border)] pt-2">
                           <span className="font-extrabold text-[var(--text)]">{tr("Perlu Dikumpul", "To Collect")}</span>
                           <span className="text-sm font-black text-emerald-600 dark:text-emerald-400"><MoneyAmount value={formCollect} currency="RM" size="sm" /></span>
+                        </div>
+                      </div>
+                    )}
+
+                    {formTotal != null && form.mode === "manual" && (
+                      <div className="space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint-strong)] p-4 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[var(--muted)] font-semibold">{tr("Jumlah Dibayar", "Total Paid")}</span>
+                          <span className="font-black text-[var(--text)]"><MoneyAmount value={formTotal} currency="RM" size="sm" /></span>
+                        </div>
+                        <div className="flex flex-col gap-1.5 border-t border-[var(--border)] pt-2">
+                          {form.members.map((m, i) => {
+                            const v = i === mLast && lastIsAuto ? mAutoVal || 0 : parseFloat(m.amount) || 0
+                            if (!m.name.trim() && v === 0) return null
+                            return (
+                              <div key={m.id} className="flex items-center justify-between">
+                                <span className="truncate font-semibold text-[var(--muted)]">{m.name.trim() || tr("Orang", "Person")}</span>
+                                <span className="font-bold text-[var(--text)]">RM {v.toFixed(2)}{i === mLast && lastIsAuto ? ` (${tr("auto", "auto")})` : ""}</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        {mOver ? (
+                          <p className="rounded-xl border border-rose-500/25 bg-rose-500/10 px-3 py-2 font-semibold text-rose-500">
+                            {form.am_i_included
+                              ? tr("Amaun ahli melebihi jumlah resit.", "Member amounts exceed the receipt total.")
+                              : tr("Amaun orang melebihi jumlah resit. Auto baki negatif.", "Amounts exceed the receipt total. Auto balance is negative.")}
+                          </p>
+                        ) : null}
+                        <div className="flex items-center justify-between border-t border-[var(--border)] pt-2">
+                          <span className="text-[var(--muted)] font-semibold">{tr("Bahagian Saya", "Your Share")}</span>
+                          <span className="font-bold text-[var(--text)]"><MoneyAmount value={mShare} currency="RM" size="sm" /></span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-[var(--text)]">{tr("Perlu Dikumpul", "To Collect")}</span>
+                          <span className="text-sm font-black text-emerald-600 dark:text-emerald-400"><MoneyAmount value={mCollect} currency="RM" size="sm" /></span>
                         </div>
                       </div>
                     )}
@@ -1044,7 +1239,7 @@ export default function SplitBillsPage() {
                     </button>
                     <button
                       type="submit"
-                      disabled={saving || !createValid}
+                      disabled={saving || !createValidAll}
                       className="flex-1 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2.5 text-xs md:text-sm font-black text-white shadow-sm transition active:scale-[0.98] disabled:opacity-50"
                     >
                       {saving
@@ -1130,6 +1325,27 @@ export default function SplitBillsPage() {
                       </p>
                     </div>
                   </div>
+
+                  {/* Allocation list */}
+                  {detailSplit.members && detailSplit.members.length > 0 && (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3.5">
+                      <p className="text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">{tr("Agihan", "Allocation")}</p>
+                      <div className="mt-2 space-y-1.5">
+                        {detailSplit.members.map((m, i) => (
+                          <div key={i} className="flex items-center justify-between text-xs">
+                            <span className="truncate font-semibold text-[var(--text)]">{m.name}</span>
+                            <span className="font-black text-[var(--text)]"><MoneyAmount value={m.amount || 0} currency={detailSplit.currency} size="sm" /></span>
+                          </div>
+                        ))}
+                        {detailSplit.share_amount && detailSplit.share_amount > 0 && (
+                          <div className="flex items-center justify-between border-t border-[var(--border)] pt-1.5 text-xs">
+                            <span className="truncate font-semibold text-[var(--muted)]">{tr("Bahagian Saya", "My share")}</span>
+                            <span className="font-black text-emerald-600 dark:text-emerald-400"><MoneyAmount value={detailSplit.share_amount} currency={detailSplit.currency} size="sm" /></span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Progress */}
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3.5">

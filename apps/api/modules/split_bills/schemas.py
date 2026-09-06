@@ -7,6 +7,9 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+class SplitMember(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    amount: float = Field(ge=0)
 
 class SplitBillCreate(BaseModel):
     title: str = Field(min_length=1, max_length=190)
@@ -15,21 +18,21 @@ class SplitBillCreate(BaseModel):
     total_amount: Optional[float] = None
     people_count: int = Field(default=2, ge=1)
     am_i_included: bool = True
+    members: Optional[list[SplitMember]] = None
     share_amount: Optional[float] = None
     collect_amount: Optional[float] = None
     notes: Optional[str] = None
     original_txn_date: Optional[str] = None
 
-
 class SplitBillUpdate(BaseModel):
     title: Optional[str] = Field(default=None, max_length=190)
     people_count: Optional[int] = Field(default=None, ge=1)
     am_i_included: Optional[bool] = None
+    members: Optional[list[SplitMember]] = None
     share_amount: Optional[float] = None
     collect_amount: Optional[float] = None
     notes: Optional[str] = None
     status: Optional[str] = None
-
 
 class SplitBillPaymentCreate(BaseModel):
     amount: float = Field(gt=0)
@@ -37,7 +40,6 @@ class SplitBillPaymentCreate(BaseModel):
     payment_date: Optional[str] = None
     payment_time: Optional[str] = None
     notes: Optional[str] = None
-
 
 class SplitBillResponse(BaseModel):
     id: int
@@ -51,12 +53,12 @@ class SplitBillResponse(BaseModel):
     amount_received: float = 0.0
     balance_amount: float = 0.0
     am_i_included: bool = True
+    members: Optional[list[dict]] = None
     status: str = "active"
     notes: Optional[str] = None
     original_txn_date: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-
 
 class SplitBillDetailResponse(SplitBillResponse):
     payments: list[dict] = []
