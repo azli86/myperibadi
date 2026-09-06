@@ -112,6 +112,8 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
 
   // Block ALL multi-touch page-pinch gestures (Android touchstart/touchmove & iOS Safari gesture*)
   // while cropping. Releasing two fingers otherwise zooms the page/WebView and blanks the fixed overlay.
+  // Also lock body scroll so no pull-to-refresh / history-gesture can fire a page reload
+  // (which during a slot-swap surfaces as a 500).
   useEffect(() => {
     if (!crop) return
     const stop = (e: Event) => e.preventDefault()
@@ -126,12 +128,18 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
     document.addEventListener("gestureend", stop, opts)
     document.addEventListener("touchstart", onTouch, opts)
     document.addEventListener("touchmove", onTouch, opts)
+    const prevOverflow = document.body.style.overflow
+    const prevOverscroll = document.body.style.overscrollBehavior
+    document.body.style.overflow = "hidden"
+    document.body.style.overscrollBehavior = "none"
     return () => {
       document.removeEventListener("gesturestart", stop)
       document.removeEventListener("gesturechange", stop)
       document.removeEventListener("gestureend", stop)
       document.removeEventListener("touchstart", onTouch)
       document.removeEventListener("touchmove", onTouch)
+      document.body.style.overflow = prevOverflow
+      document.body.style.overscrollBehavior = prevOverscroll
     }
   }, [crop])
 
