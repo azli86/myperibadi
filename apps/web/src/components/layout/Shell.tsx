@@ -3895,11 +3895,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 </button>
               </div>
 
-              {/* ── Profile Card: avatar kiri, nama kanan ── */}
+              {/* ── Profile Card: avatar besar overlay kiri, nama kanan ── */}
               <div className="px-4 pt-1 pb-3">
-                <div className="flex items-center gap-3 rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/60 px-4 py-3">
-                  <div className="shrink-0">
-                    <UserAvatar name={displayName || activeEmail} size={56} src={user?.avatar_url} />
+                <div className="relative w-full max-w-[340px] rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/60 py-3 pl-20 pr-4">
+                  <div className="absolute -left-4 top-1/2 -translate-y-1/2 shrink-0">
+                    <UserAvatar name={displayName || activeEmail} size={80} src={user?.avatar_url} />
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -3907,7 +3907,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       <h3 className="text-base font-black tracking-tight text-[var(--text)] truncate max-w-[170px]">
                         {displayName}
                       </h3>
-                      <Check size={13} strokeWidth={3.5} className="shrink-0 text-emerald-500" />
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+                        <Check size={11} strokeWidth={4} />
+                      </span>
                       <span className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[8px] font-black uppercase text-[var(--text)]">
                         PRO
                       </span>
