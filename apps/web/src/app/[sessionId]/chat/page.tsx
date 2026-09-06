@@ -311,6 +311,7 @@ export default function ChatPage() {
   const [isVoiceRecording, setIsVoiceRecording] = useState(false)
   const [voiceBusy, setVoiceBusy] = useState(false)
   const [voicePopupOpen, setVoicePopupOpen] = useState(false)
+  const [voiceConfirmText, setVoiceConfirmText] = useState<string | null>(null)
   const [voiceSecs, setVoiceSecs] = useState(0)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const voiceChunksRef = useRef<Blob[]>([])
@@ -1178,13 +1179,20 @@ export default function ChatPage() {
         showAlert(lang === "EN" ? "No text" : "Tiada teks", lang === "EN" ? "No text detected in audio." : "Tiada teks dikesan dalam audio.", "error")
         return
       }
-      await submitMessage(undefined, spoken)
+      setVoiceConfirmText(spoken)
     } catch {
       showAlert(lang === "EN" ? "Error" : "Ralat", lang === "EN" ? "Error reading audio. Try again." : "Ralat membaca audio. Cuba lagi.", "error")
     } finally {
       setVoiceBusy(false)
       setVoicePopupOpen(false)
     }
+  }
+
+  const confirmVoiceSend = () => {
+    const text = (voiceConfirmText || "").trim()
+    setVoiceConfirmText(null)
+    if (!text) return
+    void submitMessage(undefined, text)
   }
 
   const pageBg = "bg-[var(--page-bg)]"
@@ -1697,25 +1705,24 @@ export default function ChatPage() {
 
               <button
                 type="button"
-                aria-label={lang === "EN" ? "Add by voice" : "Tambah dengan suara"}
-                title={lang === "EN" ? "Add by voice" : "Tambah dengan suara"}
-                disabled={voiceBusy || isLocating}
-                onClick={openVoicePopup}
-                className={cn(
-                  "chatgpt-composer-control flex h-8 w-8 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                  mobileControlButton
-                )}
-              >
-                {voiceBusy ? <Loader2 size={14} className="animate-spin" /> : <Mic size={15} />}
-              </button>
-
-              <button
-                type="button"
                 disabled={!canSend}
                 onClick={sendCurrentInput}
                 className={cn("chatgpt-send-button flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-100", sendButtonBg)}
               >
                 {sending || isLocating ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              </button>
+            </div>
+
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                aria-label={lang === "EN" ? "Add by voice" : "Tambah dengan suara"}
+                title={lang === "EN" ? "Add by voice" : "Tambah dengan suara"}
+                disabled={voiceBusy || isLocating}
+                onClick={openVoicePopup}
+                className={cn("chatgpt-composer-control flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50", mobileControlButton)}
+              >
+                {voiceBusy ? <Loader2 size={18} className="animate-spin" /> : <Mic size={20} />}
               </button>
             </div>
           </div>
@@ -1879,6 +1886,61 @@ export default function ChatPage() {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {voiceConfirmText !== null && (
+        <div className="fixed inset-0 z-[710] flex items-end justify-center sm:items-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setVoiceConfirmText(null)}
+            aria-hidden="true"
+          />
+          <div
+            role="dialog"
+            className="relative w-full max-w-md rounded-t-3xl border border-[color:var(--border)] bg-[var(--card)] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-3xl"
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-base font-bold text-[var(--text)]">
+                {lang === "EN" ? "Confirm voice message" : "Semak mesej suara"}
+              </p>
+              <button
+                type="button"
+                aria-label={lang === "EN" ? "Close" : "Tutup"}
+                onClick={() => setVoiceConfirmText(null)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[color:var(--surface-tint)]"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              {lang === "EN"
+                ? "This is what was heard. Edit or cancel before sending."
+                : "Ini yang kami dengar. Betulkan atau batal sebelum hantar."}
+            </p>
+            <textarea
+              value={voiceConfirmText}
+              onChange={(e) => setVoiceConfirmText(e.target.value)}
+              rows={3}
+              autoFocus
+              className="mt-3 w-full resize-none rounded-2xl border border-[color:var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none focus:border-[color:var(--brand-blue)]"
+            />
+            <div className="mt-4 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setVoiceConfirmText(null)}
+                className="rounded-xl border border-[color:var(--border)] px-4 py-2.5 text-xs font-bold text-[var(--muted)] transition hover:bg-[var(--surface-tint)] active:scale-95"
+              >
+                {lang === "EN" ? "Cancel" : "Batal"}
+              </button>
+              <button
+                type="button"
+                onClick={confirmVoiceSend}
+                className="flex-1 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2.5 text-xs font-black text-[var(--btn-primary-text)] shadow-sm transition active:scale-[0.98]"
+              >
+                {lang === "EN" ? "Send" : "Hantar"}
+              </button>
+            </div>
           </div>
         </div>
       )}
