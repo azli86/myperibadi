@@ -611,14 +611,12 @@ export default function SettingsPage() {
 
             {/* Avatar — kanan, keluar tepi kanan (kemaskini via Edit Profil) */}
             <div className="shrink-0 -mr-2">
-              <div className="rounded-full p-1 ring-4 ring-[var(--surface-tint)] bg-[var(--card)] shadow-md">
-                <UserAvatar
-                  name={name || profile?.name}
-                  size={80}
-                  src={profile?.avatar_url}
-                  className="transition-transform"
-                />
-              </div>
+              <UserAvatar
+                name={name || profile?.name}
+                size={80}
+                src={profile?.avatar_url}
+                className="transition-transform"
+              />
             </div>
           </div>
 
