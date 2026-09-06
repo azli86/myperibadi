@@ -985,6 +985,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="email"
+                      autoComplete="email"
                       value={newEmail}
                       onChange={(e) => setNewEmail(e.target.value)}
                       placeholder="nama@contoh.com"
