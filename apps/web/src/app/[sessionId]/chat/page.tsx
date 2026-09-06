@@ -7,7 +7,6 @@ import { useParams, useSearchParams } from "next/navigation"
 import {
   Send,
   ArrowLeft,
-  Trash2,
   Plus,
   Loader2,
   X,
@@ -310,7 +309,7 @@ export default function ChatPage() {
   const [errorText, setErrorText] = useState("")
   const [isVoiceRecording, setIsVoiceRecording] = useState(false)
   const [voiceBusy, setVoiceBusy] = useState(false)
-  const [voicePopupOpen, setVoicePopupOpen] = useState(false)
+  const voiceStartTsRef = useRef(0)
   const [voiceConfirmText, setVoiceConfirmText] = useState<string | null>(null)
   const [voiceSecs, setVoiceSecs] = useState(0)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -1011,26 +1010,7 @@ export default function ChatPage() {
     })
   }
 
-  // ── Voice: mic popup → hold to record → release sends, slide left cancels ──
-  const openVoicePopup = () => {
-    if (voiceBusy || isLocating || voiceReadyRef.current) return
-    setIsAttachmentMenuOpen(false)
-    setIsCommandMenuOpen(false)
-    setVoiceSecs(0)
-    voiceSubmitRef.current = true
-    voiceReleaseRef.current = false
-    voiceReadyRef.current = false
-    voiceCancelRef.current = false
-    setVoiceSlideCancel(false)
-    setVoiceSlideX(0)
-    setVoicePopupOpen(true)
-  }
-  const closeVoicePopup = () => {
-    // Use voiceReadyRef (not React state) so a close during mic warm-up is
-    // rejected consistently — React state may still be stale mid-async.
-    if (voiceReadyRef.current || voiceBusy) return
-    setVoicePopupOpen(false)
-  }
+  // ── Voice: hold the composer mic → record → release sends, slide left cancels ──
   const stopVoice = (submit: boolean) => {
     voiceSubmitRef.current = submit
     if (!voiceReadyRef.current || !mediaRecorderRef.current) {
@@ -1060,7 +1040,6 @@ export default function ChatPage() {
       stopVoice(false)
     } else {
       voiceReleaseRef.current = true
-      setVoicePopupOpen(false)
     }
   }
   const startVoiceHold = async () => {
@@ -1089,7 +1068,6 @@ export default function ChatPage() {
             : "Kebenaran mikrofon telah disekat. Ketik ikon kunci/laman di bar alamat dan benarkan mikrofon, kemudian cuba lagi.",
           "error",
         )
-        setVoicePopupOpen(false)
         return
       }
     } catch {}
@@ -1124,7 +1102,6 @@ export default function ChatPage() {
           if (blob.size < 200) {
             showAlert(lang === "EN" ? "Too short" : "Terlalu pendek", lang === "EN" ? "Hold longer to record your voice." : "Tekan lama untuk rakam suara.", "error")
           }
-          setVoicePopupOpen(false)
           return
         }
         await sendVoiceBlob(blob)
@@ -1154,7 +1131,6 @@ export default function ChatPage() {
               : "Tidak dapat memulakan mikrofon. Sila cuba lagi."),
         "error",
       )
-      setVoicePopupOpen(false)
     }
   }
 
@@ -1184,7 +1160,6 @@ export default function ChatPage() {
       showAlert(lang === "EN" ? "Error" : "Ralat", lang === "EN" ? "Error reading audio. Try again." : "Ralat membaca audio. Cuba lagi.", "error")
     } finally {
       setVoiceBusy(false)
-      setVoicePopupOpen(false)
     }
   }
 
@@ -1657,23 +1632,6 @@ export default function ChatPage() {
                       <span className={cn("block truncate text-[0.6875rem]", subtleText)}>{lang === "EN" ? "Send current location" : "Hantar lokasi semasa"}</span>
                     </span>
                   </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={voiceBusy || isLocating}
-                    onClick={openVoicePopup}
-                    className="flex w-full items-center gap-3 rounded-full px-3 py-2.5 text-left transition-colors hover:bg-[color:var(--surface-tint)] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", composerIconBg)}>
-                      {voiceBusy ? <Loader2 size={16} className="animate-spin" /> : <Mic size={16} />}
-                    </span>
-                    <span className="min-w-0">
-                      <span className={cn("block truncate text-sm font-semibold", titleText)}>{lang === "EN" ? "Voice" : "Suara"}</span>
-                      <span className={cn("block truncate text-[0.6875rem]", subtleText)}>
-                        {lang === "EN" ? "Hold the mic to talk · slide left to cancel" : "Tahan ikut untuk bercakap · gelongsor kiri untuk batal"}
-                      </span>
-                    </span>
-                  </button>
                 </div>
               )}
             </div>
@@ -1716,14 +1674,96 @@ export default function ChatPage() {
             <div className="relative shrink-0">
               <button
                 type="button"
-                aria-label={lang === "EN" ? "Add by voice" : "Tambah dengan suara"}
-                title={lang === "EN" ? "Add by voice" : "Tambah dengan suara"}
+                aria-label={lang === "EN" ? "Hold to talk" : "Tahan untuk bercakap"}
+                title={lang === "EN" ? "Hold to talk, slide left to cancel" : "Tahan untuk bercakap, gelongsor kiri untuk batal"}
                 disabled={voiceBusy || isLocating}
-                onClick={openVoicePopup}
-                className={cn("chatgpt-composer-control flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50", mobileControlButton)}
+                onPointerDown={(e) => {
+                  if (voiceBusy || isLocating || voiceReadyRef.current || isVoiceRecording) return
+                  e.preventDefault()
+                  try {
+                    e.currentTarget.setPointerCapture(e.pointerId)
+                  } catch {}
+                  voiceStartTsRef.current = Date.now()
+                  voiceCancelRef.current = false
+                  setVoiceSlideCancel(false)
+                  setVoiceSlideX(0)
+                  voiceStartXRef.current = e.clientX
+                  voiceHoldRef.current = true
+                  setIsAttachmentMenuOpen(false)
+                  setIsCommandMenuOpen(false)
+                  void startVoiceHold()
+                }}
+                onPointerMove={(e) => {
+                  if (!voiceHoldRef.current) return
+                  const dx = e.clientX - voiceStartXRef.current
+                  setVoiceSlideX(Math.max(-96, dx))
+                  const cancel = dx < -64
+                  if (cancel !== voiceCancelRef.current) {
+                    voiceCancelRef.current = cancel
+                    setVoiceSlideCancel(cancel)
+                  }
+                }}
+                onPointerUp={() => {
+                  if (!voiceHoldRef.current) return
+                  voiceHoldRef.current = false
+                  const cancel = voiceCancelRef.current
+                  voiceCancelRef.current = false
+                  setVoiceSlideCancel(false)
+                  setVoiceSlideX(0)
+                  const quickTap = Date.now() - (voiceStartTsRef.current || 0) < 450
+                  if (cancel || quickTap) {
+                    cancelVoice()
+                    if (!quickTap) {
+                      showAlert(lang === "EN" ? "Voice deleted" : "Suara dipadam", "", "success")
+                    }
+                  } else {
+                    endVoiceHold()
+                  }
+                }}
+                onPointerCancel={() => {
+                  voiceHoldRef.current = false
+                  voiceCancelRef.current = false
+                  setVoiceSlideCancel(false)
+                  setVoiceSlideX(0)
+                  cancelVoice()
+                }}
+                onContextMenu={(e) => e.preventDefault()}
+                style={{ transform: `translateX(${voiceSlideX}px)` }}
+                className={cn(
+                  "chatgpt-composer-control flex h-12 w-12 shrink-0 touch-none select-none items-center justify-center rounded-full border transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-50",
+                  isVoiceRecording
+                    ? voiceSlideCancel
+                      ? "border-transparent bg-[#ef4444] text-white"
+                      : "animate-pulse border-transparent bg-[#ef4444] text-white"
+                    : mobileControlButton
+                )}
               >
                 {voiceBusy ? <Loader2 size={18} className="animate-spin" /> : <Mic size={20} />}
               </button>
+              {isVoiceRecording && (
+                <div
+                  className={cn(
+                    "pointer-events-none absolute bottom-full right-0 mb-3 flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-[0.6875rem] font-bold shadow-lg",
+                    voiceSlideCancel ? "bg-[#ef4444] text-white" : "bg-[color:var(--surface-tint)] text-[var(--text)]"
+                  )}
+                  style={{ transform: `translateX(${voiceSlideX}px)` }}
+                >
+                  {voiceSlideCancel ? (
+                    <span className="flex items-center gap-1.5">
+                      <X size={11} /> {lang === "EN" ? "Release to cancel" : "Lepas untuk batal"}
+                    </span>
+                  ) : (
+                    <>
+                      <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#ef4444]" />
+                      <span className="tabular-nums">{Math.floor(voiceSecs / 60)}:{String(voiceSecs % 60).padStart(2, "0")}</span>
+                      <span className="flex items-center gap-1 opacity-70">
+                        <ArrowLeft size={11} />
+                        {lang === "EN" ? "Slide to cancel" : "Gelongsor batal"}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1738,157 +1778,6 @@ export default function ChatPage() {
         </div>
       </div>
       <TxnFxOverlay kind={txnFxKind} onDone={() => setTxnFxKind(null)} />
-      {voicePopupOpen && (
-        <div className="fixed inset-0 z-[700] flex items-end justify-center sm:items-center">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={closeVoicePopup}
-            aria-hidden="true"
-          />
-          <div
-            role="dialog"
-            className={cn(
-              "relative w-full max-w-md rounded-t-3xl border border-[color:var(--border)] bg-[var(--card)] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center shadow-2xl sm:rounded-3xl sm:pb-6",
-              voiceBusy || isVoiceRecording ? "" : "chatgpt-voice-popup"
-            )}
-          >
-            <button
-              type="button"
-              aria-label={lang === "EN" ? "Close" : "Tutup"}
-              onClick={closeVoicePopup}
-              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition-colors hover:bg-[color:var(--surface-tint)]"
-            >
-              <X size={18} />
-            </button>
-
-            <div className="mb-1 text-base font-bold text-[var(--text)]">
-              {voiceBusy
-                ? lang === "EN"
-                  ? "Sending..."
-                  : "Menghantar..."
-                : lang === "EN"
-                  ? "Voice message"
-                  : "Mesej suara"}
-            </div>
-            <p className={cn("mb-6 text-xs", "text-[var(--muted)]")}>
-              {voiceBusy
-                ? ""
-                : isVoiceRecording
-                  ? lang === "EN"
-                    ? "Release to send · slide left to cancel"
-                    : "Lepas untuk hantar · gelongsor ke kiri untuk batal"
-                  : lang === "EN"
-                    ? "Hold the mic to talk"
-                    : "Tahan ikut untuk bercakap"}
-            </p>
-
-            {voiceBusy ? (
-              <div className="flex flex-col items-center gap-3 py-6">
-                <Loader2 size={30} className="animate-spin text-[var(--muted)]" />
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-4 py-1">
-                {isVoiceRecording && (
-                  <div className="flex items-center gap-2 text-sm font-semibold tabular-nums text-[#f87171]">
-                    <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#f87171]" />
-                    {Math.floor(voiceSecs / 60)}:{String(voiceSecs % 60).padStart(2, "0")}
-                  </div>
-                )}
-                <div className="relative mx-auto flex h-24 w-72 items-center justify-center">
-                  <span
-                    className={cn(
-                      "pointer-events-none absolute left-0 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-all duration-150",
-                      voiceSlideCancel
-                        ? "scale-110 bg-[#ef4444]/15 text-[#ef4444]"
-                        : isVoiceRecording
-                          ? "bg-[var(--surface-tint)] text-[var(--muted)] opacity-90"
-                          : "opacity-0"
-                    )}
-                  >
-                    <Trash2 size={22} strokeWidth={2.2} />
-                  </span>
-                  <button
-                    type="button"
-                    aria-label={
-                      lang === "EN"
-                        ? "Hold to record voice; release to send, slide left to cancel"
-                        : "Tahan untuk rakam suara; lepas untuk hantar, gelongsor ke kiri untuk batal"
-                    }
-                    onPointerDown={(e) => {
-                      e.preventDefault()
-                      try {
-                        e.currentTarget.setPointerCapture(e.pointerId)
-                      } catch {}
-                      voiceCancelRef.current = false
-                      setVoiceSlideCancel(false)
-                      setVoiceSlideX(0)
-                      voiceStartXRef.current = e.clientX
-                      voiceHoldRef.current = true
-                      void startVoiceHold()
-                    }}
-                    onPointerMove={(e) => {
-                      if (!voiceHoldRef.current) return
-                      const dx = e.clientX - voiceStartXRef.current
-                      setVoiceSlideX(Math.max(-96, dx))
-                      const cancel = dx < -64
-                      if (cancel !== voiceCancelRef.current) {
-                        voiceCancelRef.current = cancel
-                        setVoiceSlideCancel(cancel)
-                      }
-                    }}
-                    onPointerUp={() => {
-                      if (!voiceHoldRef.current) return
-                      voiceHoldRef.current = false
-                      const cancel = voiceCancelRef.current
-                      voiceCancelRef.current = false
-                      setVoiceSlideCancel(false)
-                      setVoiceSlideX(0)
-                      if (cancel) {
-                        cancelVoice()
-                        showAlert(lang === "EN" ? "Voice deleted" : "Suara dipadam", "", "success")
-                      } else {
-                        endVoiceHold()
-                      }
-                    }}
-                    onPointerCancel={() => {
-                      voiceHoldRef.current = false
-                      voiceCancelRef.current = false
-                      setVoiceSlideCancel(false)
-                      setVoiceSlideX(0)
-                      cancelVoice()
-                      showAlert(lang === "EN" ? "Voice deleted" : "Suara dipadam", "", "success")
-                    }}
-                    onContextMenu={(e) => e.preventDefault()}
-                    style={{ transform: `translateX(${voiceSlideX}px)` }}
-                    className={cn(
-                      "mx-auto flex h-24 w-24 touch-none select-none items-center justify-center rounded-full text-white shadow-lg transition-transform active:scale-95",
-                      isVoiceRecording
-                        ? voiceSlideCancel
-                          ? "bg-[#ef4444]"
-                          : "animate-pulse bg-[#ef4444]"
-                        : "bg-[var(--brand-blue)]"
-                    )}
-                  >
-                    <Mic size={40} />
-                  </button>
-                </div>
-                {isVoiceRecording ? (
-                  <span className={cn("flex items-center gap-1 text-[0.6875rem] font-semibold transition-colors", voiceSlideCancel ? "text-[#ef4444]" : "text-[var(--muted)]")}>
-                    <ArrowLeft size={12} />
-                    {voiceSlideCancel
-                      ? (lang === "EN" ? "Release to cancel" : "Lepas untuk batal")
-                      : (lang === "EN" ? "Slide left to cancel" : "Gelongsor ke kiri untuk batal")}
-                  </span>
-                ) : (
-                  <span className="text-[0.6875rem] font-medium text-[var(--muted)]">
-                    {lang === "EN" ? "Hold to talk, slide left to cancel" : "Tahan untuk bercakap, gelongsor kiri untuk batal"}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
       {voiceConfirmText !== null && (
         <div className="fixed inset-0 z-[710] flex items-end justify-center sm:items-center">
           <div
