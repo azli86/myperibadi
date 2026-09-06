@@ -999,6 +999,7 @@ export default function SettingsPage() {
                     <div className="relative mt-1.5">
                       <input
                         type={showPassword ? "text" : "password"}
+                        autoComplete={"current-password"}
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
                         placeholder={tr("Masukkan kata laluan", "Enter current password")}
@@ -1545,6 +1546,7 @@ export default function SettingsPage() {
                       <div className="relative mt-1.5">
                         <input
                           type={showPassword ? "text" : "password"}
+                          autoComplete={"current-password"}
                           value={currentPassword}
                           onChange={(e) => setCurrentPassword(e.target.value)}
                           placeholder={tr("Masukkan kata laluan", "Enter password")}
@@ -2010,6 +2012,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="password"
+                      autoComplete={"current-password"}
                       value={dangerPassword}
                       onChange={(e) => setDangerPassword(e.target.value)}
                       placeholder={tr("Masukkan kata laluan", "Enter password")}
