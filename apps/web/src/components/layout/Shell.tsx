@@ -3002,16 +3002,43 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const onTouchStart = () => {
-    // Pull-to-refresh disabled — caused unwanted triggers during normal scroll
+  // Pull-to-refresh: mobile dashboard only — top-of-page vertical pull.
+  const pullRefreshOnlyDashboard = pathname === `/${sessionId}`;
+  const isAtScrollTop = () =>
+    (window.scrollY || document.documentElement.scrollTop || 0) <= 4;
+
+  const onTouchStart = (event: React.TouchEvent) => {
+    if (!pullRefreshOnlyDashboard || isRefreshing) {
+      setStartY(null);
+      return;
+    }
+    if (shouldIgnorePullToRefresh(event) || !isAtScrollTop()) {
+      setStartY(null);
+      return;
+    }
+    setStartY(event.touches[0]?.clientY ?? null);
+    setPullDistance(0);
   };
 
-  const onTouchMove = () => {
-    // Pull-to-refresh disabled
+  const onTouchMove = (event: React.TouchEvent) => {
+    if (startY === null || !pullRefreshOnlyDashboard) return;
+    const currentY = event.touches[0]?.clientY ?? startY;
+    const delta = currentY - startY;
+    if (delta <= 0) {
+      setPullDistance(0);
+      return;
+    }
+    setPullDistance(Math.min(110, Math.pow(delta, 0.92)));
   };
 
   const onTouchEnd = () => {
-    // Pull-to-refresh disabled
+    if (startY === null) {
+      setStartY(null);
+      return;
+    }
+    if (pullDistance >= 70) {
+      void handleManualRefresh();
+    }
     setPullDistance(0);
     setStartY(null);
   };
