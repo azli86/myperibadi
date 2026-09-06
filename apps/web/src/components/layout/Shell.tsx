@@ -3895,23 +3895,25 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 </button>
               </div>
 
-              {/* ── Centered Profile Hero (Like Settings) ── */}
-              <div className="relative flex flex-col items-center text-center px-4 pt-1 pb-3">
-                <div className="relative">
-                  <UserAvatar name={displayName || activeEmail} size={76} src={user?.avatar_url} />
-                  <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-[var(--card)] shadow-xs">
-                    <Check size={11} strokeWidth={3} />
-                  </span>
-                </div>
+              {/* ── Profile Card: avatar kiri, nama kanan ── */}
+              <div className="px-4 pt-1 pb-3">
+                <div className="flex items-center gap-3 rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/60 px-4 py-3">
+                  <div className="relative shrink-0">
+                    <UserAvatar name={displayName || activeEmail} size={56} src={user?.avatar_url} />
+                    <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-[var(--card)] shadow-xs">
+                      <Check size={11} strokeWidth={3} />
+                    </span>
+                  </div>
 
-                <div className="mt-2.5 flex items-center justify-center gap-1.5">
-                  <h3 className="text-base font-black tracking-tight text-[var(--text)] truncate max-w-[240px]">
-                    {displayName}
-                  </h3>
-                  <span className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[8px] font-black uppercase text-[var(--text)]">
-                    PRO
-                  </span>
-                </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-base font-black tracking-tight text-[var(--text)] truncate max-w-[180px]">
+                        {displayName}
+                      </h3>
+                      <span className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[8px] font-black uppercase text-[var(--text)]">
+                        PRO
+                      </span>
+                    </div>
 
                 {/* Account Switcher Pill */}
                 <div className="relative mt-1">
@@ -3933,7 +3935,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   {showMobileSheetAccountSwitcher && (
                     <div
                       className={cn(
-                        "absolute left-1/2 -translate-x-1/2 top-[38px] z-40 w-[280px] overflow-hidden rounded-3xl border p-2 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95",
+                        "absolute left-0 top-[40px] z-40 w-[280px] overflow-hidden rounded-3xl border p-2 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95",
                         "border-[var(--border)] bg-[var(--sheet-bg)]"
                       )}
                     >
@@ -3986,6 +3988,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       </button>
                     </div>
                   )}
+                </div>
+                  </div>
                 </div>
 
                 {/* ── Quick Controls Toolbar: Lang, Theme, WhatsNew, Settings ── */}
