@@ -1003,7 +1003,7 @@ export default function ChatPage() {
     })
   }
 
-  // ── Voice: mic popup → hold to record → release auto-submits ──
+  // ── Voice: mic popup → tap to record → choose Send or Cancel ──
   const openVoicePopup = () => {
     if (voiceBusy || isLocating || voiceReadyRef.current) return
     setIsAttachmentMenuOpen(false)
@@ -1656,7 +1656,7 @@ export default function ChatPage() {
                     <span className="min-w-0">
                       <span className={cn("block truncate text-sm font-semibold", titleText)}>{lang === "EN" ? "Voice" : "Suara"}</span>
                       <span className={cn("block truncate text-[0.6875rem]", subtleText)}>
-                        {lang === "EN" ? "Hold the mic to talk, release to send" : "Tekan lama ikut untuk bercakap, lepas untuk hantar"}
+                        {lang === "EN" ? "Tap the mic to record, then choose Send or Cancel" : "Ketik ikut untuk rakam, kemudian pilih Hantar atau Batal"}
                       </span>
                     </span>
                   </button>
@@ -1760,13 +1760,9 @@ export default function ChatPage() {
             <p className={cn("mb-6 text-xs", "text-[var(--muted)]")}>
               {voiceBusy
                 ? ""
-                : isVoiceRecording
-                  ? lang === "EN"
-                    ? "Release to send"
-                    : "Lepas untuk hantar"
-                  : lang === "EN"
-                    ? "Press and hold the mic, release to send"
-                    : "Tekan dan tahan ikut, lepas untuk hantar"}
+                : lang === "EN"
+                  ? "Tap the mic to record, then choose Send or Cancel"
+                  : "Ketik ikut untuk rakam, kemudian pilih Hantar atau Batal"}
             </p>
 
             {voiceBusy ? (
@@ -1784,43 +1780,41 @@ export default function ChatPage() {
                 <button
                   type="button"
                   aria-label={
-                    isVoiceRecording
-                      ? lang === "EN"
-                        ? "Release to send voice message"
-                        : "Lepas untuk hantar mesej suara"
-                      : lang === "EN"
-                        ? "Hold to record"
-                        : "Tekan lama untuk rakam"
+                    lang === "EN"
+                      ? "Tap to start recording voice"
+                      : "Ketik untuk mula rakam suara"
                   }
-                  onPointerDown={(e) => {
-                    e.preventDefault()
-                    try {
-                      e.currentTarget.setPointerCapture(e.pointerId)
-                    } catch {}
-                    voiceHoldRef.current = true
-                    void startVoiceHold()
-                  }}
-                  onPointerUp={() => endVoiceHold()}
-                  onPointerCancel={() => cancelVoice()}
-                  onContextMenu={(e) => e.preventDefault()}
+                  disabled={isVoiceRecording}
+                  onClick={() => void startVoiceHold()}
                   className={cn(
-                    "mx-auto flex h-24 w-24 touch-none select-none items-center justify-center rounded-full text-white shadow-lg transition-transform active:scale-95",
+                    "mx-auto flex h-24 w-24 touch-none select-none items-center justify-center rounded-full text-white shadow-lg transition-transform active:scale-95 disabled:opacity-80",
                     isVoiceRecording ? "animate-pulse bg-[#ef4444]" : "bg-[var(--brand-blue)]"
                   )}
                 >
                   <Mic size={40} />
                 </button>
                 {isVoiceRecording ? (
-                  <button
-                    type="button"
-                    onClick={() => cancelVoice()}
-                    className="text-xs font-semibold text-[var(--muted)] underline underline-offset-4"
-                  >
-                    {lang === "EN" ? "Cancel & discard" : "Batal & buang"}
-                  </button>
+                  <div className="mt-1 flex w-full items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => cancelVoice()}
+                      className="flex items-center gap-1.5 rounded-full border border-[color:var(--border)] px-5 py-2.5 text-sm font-bold text-[var(--muted)] transition-colors active:bg-[color:var(--surface-tint)]"
+                    >
+                      <X size={16} />
+                      {lang === "EN" ? "Cancel" : "Batal"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => endVoiceHold()}
+                      className="flex items-center gap-1.5 rounded-full bg-[var(--brand-blue)] px-5 py-2.5 text-sm font-bold text-white transition-transform active:scale-95"
+                    >
+                      <Send size={15} />
+                      {lang === "EN" ? "Send" : "Hantar"}
+                    </button>
+                  </div>
                 ) : (
                   <span className="text-[0.6875rem] font-medium text-[var(--muted)]">
-                    {lang === "EN" ? "Press and hold" : "Tekan dan tahan"}
+                    {lang === "EN" ? "Tap the mic" : "Ketik ikut"}
                   </span>
                 )}
               </div>
