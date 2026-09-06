@@ -7,6 +7,7 @@ import { useParams, useSearchParams } from "next/navigation"
 import {
   Send,
   ArrowLeft,
+  Trash2,
   Plus,
   Camera,
   Loader2,
@@ -319,6 +320,7 @@ export default function ChatPage() {
   const voiceStartXRef = useRef(0)
   const voiceCancelRef = useRef(false)
   const [voiceSlideCancel, setVoiceSlideCancel] = useState(false)
+  const [voiceSlideX, setVoiceSlideX] = useState(0)
 
   // Voice hold timer
   useEffect(() => {
@@ -1018,6 +1020,7 @@ export default function ChatPage() {
     voiceReadyRef.current = false
     voiceCancelRef.current = false
     setVoiceSlideCancel(false)
+    setVoiceSlideX(0)
     setVoicePopupOpen(true)
   }
   const closeVoicePopup = () => {
@@ -1062,6 +1065,7 @@ export default function ChatPage() {
     if (voiceReadyRef.current || isVoiceRecording || voiceBusy || isLocating) return
     voiceCancelRef.current = false
     setVoiceSlideCancel(false)
+    setVoiceSlideX(0)
     if (!navigator.mediaDevices?.getUserMedia) {
       showAlert(
         lang === "EN" ? "Voice unsupported" : "Suara tidak disokong",
@@ -1789,62 +1793,84 @@ export default function ChatPage() {
                     {Math.floor(voiceSecs / 60)}:{String(voiceSecs % 60).padStart(2, "0")}
                   </div>
                 )}
-                <button
-                  type="button"
-                  aria-label={
-                    lang === "EN"
-                      ? "Hold to record voice; release to send, slide left to cancel"
-                      : "Tahan untuk rakam suara; lepas untuk hantar, gelongsor ke kiri untuk batal"
-                  }
-                  onPointerDown={(e) => {
-                    e.preventDefault()
-                    try {
-                      e.currentTarget.setPointerCapture(e.pointerId)
-                    } catch {}
-                    voiceCancelRef.current = false
-                    setVoiceSlideCancel(false)
-                    voiceStartXRef.current = e.clientX
-                    voiceHoldRef.current = true
-                    void startVoiceHold()
-                  }}
-                  onPointerMove={(e) => {
-                    if (!voiceHoldRef.current) return
-                    const cancel = e.clientX - voiceStartXRef.current < -64
-                    if (cancel !== voiceCancelRef.current) {
-                      voiceCancelRef.current = cancel
-                      setVoiceSlideCancel(cancel)
+                <div className="relative mx-auto flex h-24 w-72 items-center justify-center">
+                  <span
+                    className={cn(
+                      "pointer-events-none absolute left-0 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full transition-all duration-150",
+                      voiceSlideCancel
+                        ? "scale-110 bg-[#ef4444]/15 text-[#ef4444]"
+                        : isVoiceRecording
+                          ? "bg-[var(--surface-tint)] text-[var(--muted)] opacity-90"
+                          : "opacity-0"
+                    )}
+                  >
+                    <Trash2 size={22} strokeWidth={2.2} />
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={
+                      lang === "EN"
+                        ? "Hold to record voice; release to send, slide left to cancel"
+                        : "Tahan untuk rakam suara; lepas untuk hantar, gelongsor ke kiri untuk batal"
                     }
-                  }}
-                  onPointerUp={() => {
-                    if (!voiceHoldRef.current) return
-                    voiceHoldRef.current = false
-                    const cancel = voiceCancelRef.current
-                    voiceCancelRef.current = false
-                    setVoiceSlideCancel(false)
-                    if (cancel) {
+                    onPointerDown={(e) => {
+                      e.preventDefault()
+                      try {
+                        e.currentTarget.setPointerCapture(e.pointerId)
+                      } catch {}
+                      voiceCancelRef.current = false
+                      setVoiceSlideCancel(false)
+                      setVoiceSlideX(0)
+                      voiceStartXRef.current = e.clientX
+                      voiceHoldRef.current = true
+                      void startVoiceHold()
+                    }}
+                    onPointerMove={(e) => {
+                      if (!voiceHoldRef.current) return
+                      const dx = e.clientX - voiceStartXRef.current
+                      setVoiceSlideX(Math.max(-96, dx))
+                      const cancel = dx < -64
+                      if (cancel !== voiceCancelRef.current) {
+                        voiceCancelRef.current = cancel
+                        setVoiceSlideCancel(cancel)
+                      }
+                    }}
+                    onPointerUp={() => {
+                      if (!voiceHoldRef.current) return
+                      voiceHoldRef.current = false
+                      const cancel = voiceCancelRef.current
+                      voiceCancelRef.current = false
+                      setVoiceSlideCancel(false)
+                      setVoiceSlideX(0)
+                      if (cancel) {
+                        cancelVoice()
+                        showAlert(lang === "EN" ? "Voice deleted" : "Suara dipadam", "", "success")
+                      } else {
+                        endVoiceHold()
+                      }
+                    }}
+                    onPointerCancel={() => {
+                      voiceHoldRef.current = false
+                      voiceCancelRef.current = false
+                      setVoiceSlideCancel(false)
+                      setVoiceSlideX(0)
                       cancelVoice()
-                    } else {
-                      endVoiceHold()
-                    }
-                  }}
-                  onPointerCancel={() => {
-                    voiceHoldRef.current = false
-                    voiceCancelRef.current = false
-                    setVoiceSlideCancel(false)
-                    cancelVoice()
-                  }}
-                  onContextMenu={(e) => e.preventDefault()}
-                  className={cn(
-                    "mx-auto flex h-24 w-24 touch-none select-none items-center justify-center rounded-full text-white shadow-lg transition-transform active:scale-95",
-                    isVoiceRecording
-                      ? voiceSlideCancel
-                        ? "bg-[#ef4444]"
-                        : "animate-pulse bg-[#ef4444]"
-                      : "bg-[var(--brand-blue)]"
-                  )}
-                >
-                  <Mic size={40} />
-                </button>
+                      showAlert(lang === "EN" ? "Voice deleted" : "Suara dipadam", "", "success")
+                    }}
+                    onContextMenu={(e) => e.preventDefault()}
+                    style={{ transform: `translateX(${voiceSlideX}px)` }}
+                    className={cn(
+                      "mx-auto flex h-24 w-24 touch-none select-none items-center justify-center rounded-full text-white shadow-lg transition-transform active:scale-95",
+                      isVoiceRecording
+                        ? voiceSlideCancel
+                          ? "bg-[#ef4444]"
+                          : "animate-pulse bg-[#ef4444]"
+                        : "bg-[var(--brand-blue)]"
+                    )}
+                  >
+                    <Mic size={40} />
+                  </button>
+                </div>
                 {isVoiceRecording ? (
                   <span className={cn("flex items-center gap-1 text-[0.6875rem] font-semibold transition-colors", voiceSlideCancel ? "text-[#ef4444]" : "text-[var(--muted)]")}>
                     <ArrowLeft size={12} />
@@ -1854,7 +1880,7 @@ export default function ChatPage() {
                   </span>
                 ) : (
                   <span className="text-[0.6875rem] font-medium text-[var(--muted)]">
-                    {lang === "EN" ? "Hold to talk" : "Tahan untuk bercakap"}
+                    {lang === "EN" ? "Hold to talk, slide left to cancel" : "Tahan untuk bercakap, gelongsor kiri untuk batal"}
                   </span>
                 )}
               </div>
