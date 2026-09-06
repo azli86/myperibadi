@@ -3898,18 +3898,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               {/* ── Profile Card: avatar kiri, nama kanan ── */}
               <div className="px-4 pt-1 pb-3">
                 <div className="flex items-center gap-3 rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/60 px-4 py-3">
-                  <div className="relative shrink-0">
+                  <div className="shrink-0">
                     <UserAvatar name={displayName || activeEmail} size={56} src={user?.avatar_url} />
-                    <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white ring-2 ring-[var(--card)] shadow-xs">
-                      <Check size={11} strokeWidth={3} />
-                    </span>
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <h3 className="text-base font-black tracking-tight text-[var(--text)] truncate max-w-[180px]">
+                      <h3 className="text-base font-black tracking-tight text-[var(--text)] truncate max-w-[170px]">
                         {displayName}
                       </h3>
+                      <Check size={13} strokeWidth={3.5} className="shrink-0 text-emerald-500" />
                       <span className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[8px] font-black uppercase text-[var(--text)]">
                         PRO
                       </span>
