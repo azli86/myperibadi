@@ -619,6 +619,7 @@ export default function SecurityPage() {
                   </span>
                   <input
                     type="password"
+                    autoComplete="off"
                     inputMode="numeric"
                     maxLength={6}
                     value={pin}
@@ -633,6 +634,7 @@ export default function SecurityPage() {
                   </span>
                   <input
                     type="password"
+                    autoComplete="off"
                     inputMode="numeric"
                     maxLength={6}
                     value={confirmPin}
@@ -777,6 +779,7 @@ export default function SecurityPage() {
                         </span>
                         <input
                           type="password"
+                          autoComplete="off"
                           inputMode="numeric"
                           maxLength={6}
                           value={pin}
@@ -791,6 +794,7 @@ export default function SecurityPage() {
                         </span>
                         <input
                           type="password"
+                          autoComplete="off"
                           inputMode="numeric"
                           maxLength={6}
                           value={confirmPin}
@@ -859,6 +863,7 @@ function PasswordField({
       <div className="relative mt-1.5">
         <input
           type={noToggle ? "password" : (show ? "text" : "password")}
+          autoComplete="off"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/50 px-4 py-3 pr-12 text-sm font-semibold text-[var(--text)] outline-none transition-all focus:border-[var(--text)]/25 focus:bg-[var(--surface-tint-strong)]"
