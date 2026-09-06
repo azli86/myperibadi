@@ -588,48 +588,50 @@ export default function SettingsPage() {
           }
         />
 
-        {/* ─── Profile Avatar Hero Section (Material 3 style: Seamless, no card) ─── */}
-        <section className="px-4 pt-3 pb-3 text-center flex flex-col items-center">
-          {/* Avatar with Camera badge */}
-          <div className="relative">
-            <div className="rounded-full p-1 ring-4 ring-[var(--surface-tint)] bg-[var(--card)] shadow-md">
-              <UserAvatar
-                name={name || profile?.name}
-                size={96}
-                src={profile?.avatar_url}
-                className="transition-transform"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => setAvatarSheetOpen(true)}
-              className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-md cursor-pointer active:scale-90 transition border-2 border-[var(--bg)]"
-              aria-label={tr("Tukar Gambar", "Change Avatar")}
-            >
-              <Camera size={14} />
-            </button>
-          </div>
+        {/* ─── Profile hero: nama kiri, avatar kanan overlay (no card) ─── */}
+        <section className="px-4 pt-3 pb-3">
+          <div className="flex items-center gap-3">
+            {/* Name / tone / email — kiri */}
+            <div className="min-w-0 flex-1">
+              <h2 className="text-2xl font-black tracking-tight text-[var(--text)]">
+                {showProfileSkeleton ? "..." : profile?.name || tr("Pengguna", "User")}
+              </h2>
 
-          {/* Name, Bot Tone Chip & Email */}
-          <div className="mt-3.5 space-y-1">
-            <h2 className="text-2xl font-black tracking-tight text-[var(--text)]">
-              {showProfileSkeleton ? "..." : profile?.name || tr("Pengguna", "User")}
-            </h2>
-
-            <div className="flex items-center justify-center pt-0.5">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-3 py-1 text-xs font-bold text-[var(--text)] shadow-2xs">
-                <Sparkles size={11} className="text-[var(--text)] opacity-80" />
-                <span className="truncate max-w-[200px]">
-                  {profile?.bot_personality || tr("Personaliti Mesra", "Friendly Tone")}
+              <div className="mt-2 flex items-center">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-3 py-1 text-xs font-bold text-[var(--text)] shadow-2xs">
+                  <Sparkles size={11} className="text-[var(--text)] opacity-80" />
+                  <span className="truncate max-w-[170px]">
+                    {profile?.bot_personality || tr("Personaliti Mesra", "Friendly Tone")}
+                  </span>
                 </span>
-              </span>
+              </div>
+
+              <p className="mt-1.5 text-xs font-medium text-[var(--muted)]">{profile?.email || "—"}</p>
             </div>
 
-            <p className="pt-0.5 text-xs font-medium text-[var(--muted)]">{profile?.email || "—"}</p>
+            {/* Avatar — kanan, keluar tepi kanan */}
+            <div className="relative shrink-0 -mr-2">
+              <div className="rounded-full p-1 ring-4 ring-[var(--surface-tint)] bg-[var(--card)] shadow-md">
+                <UserAvatar
+                  name={name || profile?.name}
+                  size={80}
+                  src={profile?.avatar_url}
+                  className="transition-transform"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setAvatarSheetOpen(true)}
+                className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-md cursor-pointer active:scale-90 transition border-2 border-[var(--bg)]"
+                aria-label={tr("Tukar Gambar", "Change Avatar")}
+              >
+                <Camera size={12} />
+              </button>
+            </div>
           </div>
 
           {/* Material 3 Outlined Action Chips */}
-          <div className="mt-4 grid w-full max-w-xs grid-cols-2 gap-2.5">
+          <div className="mx-auto mt-4 grid w-full max-w-xs grid-cols-2 gap-2.5">
             <button
               type="button"
               onClick={() => setActiveMobileSheet("profile")}
