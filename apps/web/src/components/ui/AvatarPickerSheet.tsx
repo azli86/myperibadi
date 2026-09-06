@@ -600,6 +600,7 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
                 <ZoomIn size={18} />
               </button>
             </div>
+            <div className="mt-2 text-center text-[9px] font-bold text-white/25">FIX-2F-p2 · versi terkini</div>
           </div>
         </div>
       )}
