@@ -81,6 +81,7 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
   const [boxC, setBoxC] = useState(0)
   const cropBoxRef = useRef<HTMLDivElement>(null)
   const cropImgRef = useRef<HTMLImageElement>(null)
+  const previewRef = useRef<HTMLCanvasElement>(null)
   const pointersRef = useRef(new Map<number, { x: number; y: number }>())
   const pinchRef = useRef<{ d0: number; f0: number } | null>(null)
   const dragRef = useRef<{ x: number; y: number } | null>(null)
@@ -133,6 +134,38 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
       document.removeEventListener("touchmove", onTouch)
     }
   }, [crop])
+
+  // Render the zoomed/pan preview into a <canvas>. No CSS transform on the big
+  // bitmap at all — iOS Safari blanks transformed layers clipped inside
+  // overflow-hidden + border-radius parents once the gesture ends. A canvas is a
+  // single flat layer, immune to that compositing bug.
+  useEffect(() => {
+    const cv = previewRef.current
+    const img = cropImgRef.current
+    if (!cv || !img || !cropDims || !boxC) return
+    const iw = cropDims.iw
+    const ih = cropDims.ih
+    const k0 = Math.max(boxC / iw, boxC / ih)
+    const f = clamp(cropT.f, 1, 4)
+    const k = k0 * f
+    const halfX = Math.max(0, (iw * k - boxC) / 2)
+    const halfY = Math.max(0, (ih * k - boxC) / 2)
+    const x = clamp(cropT.x, -halfX, halfX)
+    const y = clamp(cropT.y, -halfY, halfY)
+    const sz = boxC / k
+    const cx = iw / 2 - x / k
+    const cy = ih / 2 - y / k
+    const dpr = Math.min(window.devicePixelRatio || 1, 3)
+    const px = Math.round(boxC * dpr)
+    if (cv.width !== px || cv.height !== px) {
+      cv.width = px
+      cv.height = px
+    }
+    const ctx = cv.getContext("2d")
+    if (!ctx) return
+    ctx.clearRect(0, 0, cv.width, cv.height)
+    ctx.drawImage(img, cx - sz / 2, cy - sz / 2, sz, sz, 0, 0, cv.width, cv.height)
+  }, [crop, cropDims, boxC, cropT])
 
   const afterChange = (url: string | null, okTitle: string, okMsg: string) => {
     invalidateApiCache("/api/users/me", getAccessToken())
@@ -389,27 +422,6 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
 
   if (!open) return null
 
-  // Display transform for the preview: image pre-scaled to baseW/H (smaller side
-  // fills the box) so CSS scale stays >= 1. Safari blanks huge downscaled layers
-  // (pinch zoom -> blank screen), so never render the raw multi-MB bitmap scaled
-  // <1. Pan/zoom stays visually identical (scale(f) * size(k0) == scale(k0*f)).
-  let stageW: number | undefined
-  let stageH: number | undefined
-  let stageTransform: string | undefined
-  if (cropDims && boxC > 0) {
-    const k0 = Math.max(boxC / cropDims.iw, boxC / cropDims.ih)
-    stageW = cropDims.iw * k0
-    stageH = cropDims.ih * k0
-    const f = Number.isFinite(cropT.f) && cropT.f > 0 ? cropT.f : 1
-    const halfX = Math.max(0, (stageW * f - boxC) / 2)
-    const halfY = Math.max(0, (stageH * f - boxC) / 2)
-    const rawX = Number.isFinite(cropT.x) ? cropT.x : 0
-    const rawY = Number.isFinite(cropT.y) ? cropT.y : 0
-    const x = clamp(rawX, -halfX, halfX)
-    const y = clamp(rawY, -halfY, halfY)
-    stageTransform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${f})`
-  }
-
   return createPortal(
     <>
       <input ref={cameraRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={pick(cameraRef)} disabled={busy} />
@@ -502,6 +514,11 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
               onPointerUp={onStagePointerUp}
               onPointerCancel={onStagePointerUp}
             >
+              <canvas
+                ref={previewRef}
+                className="pointer-events-none absolute inset-0 h-full w-full"
+              />
+              {/* Off-screen decoder source for the canvas (never styled/transformed). */}
               <img
                 src={crop.url}
                 alt=""
@@ -511,19 +528,7 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
                   notify(tr("Tidak Boleh Baca", "Cannot Read"), tr("Gambar tidak dapat dibuka. Cuba format JPG/PNG/WEBP.", "Image cannot be opened. Try JPG/PNG/WEBP format."), "error")
                   cancelCrop()
                 }}
-                className={
-                  "pointer-events-none touch-none absolute left-1/2 top-1/2 max-w-none select-none" +
-                  (cropDims ? "" : " opacity-0")
-                }
-                style={
-                  cropDims
-                    ? {
-                        width: `${stageW}px`,
-                        height: `${stageH}px`,
-                        transform: stageTransform,
-                      }
-                    : undefined
-                }
+                className="pointer-events-none absolute -left-[9999px] top-0 h-px w-px opacity-0"
               />
               <div className="pointer-events-none absolute inset-0 rounded-full border border-white/20" />
             </div>
