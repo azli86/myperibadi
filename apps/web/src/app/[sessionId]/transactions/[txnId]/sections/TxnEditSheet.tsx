@@ -1,6 +1,7 @@
 "use client"
 
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
+import ImageSourceSheet from "@/components/ui/ImageSourceSheet"
 import { useState, useRef } from "react"
 import { createPortal } from "react-dom"
 import { X, Check, ChevronDown, Plus, MinusCircle, Wallet, HandCoins, Repeat, Tag, Upload, XCircle, TrendingDown, TrendingUp } from "lucide-react"
@@ -82,6 +83,8 @@ export default function TxnEditSheet({
   const [showSubscriptionPicker, setShowSubscriptionPicker] = useState(false)
   const swipe = useSwipeDownToClose(onClose)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const [showImagePicker, setShowImagePicker] = useState(false)
   const [editFilePreview, setEditFilePreview] = useState<string | null>(null)
 
   const handleFilePick = (file: File | null) => {
@@ -525,6 +528,14 @@ export default function TxnEditSheet({
 
             {/* Upload receipt card — tap to upload */}
             <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => { handleFilePick(e.target.files?.[0] || null); e.target.value = "" }}
+            />
+            <input
               ref={fileInputRef}
               type="file"
               accept="image/*,application/pdf"
@@ -541,7 +552,7 @@ export default function TxnEditSheet({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => setShowImagePicker(true)}
                     className="block w-full"
                   >
                     <img src={editFilePreview} alt="" className="max-h-48 w-full object-contain bg-[var(--surface-tint)]" />
@@ -559,7 +570,7 @@ export default function TxnEditSheet({
             ) : (
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => setShowImagePicker(true)}
                 className="flex w-full flex-col items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-[var(--border)] bg-[var(--surface-tint)] px-4 py-6 text-center transition-colors active:scale-[0.99]"
               >
                 <Upload size={24} className="text-[var(--muted)]" />
@@ -567,6 +578,13 @@ export default function TxnEditSheet({
               </button>
             )}
           </form>
+          <ImageSourceSheet
+            open={showImagePicker}
+            onClose={() => setShowImagePicker(false)}
+            onCamera={() => { setShowImagePicker(false); cameraInputRef.current?.click() }}
+            onGallery={() => { setShowImagePicker(false); fileInputRef.current?.click() }}
+            onPdf={() => { setShowImagePicker(false); fileInputRef.current?.click() }}
+          />
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { getAccessToken } from "@/lib/auth-session"
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { useParams } from "next/navigation"
 import {
@@ -46,6 +46,7 @@ import { AmountSkeleton } from "@/components/ui/DataSkeleton"
 import { MoneyAmount, formatCurrencyLabel } from "@/components/ui/MoneyAmount"
 import CurrencySelect from "@/components/ui/CurrencySelect"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
+import ImageSourceSheet from "@/components/ui/ImageSourceSheet"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
@@ -301,6 +302,27 @@ export default function WalletSettingsPage() {
   const [showCreateWalletModal, setShowCreateWalletModal] = useState(false)
   const [createWalletStep, setCreateWalletStep] = useState<1 | 2 | 3>(1)
   const [focusedCardIndex, setFocusedCardIndex] = useState<number | null>(null)
+  const [imageSheet, setImageSheet] = useState<"edit" | "create" | null>(null)
+  const editCameraRef = useRef<HTMLInputElement | null>(null)
+  const editGalleryRef = useRef<HTMLInputElement | null>(null)
+  const createCameraRef = useRef<HTMLInputElement | null>(null)
+  const createGalleryRef = useRef<HTMLInputElement | null>(null)
+
+  const pickWalletImage = (source: "camera" | "gallery") => {
+    const ref =
+      imageSheet === "create"
+        ? source === "camera"
+          ? createCameraRef
+          : createGalleryRef
+        : source === "camera"
+          ? editCameraRef
+          : editGalleryRef
+    setImageSheet(null)
+    if (ref.current) {
+      ref.current.value = ""
+      ref.current.click()
+    }
+  }
 
   const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
 
@@ -1383,10 +1405,15 @@ export default function WalletSettingsPage() {
                             {tr("Imej Dompet", "Wallet Image")}
                           </p>
                           <div className="flex items-center gap-2">
-                            <label className="flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-[var(--border-strong)] bg-[var(--card)] text-xs font-semibold text-[var(--muted)]">
-                              <Upload size={14} /> {uploadingDraftImage ? tr("Sedang upload…", "Uploading…") : tr("Upload imej (maks 512 KB)", "Upload image (max 512 KB)")}
-                              <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadDraftWalletImage(file); e.target.value = "" }} />
-                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setImageSheet("create")}
+                              className="flex h-10 flex-1 items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-[var(--border-strong)] bg-[var(--card)] text-xs font-semibold text-[var(--muted)] transition active:scale-[0.98]"
+                            >
+                              <Upload size={14} /> {uploadingDraftImage ? tr("Sedang upload…", "Uploading…") : tr("Imej Dompet", "Wallet Image")}
+                            </button>
+                            <input ref={createCameraRef} type="file" accept="image/png,image/jpeg,image/webp" capture="environment" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadDraftWalletImage(file); e.target.value = "" }} />
+                            <input ref={createGalleryRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadDraftWalletImage(file); e.target.value = "" }} />
                             {draft.image_url ? (
                               <button
                                 type="button"
@@ -1515,10 +1542,15 @@ export default function WalletSettingsPage() {
                       {tr("Penampilan", "Appearance")}
                     </p>
                     <div className="flex items-center gap-2">
-                      <label className="flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-[var(--border-strong)] bg-[var(--card)] text-xs font-semibold text-[var(--muted)]">
-                        <Upload size={14} /> {uploadingWalletId === activeWallet.id ? tr("Sedang upload…", "Uploading…") : tr("Upload imej (maks 512 KB)", "Upload image (max 512 KB)")}
-                        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadWalletImage(file, activeWallet); e.target.value = "" }} />
-                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setImageSheet("edit")}
+                        className="flex h-10 flex-1 items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-[var(--border-strong)] bg-[var(--card)] text-xs font-semibold text-[var(--muted)] transition active:scale-[0.98]"
+                      >
+                        <Upload size={14} /> {uploadingWalletId === activeWallet.id ? tr("Sedang upload…", "Uploading…") : tr("Imej Dompet", "Wallet Image")}
+                      </button>
+                      <input ref={editCameraRef} type="file" accept="image/png,image/jpeg,image/webp" capture="environment" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadWalletImage(file, activeWallet); e.target.value = "" }} />
+                      <input ref={editGalleryRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadWalletImage(file, activeWallet); e.target.value = "" }} />
                       {activeWallet.image_url ? (
                         <button
                           type="button"
@@ -1692,6 +1724,12 @@ export default function WalletSettingsPage() {
         : null}
 
       {alertModal}
+      <ImageSourceSheet
+        open={imageSheet !== null}
+        onClose={() => setImageSheet(null)}
+        onCamera={() => pickWalletImage("camera")}
+        onGallery={() => pickWalletImage("gallery")}
+      />
     </div>
   )
 }

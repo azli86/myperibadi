@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   Trash2,
   Plus,
-  Camera,
   Loader2,
   X,
   ImageIcon,
@@ -34,8 +33,7 @@ import {
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { SmartImage } from "@/components/ui/SmartImage"
-import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
-import { createPortal } from "react-dom"
+import ImageSourceSheet from "@/components/ui/ImageSourceSheet"
 import Calculator from "@/components/calculator/Calculator"
 import ChatRichMessage, { type ChatAction } from "@/components/chat/ChatRichMessage"
 import TxnFxOverlay, { detectTxnFx, type TxnFxKind } from "@/components/chat/TxnFxOverlay"
@@ -1576,47 +1574,12 @@ export default function ChatPage() {
             onChange={(e) => handlePickFile(e.target.files?.[0] || null)}
           />
 
-          {createPortal(
-            isPhotoSheetOpen && (
-              <div
-                className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center"
-                onClick={() => setIsPhotoSheetOpen(false)}
-                onTouchMove={(e) => e.preventDefault()}
-              >
-                <div
-                  onClick={(e) => e.stopPropagation()}
-                  className="app-sheet-panel w-full h-auto border border-[var(--border)] bg-[var(--sheet-bg)] sm:max-w-[24rem]"
-                >
-                  <AppSheetHeader
-                    title={lang === "EN" ? "Attach Photo" : "Lampir Gambar"}
-                    subtitle={lang === "EN" ? "Choose an image source" : "Pilih sumber imej"}
-                    onClose={() => setIsPhotoSheetOpen(false)}
-                  />
-                  <div className="px-4 pb-4 pt-3">
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <button
-                        type="button"
-                        className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] py-4 text-sm font-bold text-[var(--text)] transition active:scale-[0.98]"
-                        onClick={() => { setIsPhotoSheetOpen(false); openAttachmentPicker("camera") }}
-                      >
-                        <Camera size={22} className="shrink-0 text-[var(--text)]" />
-                        <span>{lang === "EN" ? "Camera" : "Kamera"}</span>
-                      </button>
-                      <button
-                        type="button"
-                        className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] py-4 text-sm font-bold text-[var(--text)] transition active:scale-[0.98]"
-                        onClick={() => { setIsPhotoSheetOpen(false); openAttachmentPicker("gallery") }}
-                      >
-                        <ImageIcon size={22} className="shrink-0 text-[var(--text)]" />
-                        <span>{lang === "EN" ? "Gallery" : "Galeri"}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ),
-            document.body
-          )}
+          <ImageSourceSheet
+            open={isPhotoSheetOpen}
+            onClose={() => setIsPhotoSheetOpen(false)}
+            onCamera={() => { setIsPhotoSheetOpen(false); openAttachmentPicker("camera") }}
+            onGallery={() => { setIsPhotoSheetOpen(false); openAttachmentPicker("gallery") }}
+          />
 
           <div className="flex items-end gap-2">
             <div className="relative shrink-0">
