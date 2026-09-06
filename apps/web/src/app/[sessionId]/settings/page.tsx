@@ -912,6 +912,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="text"
+                      autoComplete="name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder={tr("Nama anda", "Your name")}
@@ -1040,6 +1041,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="text"
+                      autoComplete="one-time-code"
                       inputMode="numeric"
                       maxLength={6}
                       value={verificationCode}
@@ -1464,6 +1466,7 @@ export default function SettingsPage() {
                     </label>
                     <input
                       type="text"
+                      autoComplete="name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder={tr("Nama anda", "Your name")}
@@ -1533,6 +1536,7 @@ export default function SettingsPage() {
                       </label>
                       <input
                         type="email"
+                        autoComplete="email"
                         value={newEmail}
                         onChange={(e) => setNewEmail(e.target.value)}
                         placeholder="nama@email.com"
@@ -1587,6 +1591,7 @@ export default function SettingsPage() {
                       </label>
                       <input
                         type="text"
+                        autoComplete="one-time-code"
                         inputMode="numeric"
                         maxLength={6}
                         value={verificationCode}
@@ -2032,6 +2037,7 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
+                    autoComplete="off"
                     value={confirmText}
                     onChange={(e) => setConfirmText(e.target.value)}
                     placeholder={activeDangerWord}
