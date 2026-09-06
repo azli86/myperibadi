@@ -27,8 +27,8 @@ import {
 } from "lucide-react"
 import { useLang } from "@/lib/lang"
 import { UserAvatar } from "@/components/ui/UserAvatar"
+import AvatarPickerSheet from "@/components/ui/AvatarPickerSheet"
 import { getAccessToken, setAuthTokens, logoutAuthSession } from "@/lib/auth-session"
-import { invalidateApiCache } from "@/lib/api-cache"
 import { getAccounts, getActiveEmail, switchToAccount, type AccountProfile } from "@/lib/multi-account"
 import { MobilePageHeader, DesktopPageBody, DesktopPageHeader } from "@/components/layout/PageHeader"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
@@ -92,7 +92,7 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
   const [confirmText, setConfirmText] = useState("")
   const [dangerBusy, setDangerBusy] = useState(false)
   const [dangerError, setDangerError] = useState("")
-  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarSheetOpen, setAvatarSheetOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [stats, setStats] = useState<{
     transaction_count: number
@@ -212,48 +212,7 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
     }
   }
 
-  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file || !profile) return
-    if (file.size > 2_097_152) {
-      setError(tr("Imej terlalu besar. Maksimum 2 MB.", "Image too large. Maximum 2 MB."))
-      return
-    }
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setError(tr("Hanya PNG, JPG atau WEBP dibenarkan.", "Only PNG, JPG or WEBP allowed."))
-      return
-    }
-    setAvatarUploading(true)
-    setError("")
-    try {
-      const token = getAccessToken()
-      const form = new FormData()
-      form.append("file", file)
-      const res = await fetch("/api/users/me/avatar", {
-        method: "POST",
-        credentials: "include",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: form,
-      })
-      if (!res.ok) {
-        const apiErr = await res.json().catch(() => ({}))
-        throw new Error(apiErr?.detail || "Upload failed")
-      }
-      const data = await res.json()
-      setProfile((prev) => (prev ? { ...prev, avatar_url: data.avatar_url } : prev))
-      invalidateApiCache("/api/users/me", getAccessToken())
-      window.dispatchEvent(new Event("avatar-updated"))
-      setMessage(tr("Gambar profil berjaya dikemaskini.", "Profile picture updated."))
-      showAlert(tr("Berjaya", "Success"), tr("Gambar profil berjaya dikemaskini.", "Profile picture updated."), "success")
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : tr("Gagal muat naik gambar.", "Upload failed.")
-      setError(msg)
-      showAlert(tr("Muat Naik Gagal", "Upload Failed"), msg, "error")
-    } finally {
-      setAvatarUploading(false)
-      e.target.value = ""
-    }
-  }
+
 
   async function handleRequestEmailCode(e: React.FormEvent) {
     e.preventDefault()
@@ -639,16 +598,16 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
           <div className="rounded-2xl border border-[var(--border)] bg-gradient-to-br from-[var(--card)] to-[var(--surface-tint)] p-8 shadow-sm text-center">
             <div className="relative mx-auto w-fit">
               <UserAvatar name={name || profile?.name} size={112} src={profile?.avatar_url} />
-              <label
-                htmlFor="desktop-avatar-upload"
+              <button
+                type="button"
+                onClick={() => setAvatarSheetOpen(true)}
                 className={cn(
-                  "absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--text)] border-2 border-[var(--card)] text-[var(--bg)] shadow cursor-pointer active:scale-95 transition",
-                  avatarUploading && "pointer-events-none opacity-60"
+                  "absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--text)] border-2 border-[var(--card)] text-[var(--bg)] shadow cursor-pointer active:scale-95 transition"
                 )}
                 aria-label={tr("Tukar Gambar", "Change Picture")}
               >
-                {avatarUploading ? <Loader2 size={15} className="animate-spin" /> : <Camera size={15} />}
-              </label>
+                <Camera size={15} />
+              </button>
             </div>
 
             <div className="mt-4 flex items-center justify-center gap-2">
@@ -675,15 +634,15 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
               </button>
             </div>
 
-            <input
-              id="desktop-avatar-upload"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={handleAvatarUpload}
-              disabled={avatarUploading}
-            />
-          </div>
+            </div>
+
+          <AvatarPickerSheet
+            open={avatarSheetOpen}
+            onClose={() => setAvatarSheetOpen(false)}
+            hasAvatar={!!profile?.avatar_url}
+            onChanged={(url) => setProfile((prev) => (prev ? { ...prev, avatar_url: url } : prev))}
+            notify={showAlert}
+          />
 
           {/* 2-Column Responsive Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -1069,21 +1028,14 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
                 <form onSubmit={handleSave} className="space-y-4 pb-2">
                   <div className="flex items-center gap-4 py-1">
                     <UserAvatar name={name || profile?.name} size={60} src={profile?.avatar_url} />
-                    <label
-                      htmlFor="mobile-avatar-upload"
-                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-1.5 text-xs font-bold text-[var(--text)]"
+                    <button
+                      type="button"
+                      onClick={() => setAvatarSheetOpen(true)}
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-1.5 text-xs font-bold text-[var(--text)] active:scale-95 transition"
                     >
-                      {avatarUploading ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
+                      <Camera size={13} />
                       <span>{tr("Tukar Gambar", "Change Photo")}</span>
-                    </label>
-                    <input
-                      id="mobile-avatar-upload"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      onChange={handleAvatarUpload}
-                      disabled={avatarUploading}
-                    />
+                    </button>
                   </div>
 
                   <TextField

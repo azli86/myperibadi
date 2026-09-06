@@ -44,12 +44,12 @@ import { usePageAlert } from "@/hooks/usePageAlert"
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/components/theme/ThemeProvider"
 import { getAccessToken, setAuthTokens, logoutAuthSession } from "@/lib/auth-session"
-import { invalidateApiCache } from "@/lib/api-cache"
 import { getAccounts, getActiveEmail, switchToAccount, type AccountProfile } from "@/lib/multi-account"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { UserAvatar } from "@/components/ui/UserAvatar"
+import AvatarPickerSheet from "@/components/ui/AvatarPickerSheet"
 import { AddAccountModal } from "@/components/ui/AddAccountModal"
 
 type ProfileData = {
@@ -100,7 +100,7 @@ export default function SettingsPage() {
   const [profileLoading, setProfileLoading] = useState(true)
   const showProfileSkeleton = useDelayedSkeleton(profileLoading)
   const [profileSaving, setProfileSaving] = useState(false)
-  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarSheetOpen, setAvatarSheetOpen] = useState(false)
 
   // Email Change States
   const [newEmail, setNewEmail] = useState("")
@@ -275,46 +275,7 @@ export default function SettingsPage() {
   }
 
   // Upload Avatar
-  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file || !profile) return
-    if (file.size > 2 * 1024 * 1024) {
-      showAlert(tr("Saiz Terlalu Besar", "File Too Large"), tr("Maksimum saiz imej ialah 2 MB.", "Maximum image size is 2 MB."), "error")
-      return
-    }
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      showAlert(tr("Format Tidak Sah", "Invalid Format"), tr("Sila muat naik format JPG, PNG atau WEBP.", "Please upload JPG, PNG or WEBP."), "error")
-      return
-    }
 
-    setAvatarUploading(true)
-    try {
-      const token = getAccessToken()
-      const formData = new FormData()
-      formData.append("file", file)
-      const res = await fetch("/api/users/me/avatar", {
-        method: "POST",
-        credentials: "include",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: formData,
-      })
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}))
-        throw new Error(errJson?.detail || "Gagal memuat naik gambar")
-      }
-      const data = await res.json()
-      setProfile((prev) => (prev ? { ...prev, avatar_url: data.avatar_url } : prev))
-      invalidateApiCache("/api/users/me", getAccessToken())
-      window.dispatchEvent(new Event("avatar-updated"))
-      showAlert(tr("Gambar Dikemaskini", "Avatar Updated"), tr("Gambar profil anda telah berjaya dimuat naik.", "Your profile avatar has been updated."), "success")
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : tr("Gagal memuat naik gambar.", "Upload failed.")
-      showAlert(tr("Ralat Muat Naik", "Upload Failed"), msg, "error")
-    } finally {
-      setAvatarUploading(false)
-      e.target.value = ""
-    }
-  }
 
   // Request Email Change Code
   async function handleRequestEmailCode(e: React.FormEvent) {
@@ -598,14 +559,12 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6 pb-24 md:space-y-0 md:pb-8">
-      {/* Hidden File Input for Avatars */}
-      <input
-        id="settings-avatar-upload-input"
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        className="hidden"
-        onChange={handleAvatarUpload}
-        disabled={avatarUploading}
+      <AvatarPickerSheet
+        open={avatarSheetOpen}
+        onClose={() => setAvatarSheetOpen(false)}
+        hasAvatar={!!profile?.avatar_url}
+        onChanged={(url) => setProfile((prev) => (prev ? { ...prev, avatar_url: url } : prev))}
+        notify={showAlert}
       />
 
       {/* ─────────────────────────────────────────────────────────────────
@@ -641,16 +600,14 @@ export default function SettingsPage() {
                 className="transition-transform"
               />
             </div>
-            <label
-              htmlFor="settings-avatar-upload-input"
-              className={cn(
-                "absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-md cursor-pointer active:scale-90 transition border-2 border-[var(--bg)]",
-                avatarUploading && "pointer-events-none opacity-50"
-              )}
+            <button
+              type="button"
+              onClick={() => setAvatarSheetOpen(true)}
+              className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-md cursor-pointer active:scale-90 transition border-2 border-[var(--bg)]"
               aria-label={tr("Tukar Gambar", "Change Avatar")}
             >
-              {avatarUploading ? <Loader2 size={13} className="animate-spin" /> : <Camera size={14} />}
-            </label>
+              <Camera size={14} />
+            </button>
           </div>
 
           {/* Name, Bot Tone Chip & Email */}
@@ -922,16 +879,14 @@ export default function SettingsPage() {
                         src={profile?.avatar_url}
                         className="ring-2 ring-[var(--border-strong)]"
                       />
-                      <label
-                        htmlFor="settings-avatar-upload-input"
-                        className={cn(
-                          "absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] border-2 border-[var(--card)] shadow cursor-pointer active:scale-90 transition",
-                          avatarUploading && "pointer-events-none opacity-50"
-                        )}
+                      <button
+                        type="button"
+                        onClick={() => setAvatarSheetOpen(true)}
+                        className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] border-2 border-[var(--card)] shadow cursor-pointer active:scale-90 transition"
                         title={tr("Muat naik gambar", "Upload photo")}
                       >
-                        {avatarUploading ? <Loader2 size={11} className="animate-spin" /> : <Camera size={11} />}
-                      </label>
+                        <Camera size={11} />
+                      </button>
                     </div>
 
                     <div>
@@ -1479,25 +1434,24 @@ export default function SettingsPage() {
                   <div className="flex items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-3.5">
                     <div className="relative">
                       <UserAvatar name={name || profile?.name} size={64} src={profile?.avatar_url} />
-                      <label
-                        htmlFor="settings-avatar-upload-input"
-                        className={cn(
-                          "absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow cursor-pointer active:scale-90 transition border border-[var(--bg)]",
-                          avatarUploading && "pointer-events-none opacity-50"
-                        )}
+                      <button
+                        type="button"
+                        onClick={() => setAvatarSheetOpen(true)}
+                        className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow cursor-pointer active:scale-90 transition border border-[var(--bg)]"
                         title={tr("Tukar Gambar", "Change Photo")}
                       >
-                        {avatarUploading ? <Loader2 size={11} className="animate-spin" /> : <Camera size={11} />}
-                      </label>
+                        <Camera size={11} />
+                      </button>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <label
-                        htmlFor="settings-avatar-upload-input"
+                      <button
+                        type="button"
+                        onClick={() => setAvatarSheetOpen(true)}
                         className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-tint-strong)] px-3 py-1.5 text-xs font-bold text-[var(--text)] active:scale-95 transition"
                       >
-                        {avatarUploading ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
+                        <Camera size={13} />
                         <span>{tr("Muat Naik Gambar", "Upload Photo")}</span>
-                      </label>
+                      </button>
                       <p className="mt-1 text-[0.68rem] text-[var(--muted)]">JPG, PNG atau WEBP (&le; 2MB)</p>
                     </div>
                   </div>

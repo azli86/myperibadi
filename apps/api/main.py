@@ -10838,6 +10838,22 @@ async def upload_user_avatar(
     except storage_service.StorageError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
+
+@app.delete("/users/me/avatar")
+async def delete_user_avatar(
+    db: AsyncSession = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    old_url = current_user.avatar_url
+    current_user.avatar_url = None
+    await db.commit()
+    if old_url and old_url.startswith("http") and "/avatars/" in old_url:
+        try:
+            await asyncio.to_thread(storage_service.delete_receipt_object, old_url.split("/avatars/")[-1])
+        except Exception:
+            pass
+    return {"avatar_url": None}
+
 @app.get("/categories", response_model=List[schemas.CategoryResponse])
 async def get_categories(db: AsyncSession = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     return await _module_get_categories_route(
