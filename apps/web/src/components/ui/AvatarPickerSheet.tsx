@@ -93,8 +93,10 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
     e.target.value = ""
   }
 
-  const optionCls =
-    "flex w-full items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-bold text-[var(--text)] transition active:scale-[0.98] disabled:opacity-50"
+  const gridOpt =
+    "flex flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-4 text-xs font-bold text-[var(--text)] transition active:scale-[0.98] disabled:opacity-50"
+  const removeOpt =
+    "flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-3 text-sm font-bold text-red-600 dark:text-red-400 transition active:scale-[0.98] disabled:opacity-50"
 
   return (
     <>
@@ -114,17 +116,19 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
                 <X size={18} />
               </button>
             </div>
-            <div className="space-y-2.5">
-              <button type="button" className={optionCls} disabled={busy} onClick={() => cameraRef.current?.click()}>
-                <Camera size={18} className="shrink-0 text-[var(--text)]" />
-                <span>{tr("Ambil Gambar (Kamera)", "Take Photo (Camera)")}</span>
+            <div className="grid grid-cols-2 gap-2.5">
+              <button type="button" className={gridOpt} disabled={busy} onClick={() => cameraRef.current?.click()}>
+                <Camera size={22} className="shrink-0 text-[var(--text)]" />
+                <span>{tr("Kamera", "Camera")}</span>
               </button>
-              <button type="button" className={optionCls} disabled={busy} onClick={() => galleryRef.current?.click()}>
-                <ImageIcon size={18} className="shrink-0 text-[var(--text)]" />
-                <span>{tr("Pilih dari Galeri", "Choose from Gallery")}</span>
+              <button type="button" className={gridOpt} disabled={busy} onClick={() => galleryRef.current?.click()}>
+                <ImageIcon size={22} className="shrink-0 text-[var(--text)]" />
+                <span>{tr("Galeri", "Gallery")}</span>
               </button>
+            </div>
+            <div className="mt-2.5">
               {hasAvatar && (
-                <button type="button" className={`${optionCls} border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400`} disabled={busy} onClick={doDelete}>
+                <button type="button" className={removeOpt} disabled={busy} onClick={doDelete}>
                   <Trash2 size={18} className="shrink-0" />
                   <span>{tr("Buang Gambar", "Remove Picture")}</span>
                 </button>
