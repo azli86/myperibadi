@@ -53,8 +53,16 @@ const compressAvatar = (file: File): Promise<Blob> =>
     img.src = url
   })
 
-const clamp = (v: number, min: number, max: number) => Math.min(Math.max(v, min), max)
-const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y)
+const clamp = (v: number, min: number, max: number) => {
+  if (!Number.isFinite(v)) return Number.isFinite(min) ? min : 0
+  const lo = Math.min(min, max)
+  const hi = Math.max(min, max)
+  return Math.min(Math.max(v, lo), hi)
+}
+const dist = (a?: { x: number; y: number }, b?: { x: number; y: number }) => {
+  if (!a || !b) return 0
+  return Math.hypot(a.x - b.x, a.y - b.y)
+}
 
 export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged, notify }: Props) {
   const { lang } = useLang()
@@ -83,19 +91,46 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
     }
   }, [crop])
 
-  // Block iOS Safari legacy page-pinch (gesture events) while cropping — releasing
-  // two fingers otherwise zooms the whole page and the fixed overlay goes blank.
+  // Keep crop box clientWidth up-to-date across render cycles & screen rotations
+  useEffect(() => {
+    if (!crop || !cropBoxRef.current) return
+    const el = cropBoxRef.current
+    const update = () => {
+      const w = el.clientWidth
+      if (w > 0) setBoxC(w)
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    window.addEventListener("resize", update)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener("resize", update)
+    }
+  }, [crop])
+
+  // Block ALL multi-touch page-pinch gestures (Android touchstart/touchmove & iOS Safari gesture*)
+  // while cropping. Releasing two fingers otherwise zooms the page/WebView and blanks the fixed overlay.
   useEffect(() => {
     if (!crop) return
     const stop = (e: Event) => e.preventDefault()
+    const onTouch = (e: TouchEvent) => {
+      if (e.touches.length > 1) {
+        e.preventDefault()
+      }
+    }
     const opts: AddEventListenerOptions = { passive: false }
     document.addEventListener("gesturestart", stop, opts)
     document.addEventListener("gesturechange", stop, opts)
     document.addEventListener("gestureend", stop, opts)
+    document.addEventListener("touchstart", onTouch, opts)
+    document.addEventListener("touchmove", onTouch, opts)
     return () => {
       document.removeEventListener("gesturestart", stop)
       document.removeEventListener("gesturechange", stop)
       document.removeEventListener("gestureend", stop)
+      document.removeEventListener("touchstart", onTouch)
+      document.removeEventListener("touchmove", onTouch)
     }
   }, [crop])
 
@@ -202,6 +237,7 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
 
   const onStagePointerDown = (e: React.PointerEvent) => {
     e.preventDefault()
+    e.stopPropagation()
     try {
       ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     } catch {}
@@ -218,39 +254,78 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
   }
 
   const onStagePointerMove = (e: React.PointerEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     const p = pointersRef.current.get(e.pointerId)
     if (!p) return
     p.x = e.clientX
     p.y = e.clientY
     if (pinchRef.current && pointersRef.current.size >= 2) {
       const vals = [...pointersRef.current.values()]
-      const d = dist(vals[0], vals[1])
-      if (pinchRef.current.d0 > 0) {
-        setCropT((t) => ({ ...t, f: clamp((pinchRef.current!.f0 * d) / pinchRef.current!.d0, 1, 4) }))
+      if (vals.length >= 2) {
+        const d = dist(vals[0], vals[1])
+        if (pinchRef.current.d0 > 0 && Number.isFinite(d)) {
+          setCropT((t) => {
+            const nextF = clamp((pinchRef.current!.f0 * d) / pinchRef.current!.d0, 1, 4)
+            return { ...t, f: Number.isFinite(nextF) ? nextF : t.f }
+          })
+        }
       }
     } else if (dragRef.current && pointersRef.current.size === 1) {
       const dx = e.clientX - dragRef.current.x
       const dy = e.clientY - dragRef.current.y
       dragRef.current = { x: e.clientX, y: e.clientY }
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return
       setCropT((t) => {
-        const k0 = boxC && cropDims ? Math.max(boxC / cropDims.iw, boxC / cropDims.ih) : 0
+        if (!cropDims || !boxC) return t
+        const k0 = Math.max(boxC / cropDims.iw, boxC / cropDims.ih)
         const k = k0 * t.f
-        const hx = Math.max(0, (cropDims!.iw * k - boxC) / 2)
-        const hy = Math.max(0, (cropDims!.ih * k - boxC) / 2)
-        return { ...t, x: clamp(t.x + dx, -hx, hx), y: clamp(t.y + dy, -hy, hy) }
+        if (!Number.isFinite(k) || k <= 0) return t
+        const hx = Math.max(0, (cropDims.iw * k - boxC) / 2)
+        const hy = Math.max(0, (cropDims.ih * k - boxC) / 2)
+        const nextX = clamp(t.x + dx, -hx, hx)
+        const nextY = clamp(t.y + dy, -hy, hy)
+        return {
+          ...t,
+          x: Number.isFinite(nextX) ? nextX : 0,
+          y: Number.isFinite(nextY) ? nextY : 0,
+        }
       })
     }
   }
 
   const onStagePointerUp = (e: React.PointerEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    try {
+      if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
+      }
+    } catch {}
     pointersRef.current.delete(e.pointerId)
     if (pointersRef.current.size === 1) {
       const [p] = [...pointersRef.current.values()]
-      dragRef.current = { x: p.x, y: p.y }
+      dragRef.current = p ? { x: p.x, y: p.y } : null
       pinchRef.current = null
     } else if (pointersRef.current.size === 0) {
       dragRef.current = null
       pinchRef.current = null
+      // Settle any residual position cleanly within bounds
+      setCropT((t) => {
+        if (!cropDims || !boxC) return t
+        const k0 = Math.max(boxC / cropDims.iw, boxC / cropDims.ih)
+        const k = k0 * t.f
+        if (!Number.isFinite(k) || k <= 0) return t
+        const hx = Math.max(0, (cropDims.iw * k - boxC) / 2)
+        const hy = Math.max(0, (cropDims.ih * k - boxC) / 2)
+        const nextX = clamp(t.x, -hx, hx)
+        const nextY = clamp(t.y, -hy, hy)
+        return {
+          ...t,
+          x: Number.isFinite(nextX) ? nextX : 0,
+          y: Number.isFinite(nextY) ? nextY : 0,
+        }
+      })
     }
   }
 
@@ -325,11 +400,13 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
     const k0 = Math.max(boxC / cropDims.iw, boxC / cropDims.ih)
     stageW = cropDims.iw * k0
     stageH = cropDims.ih * k0
-    const f = cropT.f
+    const f = Number.isFinite(cropT.f) && cropT.f > 0 ? cropT.f : 1
     const halfX = Math.max(0, (stageW * f - boxC) / 2)
     const halfY = Math.max(0, (stageH * f - boxC) / 2)
-    const x = clamp(cropT.x, -halfX, halfX)
-    const y = clamp(cropT.y, -halfY, halfY)
+    const rawX = Number.isFinite(cropT.x) ? cropT.x : 0
+    const rawY = Number.isFinite(cropT.y) ? cropT.y : 0
+    const x = clamp(rawX, -halfX, halfX)
+    const y = clamp(rawY, -halfY, halfY)
     stageTransform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${f})`
   }
 
@@ -384,7 +461,10 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
 
       {/* ── Crop / zoom full-screen overlay ── */}
       {crop && (
-        <div className="fixed inset-0 z-[200] flex flex-col bg-black/95">
+        <div
+          className="fixed inset-0 z-[200] flex flex-col bg-black/95 touch-none select-none overscroll-none"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="flex items-center justify-between px-4 pb-2 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] text-white">
             <button
               type="button"
@@ -412,7 +492,7 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
             </button>
           </div>
 
-          <div className="flex flex-1 items-center justify-center px-6">
+          <div className="flex flex-1 items-center justify-center px-6 touch-none select-none">
             <div
               ref={cropBoxRef}
               className="relative aspect-square touch-none select-none overflow-hidden rounded-full ring-4 ring-white/25"
