@@ -399,20 +399,26 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
               onPointerUp={onStagePointerUp}
               onPointerCancel={onStagePointerUp}
             >
-              {cropDims && (
-                <img
-                  src={crop.url}
-                  alt=""
-                  draggable={false}
-                  onLoad={onCropImgLoad}
-                  className="absolute left-1/2 top-1/2 max-w-none select-none"
-                  style={{
-                    width: `${cropDims.iw}px`,
-                    height: `${cropDims.ih}px`,
-                    transform: stageTransform,
-                  }}
-                />
-              )}
+              <img
+                src={crop.url}
+                alt=""
+                draggable={false}
+                onLoad={onCropImgLoad}
+                onError={() => {
+                  notify(tr("Tidak Boleh Baca", "Cannot Read"), tr("Gambar tidak dapat dibuka. Cuba format JPG/PNG/WEBP.", "Image cannot be opened. Try JPG/PNG/WEBP format."), "error")
+                  cancelCrop()
+                }}
+                className={"absolute left-1/2 top-1/2 max-w-none select-none" + (cropDims ? "" : " opacity-0")}
+                style={
+                  cropDims
+                    ? {
+                        width: `${cropDims.iw}px`,
+                        height: `${cropDims.ih}px`,
+                        transform: stageTransform,
+                      }
+                    : undefined
+                }
+              />
               <div className="pointer-events-none absolute inset-0 rounded-full border border-white/20" />
             </div>
           </div>
