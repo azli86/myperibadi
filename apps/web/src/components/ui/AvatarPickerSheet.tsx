@@ -1,6 +1,6 @@
 "use client"
 
-import { Component, useEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { Camera, Image as ImageIcon, Trash2, Loader2, Check, X, ZoomIn, ZoomOut } from "lucide-react"
 import { useLang } from "@/lib/lang"
@@ -60,39 +60,6 @@ const clamp = (v: number, min: number, max: number) => {
   return Math.min(Math.max(v, lo), hi)
 }
 
-// DEBUG: catch any client crash inside the picker/crop subtree so the whole app
-// isn't blown up by global-error (which shows a generic "500" screen). Instead
-// show the real error message so we can diagnose.
-class CropErrorBoundary extends Component<{ children: ReactNode }, { err: Error | null }> {
-  state = { err: null as Error | null }
-  static getDerivedStateFromError(err: Error) {
-    return { err }
-  }
-  componentDidCatch(err: Error) {
-    console.error("[crop] runtime error:", err)
-  }
-  render() {
-    if (this.state.err) {
-      return createPortal(
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/90 p-6 text-center">
-          <div className="max-w-sm rounded-2xl border border-red-500/30 bg-white/10 p-6 text-white">
-            <p className="text-sm font-bold">Ralat: {this.state.err.message || "Unknown"}</p>
-            <button
-              type="button"
-              onClick={() => this.setState({ err: null })}
-              className="mt-4 rounded-full bg-white/10 px-4 py-2 text-sm font-bold"
-            >
-              Cuba Lagi
-            </button>
-          </div>
-        </div>,
-        document.body
-      )
-    }
-    return this.props.children
-  }
-}
-
 export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged, notify }: Props) {
   const { lang } = useLang()
   const isBm = lang === "BM"
@@ -108,7 +75,6 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
   const [cropDims, setCropDims] = useState<{ iw: number; ih: number } | null>(null)
   const [cropT, setCropT] = useState({ x: 0, y: 0, f: 1 })
   const [boxC, setBoxC] = useState(0)
-  const [cropErr, setCropErr] = useState<string | null>(null)
   const cropBoxRef = useRef<HTMLDivElement>(null)
   const cropImgRef = useRef<HTMLImageElement>(null)
   const previewRef = useRef<HTMLCanvasElement>(null)
@@ -180,33 +146,28 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
     const cv = previewRef.current
     const img = cropImgRef.current
     if (!cv || !img || !cropDims || !boxC) return
-    try {
-      const iw = cropDims.iw
-      const ih = cropDims.ih
-      const k0 = Math.max(boxC / iw, boxC / ih)
-      const f = clamp(cropT.f, 1, 4)
-      const k = k0 * f
-      const halfX = Math.max(0, (iw * k - boxC) / 2)
-      const halfY = Math.max(0, (ih * k - boxC) / 2)
-      const x = clamp(cropT.x, -halfX, halfX)
-      const y = clamp(cropT.y, -halfY, halfY)
-      const sz = boxC / k
-      const cx = iw / 2 - x / k
-      const cy = ih / 2 - y / k
-      const dpr = Math.min(window.devicePixelRatio || 1, 3)
-      const px = Math.round(boxC * dpr)
-      if (cv.width !== px || cv.height !== px) {
-        cv.width = px
-        cv.height = px
-      }
-      const ctx = cv.getContext("2d")
-      if (!ctx) return
-      ctx.clearRect(0, 0, cv.width, cv.height)
-      ctx.drawImage(img, cx - sz / 2, cy - sz / 2, sz, sz, 0, 0, cv.width, cv.height)
-      setCropErr(null)
-    } catch (e) {
-      setCropErr(e instanceof Error ? e.message : String(e))
+    const iw = cropDims.iw
+    const ih = cropDims.ih
+    const k0 = Math.max(boxC / iw, boxC / ih)
+    const f = clamp(cropT.f, 1, 4)
+    const k = k0 * f
+    const halfX = Math.max(0, (iw * k - boxC) / 2)
+    const halfY = Math.max(0, (ih * k - boxC) / 2)
+    const x = clamp(cropT.x, -halfX, halfX)
+    const y = clamp(cropT.y, -halfY, halfY)
+    const sz = boxC / k
+    const cx = iw / 2 - x / k
+    const cy = ih / 2 - y / k
+    const dpr = Math.min(window.devicePixelRatio || 1, 3)
+    const px = Math.round(boxC * dpr)
+    if (cv.width !== px || cv.height !== px) {
+      cv.width = px
+      cv.height = px
     }
+    const ctx = cv.getContext("2d")
+    if (!ctx) return
+    ctx.clearRect(0, 0, cv.width, cv.height)
+    ctx.drawImage(img, cx - sz / 2, cy - sz / 2, sz, sz, 0, 0, cv.width, cv.height)
   }, [crop, cropDims, boxC, cropT])
 
   const afterChange = (url: string | null, okTitle: string, okMsg: string) => {
@@ -299,7 +260,6 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
     setCropDims(null)
     setCropT({ x: 0, y: 0, f: 1 })
     setBoxC(0)
-    setCropErr(null)
     setCrop({ file, url: URL.createObjectURL(file) })
   }
 
@@ -311,33 +271,56 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
   }
 
   const onStagePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Pinch disabled by request: ignore any extra finger; only the first
+    // pointer drives single-finger pan (zoom via +/− buttons).
+    if (pointersRef.current.size >= 1) return
     try {
-      e.preventDefault()
-      e.stopPropagation()
-      // Pinch disabled by request: ignore any extra finger; only the first
-      // pointer drives single-finger pan (zoom via +/− buttons).
-      if (pointersRef.current.size >= 1) return
-      try {
-        ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-      } catch {}
-      const pt = { x: e.clientX, y: e.clientY }
-      pointersRef.current.set(e.pointerId, pt)
-      dragRef.current = pt
-    } catch (err) {
-      setCropErr(err instanceof Error ? err.message : String(err))
-    }
+      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    } catch {}
+    const pt = { x: e.clientX, y: e.clientY }
+    pointersRef.current.set(e.pointerId, pt)
+    dragRef.current = pt
   }
 
   const onStagePointerMove = (e: React.PointerEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const p = pointersRef.current.get(e.pointerId)
+    if (!p || !dragRef.current) return
+    const dx = e.clientX - dragRef.current.x
+    const dy = e.clientY - dragRef.current.y
+    dragRef.current = { x: e.clientX, y: e.clientY }
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) return
+    setCropT((t) => {
+      if (!cropDims || !boxC) return t
+      const k0 = Math.max(boxC / cropDims.iw, boxC / cropDims.ih)
+      const k = k0 * t.f
+      if (!Number.isFinite(k) || k <= 0) return t
+      const hx = Math.max(0, (cropDims.iw * k - boxC) / 2)
+      const hy = Math.max(0, (cropDims.ih * k - boxC) / 2)
+      const nextX = clamp(t.x + dx, -hx, hx)
+      const nextY = clamp(t.y + dy, -hy, hy)
+      return {
+        ...t,
+        x: Number.isFinite(nextX) ? nextX : 0,
+        y: Number.isFinite(nextY) ? nextY : 0,
+      }
+    })
+  }
+
+  const onStagePointerUp = (e: React.PointerEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     try {
-      e.preventDefault()
-      e.stopPropagation()
-      const p = pointersRef.current.get(e.pointerId)
-      if (!p || !dragRef.current) return
-      const dx = e.clientX - dragRef.current.x
-      const dy = e.clientY - dragRef.current.y
-      dragRef.current = { x: e.clientX, y: e.clientY }
-      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return
+      if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
+        ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
+      }
+    } catch {}
+    pointersRef.current.delete(e.pointerId)
+    if (pointersRef.current.size === 0) {
+      dragRef.current = null
       setCropT((t) => {
         if (!cropDims || !boxC) return t
         const k0 = Math.max(boxC / cropDims.iw, boxC / cropDims.ih)
@@ -345,49 +328,14 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
         if (!Number.isFinite(k) || k <= 0) return t
         const hx = Math.max(0, (cropDims.iw * k - boxC) / 2)
         const hy = Math.max(0, (cropDims.ih * k - boxC) / 2)
-        const nextX = clamp(t.x + dx, -hx, hx)
-        const nextY = clamp(t.y + dy, -hy, hy)
+        const nextX = clamp(t.x, -hx, hx)
+        const nextY = clamp(t.y, -hy, hy)
         return {
           ...t,
           x: Number.isFinite(nextX) ? nextX : 0,
           y: Number.isFinite(nextY) ? nextY : 0,
         }
       })
-    } catch (err) {
-      setCropErr(err instanceof Error ? err.message : String(err))
-    }
-  }
-
-  const onStagePointerUp = (e: React.PointerEvent) => {
-    try {
-      e.preventDefault()
-      e.stopPropagation()
-      try {
-        if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
-          ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
-        }
-      } catch {}
-      pointersRef.current.delete(e.pointerId)
-      if (pointersRef.current.size === 0) {
-        dragRef.current = null
-        setCropT((t) => {
-          if (!cropDims || !boxC) return t
-          const k0 = Math.max(boxC / cropDims.iw, boxC / cropDims.ih)
-          const k = k0 * t.f
-          if (!Number.isFinite(k) || k <= 0) return t
-          const hx = Math.max(0, (cropDims.iw * k - boxC) / 2)
-          const hy = Math.max(0, (cropDims.ih * k - boxC) / 2)
-          const nextX = clamp(t.x, -hx, hx)
-          const nextY = clamp(t.y, -hy, hy)
-          return {
-            ...t,
-            x: Number.isFinite(nextX) ? nextX : 0,
-            y: Number.isFinite(nextY) ? nextY : 0,
-          }
-        })
-      }
-    } catch (err) {
-      setCropErr(err instanceof Error ? err.message : String(err))
     }
   }
 
@@ -398,7 +346,6 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
     pointersRef.current.clear()
     setCropDims(null)
     setCropT({ x: 0, y: 0, f: 1 })
-    setCropErr(null)
     if (crop) {
       URL.revokeObjectURL(crop.url)
       setCrop(null)
@@ -452,7 +399,6 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
   if (!open) return null
 
   return createPortal(
-    <CropErrorBoundary>
       <>
         <input ref={cameraRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={pick(cameraRef)} disabled={busy} />
       <input ref={galleryRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={pick(galleryRef)} disabled={busy} />
@@ -534,12 +480,6 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
             </button>
           </div>
 
-          {cropErr && (
-            <div className="mx-4 mb-2 rounded-xl border border-red-500/40 bg-red-500/15 px-3 py-2 text-center text-xs font-bold text-red-200">
-              Ralat: {cropErr}
-            </div>
-          )}
-
           <div className="flex flex-1 items-center justify-center px-6 touch-none select-none">
             <div
               ref={cropBoxRef}
@@ -594,12 +534,10 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
                 <ZoomIn size={18} />
               </button>
             </div>
-            <div className="mt-2 text-center text-[9px] font-bold text-white/25">FIX-2F-p2 · versi terkini</div>
           </div>
         </div>
       )}
-      </>
-    </CropErrorBoundary>,
+      </>,
     document.body
   )
 }
