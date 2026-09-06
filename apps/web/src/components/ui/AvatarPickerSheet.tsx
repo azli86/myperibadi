@@ -83,6 +83,22 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
     }
   }, [crop])
 
+  // Block iOS Safari legacy page-pinch (gesture events) while cropping — releasing
+  // two fingers otherwise zooms the whole page and the fixed overlay goes blank.
+  useEffect(() => {
+    if (!crop) return
+    const stop = (e: Event) => e.preventDefault()
+    const opts: AddEventListenerOptions = { passive: false }
+    document.addEventListener("gesturestart", stop, opts)
+    document.addEventListener("gesturechange", stop, opts)
+    document.addEventListener("gestureend", stop, opts)
+    return () => {
+      document.removeEventListener("gesturestart", stop)
+      document.removeEventListener("gesturechange", stop)
+      document.removeEventListener("gestureend", stop)
+    }
+  }, [crop])
+
   const afterChange = (url: string | null, okTitle: string, okMsg: string) => {
     invalidateApiCache("/api/users/me", getAccessToken())
     window.dispatchEvent(new Event("avatar-updated"))
@@ -415,7 +431,10 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
                   notify(tr("Tidak Boleh Baca", "Cannot Read"), tr("Gambar tidak dapat dibuka. Cuba format JPG/PNG/WEBP.", "Image cannot be opened. Try JPG/PNG/WEBP format."), "error")
                   cancelCrop()
                 }}
-                className={"absolute left-1/2 top-1/2 max-w-none select-none" + (cropDims ? "" : " opacity-0")}
+                className={
+                  "pointer-events-none touch-none absolute left-1/2 top-1/2 max-w-none select-none" +
+                  (cropDims ? "" : " opacity-0")
+                }
                 style={
                   cropDims
                     ? {
