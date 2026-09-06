@@ -112,6 +112,7 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
   const [cropDims, setCropDims] = useState<{ iw: number; ih: number } | null>(null)
   const [cropT, setCropT] = useState({ x: 0, y: 0, f: 1 })
   const [boxC, setBoxC] = useState(0)
+  const [cropErr, setCropErr] = useState<string | null>(null)
   const cropBoxRef = useRef<HTMLDivElement>(null)
   const cropImgRef = useRef<HTMLImageElement>(null)
   const previewRef = useRef<HTMLCanvasElement>(null)
@@ -184,28 +185,33 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
     const cv = previewRef.current
     const img = cropImgRef.current
     if (!cv || !img || !cropDims || !boxC) return
-    const iw = cropDims.iw
-    const ih = cropDims.ih
-    const k0 = Math.max(boxC / iw, boxC / ih)
-    const f = clamp(cropT.f, 1, 4)
-    const k = k0 * f
-    const halfX = Math.max(0, (iw * k - boxC) / 2)
-    const halfY = Math.max(0, (ih * k - boxC) / 2)
-    const x = clamp(cropT.x, -halfX, halfX)
-    const y = clamp(cropT.y, -halfY, halfY)
-    const sz = boxC / k
-    const cx = iw / 2 - x / k
-    const cy = ih / 2 - y / k
-    const dpr = Math.min(window.devicePixelRatio || 1, 3)
-    const px = Math.round(boxC * dpr)
-    if (cv.width !== px || cv.height !== px) {
-      cv.width = px
-      cv.height = px
+    try {
+      const iw = cropDims.iw
+      const ih = cropDims.ih
+      const k0 = Math.max(boxC / iw, boxC / ih)
+      const f = clamp(cropT.f, 1, 4)
+      const k = k0 * f
+      const halfX = Math.max(0, (iw * k - boxC) / 2)
+      const halfY = Math.max(0, (ih * k - boxC) / 2)
+      const x = clamp(cropT.x, -halfX, halfX)
+      const y = clamp(cropT.y, -halfY, halfY)
+      const sz = boxC / k
+      const cx = iw / 2 - x / k
+      const cy = ih / 2 - y / k
+      const dpr = Math.min(window.devicePixelRatio || 1, 3)
+      const px = Math.round(boxC * dpr)
+      if (cv.width !== px || cv.height !== px) {
+        cv.width = px
+        cv.height = px
+      }
+      const ctx = cv.getContext("2d")
+      if (!ctx) return
+      ctx.clearRect(0, 0, cv.width, cv.height)
+      ctx.drawImage(img, cx - sz / 2, cy - sz / 2, sz, sz, 0, 0, cv.width, cv.height)
+      setCropErr(null)
+    } catch (e) {
+      setCropErr(e instanceof Error ? e.message : String(e))
     }
-    const ctx = cv.getContext("2d")
-    if (!ctx) return
-    ctx.clearRect(0, 0, cv.width, cv.height)
-    ctx.drawImage(img, cx - sz / 2, cy - sz / 2, sz, sz, 0, 0, cv.width, cv.height)
   }, [crop, cropDims, boxC, cropT])
 
   const afterChange = (url: string | null, okTitle: string, okMsg: string) => {
@@ -299,6 +305,7 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
     setCropDims(null)
     setCropT({ x: 0, y: 0, f: 1 })
     setBoxC(0)
+    setCropErr(null)
     setCrop({ file, url: URL.createObjectURL(file) })
   }
 
@@ -310,96 +317,107 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
   }
 
   const onStagePointerDown = (e: React.PointerEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
     try {
-      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
-    } catch {}
-    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-    if (pointersRef.current.size === 2) {
-      const vals = [...pointersRef.current.values()]
-      pinchRef.current = { d0: dist(vals[0], vals[1]), f0: cropT.f }
-      dragRef.current = null
-    } else if (pointersRef.current.size === 1) {
-      const p = pointersRef.current.get(e.pointerId)!
-      dragRef.current = { x: p.x, y: p.y }
-      pinchRef.current = null
+      e.preventDefault()
+      e.stopPropagation()
+      try {
+        ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+      } catch {}
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (pointersRef.current.size === 2) {
+        const vals = [...pointersRef.current.values()]
+        pinchRef.current = { d0: dist(vals[0], vals[1]), f0: cropT.f }
+        dragRef.current = null
+      } else if (pointersRef.current.size === 1) {
+        const p = pointersRef.current.get(e.pointerId)!
+        dragRef.current = { x: p.x, y: p.y }
+        pinchRef.current = null
+      }
+    } catch (e) {
+      setCropErr(e instanceof Error ? e.message : String(e))
     }
   }
 
   const onStagePointerMove = (e: React.PointerEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const p = pointersRef.current.get(e.pointerId)
-    if (!p) return
-    p.x = e.clientX
-    p.y = e.clientY
-    if (pinchRef.current && pointersRef.current.size >= 2) {
-      const vals = [...pointersRef.current.values()]
-      if (vals.length >= 2) {
-        const d = dist(vals[0], vals[1])
-        if (pinchRef.current.d0 > 0 && Number.isFinite(d)) {
-          setCropT((t) => {
-            const nextF = clamp((pinchRef.current!.f0 * d) / pinchRef.current!.d0, 1, 4)
-            return { ...t, f: Number.isFinite(nextF) ? nextF : t.f }
-          })
+    try {
+      e.preventDefault()
+      e.stopPropagation()
+      const p = pointersRef.current.get(e.pointerId)
+      if (!p) return
+      p.x = e.clientX
+      p.y = e.clientY
+      if (pinchRef.current && pointersRef.current.size >= 2) {
+        const vals = [...pointersRef.current.values()]
+        if (vals.length >= 2) {
+          const d = dist(vals[0], vals[1])
+          if (pinchRef.current.d0 > 0 && Number.isFinite(d)) {
+            setCropT((t) => {
+              const nextF = clamp((pinchRef.current!.f0 * d) / pinchRef.current!.d0, 1, 4)
+              return { ...t, f: Number.isFinite(nextF) ? nextF : t.f }
+            })
+          }
         }
+      } else if (dragRef.current && pointersRef.current.size === 1) {
+        const dx = e.clientX - dragRef.current.x
+        const dy = e.clientY - dragRef.current.y
+        dragRef.current = { x: e.clientX, y: e.clientY }
+        if (!Number.isFinite(dx) || !Number.isFinite(dy)) return
+        setCropT((t) => {
+          if (!cropDims || !boxC) return t
+          const k0 = Math.max(boxC / cropDims.iw, boxC / cropDims.ih)
+          const k = k0 * t.f
+          if (!Number.isFinite(k) || k <= 0) return t
+          const hx = Math.max(0, (cropDims.iw * k - boxC) / 2)
+          const hy = Math.max(0, (cropDims.ih * k - boxC) / 2)
+          const nextX = clamp(t.x + dx, -hx, hx)
+          const nextY = clamp(t.y + dy, -hy, hy)
+          return {
+            ...t,
+            x: Number.isFinite(nextX) ? nextX : 0,
+            y: Number.isFinite(nextY) ? nextY : 0,
+          }
+        })
       }
-    } else if (dragRef.current && pointersRef.current.size === 1) {
-      const dx = e.clientX - dragRef.current.x
-      const dy = e.clientY - dragRef.current.y
-      dragRef.current = { x: e.clientX, y: e.clientY }
-      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return
-      setCropT((t) => {
-        if (!cropDims || !boxC) return t
-        const k0 = Math.max(boxC / cropDims.iw, boxC / cropDims.ih)
-        const k = k0 * t.f
-        if (!Number.isFinite(k) || k <= 0) return t
-        const hx = Math.max(0, (cropDims.iw * k - boxC) / 2)
-        const hy = Math.max(0, (cropDims.ih * k - boxC) / 2)
-        const nextX = clamp(t.x + dx, -hx, hx)
-        const nextY = clamp(t.y + dy, -hy, hy)
-        return {
-          ...t,
-          x: Number.isFinite(nextX) ? nextX : 0,
-          y: Number.isFinite(nextY) ? nextY : 0,
-        }
-      })
+    } catch (e) {
+      setCropErr(e instanceof Error ? e.message : String(e))
     }
   }
 
   const onStagePointerUp = (e: React.PointerEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
     try {
-      if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
-        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
-      }
-    } catch {}
-    pointersRef.current.delete(e.pointerId)
-    if (pointersRef.current.size === 1) {
-      const [p] = [...pointersRef.current.values()]
-      dragRef.current = p ? { x: p.x, y: p.y } : null
-      pinchRef.current = null
-    } else if (pointersRef.current.size === 0) {
-      dragRef.current = null
-      pinchRef.current = null
-      // Settle any residual position cleanly within bounds
-      setCropT((t) => {
-        if (!cropDims || !boxC) return t
-        const k0 = Math.max(boxC / cropDims.iw, boxC / cropDims.ih)
-        const k = k0 * t.f
-        if (!Number.isFinite(k) || k <= 0) return t
-        const hx = Math.max(0, (cropDims.iw * k - boxC) / 2)
-        const hy = Math.max(0, (cropDims.ih * k - boxC) / 2)
-        const nextX = clamp(t.x, -hx, hx)
-        const nextY = clamp(t.y, -hy, hy)
-        return {
-          ...t,
-          x: Number.isFinite(nextX) ? nextX : 0,
-          y: Number.isFinite(nextY) ? nextY : 0,
+      e.preventDefault()
+      e.stopPropagation()
+      try {
+        if ((e.currentTarget as HTMLElement).hasPointerCapture(e.pointerId)) {
+          ;(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId)
         }
-      })
+      } catch {}
+      pointersRef.current.delete(e.pointerId)
+      if (pointersRef.current.size === 1) {
+        const [p] = [...pointersRef.current.values()]
+        dragRef.current = p ? { x: p.x, y: p.y } : null
+        pinchRef.current = null
+      } else if (pointersRef.current.size === 0) {
+        dragRef.current = null
+        pinchRef.current = null
+        setCropT((t) => {
+          if (!cropDims || !boxC) return t
+          const k0 = Math.max(boxC / cropDims.iw, boxC / cropDims.ih)
+          const k = k0 * t.f
+          if (!Number.isFinite(k) || k <= 0) return t
+          const hx = Math.max(0, (cropDims.iw * k - boxC) / 2)
+          const hy = Math.max(0, (cropDims.ih * k - boxC) / 2)
+          const nextX = clamp(t.x, -hx, hx)
+          const nextY = clamp(t.y, -hy, hy)
+          return {
+            ...t,
+            x: Number.isFinite(nextX) ? nextX : 0,
+            y: Number.isFinite(nextY) ? nextY : 0,
+          }
+        })
+      }
+    } catch (e) {
+      setCropErr(e instanceof Error ? e.message : String(e))
     }
   }
 
@@ -411,6 +429,7 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
     pointersRef.current.clear()
     setCropDims(null)
     setCropT({ x: 0, y: 0, f: 1 })
+    setCropErr(null)
     if (crop) {
       URL.revokeObjectURL(crop.url)
       setCrop(null)
@@ -545,6 +564,12 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
               )}
             </button>
           </div>
+
+          {cropErr && (
+            <div className="mx-4 mb-2 rounded-xl border border-red-500/40 bg-red-500/15 px-3 py-2 text-center text-xs font-bold text-red-200">
+              Ralat: {cropErr}
+            </div>
+          )}
 
           <div className="flex flex-1 items-center justify-center px-6 touch-none select-none">
             <div
