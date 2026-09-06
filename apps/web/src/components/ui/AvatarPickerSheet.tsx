@@ -1,11 +1,13 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { Camera, Image as ImageIcon, Trash2, Loader2, X } from "lucide-react"
+import { createPortal } from "react-dom"
+import { Camera, Image as ImageIcon, Trash2, Loader2 } from "lucide-react"
 import { useLang } from "@/lib/lang"
 import { getAccessToken } from "@/lib/auth-session"
 import { invalidateApiCache } from "@/lib/api-cache"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
+import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 
 type Props = {
   open: boolean
@@ -17,10 +19,12 @@ type Props = {
 
 export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged, notify }: Props) {
   const { lang } = useLang()
-  const tr = (bm: string, en: string) => (lang === "BM" ? bm : en)
+  const isBm = lang === "BM"
+  const tr = (bm: string, en: string) => (isBm ? bm : en)
   const [busy, setBusy] = useState(false)
   const cameraRef = useRef<HTMLInputElement>(null)
   const galleryRef = useRef<HTMLInputElement>(null)
+  const swipe = useSwipeDownToClose(() => !busy && onClose())
 
   const afterChange = (url: string | null, okTitle: string, okMsg: string) => {
     invalidateApiCache("/api/users/me", getAccessToken())
@@ -98,24 +102,29 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
   const removeOpt =
     "flex w-full items-center justify-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-3 text-sm font-bold text-red-600 dark:text-red-400 transition active:scale-[0.98] disabled:opacity-50"
 
-  return (
+  if (!open) return null
+
+  return createPortal(
     <>
       <input ref={cameraRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={pick(cameraRef)} disabled={busy} />
       <input ref={galleryRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={pick(galleryRef)} disabled={busy} />
-      <Sheet open={open} onOpenChange={(o) => {
-        if (!o && !busy) onClose()
-      }}>
-        <SheetContent side="bottom" className="app-sheet-panel w-full max-h-[85dvh] overflow-y-auto border-t border-[var(--border)] bg-[var(--card)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
-          <div className="mx-auto w-full max-w-md px-1.5">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-black text-[var(--text)]">{tr("Gambar Profil", "Profile Picture")}</h2>
-                <p className="text-xs text-[var(--muted)]">{tr("Pilih sumber imej", "Choose an image source")}</p>
-              </div>
-              <button type="button" onClick={() => !busy && onClose()} aria-label={tr("Tutup", "Close")} className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] active:scale-95 transition">
-                <X size={18} />
-              </button>
-            </div>
+      <div
+        className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center"
+        onClick={() => !busy && onClose()}
+        onTouchMove={(e) => e.preventDefault()}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          data-swipe-sheet
+          {...swipe}
+          className="app-sheet-panel w-full max-h-[82dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[26rem]"
+        >
+          <AppSheetHeader
+            title={tr("Gambar Profil", "Profile Picture")}
+            subtitle={tr("Pilih sumber imej", "Choose an image source")}
+            onClose={() => !busy && onClose()}
+          />
+          <div className="px-4 pt-4">
             <div className="grid grid-cols-2 gap-2.5">
               <button type="button" className={gridOpt} disabled={busy} onClick={() => cameraRef.current?.click()}>
                 <Camera size={22} className="shrink-0 text-[var(--text)]" />
@@ -141,8 +150,9 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
               </div>
             )}
           </div>
-        </SheetContent>
-      </Sheet>
-    </>
+        </div>
+      </div>
+    </>,
+    document.body
   )
 }
