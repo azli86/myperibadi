@@ -598,6 +598,7 @@ const currentCycleKeyStr = useMemo(
 )
  const [txnRefreshFlag, setTxnRefreshFlag] = useState(0)
  const prevDeletedRef = useRef<string | null>(null)
+ const silentPollRef = useRef(false)
  useEffect(() => {
  const cur = searchParams.get("deleted")
  const justArrived = cur === "success" && prevDeletedRef.current !== "success"
@@ -627,6 +628,24 @@ const currentCycleKeyStr = useMemo(
  }
  window.addEventListener("message", onMessage)
  return () => window.removeEventListener("message", onMessage)
+ }, [])
+
+ // Live update: silent auto-refetch on window refresh events + periodic poll.
+ useEffect(() => {
+   const refetch = () => {
+     silentPollRef.current = true
+     setTxnRefreshFlag((f) => f + 1)
+   }
+   window.addEventListener("refreshData", refetch)
+   window.addEventListener("app:data-changed", refetch)
+   const timer = window.setInterval(() => {
+     if (document.visibilityState === "visible") refetch()
+   }, 30000)
+   return () => {
+     window.removeEventListener("refreshData", refetch)
+     window.removeEventListener("app:data-changed", refetch)
+     window.clearInterval(timer)
+   }
  }, [])
 
  const currentMonthInKualaLumpur = new Intl.DateTimeFormat("en-CA", {
@@ -685,8 +704,10 @@ const currentCycleKeyStr = useMemo(
  if (!selectedMonth) return
 
  const fetchTxns = async () => {
+ const silent = silentPollRef.current
+ silentPollRef.current = false
  try {
- setLoading(true)
+ if (!silent) setLoading(true)
  setError(null)
  const token = getAccessToken()
  const monthBounds = resolveMonthBounds(selectedMonth)
