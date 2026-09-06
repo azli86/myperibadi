@@ -2437,12 +2437,7 @@ export default function Dashboard() {
       {/* ─── MOBILE VIEW (md:hidden) ─── */}
       <div className="md:hidden space-y-5 pb-16 text-[0.8125rem]">
         <div className="-mt-[calc(env(safe-area-inset-top,0px)+0.75rem)]">
-          <div className="px-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)]">
-            {/* Header: clock + weather only (avatar, name, badges, donate removed on mobile) */}
-            <div className="mb-5">
-              <WeatherClockMini lang={lang} />
-            </div>
-          </div>
+          <div className="px-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)]" aria-hidden="true" />
 
           {/* Balance Hero Card — Modern Fintech Style */}
           <div className="relative px-1">
