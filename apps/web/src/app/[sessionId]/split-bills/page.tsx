@@ -120,6 +120,26 @@ export default function SplitBillsPage() {
   const [loading, setLoading] = useState(true)
   const [hasLoaded, setHasLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [kbOpen, setKbOpen] = useState(false)
+  useEffect(() => {
+    const textFocused = { current: false }
+    const isTextish = (el: EventTarget | null) => !!el && el instanceof HTMLElement && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")
+    const sync = () => {
+      const vv = window.visualViewport
+      const shrunk = vv ? window.innerHeight - vv.height > 120 : false
+      setKbOpen(textFocused.current && shrunk)
+    }
+    const onIn = (e: FocusEvent) => { textFocused.current = isTextish(e.target); sync() }
+    const onOut = (e: FocusEvent) => { if (!isTextish(e.relatedTarget)) textFocused.current = false; sync() }
+    document.addEventListener("focusin", onIn)
+    document.addEventListener("focusout", onOut)
+    window.visualViewport?.addEventListener("resize", sync)
+    return () => {
+      document.removeEventListener("focusin", onIn)
+      document.removeEventListener("focusout", onOut)
+      window.visualViewport?.removeEventListener("resize", sync)
+    }
+  }, [])
   const [filter, setFilter] = useState<"all" | "active" | "partial" | "completed">("all")
   const [search, setSearch] = useState("")
 
@@ -1229,7 +1249,7 @@ export default function SplitBillsPage() {
                   </div>
 
                   {/* Sticky Footer */}
-                  <div className="flex items-center gap-3 border-t border-[var(--border)] bg-[var(--sheet-bg)] p-4">
+                  <div className={cn("items-center gap-3 border-t border-[var(--border)] bg-[var(--sheet-bg)] p-4", kbOpen ? "hidden" : "flex")}>
                     <button
                       type="button"
                       onClick={requestCreateClose}
@@ -1638,7 +1658,7 @@ export default function SplitBillsPage() {
                   </div>
 
                   {/* Sticky Footer */}
-                  <div className="flex items-center gap-3 border-t border-[var(--border)] bg-[var(--sheet-bg)] p-4">
+                  <div className={cn("items-center gap-3 border-t border-[var(--border)] bg-[var(--sheet-bg)] p-4", kbOpen ? "hidden" : "flex")}>
                     <button
                       type="button"
                       onClick={requestPaymentClose}
