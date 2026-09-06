@@ -2438,41 +2438,9 @@ export default function Dashboard() {
       <div className="md:hidden space-y-5 pb-16 text-[0.8125rem]">
         <div className="-mt-[calc(env(safe-area-inset-top,0px)+0.75rem)]">
           <div className="px-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)]">
-            {/* Header: weather replaces avatar, name stays */}
-            <div className="mb-5 flex items-center justify-between gap-3">
-              <WeatherClockMini
-                lang={lang}
-                title={
-                  <div className="mt-0.5 flex min-w-0 items-center gap-2.5">
-                    <UserAvatar name={displayName} size={34} src={avatarUrl} />
-                    <h2 className="min-w-0 truncate text-2xl font-black leading-tight text-[var(--text)]">
-                      {displayName}
-                    </h2>
-                  </div>
-                }
-              />
-              <div className="flex shrink-0 items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setShowBadgeModal(true)}
-                  aria-label="Badges"
-                  className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] transition-all active:scale-90 hover:border-[var(--border-strong)] hover:text-[var(--text)]"
-                >
-                  <Award size={16} strokeWidth={2} />
-                  {unlockedBadges.length > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] px-1 text-[8px] font-bold text-white">
-                      {unlockedBadges.length}
-                    </span>
-                  )}
-                </button>
-                <Link
-                  href={`/${sessionId}/donate`}
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#262626] to-[#171717] text-white shadow-lg shadow-purple-500/20 active:scale-90 transition hover:shadow-purple-500/30"
-                  aria-label="Donate"
-                >
-                  <HeartHandshake size={16} strokeWidth={2.4} />
-                </Link>
-              </div>
+            {/* Header: clock + weather only (avatar, name, badges, donate removed on mobile) */}
+            <div className="mb-5">
+              <WeatherClockMini lang={lang} />
             </div>
           </div>
 

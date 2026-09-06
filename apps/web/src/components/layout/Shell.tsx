@@ -16,7 +16,6 @@ import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import {
   NavCalcIcon,
   NavHomeIcon,
-  NavMoreIcon,
   NavReceiptsIcon,
   NavTxnIcon,
   NavWalletIcon,
@@ -3732,8 +3731,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         : "text-[var(--bottom-nav-muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--bottom-nav-text)]",
                     )}
                   >
-                    <span className="relative inline-flex flex-col items-center">
-                      <NavMoreIcon active={showMobileMenu} size={28} />
+                    <span className="relative inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-[var(--border)] ring-2 ring-transparent transition-all duration-200 group-active:scale-95">
+                      <UserAvatar name={displayName} size={34} src={user?.avatar_url} />
                     </span>
                   </button>
                 </div>
