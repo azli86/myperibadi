@@ -59,10 +59,6 @@ const clamp = (v: number, min: number, max: number) => {
   const hi = Math.max(min, max)
   return Math.min(Math.max(v, lo), hi)
 }
-const dist = (a?: { x: number; y: number }, b?: { x: number; y: number }) => {
-  if (!a || !b) return 0
-  return Math.hypot(a.x - b.x, a.y - b.y)
-}
 
 // DEBUG: catch any client crash inside the picker/crop subtree so the whole app
 // isn't blown up by global-error (which shows a generic "500" screen). Instead
@@ -117,7 +113,6 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
   const cropImgRef = useRef<HTMLImageElement>(null)
   const previewRef = useRef<HTMLCanvasElement>(null)
   const pointersRef = useRef(new Map<number, { x: number; y: number }>())
-  const pinchRef = useRef<{ d0: number; f0: number } | null>(null)
   const dragRef = useRef<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
@@ -299,7 +294,6 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
       notify(tr("Format Tidak Sah", "Invalid Format"), tr("Sila muat naik format JPG, PNG atau WEBP.", "Please upload JPG, PNG or WEBP."), "error")
       return
     }
-    pinchRef.current = null
     dragRef.current = null
     pointersRef.current.clear()
     setCropDims(null)
@@ -320,21 +314,17 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
     try {
       e.preventDefault()
       e.stopPropagation()
+      // Pinch disabled by request: ignore any extra finger; only the first
+      // pointer drives single-finger pan (zoom via +/− buttons).
+      if (pointersRef.current.size >= 1) return
       try {
         ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
       } catch {}
-      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-      if (pointersRef.current.size === 2) {
-        const vals = [...pointersRef.current.values()]
-        pinchRef.current = { d0: dist(vals[0], vals[1]), f0: cropT.f }
-        dragRef.current = null
-      } else if (pointersRef.current.size === 1) {
-        const p = pointersRef.current.get(e.pointerId)!
-        dragRef.current = { x: p.x, y: p.y }
-        pinchRef.current = null
-      }
-    } catch (e) {
-      setCropErr(e instanceof Error ? e.message : String(e))
+      const pt = { x: e.clientX, y: e.clientY }
+      pointersRef.current.set(e.pointerId, pt)
+      dragRef.current = pt
+    } catch (err) {
+      setCropErr(err instanceof Error ? err.message : String(err))
     }
   }
 
@@ -343,43 +333,28 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
       e.preventDefault()
       e.stopPropagation()
       const p = pointersRef.current.get(e.pointerId)
-      if (!p) return
-      p.x = e.clientX
-      p.y = e.clientY
-      if (pinchRef.current && pointersRef.current.size >= 2) {
-        const vals = [...pointersRef.current.values()]
-        if (vals.length >= 2) {
-          const d = dist(vals[0], vals[1])
-          if (pinchRef.current.d0 > 0 && Number.isFinite(d)) {
-            setCropT((t) => {
-              const nextF = clamp((pinchRef.current!.f0 * d) / pinchRef.current!.d0, 1, 4)
-              return { ...t, f: Number.isFinite(nextF) ? nextF : t.f }
-            })
-          }
+      if (!p || !dragRef.current) return
+      const dx = e.clientX - dragRef.current.x
+      const dy = e.clientY - dragRef.current.y
+      dragRef.current = { x: e.clientX, y: e.clientY }
+      if (!Number.isFinite(dx) || !Number.isFinite(dy)) return
+      setCropT((t) => {
+        if (!cropDims || !boxC) return t
+        const k0 = Math.max(boxC / cropDims.iw, boxC / cropDims.ih)
+        const k = k0 * t.f
+        if (!Number.isFinite(k) || k <= 0) return t
+        const hx = Math.max(0, (cropDims.iw * k - boxC) / 2)
+        const hy = Math.max(0, (cropDims.ih * k - boxC) / 2)
+        const nextX = clamp(t.x + dx, -hx, hx)
+        const nextY = clamp(t.y + dy, -hy, hy)
+        return {
+          ...t,
+          x: Number.isFinite(nextX) ? nextX : 0,
+          y: Number.isFinite(nextY) ? nextY : 0,
         }
-      } else if (dragRef.current && pointersRef.current.size === 1) {
-        const dx = e.clientX - dragRef.current.x
-        const dy = e.clientY - dragRef.current.y
-        dragRef.current = { x: e.clientX, y: e.clientY }
-        if (!Number.isFinite(dx) || !Number.isFinite(dy)) return
-        setCropT((t) => {
-          if (!cropDims || !boxC) return t
-          const k0 = Math.max(boxC / cropDims.iw, boxC / cropDims.ih)
-          const k = k0 * t.f
-          if (!Number.isFinite(k) || k <= 0) return t
-          const hx = Math.max(0, (cropDims.iw * k - boxC) / 2)
-          const hy = Math.max(0, (cropDims.ih * k - boxC) / 2)
-          const nextX = clamp(t.x + dx, -hx, hx)
-          const nextY = clamp(t.y + dy, -hy, hy)
-          return {
-            ...t,
-            x: Number.isFinite(nextX) ? nextX : 0,
-            y: Number.isFinite(nextY) ? nextY : 0,
-          }
-        })
-      }
-    } catch (e) {
-      setCropErr(e instanceof Error ? e.message : String(e))
+      })
+    } catch (err) {
+      setCropErr(err instanceof Error ? err.message : String(err))
     }
   }
 
@@ -393,13 +368,8 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
         }
       } catch {}
       pointersRef.current.delete(e.pointerId)
-      if (pointersRef.current.size === 1) {
-        const [p] = [...pointersRef.current.values()]
-        dragRef.current = p ? { x: p.x, y: p.y } : null
-        pinchRef.current = null
-      } else if (pointersRef.current.size === 0) {
+      if (pointersRef.current.size === 0) {
         dragRef.current = null
-        pinchRef.current = null
         setCropT((t) => {
           if (!cropDims || !boxC) return t
           const k0 = Math.max(boxC / cropDims.iw, boxC / cropDims.ih)
@@ -416,15 +386,14 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
           }
         })
       }
-    } catch (e) {
-      setCropErr(e instanceof Error ? e.message : String(e))
+    } catch (err) {
+      setCropErr(err instanceof Error ? err.message : String(err))
     }
   }
 
   const zoomBy = (d: number) => setCropT((t) => ({ ...t, f: clamp(t.f + d, 1, 4) }))
 
   const cancelCrop = () => {
-    pinchRef.current = null
     dragRef.current = null
     pointersRef.current.clear()
     setCropDims(null)
@@ -613,7 +582,7 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
                 <ZoomOut size={18} />
               </button>
               <span className="px-2 text-xs font-semibold opacity-90">
-                {tr("Cubit atau seret untuk menyesuaikan", "Pinch or drag to adjust")}
+                {tr("Seret untuk gerak. Guna butang +/− untuk zum.", "Drag to move. Use +/− to zoom.")}
               </span>
               <button
                 type="button"
