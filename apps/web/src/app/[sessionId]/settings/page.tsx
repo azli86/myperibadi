@@ -592,17 +592,7 @@ export default function SettingsPage() {
         <section className="px-3 pt-1">
           <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-xs">
             {/* Cover Banner with Ambient Mesh Gradient */}
-            <div className="relative h-20 w-full bg-gradient-to-r from-emerald-600/20 via-teal-500/20 to-indigo-600/20 px-4 pt-3">
-              <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[0.65rem] font-bold text-emerald-600 dark:text-emerald-400 backdrop-blur-sm">
-                  <ShieldCheck size={11} />
-                  <span>MyPeribadi</span>
-                </span>
-                <span className="text-[0.65rem] font-semibold text-[var(--muted)]/80">
-                  {profile?.id ? `#${profile.id.slice(0, 6)}` : ""}
-                </span>
-              </div>
-            </div>
+            <div className="relative h-20 w-full bg-gradient-to-r from-emerald-600/20 via-teal-500/20 to-indigo-600/20" />
 
             {/* Profile Content Body */}
             <div className="px-4 pb-4">
