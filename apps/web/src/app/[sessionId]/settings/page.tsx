@@ -937,8 +937,117 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* ─── Left Column: Identity, Persona & Preferences (7 Cols) ─── */}
             <div className="lg:col-span-7 space-y-6">
+              {/* ─── Social Media Style Profile Hero (Desktop) ─── */}
+              <section className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
+                {/* Cover Banner with Ambient Mesh Gradient */}
+                <div className="relative h-28 w-full bg-gradient-to-r from-emerald-600/20 via-teal-500/20 to-indigo-600/20" />
+
+                <div className="px-6 pb-6">
+                  <div className="flex items-end justify-between">
+                    <div className="-mt-12 relative shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setAvatarSheetOpen(true)}
+                        className="group relative block rounded-full p-[3px] bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 transition hover:opacity-90"
+                        title={tr("Tukar gambar profil", "Change profile photo")}
+                      >
+                        <div className="rounded-full bg-[var(--card)] p-[3px]">
+                          <UserAvatar
+                            name={name || profile?.name}
+                            size={92}
+                            src={profile?.avatar_url}
+                            className="rounded-full object-cover"
+                          />
+                        </div>
+                        <span className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] border-2 border-[var(--card)] shadow-xs">
+                          <Camera size={13} />
+                        </span>
+                      </button>
+                    </div>
+
+                    <div className="flex flex-1 items-center justify-around pb-1 pl-6 max-w-xl">
+                      <div className="flex flex-col items-center text-center">
+                        <span className="text-lg font-black text-[var(--text)]">{accounts.length || 1}</span>
+                        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                          {tr("Akaun", "Accounts")}
+                        </span>
+                      </div>
+                      <div className="h-6 w-px bg-[var(--divider)]" />
+                      <div className="flex flex-col items-center text-center">
+                        <span className="text-lg font-black text-[var(--text)]">
+                          {cycleMode === "category" ? tr("Gaji", "Salary") : `H-${cycleStartDay}`}
+                        </span>
+                        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                          {tr("Kitaran", "Cycle")}
+                        </span>
+                      </div>
+                      <div className="h-6 w-px bg-[var(--divider)]" />
+                      <div className="flex flex-col items-center text-center">
+                        <span className="inline-flex items-center gap-1.5 text-lg font-black text-emerald-600 dark:text-emerald-400">
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-sm">{tr("Aktif", "Active")}</span>
+                        </span>
+                        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                          {tr("Status", "Status")}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2">
+                    <h2 className="text-2xl font-black tracking-tight text-[var(--text)]">
+                      {showProfileSkeleton ? "..." : profile?.name || tr("Pengguna", "User")}
+                    </h2>
+                    <span className="text-emerald-500" title={tr("Disahkan", "Verified")}>
+                      <ShieldCheck size={18} />
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm font-medium text-[var(--muted)] truncate">{profile?.email || "—"}</p>
+
+                  <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/60 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                        <Bot size={13} className="text-emerald-500" />
+                        <span>{tr("Personaliti Bot AI", "AI Bot Persona")}</span>
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-2.5 py-0.5 text-xs font-bold text-[var(--text)] shadow-2xs">
+                        <Sparkles size={11} className="text-amber-500" />
+                        <span className="truncate max-w-[200px]">
+                          {profile?.bot_personality || tr("Personaliti Mesra", "Friendly Tone")}
+                        </span>
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-[0.78rem] text-[var(--muted)] leading-relaxed">
+                      {tr(
+                        "Gaya interaksi & nada maklum balas AI kewangan anda di WhatsApp & Telegram.",
+                        "Your financial AI companion's response tone on WhatsApp & Telegram."
+                      )}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById("edit-profile")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                      className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-tint)] py-2.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95 shadow-2xs"
+                    >
+                      <PencilLine size={13} />
+                      <span>{tr("Edit Profil", "Edit Profile")}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById("change-email")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                      className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-tint)] py-2.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95 shadow-2xs"
+                    >
+                      <MailCheck size={13} />
+                      <span>{tr("Tukar E-mel", "Change Email")}</span>
+                    </button>
+                  </div>
+                </div>
+              </section>
+
               {/* Card 1: Profile & Identity Hero */}
-              <section className="rounded-3xl border border-[var(--border)] bg-gradient-to-br from-[var(--card)] via-[var(--card)] to-[var(--surface-tint)] p-6 shadow-sm space-y-6">
+              <section id="edit-profile" className="rounded-3xl border border-[var(--border)] bg-gradient-to-br from-[var(--card)] via-[var(--card)] to-[var(--surface-tint)] p-6 shadow-sm space-y-6">
                 <div className="flex items-center justify-between border-b border-[var(--divider)] pb-4">
                   <div className="flex items-center gap-3">
                     <div className="relative">
@@ -1037,7 +1146,7 @@ export default function SettingsPage() {
               </section>
 
               {/* Card 2: Change Email */}
-              <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-4">
+              <section id="change-email" className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-4">
                 <div className="flex items-center gap-3 border-b border-[var(--divider)] pb-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)] border border-[var(--border)]">
                     <MailCheck size={18} />
