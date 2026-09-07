@@ -39,9 +39,21 @@ import {
   Zap,
 } from "lucide-react"
 import { useLang } from "@/lib/lang"
+import { useTheme } from "@/components/theme/ThemeProvider"
 import { cn } from "@/lib/utils"
 import { usePageAlert } from "@/hooks/usePageAlert"
 import "leaflet/dist/leaflet.css"
+
+// Tile providers: street tiles follow app theme (dark/light), satellite stays ArcGIS
+const ARCGIS_TILES =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+const OSM_LIGHT_TILES = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+const CARTO_DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
+
+function buildTileUrl(mode: "street" | "satellite", dark: boolean): string {
+  if (mode === "satellite") return ARCGIS_TILES
+  return dark ? CARTO_DARK_TILES : OSM_LIGHT_TILES
+}
 
 interface LatLngPoint {
   lat: number
@@ -108,6 +120,8 @@ export default function HealthTrackingPage() {
   const router = useRouter()
   const { lang } = useLang()
   const isBm = lang === "BM"
+  const { resolvedTheme } = useTheme()
+  const darkTiles = resolvedTheme === "dark"
   const sessionId = (params.sessionId as string) || ""
   const { showAlert, alertModal } = usePageAlert(lang)
 
@@ -202,12 +216,7 @@ export default function HealthTrackingPage() {
         attributionControl: false,
       })
 
-      const tileUrl =
-        tileMode === "satellite"
-          ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-          : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-
-      const tileLayer = L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(map)
+      const tileLayer = L.tileLayer(buildTileUrl(tileMode, darkTiles), { maxZoom: 19, subdomains: "abcd" }).addTo(map)
       tileLayerRef.current = tileLayer
       mapInstanceRef.current = map
 
@@ -235,7 +244,7 @@ export default function HealthTrackingPage() {
         mapInstanceRef.current = null
       }
     }
-  }, [tileMode])
+  }, [tileMode, darkTiles])
 
   // Switch Map Tile Layer
   const switchTileLayer = useCallback((mode: "street" | "satellite") => {
@@ -245,13 +254,10 @@ export default function HealthTrackingPage() {
     if (tileLayerRef.current) {
       mapInstanceRef.current.removeLayer(tileLayerRef.current)
     }
-    const tileUrl =
-      mode === "satellite"
-        ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-        : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-    const newLayer = L.tileLayer(tileUrl, { maxZoom: 19 }).addTo(mapInstanceRef.current)
+    const tileUrl = buildTileUrl(mode, darkTiles)
+    const newLayer = L.tileLayer(tileUrl, { maxZoom: 19, subdomains: "abcd" }).addTo(mapInstanceRef.current)
     tileLayerRef.current = newLayer
-  }, [])
+  }, [darkTiles])
 
   // Center Map to current user position
   const centerOnUser = useCallback(() => {
@@ -390,8 +396,8 @@ export default function HealthTrackingPage() {
               className: "run-user-marker",
               html: `
                 <div class="relative flex h-8 w-8 items-center justify-center">
-                  <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-80"></span>
-                  <span class="relative inline-flex h-5 w-5 rounded-full border-2 border-white bg-gradient-to-tr from-orange-600 to-amber-500 shadow-xl"></span>
+                  <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-80"></span>
+                  <span class="relative inline-flex h-5 w-5 rounded-full border-2 border-white bg-gradient-to-tr from-sky-500 to-indigo-500 shadow-xl"></span>
                 </div>
               `,
               iconSize: [32, 32],
@@ -406,9 +412,9 @@ export default function HealthTrackingPage() {
           if (!accuracyCircleRef.current) {
             accuracyCircleRef.current = L.circle(latLng, {
               radius: accuracy || 15,
-              color: "#f97316",
-              fillColor: "#fb923c",
-              fillOpacity: 0.15,
+              color: "#38bdf8",
+              fillColor: "#0ea5e9",
+              fillOpacity: 0.12,
               weight: 1.5,
             }).addTo(mapInstanceRef.current)
           } else {
@@ -434,7 +440,7 @@ export default function HealthTrackingPage() {
           // Dynamic Route Polyline
           if (!polylineRef.current) {
             polylineRef.current = L.polyline([[latitude, longitude]], {
-              color: "#f97316",
+              color: "#38bdf8",
               weight: 6,
               opacity: 0.95,
               lineCap: "round",
@@ -648,48 +654,53 @@ export default function HealthTrackingPage() {
   }, [])
 
   return (
-    <div className="flex min-h-screen flex-col bg-[var(--page-bg)] text-[var(--text)] selection:bg-orange-500 selection:text-white">
+    <div className="flex min-h-screen flex-col bg-[var(--page-bg)] text-[var(--text)] selection:bg-sky-500 selection:text-white">
       {/* ── TOP APP BAR ── */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--border)] bg-[var(--card)]/95 px-4 py-3 backdrop-blur-lg">
-        <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--card)]/90 px-4 py-3 backdrop-blur-xl">
+        <div className="flex min-w-0 items-center gap-3">
           <Link
             href={`/${sessionId}/health`}
-            className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)] transition hover:bg-[var(--border)] active:scale-95"
+            aria-label={isBm ? "Kembali ke Kesihatan" : "Back to Health"}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] transition hover:bg-[var(--border)] active:scale-95"
           >
             <ArrowLeft size={19} />
           </Link>
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="flex h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
-              <h1 className="text-base font-black tracking-tight text-[var(--text)]">
-                {isBm ? "Larian & Penjejak Langkah" : "Pro Run & Step Tracker"}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "flex h-2 w-2 rounded-full",
+                  trackingState === "running" ? "bg-emerald-500 animate-pulse" : trackingState === "paused" ? "bg-amber-500" : "bg-sky-500"
+                )}
+              />
+              <h1 className="truncate text-base font-black tracking-tight text-[var(--text)]">
+                {isBm ? "Larian & Penjejak" : "Run & Step Tracker"}
               </h1>
             </div>
-            <p className="text-[11px] font-semibold text-[var(--muted)]">
+            <p className="truncate text-[11px] font-semibold text-[var(--muted)]">
               {trackingState === "running"
                 ? isBm
-                  ? "Sesi GPS aktif • Sedang merekod"
-                  : "Live GPS active • Recording run"
+                  ? "GPS aktif • Sedang merekod"
+                  : "GPS live • Recording"
                 : trackingState === "paused"
                 ? isBm
                   ? "Sesi larian dijeda"
                   : "Run paused"
                 : isBm
-                ? "Sedia untuk memulakan latihan"
+                ? "Sedia untuk latihan"
                 : "Ready for workout"}
             </p>
           </div>
         </div>
 
-        {/* Tab switch pills */}
-        <div className="flex items-center rounded-2xl bg-[var(--surface-tint)] p-1 border border-[var(--border)]">
+        <div className="flex shrink-0 items-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-1">
           <button
             type="button"
             onClick={() => setActiveTab("tracker")}
             className={cn(
               "flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-black transition",
               activeTab === "tracker"
-                ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20"
+                ? "bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-md shadow-sky-500/25"
                 : "text-[var(--muted)] hover:text-[var(--text)]"
             )}
           >
@@ -702,16 +713,14 @@ export default function HealthTrackingPage() {
             className={cn(
               "flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-black transition",
               activeTab === "history"
-                ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md shadow-orange-500/20"
+                ? "bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-md shadow-sky-500/25"
                 : "text-[var(--muted)] hover:text-[var(--text)]"
             )}
           >
             <History size={14} />
             <span>{isBm ? "Sejarah" : "History"}</span>
             {savedHistory.length > 0 && (
-              <span className="ml-1 rounded-full bg-white/20 px-1.5 py-0.2 text-[10px] font-black text-white">
-                {savedHistory.length}
-              </span>
+              <span className="ml-1 rounded-full bg-white/25 px-1.5 text-[10px] font-black text-white">{savedHistory.length}</span>
             )}
           </button>
         </div>
@@ -719,141 +728,129 @@ export default function HealthTrackingPage() {
 
       {/* ── COUNTDOWN OVERLAY ── */}
       {trackingState === "countdown" && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 backdrop-blur-xl animate-in fade-in duration-200">
-          <div className="flex flex-col items-center text-center">
-            <span className="text-xs font-bold uppercase tracking-[0.3em] text-orange-400">
-              {isBm ? "BERSEDIA" : "GET READY"}
-            </span>
-            <div className="my-4 flex h-36 w-36 items-center justify-center rounded-full border-4 border-orange-500/30 bg-gradient-to-tr from-orange-600 to-amber-500 text-7xl font-black text-white shadow-2xl shadow-orange-500/50 animate-bounce">
-              {countdownNum}
-            </div>
-            <p className="text-sm font-semibold text-slate-300">
-              {isBm ? "Mengunci isyarat satelit GPS..." : "Locking high-accuracy GPS signal..."}
-            </p>
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/85 p-4 backdrop-blur-xl">
+          <span className="text-xs font-bold uppercase tracking-[0.3em] text-sky-300">
+            {isBm ? "BERSEDIA" : "GET READY"}
+          </span>
+          <div className="my-5 flex h-36 w-36 items-center justify-center rounded-full border-4 border-sky-400/30 bg-gradient-to-tr from-sky-500 via-cyan-400 to-indigo-500 text-7xl font-black text-white shadow-2xl shadow-sky-500/50">
+            {countdownNum}
           </div>
+          <p className="text-sm font-semibold text-slate-300">
+            {isBm ? "Mengunci isyarat satelit GPS..." : "Locking high-accuracy GPS signal..."}
+          </p>
         </div>
       )}
 
-      {/* ── MAIN CONTENT AREA ── */}
+      {/* ── MAIN CONTENT ── */}
       <main className="flex-1 pb-16">
         {activeTab === "tracker" ? (
           <div className="mx-auto flex max-w-5xl flex-col gap-4 p-3 md:p-6">
-            
             {/* ── MAP HERO CARD ── */}
             <section
               className={cn(
                 "relative overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--card)] shadow-xl transition-all duration-300",
-                isMapExpanded ? "h-[65vh] md:h-[75vh]" : "h-[300px] md:h-[400px]"
+                isMapExpanded ? "h-[65vh] md:h-[76vh]" : "h-[300px] md:h-[400px]"
               )}
             >
-              {/* Leaflet Map */}
               <div ref={mapContainerRef} className="h-full w-full touch-none z-[1]" />
 
-              {/* Floating Status & Sensor Badges */}
+              {/* Status & sensor badges */}
               <div className="absolute left-3.5 top-3.5 z-[10] flex flex-wrap items-center gap-2">
-                <div className="flex items-center gap-2 rounded-full bg-[var(--card)]/90 px-3.5 py-1.5 text-[11px] font-bold text-[var(--text)] shadow-lg backdrop-blur-md border border-[var(--border)]">
+                <div className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)]/90 px-3.5 py-1.5 text-[11px] font-bold text-[var(--text)] shadow-lg backdrop-blur-md">
                   <span
                     className={cn(
                       "h-2.5 w-2.5 rounded-full",
-                      gpsAccuracy && gpsAccuracy < 15
-                        ? "bg-emerald-500 animate-ping"
-                        : gpsAccuracy && gpsAccuracy < 35
-                        ? "bg-amber-500"
-                        : "bg-rose-500"
+                      gpsAccuracy && gpsAccuracy < 15 ? "bg-emerald-500 animate-ping" : gpsAccuracy && gpsAccuracy < 35 ? "bg-amber-500" : "bg-rose-500"
                     )}
                   />
                   <span>
-                    GPS: {gpsAccuracy ? `±${Math.round(gpsAccuracy)}m` : isBm ? "Mencari Satelit..." : "Searching..."}
+                    GPS: {gpsAccuracy ? `±${Math.round(gpsAccuracy)}m` : isBm ? "Mencari satelit..." : "Searching satellites..."}
                   </span>
                 </div>
 
                 {hasNativeStepSensor ? (
-                  <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-3 py-1.5 text-[11px] font-extrabold text-emerald-500 shadow-md backdrop-blur-md border border-emerald-500/30">
+                  <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1.5 text-[11px] font-extrabold text-emerald-500 shadow-md backdrop-blur-md border border-emerald-500/25">
                     <Zap size={13} className="fill-emerald-500" />
-                    <span>Android Hardware Sensor</span>
+                    <span>{isBm ? "Sensor Android" : "Android Sensor"}</span>
                   </div>
                 ) : (
-                  <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-sky-500/20 px-3 py-1.5 text-[11px] font-extrabold text-sky-500 shadow-md backdrop-blur-md border border-sky-500/30">
+                  <div className="flex items-center gap-1.5 rounded-full bg-sky-500/15 px-3 py-1.5 text-[11px] font-extrabold text-sky-500 shadow-md backdrop-blur-md border border-sky-500/25">
                     <Navigation size={13} />
-                    <span>GPS Cadence</span>
+                    <span>{isBm ? "Langkah GPS" : "GPS Cadence"}</span>
                   </div>
                 )}
               </div>
 
-              {/* Map Action Floating Dock */}
+              {/* Map action dock */}
               <div className="absolute right-3.5 top-3.5 z-[10] flex flex-col gap-2">
                 <button
                   type="button"
                   onClick={centerOnUser}
-                  title={isBm ? "Pusatkan Lokasi Saya" : "Center on me"}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--card)]/90 text-[var(--text)] shadow-lg backdrop-blur-md border border-[var(--border)] transition hover:scale-105 active:scale-95"
+                  title={isBm ? "Pusatkan lokasi saya" : "Center on me"}
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--card)]/90 text-[var(--text)] shadow-lg backdrop-blur-md transition hover:scale-105 active:scale-95"
                 >
-                  <LocateFixed size={18} className="text-orange-500" />
+                  <LocateFixed size={18} className="text-sky-500" />
                 </button>
-
                 <button
                   type="button"
                   onClick={() => switchTileLayer(tileMode === "street" ? "satellite" : "street")}
-                  title={isBm ? "Tukar Peta Satelit / Jalan" : "Switch Satellite / Street"}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--card)]/90 text-[var(--text)] shadow-lg backdrop-blur-md border border-[var(--border)] transition hover:scale-105 active:scale-95"
+                  title={isBm ? "Tukar peta satelit / jalan" : "Switch satellite / street"}
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--card)]/90 text-[var(--text)] shadow-lg backdrop-blur-md transition hover:scale-105 active:scale-95"
                 >
                   <Layers size={18} className="text-[var(--text)]" />
                 </button>
-
                 <button
                   type="button"
                   onClick={() => setIsMapExpanded(!isMapExpanded)}
-                  title={isBm ? "Besarkan Paparan Peta" : "Toggle Full Map"}
-                  className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--card)]/90 text-[var(--text)] shadow-lg backdrop-blur-md border border-[var(--border)] transition hover:scale-105 active:scale-95"
+                  title={isBm ? "Besarkan paparan peta" : "Toggle full map"}
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--card)]/90 text-[var(--text)] shadow-lg backdrop-blur-md transition hover:scale-105 active:scale-95"
                 >
                   {isMapExpanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                 </button>
               </div>
 
-              {/* Real-time speed badge over map */}
+              {/* live speed */}
               {trackingState === "running" && currentSpeedKmh > 0 && (
-                <div className="absolute bottom-3 left-3.5 z-[10] flex items-center gap-2 rounded-2xl bg-black/75 px-3.5 py-1.5 text-white shadow-xl backdrop-blur-md border border-white/10">
-                  <Gauge size={15} className="text-orange-400" />
+                <div className="absolute bottom-3 left-3.5 z-[10] flex items-center gap-2 rounded-2xl bg-black/70 px-3.5 py-1.5 text-white shadow-xl backdrop-blur-md border border-white/10">
+                  <Gauge size={15} className="text-sky-400" />
                   <span className="text-xs font-black">{currentSpeedKmh} km/h</span>
                 </div>
               )}
             </section>
 
-            {/* ── ATHLETIC HERO METRIC DASHBOARD ── */}
-            <section className="rounded-[2.2rem] border border-[var(--border)] bg-[var(--card)] p-5 md:p-6 shadow-xl relative overflow-hidden">
-              {/* Background gradient decorative glow */}
-              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-orange-500/10 blur-3xl" />
-              <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-amber-500/10 blur-3xl" />
+            {/* ── LIVE METRIC DASHBOARD ── */}
+            <section className="relative overflow-hidden rounded-[2.2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-xl md:p-6">
+              <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-sky-500/10 blur-3xl" />
+              <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
 
-              {/* Top Hero: Big Distance Display */}
-              <div className="flex flex-col sm:flex-row items-center justify-between border-b border-[var(--border)] pb-5 gap-4">
+              {/* Distance hero */}
+              <div className="flex flex-col items-center justify-between gap-4 border-b border-[var(--border)] pb-5 sm:flex-row">
                 <div className="text-center sm:text-left">
-                  <div className="flex items-center justify-center sm:justify-start gap-2">
-                    <span className="text-xs font-black uppercase tracking-[0.16em] text-orange-500">
-                      {isBm ? "JUMLAH JARAK" : "TOTAL DISTANCE"}
+                  <div className="flex items-center justify-center gap-2 sm:justify-start">
+                    <span className="text-xs font-black uppercase tracking-[0.16em] text-sky-500">
+                      {isBm ? "Jumlah Jarak" : "Total Distance"}
                     </span>
                     {calculatedStats.progressPercent !== null && (
-                      <span className="rounded-full bg-orange-500/15 px-2.5 py-0.5 text-[11px] font-black text-orange-500">
-                        {calculatedStats.progressPercent}% Goal
+                      <span className="rounded-full bg-sky-500/15 px-2.5 py-0.5 text-[11px] font-black text-sky-500">
+                        {calculatedStats.progressPercent}% {isBm ? "Sasaran" : "Goal"}
                       </span>
                     )}
                   </div>
-                  <div className="mt-1 flex items-baseline justify-center sm:justify-start gap-2">
-                    <span className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight text-[var(--text)]">
+                  <div className="mt-1 flex items-baseline justify-center gap-2 sm:justify-start">
+                    <span className="bg-gradient-to-r from-sky-500 via-cyan-400 to-indigo-500 bg-clip-text text-5xl font-black tracking-tight text-transparent sm:text-6xl md:text-7xl">
                       {calculatedStats.distanceKm}
                     </span>
-                    <span className="text-lg sm:text-2xl font-black text-orange-500">KM</span>
+                    <span className="text-lg font-black text-[var(--muted)] sm:text-2xl">KM</span>
                   </div>
                 </div>
 
-                {/* Target Goal Selector */}
                 {trackingState === "idle" && (
-                  <div className="flex items-center gap-1.5 rounded-2xl bg-[var(--surface-tint)] p-1.5 border border-[var(--border)]">
+                  <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-1.5">
                     <span className="px-2 text-[10px] font-bold uppercase text-[var(--muted)]">
                       {isBm ? "Sasaran:" : "Goal:"}
                     </span>
                     {[
-                      { label: "Bebas", val: null },
+                      { label: isBm ? "Bebas" : "Free", val: null },
                       { label: "1 km", val: 1 },
                       { label: "3 km", val: 3 },
                       { label: "5 km", val: 5 },
@@ -866,7 +863,7 @@ export default function HealthTrackingPage() {
                         className={cn(
                           "rounded-xl px-2.5 py-1 text-xs font-bold transition",
                           targetGoalKm === g.val
-                            ? "bg-orange-500 text-white shadow-sm"
+                            ? "bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-sm"
                             : "text-[var(--text)] hover:bg-[var(--border)]"
                         )}
                       >
@@ -877,10 +874,9 @@ export default function HealthTrackingPage() {
                 )}
               </div>
 
-              {/* Secondary Metrics Matrix */}
+              {/* Stat tiles */}
               <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {/* Steps */}
-                <div className="flex flex-col justify-between rounded-2xl bg-[var(--surface-tint)] p-4 border border-[var(--border)]">
+                <div className="flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-4">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
                       {isBm ? "Langkah" : "Steps"}
@@ -890,52 +886,43 @@ export default function HealthTrackingPage() {
                     </div>
                   </div>
                   <div className="mt-2">
-                    <span className="text-2xl sm:text-3xl font-black text-[var(--text)]">
-                      {calculatedStats.effectiveSteps.toLocaleString()}
-                    </span>
+                    <span className="text-2xl font-black text-[var(--text)] sm:text-3xl">{calculatedStats.effectiveSteps.toLocaleString()}</span>
                     <span className="ml-1 text-[10px] font-bold text-[var(--muted)]">
                       {hasNativeStepSensor ? "sensor" : "gps"}
                     </span>
                   </div>
                 </div>
 
-                {/* Duration */}
-                <div className="flex flex-col justify-between rounded-2xl bg-[var(--surface-tint)] p-4 border border-[var(--border)]">
+                <div className="flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-4">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      {isBm ? "Tempoh Masa" : "Duration"}
+                      {isBm ? "Masa" : "Duration"}
                     </span>
                     <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-sky-500/15 text-sky-500">
                       <Timer size={15} />
                     </div>
                   </div>
                   <div className="mt-2">
-                    <span className="text-2xl sm:text-3xl font-black text-[var(--text)]">
-                      {formatDuration(elapsedSeconds)}
-                    </span>
+                    <span className="text-2xl font-black text-[var(--text)] sm:text-3xl">{formatDuration(elapsedSeconds)}</span>
                   </div>
                 </div>
 
-                {/* Pace */}
-                <div className="flex flex-col justify-between rounded-2xl bg-[var(--surface-tint)] p-4 border border-[var(--border)]">
+                <div className="flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-4">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      {isBm ? "Purata Pace" : "Avg Pace"}
+                      {isBm ? "Pace Purata" : "Avg Pace"}
                     </span>
                     <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-violet-500/15 text-violet-500">
                       <TrendingUp size={15} />
                     </div>
                   </div>
                   <div className="mt-2">
-                    <span className="text-2xl sm:text-3xl font-black text-[var(--text)]">
-                      {calculatedStats.pace}
-                    </span>
+                    <span className="text-2xl font-black text-[var(--text)] sm:text-3xl">{calculatedStats.pace}</span>
                     <span className="ml-1 text-[10px] font-bold text-[var(--muted)]">/km</span>
                   </div>
                 </div>
 
-                {/* Calories */}
-                <div className="flex flex-col justify-between rounded-2xl bg-[var(--surface-tint)] p-4 border border-[var(--border)]">
+                <div className="flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-4">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
                       {isBm ? "Kalori" : "Calories"}
@@ -945,32 +932,27 @@ export default function HealthTrackingPage() {
                     </div>
                   </div>
                   <div className="mt-2">
-                    <span className="text-2xl sm:text-3xl font-black text-rose-500">
-                      {calculatedStats.calories}
-                    </span>
+                    <span className="text-2xl font-black text-rose-500 sm:text-3xl">{calculatedStats.calories}</span>
                     <span className="ml-1 text-[10px] font-bold text-[var(--muted)]">kcal</span>
                   </div>
                 </div>
               </div>
 
-              {/* Lap Splits List (if available) */}
+              {/* Lap splits */}
               {splits.length > 0 && (
                 <div className="mt-5 border-t border-[var(--border)] pt-4">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[11px] font-black uppercase text-[var(--muted)] tracking-wider">
-                      {isBm ? "Pecahan Pusingan (Splits)" : "KM Splits"}
+                    <span className="text-[11px] font-black uppercase tracking-wider text-[var(--muted)]">
+                      {isBm ? "Pecahan Kilometer" : "KM Splits"}
                     </span>
                     <span className="text-[10px] font-semibold text-[var(--muted)]">
-                      {splits.length} KM selesai
+                      {splits.length} {isBm ? "KM selesai" : "KM done"}
                     </span>
                   </div>
                   <div className="flex gap-2 overflow-x-auto pb-1">
                     {splits.map((s) => (
-                      <div
-                        key={s.kmNumber}
-                        className="flex min-w-24 flex-col items-center rounded-xl bg-[var(--surface-tint)] px-3 py-2 text-center border border-[var(--border)]"
-                      >
-                        <span className="text-[10px] font-black text-orange-500">KM {s.kmNumber}</span>
+                      <div key={s.kmNumber} className="flex min-w-24 flex-col items-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-center">
+                        <span className="text-[10px] font-black text-sky-500">KM {s.kmNumber}</span>
                         <span className="text-xs font-black text-[var(--text)]">{s.paceFormatted}</span>
                         <span className="text-[9px] text-[var(--muted)]">{formatDuration(s.durationSeconds)}</span>
                       </div>
@@ -980,20 +962,18 @@ export default function HealthTrackingPage() {
               )}
             </section>
 
-            {/* ── RUN WORKOUT CONTROLS ── */}
+            {/* ── CONTROLS ── */}
             <section className="mt-2 flex items-center justify-center gap-3">
               {trackingState === "idle" && (
                 <button
                   type="button"
                   onClick={triggerStartCountdown}
-                  className="group relative flex h-16 w-full max-w-md items-center justify-center gap-3 rounded-[2rem] bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 px-8 font-black text-white shadow-2xl shadow-orange-500/35 transition hover:scale-[1.02] active:scale-[0.98]"
+                  className="group relative flex h-16 w-full max-w-md items-center justify-center gap-3 rounded-[2rem] bg-gradient-to-r from-sky-500 via-cyan-400 to-indigo-500 px-8 font-black uppercase tracking-wide text-white shadow-2xl shadow-sky-500/35 transition hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
-                    <Play size={22} className="fill-white translate-x-0.5" />
+                    <Play size={22} className="translate-x-0.5 fill-white" />
                   </div>
-                  <span className="text-lg tracking-wide uppercase">
-                    {isBm ? "Mula Larian" : "Start Run"}
-                  </span>
+                  <span className="text-lg">{isBm ? "Mula Larian" : "Start Run"}</span>
                 </button>
               )}
 
@@ -1002,19 +982,18 @@ export default function HealthTrackingPage() {
                   <button
                     type="button"
                     onClick={pauseTracking}
-                    className="flex h-16 flex-1 items-center justify-center gap-2 rounded-[2rem] bg-amber-500 px-6 font-black text-white shadow-xl shadow-amber-500/25 transition hover:bg-amber-600 active:scale-98"
+                    className="flex h-16 flex-1 items-center justify-center gap-2 rounded-[2rem] bg-amber-500 px-6 font-black uppercase text-white shadow-xl shadow-amber-500/25 transition hover:bg-amber-600 active:scale-[0.98]"
                   >
                     <Pause size={22} className="fill-white" />
-                    <span className="text-base uppercase">{isBm ? "Jeda" : "Pause"}</span>
+                    <span className="text-base">{isBm ? "Jeda" : "Pause"}</span>
                   </button>
-
                   <button
                     type="button"
                     onClick={finishTracking}
-                    className="flex h-16 flex-1 items-center justify-center gap-2 rounded-[2rem] bg-rose-600 px-6 font-black text-white shadow-xl shadow-rose-600/25 transition hover:bg-rose-700 active:scale-98"
+                    className="flex h-16 flex-1 items-center justify-center gap-2 rounded-[2rem] bg-rose-600 px-6 font-black uppercase text-white shadow-xl shadow-rose-600/25 transition hover:bg-rose-700 active:scale-[0.98]"
                   >
                     <StopCircle size={22} />
-                    <span className="text-base uppercase">{isBm ? "Tamat" : "Finish"}</span>
+                    <span className="text-base">{isBm ? "Tamat" : "Finish"}</span>
                   </button>
                 </div>
               )}
@@ -1024,25 +1003,23 @@ export default function HealthTrackingPage() {
                   <button
                     type="button"
                     onClick={beginTrackingExecution}
-                    className="flex h-16 flex-1 items-center justify-center gap-2 rounded-[2rem] bg-emerald-600 px-6 font-black text-white shadow-xl shadow-emerald-600/25 transition hover:bg-emerald-700 active:scale-98"
+                    className="flex h-16 flex-1 items-center justify-center gap-2 rounded-[2rem] bg-emerald-600 px-6 font-black uppercase text-white shadow-xl shadow-emerald-600/25 transition hover:bg-emerald-700 active:scale-[0.98]"
                   >
-                    <Play size={22} className="fill-white translate-x-0.5" />
-                    <span className="text-base uppercase">{isBm ? "Sambung" : "Resume"}</span>
+                    <Play size={22} className="translate-x-0.5 fill-white" />
+                    <span className="text-base">{isBm ? "Sambung" : "Resume"}</span>
                   </button>
-
                   <button
                     type="button"
                     onClick={finishTracking}
-                    className="flex h-16 flex-1 items-center justify-center gap-2 rounded-[2rem] bg-rose-600 px-6 font-black text-white shadow-xl shadow-rose-600/25 transition hover:bg-rose-700 active:scale-98"
+                    className="flex h-16 flex-1 items-center justify-center gap-2 rounded-[2rem] bg-rose-600 px-6 font-black uppercase text-white shadow-xl shadow-rose-600/25 transition hover:bg-rose-700 active:scale-[0.98]"
                   >
                     <StopCircle size={22} />
-                    <span className="text-base uppercase">{isBm ? "Simpan" : "Save"}</span>
+                    <span className="text-base">{isBm ? "Simpan" : "Save"}</span>
                   </button>
-
                   <button
                     type="button"
                     onClick={resetTracking}
-                    title={isBm ? "Set Semula Sesi" : "Reset Session"}
+                    title={isBm ? "Set semula sesi" : "Reset session"}
                     className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[2rem] border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] shadow-md transition hover:text-rose-500 active:scale-95"
                   >
                     <RotateCcw size={20} />
@@ -1052,37 +1029,37 @@ export default function HealthTrackingPage() {
             </section>
           </div>
         ) : (
-          /* ── ATHLETIC RUN HISTORY TAB ── */
+          /* ── RUN HISTORY ── */
           <div className="mx-auto max-w-4xl space-y-4 p-4 md:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-black text-[var(--text)] flex items-center gap-2">
-                  <Trophy className="h-5 w-5 text-orange-500" />
+                <h2 className="flex items-center gap-2 text-lg font-black text-[var(--text)]">
+                  <Trophy className="h-5 w-5 text-sky-500" />
                   {isBm ? "Rekod & Sejarah Larian" : "Workout History"}
                 </h2>
-                <p className="text-xs text-[var(--muted)] font-semibold">
+                <p className="text-xs font-semibold text-[var(--muted)]">
                   {savedHistory.length} {isBm ? "sesi berjaya direkodkan" : "sessions recorded"}
                 </p>
               </div>
             </div>
 
             {!savedHistory.length ? (
-              <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[var(--border)] p-12 text-center bg-[var(--card)]">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-500">
+              <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[var(--border)] bg-[var(--card)] p-12 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-500">
                   <Footprints size={32} />
                 </div>
                 <p className="mt-4 text-base font-black text-[var(--text)]">
-                  {isBm ? "Belum ada rekod larian tersimpan." : "No saved running records."}
+                  {isBm ? "Belum ada rekod larian tersimpan." : "No saved run records yet."}
                 </p>
-                <p className="mt-1 text-xs text-[var(--muted)] max-w-xs">
+                <p className="mt-1 max-w-xs text-xs text-[var(--muted)]">
                   {isBm
-                    ? "Mulakan larian pertama anda hari ini untuk menjejak jarak, langkah, dan membakar kalori!"
-                    : "Start your first workout today to track distance, steps, and burn calories!"}
+                    ? "Mulakan larian pertama anda hari ini untuk menjejak jarak, langkah, dan kalori!"
+                    : "Start your first workout today to track distance, steps, and calories!"}
                 </p>
                 <button
                   type="button"
                   onClick={() => setActiveTab("tracker")}
-                  className="mt-5 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3 text-xs font-black uppercase text-white shadow-lg shadow-orange-500/25 hover:brightness-110 active:scale-98"
+                  className="mt-5 rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 px-6 py-3 text-xs font-black uppercase text-white shadow-lg shadow-sky-500/25 hover:brightness-110 active:scale-[0.98]"
                 >
                   {isBm ? "Mula Larian Sekarang" : "Start Run Now"}
                 </button>
@@ -1096,27 +1073,24 @@ export default function HealthTrackingPage() {
                   )
                   const distKm = (item.distanceMeters / 1000).toFixed(2)
                   return (
-                    <div
-                      key={item.id}
-                      className="group flex flex-col justify-between rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-lg transition hover:border-orange-500/40 hover:shadow-xl"
-                    >
+                    <div key={item.id} className="group flex flex-col justify-between rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-lg transition hover:border-sky-500/40 hover:shadow-xl">
                       <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
                         <div className="flex items-center gap-2">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500/15 text-orange-500">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-500/15 text-sky-500">
                             <Route size={16} />
                           </div>
                           <div>
                             <span className="text-xs font-black text-[var(--text)]">{dateStr}</span>
-                            <div className="text-[10px] font-bold text-orange-500">
-                              {item.stepSource === "native" ? "📱 Android Sensor" : "📡 GPS Cadence"}
+                            <div className="text-[10px] font-bold text-sky-500">
+                              {item.stepSource === "native" ? (isBm ? "📱 Sensor Android" : "📱 Android Sensor") : (isBm ? "📡 Langkah GPS" : "📡 GPS Cadence")}
                             </div>
                           </div>
                         </div>
                         <button
                           type="button"
                           onClick={() => deleteHistoryItem(item.id)}
-                          className="rounded-xl p-2 text-[var(--muted)] transition hover:bg-rose-500/10 hover:text-rose-500"
                           title={isBm ? "Padam rekod" : "Delete record"}
+                          className="rounded-xl p-2 text-[var(--muted)] transition hover:bg-rose-500/10 hover:text-rose-500"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -1124,38 +1098,26 @@ export default function HealthTrackingPage() {
 
                       <div className="my-4 grid grid-cols-3 gap-2 text-center">
                         <div className="rounded-2xl bg-[var(--surface-tint)] p-3">
-                          <div className="text-[10px] font-bold text-[var(--muted)] uppercase">
-                            {isBm ? "Jarak" : "Distance"}
-                          </div>
-                          <div className="mt-0.5 text-lg font-black text-[var(--text)]">{distKm} <span className="text-xs text-orange-500">km</span></div>
-                        </div>
-
-                        <div className="rounded-2xl bg-[var(--surface-tint)] p-3">
-                          <div className="text-[10px] font-bold text-[var(--muted)] uppercase">
-                            {isBm ? "Langkah" : "Steps"}
-                          </div>
+                          <div className="text-[10px] font-bold uppercase text-[var(--muted)]">{isBm ? "Jarak" : "Distance"}</div>
                           <div className="mt-0.5 text-lg font-black text-[var(--text)]">
-                            {item.steps.toLocaleString()}
+                            {distKm} <span className="text-xs text-sky-500">km</span>
                           </div>
                         </div>
-
                         <div className="rounded-2xl bg-[var(--surface-tint)] p-3">
-                          <div className="text-[10px] font-bold text-[var(--muted)] uppercase">
-                            {isBm ? "Masa" : "Time"}
-                          </div>
-                          <div className="mt-0.5 text-lg font-black text-[var(--text)]">
-                            {formatDuration(item.durationSeconds)}
-                          </div>
+                          <div className="text-[10px] font-bold uppercase text-[var(--muted)]">{isBm ? "Langkah" : "Steps"}</div>
+                          <div className="mt-0.5 text-lg font-black text-[var(--text)]">{item.steps.toLocaleString()}</div>
+                        </div>
+                        <div className="rounded-2xl bg-[var(--surface-tint)] p-3">
+                          <div className="text-[10px] font-bold uppercase text-[var(--muted)]">{isBm ? "Masa" : "Time"}</div>
+                          <div className="mt-0.5 text-lg font-black text-[var(--text)]">{formatDuration(item.durationSeconds)}</div>
                         </div>
                       </div>
 
                       <div className="flex items-center justify-between text-xs font-bold text-[var(--muted)]">
                         <span>
-                          Pace: <strong className="text-[var(--text)]">{formatPace(item.avgPaceMinPerKm)}</strong>
+                          {isBm ? "Pace" : "Pace"}: <strong className="text-[var(--text)]">{formatPace(item.avgPaceMinPerKm)}</strong>
                         </span>
-                        <span className="text-rose-500 font-black">
-                          🔥 {item.caloriesKcal} kcal
-                        </span>
+                        <span className="font-black text-rose-500">🔥 {item.caloriesKcal} kcal</span>
                       </div>
                     </div>
                   )
@@ -1166,62 +1128,45 @@ export default function HealthTrackingPage() {
         )}
       </main>
 
-      {/* ── RUN COMPLETED CONGRATULATIONS MODAL ── */}
+      {/* ── RUN COMPLETED MODAL ── */}
       {completedSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md animate-in fade-in">
-          <div className="w-full max-w-md rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl relative overflow-hidden">
-            {/* Top Victory Gradient */}
-            <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-orange-500/20 blur-3xl" />
-            
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-md">
+          <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl">
+            <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-sky-500/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-10 -right-10 h-40 w-40 rounded-full bg-indigo-500/20 blur-3xl" />
+
             <div className="flex flex-col items-center text-center">
-              <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-orange-600 via-amber-500 to-orange-400 text-white shadow-xl shadow-orange-500/40">
+              <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-sky-500 via-cyan-400 to-indigo-500 text-white shadow-xl shadow-sky-500/40">
                 <Trophy size={40} />
               </div>
               <h3 className="mt-4 text-2xl font-black text-[var(--text)]">
                 {isBm ? "Hebat! Larian Selesai" : "Workout Completed!"}
               </h3>
-              <p className="mt-1 text-xs text-[var(--muted)] font-semibold">
+              <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
                 {isBm
-                  ? "Sesi larian anda telah berjaya disimpan ke rekod kesihatan."
-                  : "Your running session has been saved to your health history."}
+                  ? "Sesi larian anda telah disimpan ke rekod kesihatan."
+                  : "Your run session has been saved to your health history."}
               </p>
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl bg-[var(--surface-tint)] p-3.5 text-center border border-[var(--border)]">
-                <div className="text-[10px] font-bold uppercase text-[var(--muted)]">
-                  {isBm ? "Jumlah Jarak" : "Distance"}
-                </div>
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3.5 text-center">
+                <div className="text-[10px] font-bold uppercase text-[var(--muted)]">{isBm ? "Jumlah Jarak" : "Distance"}</div>
                 <div className="mt-1 text-2xl font-black text-[var(--text)]">
-                  {(completedSession.distanceMeters / 1000).toFixed(2)} <span className="text-xs text-orange-500">km</span>
+                  {(completedSession.distanceMeters / 1000).toFixed(2)} <span className="text-xs text-sky-500">km</span>
                 </div>
               </div>
-
-              <div className="rounded-2xl bg-[var(--surface-tint)] p-3.5 text-center border border-[var(--border)]">
-                <div className="text-[10px] font-bold uppercase text-[var(--muted)]">
-                  {isBm ? "Jumlah Langkah" : "Steps"}
-                </div>
-                <div className="mt-1 text-2xl font-black text-[var(--text)]">
-                  {completedSession.steps.toLocaleString()}
-                </div>
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3.5 text-center">
+                <div className="text-[10px] font-bold uppercase text-[var(--muted)]">{isBm ? "Langkah" : "Steps"}</div>
+                <div className="mt-1 text-2xl font-black text-[var(--text)]">{completedSession.steps.toLocaleString()}</div>
               </div>
-
-              <div className="rounded-2xl bg-[var(--surface-tint)] p-3.5 text-center border border-[var(--border)]">
-                <div className="text-[10px] font-bold uppercase text-[var(--muted)]">
-                  {isBm ? "Tempoh Masa" : "Duration"}
-                </div>
-                <div className="mt-1 text-2xl font-black text-[var(--text)]">
-                  {formatDuration(completedSession.durationSeconds)}
-                </div>
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3.5 text-center">
+                <div className="text-[10px] font-bold uppercase text-[var(--muted)]">{isBm ? "Masa" : "Duration"}</div>
+                <div className="mt-1 text-2xl font-black text-[var(--text)]">{formatDuration(completedSession.durationSeconds)}</div>
               </div>
-
-              <div className="rounded-2xl bg-[var(--surface-tint)] p-3.5 text-center border border-[var(--border)]">
-                <div className="text-[10px] font-bold uppercase text-[var(--muted)]">
-                  {isBm ? "Kalori Terbakar" : "Calories"}
-                </div>
-                <div className="mt-1 text-2xl font-black text-rose-500">
-                  {completedSession.caloriesKcal} <span className="text-xs">kcal</span>
-                </div>
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3.5 text-center">
+                <div className="text-[10px] font-bold uppercase text-[var(--muted)]">{isBm ? "Kalori" : "Calories"}</div>
+                <div className="mt-1 text-2xl font-black text-rose-500">{completedSession.caloriesKcal} <span className="text-xs">kcal</span></div>
               </div>
             </div>
 
@@ -1229,7 +1174,7 @@ export default function HealthTrackingPage() {
               <button
                 type="button"
                 onClick={() => setCompletedSession(null)}
-                className="w-full rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 py-3.5 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-orange-500/25 hover:brightness-110 active:scale-98"
+                className="w-full rounded-2xl bg-gradient-to-r from-sky-500 to-indigo-500 py-3.5 text-sm font-black uppercase tracking-wide text-white shadow-lg shadow-sky-500/25 hover:brightness-110 active:scale-[0.98]"
               >
                 {isBm ? "Tutup & Teruskan" : "Close & Continue"}
               </button>
