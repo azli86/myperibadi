@@ -142,6 +142,26 @@ export default function SettingsPage() {
   const [activeMobileSheet, setActiveMobileSheet] = useState<MobileSheetType>(null)
   const [showBadgeModal, setShowBadgeModal] = useState(false)
 
+  // Desktop Social Media Portal Tab State
+  type DesktopSettingsTab = "profile" | "email" | "preferences" | "cycle" | "accounts" | "system" | "danger"
+  const [desktopTab, setDesktopTab] = useState<DesktopSettingsTab>("profile")
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash) {
+      const h = window.location.hash.replace("#", "")
+      if (["profile", "email", "preferences", "cycle", "accounts", "system", "danger"].includes(h)) {
+        setDesktopTab(h as DesktopSettingsTab)
+      }
+    }
+  }, [])
+
+  const handleSelectTab = (tab: DesktopSettingsTab) => {
+    setDesktopTab(tab)
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", `#${tab}`)
+    }
+  }
+
   const closeMobileSheet = useCallback(() => setActiveMobileSheet(null), [])
 
   const { requestClose: requestMobileSheetClose, requestCloseThen: requestMobileSheetCloseThen } =
@@ -589,7 +609,7 @@ export default function SettingsPage() {
         />
 
         {/* ─── Social Media Style Mobile Profile Card ─── */}
-        <section className="px-3 pt-1">
+        <section className="px-1 pt-1">
           <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-xs">
             {/* Cover Banner with Ambient Mesh Gradient */}
             <div className="relative h-20 w-full bg-gradient-to-r from-emerald-600/20 via-teal-500/20 to-indigo-600/20" />
@@ -1024,526 +1044,817 @@ export default function SettingsPage() {
                 </div>
               </section>
 
-          {/* ─── Portal-style single card: left menu + right content ─── */}
-          <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-            <div className="grid lg:grid-cols-[230px_minmax(0,1fr)] items-stretch">
-              {/* ─── Left Menu ─── */}
-              <aside className="border-b lg:border-b-0 lg:border-r border-[var(--divider)] bg-[var(--surface-tint)]/40 p-3 lg:p-4 lg:sticky lg:top-[76px] lg:self-start">
-                <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible">
+          {/* ─── Social Media Portal Layout: Left Menu + Right Content ─── */}
+          <div className="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] lg:grid-cols-[290px_minmax(0,1fr)] xl:grid-cols-[310px_minmax(0,1fr)] gap-6 items-start">
+            {/* ─── Left Menu Sidebar ─── */}
+            <aside className="md:sticky md:top-[76px] space-y-4">
+              <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-xs">
+                <div className="px-3 pt-2.5 pb-2">
+                  <p className="text-[0.68rem] font-black uppercase tracking-wider text-[var(--muted)]">
+                    {tr("Pusat Tetapan", "Settings Center")}
+                  </p>
+                </div>
+
+                <nav className="flex flex-col gap-1.5">
                   {[
-                    { id: "p-profile", icon: UserCircle2, label: tr("Profil & Identiti", "Profile & Identity") },
-                    { id: "p-email", icon: MailCheck, label: tr("Tukar E-mel", "Change Email") },
-                    { id: "p-prefs", icon: Palette, label: tr("Keutamaan & Paparan", "Preferences & Display") },
-                    { id: "p-accounts", icon: Users, label: tr("Akaun", "Accounts") },
-                    { id: "p-system", icon: ScrollText, label: tr("Sistem & Bantuan", "System & Help") },
-                    { id: "p-danger", icon: LogOut, label: tr("Zon Bahaya", "Danger Zone") },
+                    {
+                      id: "profile" as const,
+                      icon: UserCircle2,
+                      label: tr("Profil & Identiti", "Profile & Identity"),
+                      sublabel: tr("Nama paparan & bot AI", "Display name & AI bot"),
+                    },
+                    {
+                      id: "email" as const,
+                      icon: MailCheck,
+                      label: tr("Tukar E-mel", "Change Email"),
+                      sublabel: tr("Alamat log masuk & kod OTP", "Login address & OTP"),
+                    },
+                    {
+                      id: "preferences" as const,
+                      icon: Palette,
+                      label: tr("Keutamaan & Paparan", "Preferences & Display"),
+                      sublabel: tr("Bahasa, tema rupa & zon masa", "Language, visual theme & timezone"),
+                    },
+                    {
+                      id: "cycle" as const,
+                      icon: CalendarDays,
+                      label: tr("Kitaran Reset Bajet", "Budget Reset Cycle"),
+                      sublabel:
+                        cycleMode === "category"
+                          ? tr("Ikut rekod tarikh gaji", "Resets on salary record")
+                          : tr(`Setiap ${cycleStartDay} haribulan`, `Every ${cycleStartDay}th day`),
+                      badge: cycleMode === "category" ? tr("Gaji", "Salary") : `H-${cycleStartDay}`,
+                    },
+                    {
+                      id: "accounts" as const,
+                      icon: Users,
+                      label: tr("Akaun Tersimpan", "Saved Accounts"),
+                      sublabel: tr(`${accounts.length || 1} akaun dipautkan`, `${accounts.length || 1} linked profiles`),
+                      badge: String(accounts.length || 1),
+                    },
+                    {
+                      id: "system" as const,
+                      icon: ScrollText,
+                      label: tr("Sistem & Panduan", "System & Guides"),
+                      sublabel: tr("PIN keselamatan & arahan bot", "Security PIN & bot guides"),
+                    },
+                    {
+                      id: "danger" as const,
+                      icon: AlertTriangle,
+                      label: tr("Zon Bahaya & Sesi", "Danger Zone & Session"),
+                      sublabel: tr("Reset rekod & log keluar", "Reset records & sign out"),
+                    },
                   ].map((item) => {
                     const Icon = item.icon
+                    const isActive = desktopTab === item.id
+                    const isDanger = item.id === "danger"
                     return (
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                        className="flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] active:scale-[0.98] lg:w-full"
+                        onClick={() => handleSelectTab(item.id)}
+                        className={cn(
+                          "group relative flex items-center justify-between rounded-2xl px-3.5 py-3 text-left transition-all active:scale-[0.98]",
+                          isActive
+                            ? isDanger
+                              ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 font-extrabold shadow-2xs"
+                              : "bg-[var(--surface-tint-strong)] text-[var(--text)] font-extrabold shadow-2xs"
+                            : isDanger
+                            ? "text-rose-500/80 hover:bg-rose-500/5 hover:text-rose-600"
+                            : "text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)]"
+                        )}
                       >
-                        <Icon size={15} className="shrink-0 text-[var(--muted)]" />
-                        <span className="whitespace-nowrap">{item.label}</span>
+                        {/* Active Accent Bar on Left */}
+                        {isActive && (
+                          <span
+                            className={cn(
+                              "absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r-full",
+                              isDanger ? "bg-rose-500" : "bg-emerald-500"
+                            )}
+                          />
+                        )}
+
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className={cn(
+                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition",
+                              isActive
+                                ? isDanger
+                                  ? "bg-rose-500/20 text-rose-600 dark:text-rose-400"
+                                  : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                : "bg-[var(--surface-tint)] text-[var(--muted)] group-hover:text-[var(--text)]"
+                            )}
+                          >
+                            <Icon size={16} />
+                          </div>
+                          <div className="truncate">
+                            <p className="text-xs leading-tight truncate">{item.label}</p>
+                            <p className="text-[0.66rem] font-medium text-[var(--muted)] truncate mt-0.5">
+                              {item.sublabel}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 shrink-0 pl-1">
+                          {item.badge && (
+                            <span
+                              className={cn(
+                                "rounded-full px-2 py-0.5 text-[0.62rem] font-bold",
+                                isActive
+                                  ? "bg-[var(--text)] text-[var(--bg)]"
+                                  : "bg-[var(--surface-tint-strong)] text-[var(--muted)]"
+                              )}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
+                          <ChevronRight
+                            size={14}
+                            className={cn(
+                              "transition-transform",
+                              isActive
+                                ? isDanger
+                                  ? "text-rose-500 translate-x-0.5"
+                                  : "text-emerald-500 translate-x-0.5"
+                                : "text-[var(--muted)]/40 group-hover:text-[var(--muted)]"
+                            )}
+                          />
+                        </div>
                       </button>
                     )
                   })}
                 </nav>
-              </aside>
-              {/* ─── Right Content ─── */}
-              <div className="min-w-0 space-y-6 p-4 md:p-6">
-              {/* Card 1: Profile & Identity (profile pane) */}
-              <section className="scroll-mt-24 rounded-3xl border border-[var(--border)] bg-gradient-to-br from-[var(--card)] via-[var(--card)] to-[var(--surface-tint)] p-6 shadow-sm space-y-6">
-                {/* Edit Name & Bot Tone Form */}
-                <form onSubmit={handleSaveProfile} className="space-y-4">
-                  <div>
-                    <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      {t.fullName || tr("Nama Paparan", "Display Name")}
-                    </label>
-                    <input
-                      type="text"
-                      autoComplete="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder={tr("Nama anda", "Your name")}
-                      className="mt-1.5 w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--text)] outline-none focus:border-[var(--input-focus)]"
-                    />
-                  </div>
+              </div>
 
-                  {/* Bot Personality Presets */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                        {tr("Gaya Personaliti Bot", "Bot Personality Tone")}
-                      </label>
-                      <span className="text-[0.68rem] text-[var(--muted)]">WhatsApp & Telegram</span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      {personalityPresets.map((p) => {
-                        const active = botPersonality === p.label
-                        return (
-                          <button
-                            key={p.label}
-                            type="button"
-                            onClick={() => setBotPersonality(p.label)}
-                            className={cn(
-                              "flex flex-col text-left p-3 rounded-2xl border transition active:scale-[0.98]",
-                              active
-                                ? "border-[var(--text)] bg-[var(--surface-tint-strong)] text-[var(--text)] shadow-xs"
-                                : "border-[var(--border)] bg-[var(--surface-tint)]/40 text-[var(--muted)] hover:border-[var(--border-strong)]"
-                            )}
-                          >
-                            <div className="flex items-center justify-between w-full">
-                              <span className="text-xs font-black text-[var(--text)]">{p.label}</span>
-                              {active && <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />}
-                            </div>
-                            <span className="mt-1 text-[0.68rem] text-[var(--muted)] leading-tight">{p.desc}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Save Button */}
-                  <button
-                    type="submit"
-                    disabled={profileSaving || !hasProfileChanges}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] py-3 text-xs md:text-sm font-bold text-[var(--btn-primary-text)] shadow-sm transition active:scale-[0.98] hover:opacity-90 disabled:opacity-40"
-                  >
-                    {profileSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={15} />}
-                    <span>{tr("Simpan Profil", "Save Profile")}</span>
-                  </button>
-                </form>
-              </section>
-
-              {/* Card 2: Change Email */}
-              <section id="p-email" className="scroll-mt-24 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-4">
-                <div className="flex items-center gap-3 border-b border-[var(--divider)] pb-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)] border border-[var(--border)]">
-                    <MailCheck size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-extrabold text-[var(--text)]">{tr("Tukar Alamat E-mel", "Change Email Address")}</h3>
-                    <p className="text-xs text-[var(--muted)]">{tr("Pengesahan melalui kod e-mel baharu", "Verification via security code")}</p>
-                  </div>
+              {/* Sidebar Footer Info Card */}
+              <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-4 space-y-2">
+                <div className="flex items-center justify-between text-[0.68rem] font-bold text-[var(--muted)]">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>{tr("Sesi Disulitkan", "Secure Session")}</span>
+                  </span>
+                  <span>v2.4</span>
                 </div>
+                <p className="text-[0.68rem] text-[var(--muted)] leading-relaxed">
+                  {tr(
+                    "Semua tetapan disegerakkan dengan pelayan secara masa-nyata.",
+                    "All settings sync with cloud servers in real-time."
+                  )}
+                </p>
+              </div>
+            </aside>
 
-                <form onSubmit={handleRequestEmailCode} className="space-y-3.5">
-                  <div>
-                    <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      {tr("E-mel Baharu", "New Email Address")}
-                    </label>
-                    <input
-                      type="email"
-                      autoComplete="email"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      placeholder="nama@contoh.com"
-                      className="mt-1.5 w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3.5 py-2.5 text-xs md:text-sm text-[var(--text)] outline-none focus:border-[var(--input-focus)]"
-                    />
+            {/* ─── Right Content Panel ─── */}
+            <main className="min-w-0">
+              {/* Tab 1: Profile & Identity */}
+              {desktopTab === "profile" && (
+                <section className="animate-in fade-in duration-200 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6">
+                  <div className="flex items-center justify-between border-b border-[var(--divider)] pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        <UserCircle2 size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-black text-[var(--text)]">
+                          {tr("Profil & Personaliti Bot AI", "Profile & AI Bot Persona")}
+                        </h3>
+                        <p className="text-xs text-[var(--muted)]">
+                          {tr(
+                            "Urus nama paparan anda dan nada maklum balas AI kewangan di WhatsApp & Telegram.",
+                            "Manage your display name and AI assistant response tone on WhatsApp & Telegram."
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    {hasProfileChanges && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 text-[0.68rem] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20 animate-pulse">
+                        <Sparkles size={11} />
+                        <span>{tr("Ada Perubahan", "Unsaved Changes")}</span>
+                      </span>
+                    )}
                   </div>
 
-                  <div>
-                    <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      {tr("Kata Laluan Semasa", "Current Password")}
-                    </label>
-                    <div className="relative mt-1.5">
+                  <form onSubmit={handleSaveProfile} className="space-y-6">
+                    {/* Display Name */}
+                    <div className="space-y-1.5">
+                      <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                        {t.fullName || tr("Nama Paparan", "Display Name")}
+                      </label>
                       <input
-                        type={showPassword ? "text" : "password"}
-                        autoComplete={"current-password"}
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        placeholder={tr("Masukkan kata laluan", "Enter current password")}
-                        className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3.5 py-2.5 pr-10 text-xs md:text-sm text-[var(--text)] outline-none focus:border-[var(--input-focus)]"
+                        type="text"
+                        autoComplete="name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder={tr("Nama anda", "Your name")}
+                        className="w-full rounded-2xl border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-3 text-sm text-[var(--text)] outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                       />
+                      <p className="text-[0.68rem] text-[var(--muted)]">
+                        {tr("Nama ini akan digunakan oleh bot pintar dan pada papan pemuka anda.", "This name is used by the AI bot and across your dashboard.")}
+                      </p>
+                    </div>
+
+                    {/* Bot Personality Tone Presets */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                            {tr("Gaya Personaliti Bot AI", "AI Bot Persona Tone")}
+                          </label>
+                          <p className="text-xs text-[var(--muted)]">
+                            {tr("Pilih cara bot kewangan berkomunikasi dengan anda.", "Choose how your AI assistant speaks to you.")}
+                          </p>
+                        </div>
+                        <span className="rounded-lg bg-[var(--surface-tint)] px-2 py-0.5 text-[0.65rem] font-bold text-[var(--muted)]">
+                          WhatsApp & Telegram
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {personalityPresets.map((p) => {
+                          const active = botPersonality === p.label
+                          return (
+                            <button
+                              key={p.label}
+                              type="button"
+                              onClick={() => setBotPersonality(p.label)}
+                              className={cn(
+                                "group relative flex flex-col text-left p-4 rounded-2xl border transition-all active:scale-[0.98]",
+                                active
+                                  ? "border-emerald-500 bg-emerald-500/5 dark:bg-emerald-500/10 text-[var(--text)] shadow-xs ring-1 ring-emerald-500/30"
+                                  : "border-[var(--border)] bg-[var(--surface-tint)]/40 text-[var(--muted)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-tint)]"
+                              )}
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <span className={cn("text-xs font-black", active ? "text-emerald-600 dark:text-emerald-400" : "text-[var(--text)]")}>
+                                  {p.label}
+                                </span>
+                                {active ? (
+                                  <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
+                                ) : (
+                                  <span className="h-4 w-4 rounded-full border border-[var(--border)] group-hover:border-[var(--muted)] shrink-0" />
+                                )}
+                              </div>
+                              <span className="mt-1.5 text-[0.72rem] text-[var(--muted)] leading-relaxed">
+                                {p.desc}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Save Button */}
+                    <div className="flex items-center justify-end pt-2 border-t border-[var(--divider)]">
                       <button
-                        type="button"
-                        onClick={() => setShowPassword((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--text)]"
+                        type="submit"
+                        disabled={profileSaving || !hasProfileChanges}
+                        className="flex items-center gap-2 rounded-2xl bg-[var(--btn-primary-bg)] px-6 py-3 text-xs md:text-sm font-bold text-[var(--btn-primary-text)] shadow-sm transition active:scale-[0.98] hover:opacity-90 disabled:opacity-40"
                       >
-                        {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                        {profileSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={15} />}
+                        <span>{tr("Simpan Perubahan Profil", "Save Profile Changes")}</span>
                       </button>
                     </div>
-                  </div>
-
-                  {emailError && (
-                    <div className="flex items-center gap-2 rounded-xl bg-rose-500/10 p-3 text-xs text-rose-600 dark:text-rose-400">
-                      <AlertTriangle size={14} className="shrink-0" />
-                      <span>{emailError}</span>
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={requestingEmailCode || !newEmail.trim() || !currentPassword}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] py-2.5 text-xs md:text-sm font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-[0.98] disabled:opacity-40"
-                  >
-                    {requestingEmailCode ? <Loader2 size={15} className="animate-spin" /> : <MailCheck size={15} />}
-                    <span>{tr("Hantar Kod Verifikasi", "Send Verification Code")}</span>
-                  </button>
-                </form>
-
-                {emailStep === "code_sent" && (
-                  <form onSubmit={handleConfirmEmailCode} className="space-y-3 rounded-2xl border border-[var(--border-strong)] bg-[var(--surface-tint)] p-4">
-                    <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--text)]">
-                      {tr("Kod Verifikasi 6-Digit", "6-Digit Verification Code")}
-                    </label>
-                    <input
-                      type="text"
-                      autoComplete="one-time-code"
-                      inputMode="numeric"
-                      maxLength={6}
-                      value={verificationCode}
-                      onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                      placeholder="123456"
-                      className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-2.5 text-center text-lg font-black tracking-[0.25em] text-[var(--text)] outline-none focus:border-[var(--input-focus)]"
-                    />
-                    <button
-                      type="submit"
-                      disabled={confirmingEmail || verificationCode.trim().length !== 6}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] py-2.5 text-xs md:text-sm font-bold text-[var(--btn-primary-text)] transition active:scale-[0.98] disabled:opacity-40"
-                    >
-                      {confirmingEmail ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />}
-                      <span>{tr("Sahkan & Tukar E-mel", "Verify & Update Email")}</span>
-                    </button>
                   </form>
-                )}
-              </section>
+                </section>
+              )}
 
-              {/* Card 3: Keutamaan Bahasa, Tema, Masa & Kitaran */}
-              <section id="p-prefs" className="scroll-mt-24 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6">
-                <div className="border-b border-[var(--divider)] pb-3">
-                  <h3 className="text-sm font-extrabold text-[var(--text)]">{tr("Keutamaan Sistem & Paparan", "System & Display Preferences")}</h3>
-                  <p className="text-xs text-[var(--muted)]">{tr("Konfigurasi bahasa, rupa tema, zon masa dan kitaran", "Customize language, look, timezone and cycle")}</p>
-                </div>
-
-                {/* Bahasa Selector */}
-                <div className="space-y-2">
-                  <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">{t.language || "Bahasa"}</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {languageOptions.map((opt) => {
-                      const active = lang === opt.value
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setLang(opt.value)}
-                          className={cn(
-                            "flex items-center justify-between p-3.5 rounded-2xl border text-left transition active:scale-[0.98]",
-                            active
-                              ? "border-[var(--text)] bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold"
-                              : "border-[var(--border)] bg-[var(--surface-tint)]/30 text-[var(--muted)] hover:border-[var(--border-strong)]"
-                          )}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <span className="text-xl">{opt.flag}</span>
-                            <div>
-                              <p className="text-xs font-black text-[var(--text)]">{opt.label}</p>
-                              <p className="text-[0.68rem] text-[var(--muted)]">{opt.region}</p>
-                            </div>
-                          </div>
-                          {active && <Check size={16} className="text-[var(--text)]" />}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Tema Selector */}
-                <div className="space-y-2">
-                  <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">{t.theme || "Tema"}</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {themeOptions.map((opt) => {
-                      const active = theme === opt.value
-                      const IconComp = opt.icon
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => setTheme(opt.value)}
-                          className={cn(
-                            "flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition active:scale-[0.98]",
-                            active
-                              ? "border-[var(--text)] bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold"
-                              : "border-[var(--border)] bg-[var(--surface-tint)]/30 text-[var(--muted)] hover:border-[var(--border-strong)]"
-                          )}
-                        >
-                          <IconComp size={18} className="mb-1.5 text-[var(--text)]" />
-                          <span className="text-xs font-bold">{opt.label}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Zon Masa & Format */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">{t.timezone || "Zon Masa"}</label>
-                    <select
-                      value={timezone}
-                      onChange={(e) => setTimezone(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3.5 py-2.5 text-xs font-bold text-[var(--text)] outline-none"
-                    >
-                      {timezoneOptions.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">{t.timeFormat || "Format Masa"}</label>
-                    <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-                      {timeFormatOptions.map((o) => {
-                        const active = timeFormat === o.value
-                        return (
-                          <button
-                            key={o.value}
-                            type="button"
-                            onClick={() => setTimeFormat(o.value)}
-                            className={cn(
-                              "rounded-xl border py-2.5 text-xs font-bold text-center transition",
-                              active
-                                ? "border-[var(--text)] bg-[var(--surface-tint-strong)] text-[var(--text)]"
-                                : "border-[var(--border)] bg-[var(--surface-tint)]/30 text-[var(--muted)]"
-                            )}
-                          >
-                            {o.label}
-                          </button>
-                        )
-                      })}
+              {/* Tab 2: Change Email */}
+              {desktopTab === "email" && (
+                <section className="animate-in fade-in duration-200 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6">
+                  <div className="flex items-center gap-3 border-b border-[var(--divider)] pb-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                      <MailCheck size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-[var(--text)]">
+                        {tr("Tukar Alamat E-mel", "Change Email Address")}
+                      </h3>
+                      <p className="text-xs text-[var(--muted)]">
+                        {tr("Kemas kini e-mel log masuk anda dengan perlindungan kod keselamatan.", "Update your sign-in email with verification code security.")}
+                      </p>
                     </div>
                   </div>
-                </div>
 
-                {/* Kitaran Reset Bulanan */}
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      {tr("Kitaran Reset Bulanan", "Monthly Reset Cycle")}
-                    </label>
-                    <span className="text-xs font-medium text-[var(--muted)]">
-                      {cycleMode === "category" ? tr("Ikut Tarikh Gaji", "By Salary") : tr(`Hari ${cycleStartDay}`, `Day ${cycleStartDay}`)}
+                  {/* Current Email Display */}
+                  <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-4">
+                    <div>
+                      <p className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                        {tr("E-mel Semasa Berdaftar", "Current Registered Email")}
+                      </p>
+                      <p className="text-sm font-black text-[var(--text)] mt-0.5">{profile?.email || "—"}</p>
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <ShieldCheck size={14} />
+                      <span>{tr("Disahkan", "Verified")}</span>
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => saveCycleMode("day")}
-                      disabled={cycleModeSaving}
-                      className={cn(
-                        "rounded-xl py-2 text-xs font-bold transition",
-                        cycleMode === "day"
-                          ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
-                          : "bg-[var(--surface-tint)] text-[var(--muted)]"
-                      )}
-                    >
-                      {tr("Ikut Hari", "By Day")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => saveCycleMode("category")}
-                      disabled={cycleModeSaving}
-                      className={cn(
-                        "rounded-xl py-2 text-xs font-bold transition",
-                        cycleMode === "category"
-                          ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
-                          : "bg-[var(--surface-tint)] text-[var(--muted)]"
-                      )}
-                    >
-                      {tr("Ikut Gaji", "By Salary")}
-                    </button>
-                  </div>
-
-                  {cycleMode === "day" ? (
-                    <div className="mt-2">
-                      <CycleResetCalendar
-                        value={cycleStartDay}
-                        onChange={(d) => saveCycleStartDay(d)}
-                        lang={lang}
+                  <form onSubmit={handleRequestEmailCode} className="space-y-4">
+                    <div>
+                      <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                        {tr("E-mel Baharu", "New Email Address")}
+                      </label>
+                      <input
+                        type="email"
+                        autoComplete="email"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        placeholder="nama@contoh.com"
+                        className="mt-1.5 w-full rounded-2xl border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-3 text-sm text-[var(--text)] outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
                       />
-                      <p className="mt-2 text-center text-xs text-[var(--muted)]">
-                        {cycleSaving ? tr("Menyimpan...", "Saving...") : tr(`Kitaran bajet bermula setiap ${cycleStartDay} hari bulan`, `Budget cycle resets on the ${cycleStartDay}th each month`)}
+                    </div>
+
+                    <div>
+                      <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                        {tr("Kata Laluan Semasa", "Current Password")}
+                      </label>
+                      <div className="relative mt-1.5">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          autoComplete="current-password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder={tr("Masukkan kata laluan akaun", "Enter current password")}
+                          className="w-full rounded-2xl border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-3 pr-12 text-sm text-[var(--text)] outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((v) => !v)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--text)] transition"
+                        >
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {emailError && (
+                      <div className="flex items-center gap-2 rounded-2xl bg-rose-500/10 p-3.5 text-xs text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                        <AlertTriangle size={15} className="shrink-0" />
+                        <span>{emailError}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="submit"
+                        disabled={requestingEmailCode || !newEmail.trim() || !currentPassword}
+                        className="flex items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-5 py-3 text-xs md:text-sm font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-[0.98] disabled:opacity-40"
+                      >
+                        {requestingEmailCode ? <Loader2 size={16} className="animate-spin" /> : <MailCheck size={16} />}
+                        <span>{tr("Hantar Kod Verifikasi", "Send Verification Code")}</span>
+                      </button>
+                    </div>
+                  </form>
+
+                  {emailStep === "code_sent" && (
+                    <form onSubmit={handleConfirmEmailCode} className="space-y-4 rounded-3xl border border-indigo-500/30 bg-indigo-500/5 p-5 animate-in fade-in duration-200">
+                      <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                        <CheckCircle2 size={18} />
+                        <span className="text-xs font-black uppercase tracking-wider">
+                          {tr("Kod Verifikasi 6-Digit Dihantar", "6-Digit Verification Code Sent")}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[var(--muted)]">
+                        {tr(`Sila masukkan 6 digit kod keselamatan yang dihantar ke ${newEmail}`, `Please enter the 6-digit security code sent to ${newEmail}`)}
+                      </p>
+                      <input
+                        type="text"
+                        autoComplete="one-time-code"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={verificationCode}
+                        onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                        placeholder="123456"
+                        className="w-full rounded-2xl border border-[var(--input-border)] bg-[var(--input-bg)] px-4 py-3 text-center text-xl font-black tracking-[0.3em] text-[var(--text)] outline-none focus:border-indigo-500"
+                      />
+                      <button
+                        type="submit"
+                        disabled={confirmingEmail || verificationCode.trim().length !== 6}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--btn-primary-bg)] py-3 text-xs md:text-sm font-bold text-[var(--btn-primary-text)] transition active:scale-[0.98] disabled:opacity-40"
+                      >
+                        {confirmingEmail ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                        <span>{tr("Sahkan & Tukar E-mel", "Verify & Update Email")}</span>
+                      </button>
+                    </form>
+                  )}
+                </section>
+              )}
+
+              {/* Tab 3: Preferences & Display */}
+              {desktopTab === "preferences" && (
+                <section className="animate-in fade-in duration-200 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6">
+                  <div className="flex items-center gap-3 border-b border-[var(--divider)] pb-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                      <Palette size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-[var(--text)]">
+                        {tr("Keutamaan Sistem & Paparan", "System & Display Preferences")}
+                      </h3>
+                      <p className="text-xs text-[var(--muted)]">
+                        {tr("Peribadikan bahasa antaramuka, tema visual dan zon masa.", "Customize UI language, visual theme, and timezone settings.")}
                       </p>
                     </div>
-                  ) : (
-                    <p className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-4 text-center text-xs text-[var(--muted)]">
-                      {tr("Kitaran bajet akan direset secara automatik mengikut tarikh rekod gaji (Mgaji / Msalary).", "Budget cycle resets automatically on your salary date record.")}
-                    </p>
-                  )}
-                </div>
-              </section>
-
-              {/* ─── Right: Multi-Account, System & Danger ─── */}
-              {/* Card 1: Multi-Account Switcher */}
-              <section id="p-accounts" className="scroll-mt-24 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-[var(--divider)] pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)]">
-                      <Users size={16} />
-                    </div>
-                    <h3 className="text-sm font-extrabold text-[var(--text)]">{tr("Profil Akaun Tersimpan", "Saved Accounts")}</h3>
                   </div>
-                  <span className="text-xs font-bold text-[var(--muted)]">{accounts.length} akaun</span>
-                </div>
 
-                <div className="divide-y divide-[var(--divider)] rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 overflow-hidden">
-                  {accounts.map((acct) => {
-                    const isActive = acct.email === activeEmail
-                    return (
+                  {/* Bahasa */}
+                  <div className="space-y-2.5">
+                    <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                      {t.language || "Bahasa Antara Muka"}
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {languageOptions.map((opt) => {
+                        const active = lang === opt.value
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setLang(opt.value)}
+                            className={cn(
+                              "flex items-center justify-between p-4 rounded-2xl border text-left transition active:scale-[0.98]",
+                              active
+                                ? "border-emerald-500 bg-emerald-500/5 dark:bg-emerald-500/10 text-[var(--text)] font-bold ring-1 ring-emerald-500/30"
+                                : "border-[var(--border)] bg-[var(--surface-tint)]/30 text-[var(--muted)] hover:border-[var(--border-strong)]"
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl">{opt.flag}</span>
+                              <div>
+                                <p className="text-xs font-black text-[var(--text)]">{opt.label}</p>
+                                <p className="text-[0.68rem] text-[var(--muted)]">{opt.region}</p>
+                              </div>
+                            </div>
+                            {active && <Check size={18} className="text-emerald-500" />}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Tema */}
+                  <div className="space-y-2.5">
+                    <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                      {t.theme || "Tema Visual"}
+                    </label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {themeOptions.map((opt) => {
+                        const active = theme === opt.value
+                        const IconComp = opt.icon
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setTheme(opt.value)}
+                            className={cn(
+                              "flex flex-col items-center justify-center p-4 rounded-2xl border text-center transition active:scale-[0.98]",
+                              active
+                                ? "border-emerald-500 bg-emerald-500/5 dark:bg-emerald-500/10 text-[var(--text)] font-bold ring-1 ring-emerald-500/30"
+                                : "border-[var(--border)] bg-[var(--surface-tint)]/30 text-[var(--muted)] hover:border-[var(--border-strong)]"
+                            )}
+                          >
+                            <IconComp size={20} className={cn("mb-2", active ? "text-emerald-500" : "text-[var(--text)]")} />
+                            <span className="text-xs font-bold">{opt.label}</span>
+                            <span className="mt-1 text-[0.65rem] text-[var(--muted)] line-clamp-1">{opt.desc}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Zon Masa & Format Jam */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[var(--divider)]">
+                    <div>
+                      <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                        {t.timezone || "Zon Masa"}
+                      </label>
+                      <select
+                        value={timezone}
+                        onChange={(e) => setTimezone(e.target.value)}
+                        className="mt-1.5 w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-xs font-bold text-[var(--text)] outline-none focus:border-emerald-500"
+                      >
+                        {timezoneOptions.map((o) => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                        {t.timeFormat || "Format Masa"}
+                      </label>
+                      <div className="mt-1.5 grid grid-cols-2 gap-2">
+                        {timeFormatOptions.map((o) => {
+                          const active = timeFormat === o.value
+                          return (
+                            <button
+                              key={o.value}
+                              type="button"
+                              onClick={() => setTimeFormat(o.value)}
+                              className={cn(
+                                "rounded-2xl border py-3 text-xs font-bold text-center transition",
+                                active
+                                  ? "border-emerald-500 bg-emerald-500/5 dark:bg-emerald-500/10 text-[var(--text)] ring-1 ring-emerald-500/30"
+                                  : "border-[var(--border)] bg-[var(--surface-tint)]/30 text-[var(--muted)] hover:border-[var(--border-strong)]"
+                              )}
+                            >
+                              <div>{o.label}</div>
+                              <div className="text-[0.65rem] text-[var(--muted)] font-normal mt-0.5">{o.desc}</div>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* Tab 4: Cycle Reset */}
+              {desktopTab === "cycle" && (
+                <section className="animate-in fade-in duration-200 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6">
+                  <div className="flex items-center gap-3 border-b border-[var(--divider)] pb-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
+                      <CalendarDays size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-[var(--text)]">
+                        {tr("Kitaran Reset Bulanan", "Monthly Reset Cycle")}
+                      </h3>
+                      <p className="text-xs text-[var(--muted)]">
+                        {tr(
+                          "Tentukan bagaimana bajet dan perbelanjaan bulanan anda diperbaharui setiap bulan.",
+                          "Choose how your monthly budget and expenses reset each period."
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                        {tr("Mod Kitaran", "Cycle Mode")}
+                      </label>
+                      <span className="text-xs font-bold text-teal-600 dark:text-teal-400">
+                        {cycleMode === "category" ? tr("Ikut Tarikh Gaji", "By Salary Record") : tr(`Hari ${cycleStartDay} Setiap Bulan`, `Day ${cycleStartDay} Each Month`)}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
                       <button
-                        key={acct.email}
                         type="button"
-                        onClick={() => {
-                          if (!isActive) {
-                            switchToAccount(acct.email)
-                            setActiveEmail(acct.email)
-                            window.location.reload()
-                          }
-                        }}
+                        onClick={() => saveCycleMode("day")}
+                        disabled={cycleModeSaving}
                         className={cn(
-                          "flex w-full items-center gap-3 px-3.5 py-3 text-left transition",
-                          isActive ? "bg-[var(--surface-tint-strong)]" : "hover:bg-[var(--surface-tint-strong)]/60"
+                          "rounded-2xl py-3 px-4 text-xs font-bold transition flex flex-col items-center justify-center text-center",
+                          cycleMode === "day"
+                            ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-xs"
+                            : "bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)]"
                         )}
                       >
-                        <UserAvatar name={acct.name || acct.email} size={32} />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs font-bold text-[var(--text)]">{acct.name || acct.email}</p>
-                          <p className="truncate text-[0.68rem] text-[var(--muted)]">{acct.email}</p>
-                        </div>
-                        {isActive ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                            <CheckCircle2 size={11} />
-                            <span>{tr("Aktif", "Active")}</span>
-                          </span>
-                        ) : (
-                          <ChevronRight size={14} className="shrink-0 text-[var(--muted)]" />
-                        )}
+                        <span className="font-extrabold">{tr("Ikut Hari", "By Day")}</span>
+                        <span className="text-[0.65rem] opacity-80 mt-0.5">{tr("Reset tarikh tetap setiap bulan", "Fixed date each month")}</span>
                       </button>
-                    )
-                  })}
+                      <button
+                        type="button"
+                        onClick={() => saveCycleMode("category")}
+                        disabled={cycleModeSaving}
+                        className={cn(
+                          "rounded-2xl py-3 px-4 text-xs font-bold transition flex flex-col items-center justify-center text-center",
+                          cycleMode === "category"
+                            ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-xs"
+                            : "bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)]"
+                        )}
+                      >
+                        <span className="font-extrabold">{tr("Ikut Gaji", "By Salary")}</span>
+                        <span className="text-[0.65rem] opacity-80 mt-0.5">{tr("Automatik rekod Mgaji / Msalary", "Auto upon salary entry")}</span>
+                      </button>
+                    </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowAddAccountModal(true)}
-                    className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition hover:bg-[var(--surface-tint-strong)] active:scale-[0.99]"
-                  >
-                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--surface-tint-strong)] text-[var(--text)]">
+                    {cycleMode === "day" ? (
+                      <div className="mt-4 rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/20 p-5">
+                        <CycleResetCalendar
+                          value={cycleStartDay}
+                          onChange={(d) => saveCycleStartDay(d)}
+                          lang={lang}
+                        />
+                        <p className="mt-3 text-center text-xs font-medium text-[var(--muted)]">
+                          {cycleSaving
+                            ? tr("Menyimpan pilihan kitaran...", "Saving cycle...")
+                            : tr(`Kitaran bajet bermula setiap ${cycleStartDay} hari bulan.`, `Budget cycle resets on the ${cycleStartDay}th each month.`)}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-5 text-center text-xs text-[var(--muted)] space-y-2">
+                        <p className="font-bold text-[var(--text)]">
+                          {tr("Kitaran Berdasarkan Gaji Diaktifkan", "Salary-Based Cycle Enabled")}
+                        </p>
+                        <p className="leading-relaxed">
+                          {tr(
+                            "Kitaran bajet akan direset secara automatik sebaik sahaja transaksi kemasukan gaji direkodkan melalui WhatsApp, Telegram, atau web portal.",
+                            "Budget cycle resets automatically when a salary entry is recorded via WhatsApp, Telegram, or the web portal."
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
+
+              {/* Tab 5: Saved Accounts */}
+              {desktopTab === "accounts" && (
+                <section className="animate-in fade-in duration-200 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6">
+                  <div className="flex items-center justify-between border-b border-[var(--divider)] pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                        <Users size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-black text-[var(--text)]">
+                          {tr("Pengurusan Akaun & Profil", "Account & Profile Management")}
+                        </h3>
+                        <p className="text-xs text-[var(--muted)]">
+                          {tr("Pindah profil kewangan tersimpan atau log masuk profil tambahan.", "Switch saved financial profiles or add another login profile.")}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddAccountModal(true)}
+                      className="inline-flex items-center gap-1.5 rounded-2xl bg-[var(--btn-primary-bg)] px-3.5 py-2 text-xs font-bold text-[var(--btn-primary-text)] shadow-xs transition hover:opacity-90 active:scale-95"
+                    >
                       <UserCircle2 size={15} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-bold text-[var(--text)]">{tr("Tambah Akaun Lain", "Add Another Account")}</p>
-                      <p className="text-[0.68rem] text-[var(--muted)]">{tr("Log masuk profil kedua", "Sign in second profile")}</p>
-                    </div>
-                    <ChevronRight size={14} className="shrink-0 text-[var(--muted)]" />
-                  </button>
-                </div>
-              </section>
+                      <span>{tr("Tambah Akaun", "Add Account")}</span>
+                    </button>
+                  </div>
 
-              {/* Card 2: System Links & Docs */}
-              <section id="p-system" className="scroll-mt-24 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-3">
-                <p className="text-[0.68rem] font-black uppercase tracking-wider text-[var(--muted)]">
-                  {tr("Pautan & Ciri Portal", "Portal Features & Docs")}
-                </p>
-
-                <div className="space-y-1.5">
-                  {systemLinks.map((item) => {
-                    const IconComp = item.icon
-                    if (item.onClick) {
+                  <div className="divide-y divide-[var(--divider)] rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/20 overflow-hidden">
+                    {accounts.map((acct) => {
+                      const isActive = acct.email === activeEmail
                       return (
                         <button
-                          key={item.label}
+                          key={acct.email}
                           type="button"
-                          onClick={item.onClick}
-                          className="group flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/20 px-3.5 py-3 text-left transition hover:bg-[var(--surface-tint)] hover:border-[var(--border-strong)]"
+                          onClick={() => {
+                            if (!isActive) {
+                              switchToAccount(acct.email)
+                              setActiveEmail(acct.email)
+                              window.location.reload()
+                            }
+                          }}
+                          className={cn(
+                            "flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition",
+                            isActive ? "bg-[var(--surface-tint-strong)]" : "hover:bg-[var(--surface-tint-strong)]/60"
+                          )}
                         >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)]">
-                              <IconComp size={16} />
+                          <UserAvatar name={acct.name || acct.email} size={38} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-extrabold text-[var(--text)]">{acct.name || acct.email}</p>
+                            <p className="truncate text-[0.68rem] text-[var(--muted)]">{acct.email}</p>
+                          </div>
+                          {isActive ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-[0.65rem] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                              <CheckCircle2 size={12} />
+                              <span>{tr("Sedang Digunakan", "Current Active")}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-1 text-[0.68rem] font-bold text-[var(--muted)] group-hover:text-[var(--text)]">
+                              <span>{tr("Tukar", "Switch")}</span>
+                              <ChevronRight size={13} />
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* Tab 6: System & Guides */}
+              {desktopTab === "system" && (
+                <section className="animate-in fade-in duration-200 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6">
+                  <div className="flex items-center gap-3 border-b border-[var(--divider)] pb-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                      <ScrollText size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-[var(--text)]">
+                        {tr("Pautan & Ciri Portal", "Portal Features & Docs")}
+                      </h3>
+                      <p className="text-xs text-[var(--muted)]">
+                        {tr("Akses keselamatan PIN, panduan arahan bot, pencapaian dan info versi.", "Access PIN security, bot commands, milestones and version info.")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2.5">
+                    {systemLinks.map((item) => {
+                      const IconComp = item.icon
+                      if (item.onClick) {
+                        return (
+                          <button
+                            key={item.label}
+                            type="button"
+                            onClick={item.onClick}
+                            className="group flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/20 p-4 text-left transition hover:bg-[var(--surface-tint)] hover:border-[var(--border-strong)]"
+                          >
+                            <div className="flex items-center gap-3.5 min-w-0">
+                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)]">
+                                <IconComp size={18} />
+                              </div>
+                              <div className="truncate">
+                                <p className="text-xs font-bold text-[var(--text)]">{item.label}</p>
+                                <p className="text-[0.68rem] text-[var(--muted)] truncate">{item.desc}</p>
+                              </div>
+                            </div>
+                            <ChevronRight size={15} className="text-[var(--muted)] transition-transform group-hover:translate-x-1" />
+                          </button>
+                        )
+                      }
+                      return (
+                        <Link
+                          key={item.label}
+                          href={item.href}
+                          className="group flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/20 p-4 transition hover:bg-[var(--surface-tint)] hover:border-[var(--border-strong)]"
+                        >
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)]">
+                              <IconComp size={18} />
                             </div>
                             <div className="truncate">
                               <p className="text-xs font-bold text-[var(--text)]">{item.label}</p>
                               <p className="text-[0.68rem] text-[var(--muted)] truncate">{item.desc}</p>
                             </div>
                           </div>
-                          <ChevronRight size={14} className="text-[var(--muted)] transition-transform group-hover:translate-x-0.5" />
-                        </button>
+                          <ChevronRight size={15} className="text-[var(--muted)] transition-transform group-hover:translate-x-1" />
+                        </Link>
                       )
-                    }
-                    return (
-                      <Link
-                        key={item.label}
-                        href={item.href}
-                        className="group flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/20 px-3.5 py-3 transition hover:bg-[var(--surface-tint)] hover:border-[var(--border-strong)]"
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* Tab 7: Danger Zone & Session */}
+              {desktopTab === "danger" && (
+                <section className="animate-in fade-in duration-200 rounded-3xl border border-rose-500/20 bg-rose-500/5 p-6 shadow-sm space-y-6">
+                  <div className="flex items-center gap-3 border-b border-rose-500/15 pb-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                      <AlertTriangle size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold text-rose-600 dark:text-rose-400">
+                        {tr("Zon Keselamatan & Bahaya", "Danger Zone")}
+                      </h3>
+                      <p className="text-xs text-[var(--muted)]">
+                        {tr("Tindakan berisiko tinggi terhadap rekod data dan pengurusan sesi log keluar.", "High-risk actions on data records and session management.")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-rose-500/20 bg-[var(--card)] p-4 space-y-3">
+                    <p className="text-xs font-bold text-[var(--text)]">
+                      {tr("Amaran Tindakan Kekal", "Permanent Action Warning")}
+                    </p>
+                    <p className="text-[0.75rem] text-[var(--muted)] leading-relaxed">
+                      {tr(
+                        "Tindakan di bawah tidak boleh diundur. Memilih 'Reset Rekod' akan mengosongkan keseluruhan rekod perbelanjaan, manakala 'Padam Akaun' akan menamatkan profil pengguna anda selamanya.",
+                        "Actions below are irreversible. Resetting clears all transaction logs, while deletion permanently closes your user profile."
+                      )}
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => openDangerModal("reset")}
+                        className="flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95"
                       >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)]">
-                            <IconComp size={16} />
-                          </div>
-                          <div className="truncate">
-                            <p className="text-xs font-bold text-[var(--text)]">{item.label}</p>
-                            <p className="text-[0.68rem] text-[var(--muted)] truncate">{item.desc}</p>
-                          </div>
-                        </div>
-                        <ChevronRight size={14} className="text-[var(--muted)] transition-transform group-hover:translate-x-0.5" />
-                      </Link>
-                    )
-                  })}
-                </div>
-              </section>
+                        <RefreshCw size={14} />
+                        <span>{tr("Reset Rekod Transaksi", "Reset Records")}</span>
+                      </button>
 
-              {/* Card 3: Danger Zone & Logout */}
-              <section id="p-danger" className="scroll-mt-24 rounded-3xl border border-rose-500/20 bg-rose-500/5 p-6 shadow-sm space-y-4">
-                <div className="flex items-center gap-2.5 border-b border-rose-500/15 pb-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
-                    <AlertTriangle size={16} />
+                      <button
+                        type="button"
+                        onClick={() => openDangerModal("delete")}
+                        className="flex items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs font-bold text-rose-600 dark:text-rose-400 transition hover:bg-rose-500/20 active:scale-95"
+                      >
+                        <Trash2 size={14} />
+                        <span>{tr("Padam Akaun Pengguna", "Delete Profile")}</span>
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-extrabold text-rose-600 dark:text-rose-400">{tr("Zon Keselamatan & Bahaya", "Danger Zone")}</h3>
-                    <p className="text-[0.68rem] text-[var(--muted)]">{tr("Tindakan pemadaman kekal rekod akaun", "Irreversible account wipe actions")}</p>
+
+                  <div className="pt-2 border-t border-rose-500/15">
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-500/10 py-3.5 text-xs font-black uppercase tracking-wider text-red-500 transition hover:bg-red-500/20 active:scale-[0.98]"
+                    >
+                      <LogOut size={16} strokeWidth={2.5} />
+                      <span>{t.logout || tr("Log Keluar Sesi Portal", "Log Out Portal Session")}</span>
+                    </button>
                   </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openDangerModal("reset")}
-                    className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95"
-                  >
-                    <RefreshCw size={13} />
-                    <span>{tr("Reset Rekod", "Reset Records")}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => openDangerModal("delete")}
-                    className="flex items-center justify-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2.5 text-xs font-bold text-rose-600 dark:text-rose-400 transition hover:bg-rose-500/20 active:scale-95"
-                  >
-                    <Trash2 size={13} />
-                    <span>{tr("Padam Akaun", "Delete Profile")}</span>
-                  </button>
-                </div>
-
-                <div className="pt-2 border-t border-rose-500/15">
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-500/10 py-3 text-xs font-black uppercase tracking-wider text-red-500 transition hover:bg-red-500/20 active:scale-[0.98]"
-                  >
-                    <LogOut size={15} strokeWidth={2.5} />
-                    <span>{t.logout || tr("Log Keluar Sesi", "Log Out Session")}</span>
-                  </button>
-                </div>
-              </section>
-              </div>
-            </div>
+                </section>
+              )}
+            </main>
           </div>
         </DesktopPageBody>
       </div>
