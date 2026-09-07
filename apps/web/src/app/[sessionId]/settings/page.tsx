@@ -588,57 +588,144 @@ export default function SettingsPage() {
           }
         />
 
-        {/* ─── Profile hero: nama kiri, avatar kanan overlay (no card) ─── */}
-        <section className="px-4 pt-3 pb-3">
-          <div className="flex items-center gap-3">
-            {/* Name / tone / email — kiri */}
-            <div className="min-w-0 flex-1">
-              <h2 className="text-2xl font-black tracking-tight text-[var(--text)]">
-                {showProfileSkeleton ? "..." : profile?.name || tr("Pengguna", "User")}
-              </h2>
-
-              <div className="mt-2 flex items-center">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-3 py-1 text-xs font-bold text-[var(--text)] shadow-2xs">
-                  <Sparkles size={11} className="text-[var(--text)] opacity-80" />
-                  <span className="truncate max-w-[170px]">
-                    {profile?.bot_personality || tr("Personaliti Mesra", "Friendly Tone")}
-                  </span>
+        {/* ─── Social Media Style Mobile Profile Card ─── */}
+        <section className="px-3 pt-1">
+          <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-xs">
+            {/* Cover Banner with Ambient Mesh Gradient */}
+            <div className="relative h-20 w-full bg-gradient-to-r from-emerald-600/20 via-teal-500/20 to-indigo-600/20 px-4 pt-3">
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[0.65rem] font-bold text-emerald-600 dark:text-emerald-400 backdrop-blur-sm">
+                  <ShieldCheck size={11} />
+                  <span>MyPeribadi</span>
+                </span>
+                <span className="text-[0.65rem] font-semibold text-[var(--muted)]/80">
+                  {profile?.id ? `#${profile.id.slice(0, 6)}` : ""}
                 </span>
               </div>
-
-              <p className="mt-1.5 text-xs font-medium text-[var(--muted)]">{profile?.email || "—"}</p>
             </div>
 
-            {/* Avatar — kanan, keluar tepi kanan (kemaskini via Edit Profil) */}
-            <div className="shrink-0 -mr-2">
-              <UserAvatar
-                name={name || profile?.name}
-                size={80}
-                src={profile?.avatar_url}
-                className="transition-transform"
-              />
+            {/* Profile Content Body */}
+            <div className="px-4 pb-4">
+              {/* Row: Avatar (overlapping banner) + Social Stats */}
+              <div className="flex items-end justify-between">
+                {/* Avatar with Story-style Gradient Ring & Camera Action */}
+                <div className="-mt-10 relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setAvatarSheetOpen(true)}
+                    className="group relative block rounded-full p-[2.5px] bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 active:scale-95 transition"
+                    title={tr("Tukar gambar profil", "Change profile photo")}
+                  >
+                    <div className="rounded-full bg-[var(--card)] p-[2px]">
+                      <UserAvatar
+                        name={name || profile?.name}
+                        size={68}
+                        src={profile?.avatar_url}
+                        className="rounded-full object-cover"
+                      />
+                    </div>
+                    <span className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] border-2 border-[var(--card)] shadow-xs">
+                      <Camera size={11} />
+                    </span>
+                  </button>
+                </div>
+
+                {/* Social Quick Stats */}
+                <div className="flex flex-1 items-center justify-around pl-3 pb-1">
+                  <button
+                    type="button"
+                    onClick={() => setActiveMobileSheet("accounts")}
+                    className="flex flex-col items-center text-center transition active:scale-95"
+                  >
+                    <span className="text-sm font-black text-[var(--text)]">{accounts.length || 1}</span>
+                    <span className="text-[0.62rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                      {tr("Akaun", "Accounts")}
+                    </span>
+                  </button>
+                  <div className="h-5 w-px bg-[var(--divider)]" />
+                  <button
+                    type="button"
+                    onClick={() => setActiveMobileSheet("cycleReset")}
+                    className="flex flex-col items-center text-center transition active:scale-95"
+                  >
+                    <span className="text-sm font-black text-[var(--text)]">
+                      {cycleMode === "category" ? tr("Gaji", "Salary") : `H-${cycleStartDay}`}
+                    </span>
+                    <span className="text-[0.62rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                      {tr("Kitaran", "Cycle")}
+                    </span>
+                  </button>
+                  <div className="h-5 w-px bg-[var(--divider)]" />
+                  <div className="flex flex-col items-center text-center">
+                    <span className="inline-flex items-center gap-1 text-sm font-black text-emerald-600 dark:text-emerald-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>{tr("Aktif", "Active")}</span>
+                    </span>
+                    <span className="text-[0.62rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                      {tr("Status", "Status")}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Name & Handle (Email) */}
+              <div className="mt-3">
+                <div className="flex items-center gap-1.5">
+                  <h2 className="text-lg font-black tracking-tight text-[var(--text)]">
+                    {showProfileSkeleton ? "..." : profile?.name || tr("Pengguna", "User")}
+                  </h2>
+                  <span className="text-emerald-500" title={tr("Disahkan", "Verified")}>
+                    <ShieldCheck size={16} />
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs font-medium text-[var(--muted)] truncate">
+                  {profile?.email || "—"}
+                </p>
+              </div>
+
+              {/* Social Bio Box: AI Companion & Bot Personality */}
+              <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/60 p-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-[0.65rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                    <Bot size={12} className="text-emerald-500" />
+                    <span>{tr("Personaliti Bot AI", "AI Bot Persona")}</span>
+                  </div>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-2 py-0.5 text-[0.65rem] font-bold text-[var(--text)] shadow-2xs">
+                    <Sparkles size={10} className="text-amber-500" />
+                    <span className="truncate max-w-[130px]">
+                      {profile?.bot_personality || tr("Personaliti Mesra", "Friendly Tone")}
+                    </span>
+                  </span>
+                </div>
+                <p className="mt-1 text-[0.72rem] text-[var(--muted)] leading-relaxed">
+                  {tr(
+                    "Gaya interaksi & nada maklum balas AI kewangan anda di WhatsApp & Telegram.",
+                    "Your financial AI companion's response tone on WhatsApp & Telegram."
+                  )}
+                </p>
+              </div>
+
+              {/* Action Buttons (Social Media Profile actions) */}
+              <div className="mt-3.5 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveMobileSheet("profile")}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-tint)] py-2 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95 shadow-2xs"
+                >
+                  <PencilLine size={13} />
+                  <span>{tr("Edit Profil", "Edit Profile")}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveMobileSheet("email")}
+                  className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-tint)] py-2 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95 shadow-2xs"
+                >
+                  <MailCheck size={13} />
+                  <span>{tr("Tukar E-mel", "Change Email")}</span>
+                </button>
+              </div>
             </div>
-          </div>
-
-          {/* Material 3 Outlined Action Chips */}
-          <div className="mx-auto mt-4 grid w-full max-w-xs grid-cols-2 gap-2.5">
-            <button
-              type="button"
-              onClick={() => setActiveMobileSheet("profile")}
-              className="flex items-center justify-center gap-1.5 rounded-full border border-[var(--border-strong)] bg-[var(--surface-tint)] py-2.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95 shadow-2xs"
-            >
-              <PencilLine size={13} />
-              <span>{tr("Edit Profil", "Edit Profile")}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveMobileSheet("email")}
-              className="flex items-center justify-center gap-1.5 rounded-full border border-[var(--border-strong)] bg-[var(--surface-tint)] py-2.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95 shadow-2xs"
-            >
-              <MailCheck size={13} />
-              <span>{tr("Tukar E-mel", "Change Email")}</span>
-            </button>
           </div>
         </section>
 
