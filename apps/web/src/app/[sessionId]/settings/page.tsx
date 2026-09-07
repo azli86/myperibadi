@@ -934,10 +934,9 @@ export default function SettingsPage() {
         />
 
         <DesktopPageBody className="space-y-6 pt-4">
-          <div className="grid grid-cols-1 gap-6 items-start">
-            {/* ─── Settings Stack (single column, full width) ─── */}
-            <div className="space-y-6">
-              {/* ─── Social Media Style Profile Hero (Desktop) ─── */}
+          <div className="space-y-6">
+            {/* ─── Desktop body: hero full width + 2-col grid below ─── */}
+              {/* ─── Social Media Style Profile Hero (Desktop, full width) ─── */}
               <section className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
                 {/* Cover Banner with Ambient Mesh Gradient */}
                 <div className="relative h-28 w-full bg-gradient-to-r from-emerald-600/20 via-teal-500/20 to-indigo-600/20" />
@@ -1027,6 +1026,8 @@ export default function SettingsPage() {
                 </div>
               </section>
 
+              {/* ─── 2-Column Grid: Cards Below Hero ─── */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
               {/* Card 1: Profile & Identity Hero */}
               <section className="rounded-3xl border border-[var(--border)] bg-gradient-to-br from-[var(--card)] via-[var(--card)] to-[var(--surface-tint)] p-6 shadow-sm space-y-6">
                 {/* Edit Name & Bot Tone Form */}
@@ -1352,10 +1353,8 @@ export default function SettingsPage() {
                   )}
                 </div>
               </section>
-            </div>
 
-            {/* ─── Right: Multi-Account, System & Danger ─── */}
-            <div className="space-y-6">
+              {/* ─── Right: Multi-Account, System & Danger ─── */}
               {/* Card 1: Multi-Account Switcher */}
               <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-[var(--divider)] pb-3">
