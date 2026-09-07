@@ -1,6 +1,18 @@
-// Route-level skeleton shell: shows instantly during client-side navigation
-// (and before hydrated JS) so mobile never flashes blank while slow DB fetches.
+"use client"
+
+import { useEffect, useState } from "react"
+
+// Route-level skeleton shell. Delayed ~300ms so fast navigations don't flash a
+// skeleton; slow DB fetches (and pre-hydration) still land on a skeleton.
 export default function DashboardLoading() {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const t = window.setTimeout(() => setVisible(true), 300)
+    return () => window.clearTimeout(t)
+  }, [])
+
+  if (!visible) return <div aria-hidden="true" className="min-h-[40vh]" />
+
   return (
     <div className="space-y-5 pb-16 text-[0.8125rem]" aria-busy="true" aria-label="Memuatkan">
       {/* Balance hero */}

@@ -2179,6 +2179,27 @@ const currentCycleKeyStr = useMemo(
  {langT.clearFilters}
  </button>
  </div>
+ ) : showDataSkeleton && filteredTxns.length === 0 ? (
+  <div className="space-y-3" aria-busy="true" aria-label={lang === "EN" ? "Loading transactions" : "Memuatkan transaksi"}>
+    {[0, 1, 2].map((g) => (
+      <div key={g} className="overflow-hidden rounded-xl border border-[color:var(--skeleton-border)] bg-[var(--card)]">
+        <div className="flex items-center justify-between border-b border-[color:var(--border)] bg-[var(--surface-tint)] px-5 py-2.5">
+          <div className="skeleton-surface h-2.5 w-28 rounded-full" />
+          <div className="skeleton-surface h-2.5 w-16 rounded-full" />
+        </div>
+        {[0, 1, 2].map((r) => (
+          <div key={r} className="flex items-center gap-3 border-b border-[color:var(--border)] px-5 py-3 last:border-b-0">
+            <div className="skeleton-surface h-8 w-8 shrink-0 rounded-xl" />
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <div className="skeleton-surface h-2.5 w-40 rounded-full" />
+              <div className="skeleton-surface h-2 w-20 rounded-full" />
+            </div>
+            <div className="skeleton-surface h-3 w-16 rounded-full" />
+          </div>
+        ))}
+      </div>
+    ))}
+  </div>
  ) : (
  <>
   <div className="hidden overflow-hidden rounded-xl border border-[color:var(--border)] bg-[var(--card)] md:block">

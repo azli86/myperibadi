@@ -406,7 +406,7 @@ export default function Dashboard() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showBadgeModal, setShowBadgeModal] = useState(false)
   const [loading, setLoading] = useState(true)
-  const showDataSkeleton = useDelayedSkeleton(loading)
+  const showDataSkeleton = useDelayedSkeleton(loading, { delayMs: 300 })
   const [stats, setStats] = useState({ balance: 0, income_month: 0, expense_month: 0, safe_balance: 0 })
   const [cycleStartDay, setCycleStartDay] = useState(1)
   const [cycleMode, setCycleMode] = useState<"day" | "category">("day")
