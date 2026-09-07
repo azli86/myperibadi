@@ -6,6 +6,7 @@ import { Camera, Image as ImageIcon, Trash2, Loader2, Check, X, ZoomIn, ZoomOut 
 import { useLang } from "@/lib/lang"
 import { getAccessToken } from "@/lib/auth-session"
 import { invalidateApiCache } from "@/lib/api-cache"
+import { cacheAvatarFromUrl, writeAvatarCache } from "@/lib/avatar-cache"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 
@@ -171,6 +172,14 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
   }, [crop, cropDims, boxC, cropT])
 
   const afterChange = (url: string | null, okTitle: string, okMsg: string) => {
+    // Persist the avatar locally so it never reloads from the CDN on page opens.
+    // Only written here (on explicit user update / removal) — that is the single
+    // point where the cached image is allowed to change.
+    if (url) {
+      void cacheAvatarFromUrl(url)
+    } else {
+      writeAvatarCache(null)
+    }
     invalidateApiCache("/api/users/me", getAccessToken())
     window.dispatchEvent(new Event("avatar-updated"))
     onChanged(url)

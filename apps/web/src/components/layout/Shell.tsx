@@ -893,6 +893,7 @@ function getMobileHeaderMeta(
   };
 }
 
+import { useAvatar } from "@/lib/avatar-cache"
 export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "";
   const pathSegments = pathname.split("/").filter(Boolean);
@@ -1373,6 +1374,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       ];
 
   const [user, setUser] = useState<ShellUser | null>(null);
+  const avatarSrc = useAvatar(user?.avatar_url)
   const adminNavigationSection = user?.is_admin
     ? [
         {
@@ -3319,7 +3321,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-tint)]",
                 )}
               >
-                <UserAvatar name={displayName} size={30} src={user?.avatar_url} />
+                <UserAvatar name={displayName} size={30} src={avatarSrc} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[0.75rem] font-bold leading-tight text-[var(--text)]">{displayName}</p>
                   <p className="mt-0.5 truncate text-[0.56rem] font-medium text-[var(--muted)]">
@@ -3342,7 +3344,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   >
                     <div className="border-b border-[var(--border)] px-3.5 py-3">
                       <div className="flex items-center gap-2.5">
-                        <UserAvatar name={displayName} size={36} src={user?.avatar_url} />
+                        <UserAvatar name={displayName} size={36} src={avatarSrc} />
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-bold text-[var(--text)]">{displayName}</p>
                           <p className="mt-0.5 truncate text-[0.62rem] font-medium text-[var(--muted)]">
@@ -3742,7 +3744,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     )}
                   >
                     <span className="relative inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full border border-[var(--border)] ring-2 ring-transparent transition-all duration-200 group-active:scale-95">
-                      <UserAvatar name={displayName} size={34} src={user?.avatar_url} />
+                      <UserAvatar name={displayName} size={34} src={avatarSrc} />
                     </span>
                   </button>
                 </div>
@@ -3899,7 +3901,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <div className="px-4 pt-1 pb-3">
                 <div className="relative w-full max-w-[340px] rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/60 py-3 pl-4 pr-20">
                   <div className="absolute -right-4 top-1/2 -translate-y-1/2 shrink-0">
-                    <UserAvatar name={displayName || activeEmail} size={80} src={user?.avatar_url} />
+                    <UserAvatar name={displayName || activeEmail} size={80} src={avatarSrc} />
                   </div>
 
                   <div className="min-w-0 flex-1">
