@@ -8,6 +8,7 @@ import {
   Check,
   ChevronRight,
   Clock,
+  Footprints,
   HeartPulse,
   LineChart,
   Loader2,
@@ -256,10 +257,16 @@ export default function HealthDashboardPage() {
           beta
           homeHref={`/${sessionId}`}
           actions={
-            <DesktopPageAction onClick={() => router.push(`/${sessionId}/health/readings`)}>
-              <Plus />
-              {isBm ? "Tambah Bacaan" : "Add Reading"}
-            </DesktopPageAction>
+            <>
+              <DesktopPageAction variant="secondary" onClick={() => router.push(`/${sessionId}/health/tracking`)}>
+                <Footprints />
+                {isBm ? "Larian & Langkah" : "Run Tracker"}
+              </DesktopPageAction>
+              <DesktopPageAction onClick={() => router.push(`/${sessionId}/health/readings`)}>
+                <Plus />
+                {isBm ? "Tambah Bacaan" : "Add Reading"}
+              </DesktopPageAction>
+            </>
           }
         />
       </div>
@@ -318,17 +325,18 @@ export default function HealthDashboardPage() {
                 )}
 
                 {/* Quick sub-module links */}
-                <div className="grid grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-4 gap-2">
                   {[
                     { label: isBm ? "Monitor" : "Monitor", href: `/${sessionId}/health/readings`, icon: LineChart, hex: "#0ea5e9" },
                     { label: isBm ? "Ubat" : "Meds", href: `/${sessionId}/health/medications`, icon: Pill, hex: "#10b981" },
+                    { label: isBm ? "Larian" : "Run", href: `/${sessionId}/health/tracking`, icon: Footprints, hex: "#f97316" },
                     { label: isBm ? "Sejarah" : "History", href: `/${sessionId}/health/history`, icon: Activity, hex: "#8b5cf6" },
                   ].map((m) => (
                     <button
                       key={m.href}
                       type="button"
                       onClick={() => router.push(m.href)}
-                      className="group flex min-h-20 flex-col items-center justify-center gap-2 rounded-[var(--m3-shape-lg)] bg-[var(--card)] px-2 py-3 shadow-[var(--shadow-soft)] transition active:scale-[0.97]"
+                      className="group flex min-h-20 flex-col items-center justify-center gap-2 rounded-[var(--m3-shape-lg)] bg-[var(--card)] px-1.5 py-3 shadow-[var(--shadow-soft)] transition active:scale-[0.97]"
                     >
                       <span
                         className="flex h-8 w-8 items-center justify-center rounded-xl"
