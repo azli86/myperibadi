@@ -934,10 +934,39 @@ export default function SettingsPage() {
         />
 
         <DesktopPageBody className="space-y-6 pt-4">
-          <div className="space-y-6">
-            {/* ─── Desktop body: hero full width + 2-col grid below ─── */}
-              {/* ─── Social Media Style Profile Hero (Desktop, full width) ─── */}
-              <section className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
+          {/* ─── Portal-style single card: left menu + right content ─── */}
+          <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
+            <div className="grid lg:grid-cols-[230px_minmax(0,1fr)] items-stretch">
+              {/* ─── Left Menu ─── */}
+              <aside className="border-b lg:border-b-0 lg:border-r border-[var(--divider)] bg-[var(--surface-tint)]/40 p-3 lg:p-4 lg:sticky lg:top-[76px] lg:self-start">
+                <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible">
+                  {[
+                    { id: "p-profile", icon: UserCircle2, label: tr("Profil & Identiti", "Profile & Identity") },
+                    { id: "p-email", icon: MailCheck, label: tr("Tukar E-mel", "Change Email") },
+                    { id: "p-prefs", icon: Palette, label: tr("Keutamaan & Paparan", "Preferences & Display") },
+                    { id: "p-accounts", icon: Users, label: tr("Akaun", "Accounts") },
+                    { id: "p-system", icon: ScrollText, label: tr("Sistem & Bantuan", "System & Help") },
+                    { id: "p-danger", icon: LogOut, label: tr("Zon Bahaya", "Danger Zone") },
+                  ].map((item) => {
+                    const Icon = item.icon
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                        className="flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] active:scale-[0.98] lg:w-full"
+                      >
+                        <Icon size={15} className="shrink-0 text-[var(--muted)]" />
+                        <span className="whitespace-nowrap">{item.label}</span>
+                      </button>
+                    )
+                  })}
+                </nav>
+              </aside>
+              {/* ─── Right Content ─── */}
+              <div className="min-w-0 space-y-6 p-4 md:p-6">
+              {/* ─── Profile Hero (right content top) ─── */}
+              <section id="p-profile" className="scroll-mt-24 overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
                 {/* Cover Banner with Ambient Mesh Gradient */}
                 <div className="relative h-28 w-full bg-gradient-to-r from-emerald-600/20 via-teal-500/20 to-indigo-600/20" />
 
@@ -1026,10 +1055,8 @@ export default function SettingsPage() {
                 </div>
               </section>
 
-              {/* ─── 2-Column Grid: Cards Below Hero ─── */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-              {/* Card 1: Profile & Identity Hero */}
-              <section className="rounded-3xl border border-[var(--border)] bg-gradient-to-br from-[var(--card)] via-[var(--card)] to-[var(--surface-tint)] p-6 shadow-sm space-y-6">
+              {/* Card 1: Profile & Identity (profile pane) */}
+              <section className="scroll-mt-24 rounded-3xl border border-[var(--border)] bg-gradient-to-br from-[var(--card)] via-[var(--card)] to-[var(--surface-tint)] p-6 shadow-sm space-y-6">
                 {/* Edit Name & Bot Tone Form */}
                 <form onSubmit={handleSaveProfile} className="space-y-4">
                   <div>
@@ -1094,7 +1121,7 @@ export default function SettingsPage() {
               </section>
 
               {/* Card 2: Change Email */}
-              <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-4">
+              <section id="p-email" className="scroll-mt-24 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-4">
                 <div className="flex items-center gap-3 border-b border-[var(--divider)] pb-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)] border border-[var(--border)]">
                     <MailCheck size={18} />
@@ -1188,7 +1215,7 @@ export default function SettingsPage() {
               </section>
 
               {/* Card 3: Keutamaan Bahasa, Tema, Masa & Kitaran */}
-              <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6">
+              <section id="p-prefs" className="scroll-mt-24 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-6">
                 <div className="border-b border-[var(--divider)] pb-3">
                   <h3 className="text-sm font-extrabold text-[var(--text)]">{tr("Keutamaan Sistem & Paparan", "System & Display Preferences")}</h3>
                   <p className="text-xs text-[var(--muted)]">{tr("Konfigurasi bahasa, rupa tema, zon masa dan kitaran", "Customize language, look, timezone and cycle")}</p>
@@ -1356,7 +1383,7 @@ export default function SettingsPage() {
 
               {/* ─── Right: Multi-Account, System & Danger ─── */}
               {/* Card 1: Multi-Account Switcher */}
-              <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-4">
+              <section id="p-accounts" className="scroll-mt-24 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-[var(--divider)] pb-3">
                   <div className="flex items-center gap-2.5">
                     <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)]">
@@ -1421,7 +1448,7 @@ export default function SettingsPage() {
               </section>
 
               {/* Card 2: System Links & Docs */}
-              <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-3">
+              <section id="p-system" className="scroll-mt-24 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-3">
                 <p className="text-[0.68rem] font-black uppercase tracking-wider text-[var(--muted)]">
                   {tr("Pautan & Ciri Portal", "Portal Features & Docs")}
                 </p>
@@ -1473,7 +1500,7 @@ export default function SettingsPage() {
               </section>
 
               {/* Card 3: Danger Zone & Logout */}
-              <section className="rounded-3xl border border-rose-500/20 bg-rose-500/5 p-6 shadow-sm space-y-4">
+              <section id="p-danger" className="scroll-mt-24 rounded-3xl border border-rose-500/20 bg-rose-500/5 p-6 shadow-sm space-y-4">
                 <div className="flex items-center gap-2.5 border-b border-rose-500/15 pb-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400">
                     <AlertTriangle size={16} />
@@ -1515,6 +1542,7 @@ export default function SettingsPage() {
                   </button>
                 </div>
               </section>
+              </div>
             </div>
           </div>
         </DesktopPageBody>
