@@ -934,9 +934,9 @@ export default function SettingsPage() {
         />
 
         <DesktopPageBody className="space-y-6 pt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* ─── Left Column: Identity, Persona & Preferences (7 Cols) ─── */}
-            <div className="lg:col-span-7 space-y-6">
+          <div className="grid grid-cols-1 gap-6 items-start">
+            {/* ─── Settings Stack (single column, full width) ─── */}
+            <div className="space-y-6">
               {/* ─── Social Media Style Profile Hero (Desktop) ─── */}
               <section className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
                 {/* Cover Banner with Ambient Mesh Gradient */}
@@ -1024,64 +1024,11 @@ export default function SettingsPage() {
                       )}
                     </p>
                   </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => document.getElementById("edit-profile")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                      className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-tint)] py-2.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95 shadow-2xs"
-                    >
-                      <PencilLine size={13} />
-                      <span>{tr("Edit Profil", "Edit Profile")}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => document.getElementById("change-email")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                      className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-tint)] py-2.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95 shadow-2xs"
-                    >
-                      <MailCheck size={13} />
-                      <span>{tr("Tukar E-mel", "Change Email")}</span>
-                    </button>
-                  </div>
                 </div>
               </section>
 
               {/* Card 1: Profile & Identity Hero */}
-              <section id="edit-profile" className="rounded-3xl border border-[var(--border)] bg-gradient-to-br from-[var(--card)] via-[var(--card)] to-[var(--surface-tint)] p-6 shadow-sm space-y-6">
-                <div className="flex items-center justify-between border-b border-[var(--divider)] pb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <UserAvatar
-                        name={name || profile?.name}
-                        size={64}
-                        src={profile?.avatar_url}
-                        className="ring-2 ring-[var(--border-strong)]"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setAvatarSheetOpen(true)}
-                        className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] border-2 border-[var(--card)] shadow cursor-pointer active:scale-90 transition"
-                        title={tr("Muat naik gambar", "Upload photo")}
-                      >
-                        <Camera size={11} />
-                      </button>
-                    </div>
-
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-lg font-black tracking-tight text-[var(--text)]">
-                          {profile?.name || tr("Pengguna", "User")}
-                        </h2>
-                        <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-600 dark:text-emerald-400">
-                          <ShieldCheck size={11} />
-                          <span>{tr("Disahkan", "Verified")}</span>
-                        </span>
-                      </div>
-                      <p className="text-xs font-medium text-[var(--muted)]">{profile?.email || "—"}</p>
-                    </div>
-                  </div>
-                </div>
-
+              <section className="rounded-3xl border border-[var(--border)] bg-gradient-to-br from-[var(--card)] via-[var(--card)] to-[var(--surface-tint)] p-6 shadow-sm space-y-6">
                 {/* Edit Name & Bot Tone Form */}
                 <form onSubmit={handleSaveProfile} className="space-y-4">
                   <div>
@@ -1146,7 +1093,7 @@ export default function SettingsPage() {
               </section>
 
               {/* Card 2: Change Email */}
-              <section id="change-email" className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-4">
+              <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-4">
                 <div className="flex items-center gap-3 border-b border-[var(--divider)] pb-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)] border border-[var(--border)]">
                     <MailCheck size={18} />
@@ -1407,8 +1354,8 @@ export default function SettingsPage() {
               </section>
             </div>
 
-            {/* ─── Right Column: Multi-Account, System & Danger (5 Cols) ─── */}
-            <div className="lg:col-span-5 space-y-6">
+            {/* ─── Right: Multi-Account, System & Danger ─── */}
+            <div className="space-y-6">
               {/* Card 1: Multi-Account Switcher */}
               <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-[var(--divider)] pb-3">
