@@ -5,7 +5,6 @@ import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import {
   Activity,
-  ArrowLeft,
   Award,
   Calendar,
   CheckCircle2,
@@ -40,6 +39,12 @@ import {
 } from "lucide-react"
 import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
+import {
+  MobilePageHeader,
+  MobileIconButton,
+  DesktopPageHeader,
+  DesktopPageAction,
+} from "@/components/layout/PageHeader"
 import { cn } from "@/lib/utils"
 import { usePageAlert } from "@/hooks/usePageAlert"
 import "leaflet/dist/leaflet.css"
@@ -245,6 +250,15 @@ export default function HealthTrackingPage() {
       }
     }
   }, [tileMode, darkTiles])
+
+  // Re-measure Leaflet when the map container resizes (fullscreen toggle)
+  useEffect(() => {
+    if (!mapInstanceRef.current) return
+    const id = window.setTimeout(() => {
+      mapInstanceRef.current?.invalidateSize()
+    }, 260)
+    return () => window.clearTimeout(id)
+  }, [isMapExpanded])
 
   // Switch Map Tile Layer
   const switchTileLayer = useCallback((mode: "street" | "satellite") => {
@@ -653,78 +667,73 @@ export default function HealthTrackingPage() {
     }
   }, [])
 
+  // Shared Tracker/History segmented control (sits above the content)
+  const tabPills = (
+    <div className="flex w-fit items-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-1">
+      <button
+        type="button"
+        onClick={() => setActiveTab("tracker")}
+        className={cn(
+          "flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition",
+          activeTab === "tracker"
+            ? "bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-md shadow-sky-500/25"
+            : "text-[var(--muted)] hover:text-[var(--text)]"
+        )}
+      >
+        <Route size={14} />
+        <span>{isBm ? "Larian" : "Tracker"}</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => setActiveTab("history")}
+        className={cn(
+          "flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black transition",
+          activeTab === "history"
+            ? "bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-md shadow-sky-500/25"
+            : "text-[var(--muted)] hover:text-[var(--text)]"
+        )}
+      >
+        <History size={14} />
+        <span>{isBm ? "Sejarah" : "History"}</span>
+        {savedHistory.length > 0 && (
+          <span className="ml-1 rounded-full bg-white/25 px-1.5 text-[10px] font-black text-white">{savedHistory.length}</span>
+        )}
+      </button>
+    </div>
+  )
+
   return (
     <div className="flex min-h-screen flex-col bg-[var(--page-bg)] text-[var(--text)] selection:bg-sky-500 selection:text-white">
-      {/* ── TOP APP BAR ── */}
-      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--card)]/90 px-4 py-3 backdrop-blur-xl">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link
-            href={`/${sessionId}/health`}
-            aria-label={isBm ? "Kembali ke Kesihatan" : "Back to Health"}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] transition hover:bg-[var(--border)] active:scale-95"
-          >
-            <ArrowLeft size={19} />
-          </Link>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span
-                className={cn(
-                  "flex h-2 w-2 rounded-full",
-                  trackingState === "running" ? "bg-emerald-500 animate-pulse" : trackingState === "paused" ? "bg-amber-500" : "bg-sky-500"
-                )}
-              />
-              <h1 className="truncate text-base font-black tracking-tight text-[var(--text)]">
-                {isBm ? "Larian & Penjejak" : "Run & Step Tracker"}
-              </h1>
-            </div>
-            <p className="truncate text-[11px] font-semibold text-[var(--muted)]">
-              {trackingState === "running"
-                ? isBm
-                  ? "GPS aktif • Sedang merekod"
-                  : "GPS live • Recording"
-                : trackingState === "paused"
-                ? isBm
-                  ? "Sesi larian dijeda"
-                  : "Run paused"
-                : isBm
-                ? "Sedia untuk latihan"
-                : "Ready for workout"}
-            </p>
-          </div>
-        </div>
+      {/* ── MOBILE / DESKTOP HEADER ── */}
+      <div className="md:hidden">
+        <MobilePageHeader
+          className="border-b border-[color:var(--border)] pb-4"
+          title={isBm ? "Larian & Penjejak" : "Run & Step Tracker"}
+          fallbackHref={`/${sessionId}/health`}
+          action={
+            <MobileIconButton
+              label={isBm ? "Peta skrin penuh" : "Fullscreen map"}
+              onClick={() => setIsMapExpanded(true)}
+            >
+              <Maximize2 size={18} />
+            </MobileIconButton>
+          }
+        />
+      </div>
 
-        <div className="flex shrink-0 items-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab("tracker")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-black transition",
-              activeTab === "tracker"
-                ? "bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-md shadow-sky-500/25"
-                : "text-[var(--muted)] hover:text-[var(--text)]"
-            )}
-          >
-            <Route size={14} />
-            <span>{isBm ? "Larian" : "Tracker"}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("history")}
-            className={cn(
-              "flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-black transition",
-              activeTab === "history"
-                ? "bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-md shadow-sky-500/25"
-                : "text-[var(--muted)] hover:text-[var(--text)]"
-            )}
-          >
-            <History size={14} />
-            <span>{isBm ? "Sejarah" : "History"}</span>
-            {savedHistory.length > 0 && (
-              <span className="ml-1 rounded-full bg-white/25 px-1.5 text-[10px] font-black text-white">{savedHistory.length}</span>
-            )}
-          </button>
-        </div>
-      </header>
+      <div className="hidden md:block">
+        <DesktopPageHeader
+          title={isBm ? "Larian & Penjejak" : "Run & Step Tracker"}
+          homeHref={`/${sessionId}/health`}
+          actions={
+            <DesktopPageAction onClick={() => setIsMapExpanded(true)}>
+              <Layers size={15} />
+              {isBm ? "Peta Penuh" : "Full Map"}
+            </DesktopPageAction>
+          }
+        />
+      </div>
+
 
       {/* ── COUNTDOWN OVERLAY ── */}
       {trackingState === "countdown" && (
@@ -749,7 +758,9 @@ export default function HealthTrackingPage() {
             <section
               className={cn(
                 "relative overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--card)] shadow-xl transition-all duration-300",
-                isMapExpanded ? "h-[65vh] md:h-[76vh]" : "h-[300px] md:h-[400px]"
+                isMapExpanded
+                  ? "fixed inset-0 z-[45] h-[100dvh] rounded-none border-0 shadow-2xl"
+                  : "h-[300px] md:h-[400px]"
               )}
             >
               <div ref={mapContainerRef} className="h-full w-full touch-none z-[1]" />
@@ -822,6 +833,9 @@ export default function HealthTrackingPage() {
             <section className="relative overflow-hidden rounded-[2.2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-xl md:p-6">
               <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-sky-500/10 blur-3xl" />
               <div className="pointer-events-none absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
+
+              {/* View switcher above total distance */}
+              <div className="mb-4">{tabPills}</div>
 
               {/* Distance hero */}
               <div className="flex flex-col items-center justify-between gap-4 border-b border-[var(--border)] pb-5 sm:flex-row">
@@ -1031,6 +1045,8 @@ export default function HealthTrackingPage() {
         ) : (
           /* ── RUN HISTORY ── */
           <div className="mx-auto max-w-4xl space-y-4 p-4 md:p-6">
+            <div className="mb-2">{tabPills}</div>
+
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="flex items-center gap-2 text-lg font-black text-[var(--text)]">
