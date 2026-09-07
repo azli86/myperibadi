@@ -258,7 +258,7 @@ export default function HealthDashboardPage() {
           homeHref={`/${sessionId}`}
           actions={
             <>
-              <DesktopPageAction variant="secondary" onClick={() => router.push(`/${sessionId}/health/tracking`)}>
+              <DesktopPageAction onClick={() => router.push(`/${sessionId}/health/tracking`)}>
                 <Footprints />
                 {isBm ? "Larian & Langkah" : "Run Tracker"}
               </DesktopPageAction>
