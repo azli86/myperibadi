@@ -1864,12 +1864,13 @@ export default function SettingsPage() {
       ───────────────────────────────────────────────────────────────── */}
       {activeMobileSheet && (
         <div
-          className="fixed inset-0 z-[80] flex items-end bg-[var(--overlay)] backdrop-blur-xs md:hidden animate-in fade-in duration-200"
+          className="fixed inset-0 z-[80] flex items-end justify-center overscroll-none bg-transparent p-0 md:hidden"
           onClick={requestMobileSheetClose}
         >
           <div
-            className="app-sheet-panel max-h-[90dvh] w-full overflow-y-auto border-t border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(2rem+env(safe-area-inset-bottom,0px))] shadow-2xl rounded-t-[36px] transition-all"
+            data-swipe-sheet
             onClick={(e) => e.stopPropagation()}
+            className="app-sheet-panel app-sheet-panel--lg w-full max-h-[82dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(2rem+env(safe-area-inset-bottom,0px))] will-change-transform"
           >
             <AppSheetHeader
               title={
