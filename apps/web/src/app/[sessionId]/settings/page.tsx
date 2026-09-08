@@ -652,13 +652,13 @@ export default function SettingsPage() {
                       if (profile?.avatar_url) setAvatarPreviewOpen(true)
                       else setActiveMobileSheet("profile")
                     }}
-                    className="group relative block rounded-full p-[2.5px] bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 active:scale-95 transition"
+                    className="group relative block rounded-full p-[2px] bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 active:scale-95 transition"
                     title={tr("Papar gambar penuh", "View full image")}
                   >
-                    <div className="rounded-full bg-[var(--card)] p-[2px]">
+                    <div className="rounded-full bg-[var(--card)] p-[1px]">
                       <UserAvatar
                         name={name || profile?.name}
-                        size={68}
+                        size={74}
                         src={profile?.avatar_url}
                         className="rounded-full object-cover"
                       />
@@ -991,13 +991,13 @@ export default function SettingsPage() {
                       <button
                         type="button"
                         onClick={() => setAvatarSheetOpen(true)}
-                        className="group relative block rounded-full p-[3px] bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 transition hover:opacity-90"
+                        className="group relative block rounded-full p-[2px] bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 transition hover:opacity-90"
                         title={tr("Tukar gambar profil", "Change profile photo")}
                       >
-                        <div className="rounded-full bg-[var(--card)] p-[3px]">
+                        <div className="rounded-full bg-[var(--card)] p-[1px]">
                           <UserAvatar
                             name={name || profile?.name}
-                            size={92}
+                            size={100}
                             src={profile?.avatar_url}
                             className="rounded-full object-cover"
                           />
