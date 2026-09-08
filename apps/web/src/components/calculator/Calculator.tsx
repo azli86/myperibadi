@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react"
 import { cn, getTodayDateInTimeZone } from "@/lib/utils"
 import { getAccessToken } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
-import { X, Delete, Send } from "lucide-react"
+import { X, Delete, Send, ChevronDown } from "lucide-react"
 
 type CalcHistoryEntry = {
   expression: string
@@ -80,9 +80,7 @@ export default function Calculator({
   const [sending, setSending] = useState(false)
   const [wallets, setWallets] = useState<WalletOption[]>([])
   const [walletId, setWalletId] = useState("")
-  const [walletDropdownOpen, setWalletDropdownOpen] = useState(false)
   const [categoryId, setCategoryId] = useState("auto")
-  const [categoryDropdownOpen, setCategoryDropdownOpen] = useState(false)
   const [txnType, setTxnType] = useState<"expense" | "income">("expense")
   const [categories, setCategories] = useState<CategoryOption[]>([])
   const [categoryKeywords, setCategoryKeywords] = useState<Record<number, CategoryKeywordOption[]>>({})
@@ -345,7 +343,6 @@ export default function Calculator({
     setSendError("")
     setTransactionTitle("")
     setCategoryId("auto")
-    setCategoryDropdownOpen(false)
     setSendOpen(true)
   }
 
@@ -422,9 +419,7 @@ export default function Calculator({
       setLastOperator("")
       setShouldResetDisplay(true)
       setTransactionTitle("")
-      setWalletDropdownOpen(false)
       setCategoryId("auto")
-      setCategoryDropdownOpen(false)
       setSendOpen(false)
       window.dispatchEvent(new Event("refreshData"))
     } catch (error) {
@@ -467,10 +462,6 @@ export default function Calculator({
   const sharedBtn = "select-none rounded-xl text-base font-semibold transition-all active:scale-95 flex items-center justify-center"
   const numCls = "h-10 w-full bg-[var(--surface-tint)] text-[var(--text)] hover:bg-[var(--surface-tint-strong)]"
   const opCls = "h-10 w-full bg-[var(--surface-tint-strong)] text-[var(--text)] text-2xl font-bold hover:bg-[var(--border-strong)]"
-  const selectedWallet = wallets.find((wallet) => String(wallet.id) === walletId)
-  const selectedWalletLabel = selectedWallet?.label || selectedWallet?.name || tr("Pilih wallet", "Select wallet")
-  const selectedCategory = categories.find((category) => String(category.id) === categoryId)
-  const selectedCategoryLabel = categoryId === "auto" ? tr("Auto kategori", "Auto category") : (selectedCategory?.name || tr("Tanpa kategori", "Uncategorized"))
 
   const sendDialog = sendOpen ? (
         <>
@@ -492,47 +483,37 @@ export default function Calculator({
                 <button type="button" onClick={() => { setTxnType("income"); setCategoryId("auto") }} className={cn("rounded-2xl border px-4 py-2.5 text-sm font-bold transition", txnType === "income" ? "border-transparent bg-emerald-500/15 text-emerald-500" : "border-[var(--border)] bg-[var(--bg)] text-[var(--muted)]")}>{tr("Pendapatan", "Income")}</button>
               </div>
               <div className="relative mt-3">
-                <button type="button" onClick={() => setWalletDropdownOpen((value) => !value)} className="flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left text-sm font-bold text-[var(--text)] transition hover:border-indigo-500/60">
-                  <span className="truncate">{selectedWalletLabel}</span>
-                  <span className={cn("ml-3 text-xs text-[var(--muted)] transition", walletDropdownOpen && "rotate-180")}>⌄</span>
-                </button>
-                {walletDropdownOpen && wallets.length > 0 && (
-                    <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-10 max-h-48 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-2xl">
-                      {wallets.map((wallet) => {
-                        const label = wallet.label || wallet.name || `Wallet ${wallet.id}`
-                        const active = String(wallet.id) === walletId
-                        return (
-                          <button key={wallet.id} type="button" onClick={() => { setWalletId(String(wallet.id)); setWalletDropdownOpen(false) }} className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition", active ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "text-[var(--text)] hover:bg-[var(--surface-tint)]")}>
-                            <span className="truncate">{label}</span>
-                            {active && <span className="ml-2 text-xs">✓</span>}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
+                <select
+                  value={walletId}
+                  onChange={(event) => setWalletId(event.target.value)}
+                  className="w-full cursor-pointer appearance-none rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 pr-9 text-sm font-bold text-[var(--text)] outline-none transition hover:border-indigo-500/60"
+                >
+                  {wallets.length === 0 && <option value="">{tr("Pilih wallet", "Select wallet")}</option>}
+                  {wallets.map((wallet) => {
+                    const label = wallet.label || wallet.name || `Wallet ${wallet.id}`
+                    return (
+                      <option key={wallet.id} value={String(wallet.id)}>
+                        {label}
+                      </option>
+                    )
+                  })}
+                </select>
+                <ChevronDown size={16} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
               </div>
               <div className="relative mt-3">
-                <button type="button" onClick={() => setCategoryDropdownOpen((value) => !value)} className="flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 text-left text-sm font-bold text-[var(--text)] transition hover:border-indigo-500/60">
-                  <span className="truncate">{selectedCategoryLabel}</span>
-                  <span className={cn("ml-3 text-xs text-[var(--muted)] transition", categoryDropdownOpen && "rotate-180")}>⌄</span>
-                </button>
-                {categoryDropdownOpen && (
-                    <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-10 max-h-48 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-2xl">
-                      <button type="button" onClick={() => { setCategoryId("auto"); setCategoryDropdownOpen(false) }} className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition", categoryId === "auto" ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "text-[var(--text)] hover:bg-[var(--surface-tint)]")}>
-                        <span className="truncate">{tr("Auto kategori", "Auto category")}</span>
-                        {categoryId === "auto" && <span className="ml-2 text-xs">✓</span>}
-                      </button>
-                      {categories.filter((category) => category.kind === txnType).map((category) => {
-                        const active = String(category.id) === categoryId
-                        return (
-                          <button key={category.id} type="button" onClick={() => { setCategoryId(String(category.id)); setCategoryDropdownOpen(false) }} className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition", active ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "text-[var(--text)] hover:bg-[var(--surface-tint)]")}>
-                            <span className="truncate">{category.name}</span>
-                            {active && <span className="ml-2 text-xs">✓</span>}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )}
+                <select
+                  value={categoryId}
+                  onChange={(event) => setCategoryId(event.target.value)}
+                  className="w-full cursor-pointer appearance-none rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-4 py-3 pr-9 text-sm font-bold text-[var(--text)] outline-none transition hover:border-indigo-500/60"
+                >
+                  <option value="auto">{tr("Auto kategori", "Auto category")}</option>
+                  {categories.filter((category) => category.kind === txnType).map((category) => (
+                    <option key={category.id} value={String(category.id)}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
               </div>
               {sendError && <p className="mt-3 text-sm font-semibold text-rose-500">{sendError}</p>}
               <button type="submit" disabled={sending} className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--btn-primary-bg)] px-4 py-3 text-sm font-black text-white transition active:scale-[0.98] hover:bg-violet-600 disabled:opacity-60">
