@@ -663,9 +663,6 @@ export default function SettingsPage() {
                         className="rounded-full object-cover"
                       />
                     </div>
-                    <span className="absolute bottom-0 right-0 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] border-2 border-[var(--card)] shadow-xs">
-                      <Camera size={11} />
-                    </span>
                   </button>
                 </div>
 
@@ -1005,9 +1002,6 @@ export default function SettingsPage() {
                             className="rounded-full object-cover"
                           />
                         </div>
-                        <span className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] border-2 border-[var(--card)] shadow-xs">
-                          <Camera size={13} />
-                        </span>
                       </button>
                     </div>
 
