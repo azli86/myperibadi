@@ -622,9 +622,9 @@ export default function SettingsPage() {
                 <div className="-mt-10 relative shrink-0">
                   <button
                     type="button"
-                    onClick={() => setAvatarSheetOpen(true)}
+                    onClick={() => setActiveMobileSheet("profile")}
                     className="group relative block rounded-full p-[2.5px] bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 active:scale-95 transition"
-                    title={tr("Tukar gambar profil", "Change profile photo")}
+                    title={tr("Kemaskini profil & gambar", "Edit profile & photo")}
                   >
                     <div className="rounded-full bg-[var(--card)] p-[2px]">
                       <UserAvatar
