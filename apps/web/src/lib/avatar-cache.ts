@@ -36,7 +36,8 @@ export async function cacheAvatarFromUrl(url: string | null): Promise<string | n
     return url
   }
   try {
-    const res = await fetch(url, { credentials: "include" })
+    // Same-origin proxy so the CDN CORS restriction doesn't block caching.
+    const res = await fetch(`/api/avatar-proxy?url=${encodeURIComponent(url)}`)
     if (!res.ok) return null
     const blob = await res.blob()
     const dataUrl = await new Promise<string>((resolve, reject) => {
