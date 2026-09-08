@@ -56,7 +56,11 @@ export async function cacheAvatarFromUrl(url: string | null): Promise<string | n
 // Resolve the avatar src: prefers the cached data URL (no load), falls back to
 // the remote URL, and re-syncs whenever the user uploads/removes an avatar.
 export function useAvatar(remoteUrl?: string | null): string | null {
-  const [src, setSrc] = useState<string | null>(() => readAvatarCache())
+  // Initial null on purpose: reading localStorage during the first client
+  // render would differ from the server SSR markup (SVG fallback vs cached
+  // <img>) and cause React hydration mismatch (#418). The cache is applied in
+  // the effect after hydration.
+  const [src, setSrc] = useState<string | null>(null)
 
   useEffect(() => {
     const sync = () => {
