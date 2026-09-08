@@ -652,10 +652,10 @@ export default function SettingsPage() {
                       if (profile?.avatar_url) setAvatarPreviewOpen(true)
                       else setActiveMobileSheet("profile")
                     }}
-                    className="group relative block rounded-full p-[2px] bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 active:scale-95 transition"
+                    className="group relative inline-flex items-center justify-center rounded-full p-[2px] bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 active:scale-95 transition"
                     title={tr("Papar gambar penuh", "View full image")}
                   >
-                    <div className="rounded-full bg-[var(--card)] p-[1px]">
+                    <div className="rounded-full bg-[var(--card)] p-[1px] leading-none">
                       <UserAvatar
                         name={name || profile?.name}
                         size={74}
@@ -991,10 +991,10 @@ export default function SettingsPage() {
                       <button
                         type="button"
                         onClick={() => setAvatarSheetOpen(true)}
-                        className="group relative block rounded-full p-[2px] bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 transition hover:opacity-90"
+                        className="group relative inline-flex items-center justify-center rounded-full p-[2px] bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 transition hover:opacity-90"
                         title={tr("Tukar gambar profil", "Change profile photo")}
                       >
-                        <div className="rounded-full bg-[var(--card)] p-[1px]">
+                        <div className="rounded-full bg-[var(--card)] p-[1px] leading-none">
                           <UserAvatar
                             name={name || profile?.name}
                             size={100}
