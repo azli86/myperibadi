@@ -26,7 +26,7 @@ import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSearchParams } from "next/navigation"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
-import { MetricChart, TrendStats, METRIC_HEX } from "@/components/health/HealthCharts"
+import { MetricChart, TrendStats } from "@/components/health/HealthCharts"
 
 type Reading = {
   id: number
@@ -239,7 +239,7 @@ export default function HealthReadingsPage() {
       </div>
 
       {/* ── MOBILE VIEW ── */}
-      <div className="space-y-5 px-1 pb-28 pt-1 md:hidden">
+      <div className="space-y-4 px-3 pb-28 pt-2 md:hidden">
         {/* Metric picker */}
         <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
           {METRICS.map((m) => (
@@ -249,8 +249,8 @@ export default function HealthReadingsPage() {
               className={cn(
                 "inline-flex min-h-10 shrink-0 items-center rounded-full px-4 py-2 text-xs font-bold transition active:scale-95",
                 metric === m.key
-                  ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
-                  : "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]",
+                  ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-sm"
+                  : "border border-[var(--divider)]/40 bg-[var(--surface-tint)] text-[var(--muted)]",
               )}
             >
               {isBm ? m.labelBM : m.labelEN}
@@ -258,7 +258,8 @@ export default function HealthReadingsPage() {
           ))}
         </div>
 
-        <section className="overflow-hidden rounded-[1.75rem] bg-[var(--text)] p-5 text-[var(--bg)] shadow-sm">
+        {/* Hero Card */}
+        <section className="overflow-hidden rounded-3xl bg-[var(--text)] p-5 text-[var(--bg)] shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] opacity-60">{isBm ? "Bacaan Terkini" : "Current Reading"}</p>
@@ -282,8 +283,18 @@ export default function HealthReadingsPage() {
           </div>
         </section>
 
+        {/* Butang Tambah Bacaan di bawah Hero Card */}
+        <button
+          type="button"
+          onClick={openAdd}
+          className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[var(--btn-primary-bg)] px-5 py-3.5 text-sm font-bold text-[var(--btn-primary-text)] shadow-sm transition hover:opacity-90 active:scale-[0.98]"
+        >
+          <Plus size={18} strokeWidth={2.5} />
+          <span>{isBm ? `Tambah Bacaan ${meta.labelBM}` : `Add ${meta.labelEN} Reading`}</span>
+        </button>
+
         {/* Chart */}
-        <section className="rounded-[1.75rem] bg-[var(--card)] p-4 shadow-sm">
+        <section className="rounded-3xl border border-[var(--divider)]/40 bg-[var(--card)] p-4 shadow-sm">
           <div className="mb-3 flex items-start justify-between gap-2">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
@@ -301,7 +312,7 @@ export default function HealthReadingsPage() {
                   onClick={() => setRange(r)}
                   className={cn(
                     "rounded-lg px-2 py-1 text-[11px] font-bold transition",
-                    range === r ? "bg-[var(--text)] text-[var(--bg)]" : "bg-[var(--page-bg)] text-[var(--muted)]",
+                    range === r ? "bg-[var(--text)] text-[var(--bg)]" : "bg-[var(--surface-tint)] text-[var(--muted)]",
                   )}
                 >
                   {r}
@@ -310,7 +321,7 @@ export default function HealthReadingsPage() {
             </div>
           </div>
           {showDataSkeleton ? (
-            <div className="h-44 animate-pulse rounded-xl bg-[var(--page-bg)]" />
+            <div className="h-44 animate-pulse rounded-xl bg-[var(--surface-tint)]" />
           ) : chartPoints.length ? (
             <>
               <MetricChart metricKey={metric} points={chartPoints} className="h-48" />
@@ -321,7 +332,7 @@ export default function HealthReadingsPage() {
               />
             </>
           ) : (
-            <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-10 text-center">
+            <div className="rounded-2xl border border-dashed border-[var(--divider)]/60 px-4 py-10 text-center">
               <LineChart size={26} className="mx-auto text-[var(--muted)]" />
               <p className="mt-2 text-sm font-semibold text-[var(--text)]">
                 {isBm ? "Tiada bacaan untuk julat ini" : "No readings for this range"}
@@ -329,7 +340,7 @@ export default function HealthReadingsPage() {
               <button
                 type="button"
                 onClick={openAdd}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-4 py-2 text-xs font-bold text-[var(--bg)] transition active:scale-95"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-bold text-[var(--btn-primary-text)] transition active:scale-95"
               >
                 <Plus size={14} />
                 {isBm ? "Tambah Bacaan" : "Add Reading"}
@@ -345,15 +356,15 @@ export default function HealthReadingsPage() {
             <span className="text-xs font-semibold text-[var(--muted)]">{readings.length} {isBm ? "rekod" : "records"}</span>
           </div>
           {!readings.length ? (
-            <p className="py-6 text-center text-sm text-[var(--muted)]">
+            <div className="rounded-2xl border border-dashed border-[var(--divider)]/60 bg-[var(--card)] py-8 text-center text-xs text-[var(--muted)]">
               {isBm ? "Belum ada bacaan." : "No readings yet."}
-            </p>
+            </div>
           ) : (
             <ul className="space-y-2">
               {readings.map((r) => (
                 <li
                   key={r.id}
-                  className="flex min-h-20 items-center justify-between gap-3 rounded-[1.35rem] bg-[var(--card)] p-4 shadow-sm"
+                  className="flex min-h-20 items-center justify-between gap-3 rounded-2xl border border-[var(--divider)]/40 bg-[var(--card)] p-4 shadow-sm"
                 >
                   <div>
                     <div className="text-sm font-bold text-[var(--text)]">
@@ -373,7 +384,7 @@ export default function HealthReadingsPage() {
                     </div>
                     <button
                       onClick={() => openEdit(r)}
-                      className="rounded-lg p-1.5 text-[var(--muted)] transition hover:text-[var(--accent2)]"
+                      className="rounded-lg p-1.5 text-[var(--muted)] transition hover:text-[var(--text)]"
                       aria-label={isBm ? "Edit" : "Edit"}
                     >
                       <Pencil size={15} />
@@ -397,7 +408,7 @@ export default function HealthReadingsPage() {
       <div className="hidden md:block">
         <DesktopPageBody>
         <div className="mx-auto w-full max-w-[1180px] space-y-6 p-6 xl:px-8">
-          <div className="flex gap-2 overflow-x-auto rounded-2xl bg-[var(--card)] p-2 shadow-sm">
+          <div className="flex gap-2 overflow-x-auto rounded-2xl border border-[var(--divider)]/40 bg-[var(--card)] p-2 shadow-sm">
             {METRICS.map((m) => (
               <button
                 key={m.key}
@@ -406,7 +417,7 @@ export default function HealthReadingsPage() {
                   "min-h-10 shrink-0 rounded-xl px-4 py-2 text-xs font-bold transition",
                   metric === m.key
                     ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
-                    : "bg-[var(--card)] text-[var(--muted)]",
+                    : "bg-transparent text-[var(--muted)] hover:text-[var(--text)]",
                 )}
               >
                 {isBm ? m.labelBM : m.labelEN}
@@ -414,7 +425,8 @@ export default function HealthReadingsPage() {
             ))}
           </div>
 
-          <section className="grid min-h-52 grid-cols-[1fr_auto] overflow-hidden rounded-[2rem] bg-[var(--text)] p-8 text-[var(--bg)] shadow-sm">
+          {/* Desktop Hero Card */}
+          <section className="grid min-h-52 grid-cols-[1fr_auto] overflow-hidden rounded-3xl bg-[var(--text)] p-8 text-[var(--bg)] shadow-sm">
             <div className="flex flex-col justify-between">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.18em] opacity-60">{isBm ? "Bacaan Terkini" : "Current Reading"}</p>
@@ -438,7 +450,19 @@ export default function HealthReadingsPage() {
             <Activity className="h-12 w-12 opacity-50" />
           </section>
 
-          <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+          {/* Butang Tambah Bacaan di bawah Hero Card (Desktop) */}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={openAdd}
+              className="inline-flex items-center gap-2 rounded-2xl bg-[var(--btn-primary-bg)] px-6 py-3.5 text-sm font-bold text-[var(--btn-primary-text)] shadow-sm transition hover:opacity-90 active:scale-[0.98]"
+            >
+              <Plus size={18} strokeWidth={2.5} />
+              <span>{isBm ? `Tambah Bacaan ${meta.labelBM}` : `Add ${meta.labelEN} Reading`}</span>
+            </button>
+          </div>
+
+          <section className="rounded-3xl border border-[var(--divider)]/40 bg-[var(--card)] p-6 shadow-sm">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
@@ -456,7 +480,7 @@ export default function HealthReadingsPage() {
                       onClick={() => setRange(r)}
                       className={cn(
                         "rounded-lg px-3 py-1 text-xs font-bold transition",
-                        range === r ? "bg-[var(--text)] text-[var(--bg)]" : "bg-[var(--card)] text-[var(--muted)]",
+                        range === r ? "bg-[var(--text)] text-[var(--bg)]" : "bg-[var(--surface-tint)] text-[var(--muted)]",
                       )}
                     >
                       {r}
@@ -465,7 +489,7 @@ export default function HealthReadingsPage() {
                 </div>
               </div>
               {showDataSkeleton ? (
-                <div className="h-44 animate-pulse rounded-xl bg-[var(--page-bg)]" />
+                <div className="h-44 animate-pulse rounded-xl bg-[var(--surface-tint)]" />
               ) : chartPoints.length ? (
                 <>
                   <MetricChart metricKey={metric} points={chartPoints} className="h-72" />
@@ -476,7 +500,7 @@ export default function HealthReadingsPage() {
                   />
                 </>
               ) : (
-                <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-10 text-center">
+                <div className="rounded-2xl border border-dashed border-[var(--divider)]/60 px-4 py-10 text-center">
                   <LineChart size={26} className="mx-auto text-[var(--muted)]" />
                   <p className="mt-2 text-sm font-semibold text-[var(--text)]">
                     {isBm ? "Tiada bacaan untuk julat ini" : "No readings for this range"}
@@ -493,18 +517,18 @@ export default function HealthReadingsPage() {
               )}
             </section>
 
-          <section className="rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-sm">
+          <section className="rounded-3xl border border-[var(--divider)]/40 bg-[var(--card)] p-6 shadow-sm">
             <h2 className="mb-4 text-base font-black text-[var(--text)]">{isBm ? "Senarai Bacaan" : "Readings"}</h2>
             {!readings.length ? (
-              <p className="py-6 text-center text-sm text-[var(--muted)]">
+              <div className="rounded-2xl border border-dashed border-[var(--divider)]/60 bg-[var(--surface-tint)] py-8 text-center text-xs text-[var(--muted)]">
                 {isBm ? "Belum ada bacaan." : "No readings yet."}
-              </p>
+              </div>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-2.5">
                 {readings.map((r) => (
                   <li
                     key={r.id}
-                    className="flex min-h-20 items-center justify-between rounded-[1.35rem] bg-[var(--page-bg)] p-4"
+                    className="flex min-h-20 items-center justify-between rounded-2xl border border-[var(--divider)]/30 bg-[var(--surface-tint)] p-4"
                   >
                     <div>
                       <div className="text-sm font-bold text-[var(--text)]">
