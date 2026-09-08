@@ -34,6 +34,7 @@ import {
   Moon,
   Monitor,
   ShieldCheck,
+  X,
   type LucideIcon,
 } from "lucide-react"
 import BadgeOverviewModal from "@/components/badges/BadgeOverviewModal"
@@ -101,6 +102,7 @@ export default function SettingsPage() {
   const showProfileSkeleton = useDelayedSkeleton(profileLoading)
   const [profileSaving, setProfileSaving] = useState(false)
   const [avatarSheetOpen, setAvatarSheetOpen] = useState(false)
+  const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false)
 
   // Email Change States
   const [newEmail, setNewEmail] = useState("")
@@ -587,6 +589,30 @@ export default function SettingsPage() {
         notify={showAlert}
       />
 
+      {/* Full-screen avatar preview (tap avatar on hero card) */}
+      {avatarPreviewOpen && profile?.avatar_url && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 p-4 animate-in fade-in duration-150"
+          onClick={() => setAvatarPreviewOpen(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <img
+            src={profile.avatar_url}
+            alt={name || profile?.name || tr("Avatar", "Avatar")}
+            className="max-h-[85vh] max-w-[92vw] rounded-2xl object-contain shadow-2xl"
+          />
+          <button
+            type="button"
+            onClick={() => setAvatarPreviewOpen(false)}
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md transition hover:bg-white/25 active:scale-90"
+            aria-label={tr("Tutup", "Close")}
+          >
+            <X size={20} />
+          </button>
+        </div>
+      )}
+
       {/* ─────────────────────────────────────────────────────────────────
           MOBILE VIEW (md:hidden)
           Sleek, Apple/Linear style grouped lists with current avatar hero
@@ -622,9 +648,12 @@ export default function SettingsPage() {
                 <div className="-mt-10 relative shrink-0">
                   <button
                     type="button"
-                    onClick={() => setActiveMobileSheet("profile")}
+                    onClick={() => {
+                      if (profile?.avatar_url) setAvatarPreviewOpen(true)
+                      else setActiveMobileSheet("profile")
+                    }}
                     className="group relative block rounded-full p-[2.5px] bg-gradient-to-tr from-emerald-500 via-teal-400 to-indigo-500 active:scale-95 transition"
-                    title={tr("Kemaskini profil & gambar", "Edit profile & photo")}
+                    title={tr("Papar gambar penuh", "View full image")}
                   >
                     <div className="rounded-full bg-[var(--card)] p-[2px]">
                       <UserAvatar
