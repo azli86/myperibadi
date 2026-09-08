@@ -12,7 +12,6 @@ import {
  ChevronLeft,
  ChevronRight,
  ChevronDown,
- Check,
  SlidersHorizontal,
  Wallet,
  Download,
@@ -2666,82 +2665,53 @@ function FilterSelect({
  isMobile: boolean
  alignMenu?: "left" | "right"
 }) {
- const [isOpen, setIsOpen] = useState(false)
- const menuRef = useRef<HTMLDivElement>(null)
-
- useEffect(() => {
- const handleOutsideClick = (e: MouseEvent) => {
- if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
- setIsOpen(false)
+ // Native <select> — no custom dropdown. Disabled entries = <optgroup> headers.
+ const nodes: React.ReactNode[] = []
+ let groupOptions: React.ReactNode[] = []
+ let currentGroup: string | null = null
+ const flushGroup = () => {
+   if (groupOptions.length) {
+     nodes.push(
+       currentGroup ? (
+         <optgroup key={`g-${currentGroup}`} label={currentGroup}>
+           {groupOptions}
+         </optgroup>
+       ) : (
+         groupOptions
+       )
+     )
+     groupOptions = []
+   }
  }
+ for (const option of options) {
+   if (option.disabled) {
+     flushGroup()
+     currentGroup = option.label
+     continue
+   }
+   groupOptions.push(
+     <option key={`${ariaLabel}-${option.value || "default"}`} value={option.value}>
+       {option.label}
+     </option>
+   )
  }
- if (isOpen) {
- document.addEventListener("mousedown", handleOutsideClick)
- return () => document.removeEventListener("mousedown", handleOutsideClick)
- }
- }, [isOpen])
-
- const selectedLabel = options.find(o => o.value === value)?.label || options[0]?.label || ""
+ flushGroup()
 
  return (
- <div className="relative min-w-0" ref={menuRef}>
- <button
- type="button"
- onClick={() => setIsOpen(!isOpen)}
- aria-label={ariaLabel}
- className={cn(
- "flex h-9 w-full items-center justify-between gap-2 appearance-none rounded-lg border border-[var(--border)] bg-[var(--card2)] pl-3 pr-2 font-semibold leading-none text-[var(--text-soft)] outline-none transition-colors hover:bg-[var(--surface-tint)]",
- isOpen && "border-[var(--text)]/20 text-[var(--text)]"
- )}
- style={{ fontSize: isMobile ? "12px" : "13px" }}
- >
- <span className="truncate">{selectedLabel}</span>
- <ChevronDown
- size={14}
- className={cn("shrink-0 text-[var(--muted)] transition-transform duration-200", isOpen && "rotate-180")}
- />
- </button>
-
- 
- {isOpen && (
- <div
-   className={cn(
- "absolute top-full z-[200] mt-1 max-h-[300px] w-auto min-w-[120px] overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-xl custom-scrollbar",
- alignMenu === "right" ? "right-0" : "left-0"
- )}
- style={{ fontSize: isMobile ? "12px" : "13px" }}
- data-prevent-pull-refresh="true"
- >
- {options.map((option) => {
- const isSelected = option.value === value
- if (option.disabled) {
- return (
- <div key={`${ariaLabel}-${option.value}`} className="px-3 pb-1 pt-2 text-[0.5625rem] font-black uppercase tracking-[0.18em] text-[var(--muted)] opacity-60">
- {option.label}
- </div>
- )
- }
- return (
- <button
- key={`${ariaLabel}-${option.value || "default"}`}
- type="button"
- onClick={() => {
- onChange(option.value)
- setIsOpen(false)
- }}
- className={cn(
- "flex w-full items-center justify-between gap-3 rounded-md px-3 py-2.5 text-left font-medium transition-colors hover:bg-[var(--surface-tint)]",
- isSelected ? "bg-[var(--surface-tint)] text-[var(--text)]" : "text-[var(--text-soft)]"
- )}
- >
- <span className="truncate">{option.label}</span>
- {isSelected && <Check size={14} className="shrink-0 text-[var(--text)]" />}
- </button>
- )
- })}
- </div>
- )}
- 
- </div>
+   <div className="relative min-w-0">
+     <select
+       aria-label={ariaLabel}
+       value={value}
+       onChange={(e) => onChange(e.target.value)}
+       className="h-9 w-full cursor-pointer appearance-none rounded-lg border border-[var(--border)] bg-[var(--card2)] pl-2.5 pr-7 font-semibold leading-none text-[var(--text-soft)] outline-none transition-colors hover:bg-[var(--surface-tint)]"
+       style={{ fontSize: isMobile ? "12px" : "13px" }}
+     >
+       {nodes}
+     </select>
+     <ChevronDown
+       size={14}
+       className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 shrink-0 text-[var(--muted)]"
+     />
+   </div>
  )
 }
