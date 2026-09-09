@@ -1542,6 +1542,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [startY, setStartY] = useState<number | null>(null);
+  const startXRef = useRef<number | null>(null);
   const [pinLockRequired, setPinLockRequired] = useState(false);
   const [pinUnlocking, setPinUnlocking] = useState(false);
   const [pinInput, setPinInput] = useState("");
@@ -3042,18 +3043,34 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       return;
     }
     setStartY(event.touches[0]?.clientY ?? null);
+    startXRef.current = event.touches[0]?.clientX ?? null;
     setPullDistance(0);
   };
 
   const onTouchMove = (event: React.TouchEvent) => {
     if (startY === null || !pullRefreshEnabled) return;
-    const currentY = event.touches[0]?.clientY ?? startY;
+    const touch = event.touches[0];
+    const currentY = touch?.clientY ?? startY;
     const delta = currentY - startY;
+    // Horizontal-ish drag (carousel/table scroll) must not arm refresh.
+    const dx = Math.abs((touch?.clientX ?? startXRef.current ?? 0) - (startXRef.current ?? 0));
     if (delta <= 0) {
       setPullDistance(0);
       return;
     }
-    setPullDistance(Math.min(110, Math.pow(delta, 0.92)));
+    // Deadzone: ignore micro-movements / taps with tiny finger drift.
+    if (delta < 10) {
+      setPullDistance(0);
+      return;
+    }
+    if (dx > 18 && dx > delta * 0.6) {
+      // Horizontal scroll intent — disarm refresh for this gesture.
+      setStartY(null);
+      startXRef.current = null;
+      setPullDistance(0);
+      return;
+    }
+    setPullDistance(Math.min(120, Math.pow(delta, 0.92)));
   };
 
   const onTouchEnd = () => {
@@ -3061,11 +3078,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       setStartY(null);
       return;
     }
-    if (pullDistance >= 70) {
+    if (pullDistance >= 80) {
       void handleManualRefresh();
     }
     setPullDistance(0);
     setStartY(null);
+    startXRef.current = null;
   };
 
   if (isAuthPage) {
