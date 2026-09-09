@@ -883,7 +883,17 @@ export default function Dashboard() {
       }
     } catch {}
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: 1,
+          echoCancellation: false,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      })
+      if (typeof (window as any).AndroidApp?.onAudioRecordingStarted === "function") {
+        (window as any).AndroidApp.onAudioRecordingStarted()
+      }
       const recorder = new MediaRecorder(stream)
       voiceChunksRef.current = []
       mediaRecorderRef.current = recorder
@@ -892,6 +902,9 @@ export default function Dashboard() {
       }
       recorder.onstop = async () => {
         stream.getTracks().forEach((tr) => tr.stop())
+        if (typeof (window as any).AndroidApp?.onAudioRecordingStopped === "function") {
+          (window as any).AndroidApp.onAudioRecordingStopped()
+        }
         setVoiceRecording(false)
         const blob = new Blob(voiceChunksRef.current, { type: recorder.mimeType || "audio/webm" })
         voiceChunksRef.current = []
@@ -904,6 +917,9 @@ export default function Dashboard() {
       recorder.start()
       setVoiceRecording(true)
     } catch (err: any) {
+      if (typeof (window as any).AndroidApp?.onAudioRecordingStopped === "function") {
+        (window as any).AndroidApp.onAudioRecordingStopped()
+      }
       const denied =
         err?.name === "NotAllowedError" ||
         err?.name === "PermissionDeniedError" ||

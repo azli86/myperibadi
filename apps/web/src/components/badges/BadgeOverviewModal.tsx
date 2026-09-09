@@ -194,13 +194,13 @@ export default function BadgeOverviewModal({ open, onClose, sessionId, lang }: B
 
   return createPortal(
         <div
-          className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center overflow-hidden bg-transparent px-0 py-0 sm:items-center sm:px-4 sm:py-6"
+          className="fixed inset-0 z-[140] flex items-end justify-center overflow-hidden bg-transparent px-0 py-0 sm:items-center sm:px-4 sm:py-6"
           onClick={onClose}
         >
           <div
             data-swipe-sheet
             {...badgeSwipe}
-            className="app-sheet-panel relative flex max-h-[min(92dvh,720px)] w-full max-w-md flex-col overflow-hidden border border-[var(--border)] bg-[var(--card)] text-[var(--text)] shadow-[0_-12px_60px_rgba(0,0,0,0.45)] sm:shadow-2xl"
+            className="app-sheet-panel relative flex max-h-[85vh] sm:max-h-[720px] w-full max-w-md flex-col overflow-hidden border border-[var(--border)] bg-[var(--card)] text-[var(--text)] shadow-[0_-12px_60px_rgba(0,0,0,0.45)] sm:shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             {/* Header */}

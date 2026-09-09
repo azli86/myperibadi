@@ -35,7 +35,12 @@ export function setupVoiceMedia(raw: MediaStream): VoiceMediaSetup {
   const plain: VoiceMediaSetup = {
     stream: raw,
     boosted: false,
-    cleanup: () => stopTracks(raw),
+    cleanup: () => {
+      stopTracks(raw)
+      if (typeof (window as any).AndroidApp?.onAudioRecordingStopped === "function") {
+        (window as any).AndroidApp.onAudioRecordingStopped()
+      }
+    },
   }
   if (!isNativeWrapper()) return plain
   const Ctor =
@@ -71,6 +76,9 @@ export function setupVoiceMedia(raw: MediaStream): VoiceMediaSetup {
         } catch {}
         void ctx.close().catch(() => {})
         stopTracks(raw)
+        if (typeof (window as any).AndroidApp?.onAudioRecordingStopped === "function") {
+          (window as any).AndroidApp.onAudioRecordingStopped()
+        }
       },
     }
   } catch {

@@ -67,6 +67,7 @@ interface RunSession {
   distanceMeters: number
   steps: number
   stepSource: "native" | "calculated"
+  mode?: "outdoor" | "indoor"
   caloriesKcal: number
   avgPaceMinPerKm: number
   splits?: SplitLap[]
@@ -120,6 +121,8 @@ export default function HealthTrackingPage() {
   const [distanceMeters, setDistanceMeters] = useState(0)
   const [steps, setSteps] = useState(0)
   const [hasNativeStepSensor, setHasNativeStepSensor] = useState(false)
+  const [runMode, setRunMode] = useState<"outdoor" | "indoor">("outdoor")
+  const [isWebMotionActive, setIsWebMotionActive] = useState(false)
   const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null)
   const [currentCoord, setCurrentCoord] = useState<{ lat: number; lng: number } | null>(null)
   const [currentSpeedKmh, setCurrentSpeedKmh] = useState<number>(0)
@@ -228,6 +231,59 @@ export default function HealthTrackingPage() {
     }
   }, [])
 
+  // Web Accelerometer Motion step detector for browser / stationary fallback
+  useEffect(() => {
+    if (trackingState !== "running") return
+
+    let lastMagnitude = 9.8
+    let isRising = false
+    let lastStepTime = 0
+
+    const handleMotion = (event: DeviceMotionEvent) => {
+      // If Android native bridge is supplying steps, let it handle
+      if (hasNativeStepSensor) return
+
+      const acc = event.accelerationIncludingGravity || event.acceleration
+      if (!acc) return
+      const x = acc.x ?? 0
+      const y = acc.y ?? 0
+      const z = acc.z ?? 0
+      const magnitude = Math.sqrt(x * x + y * y + z * z)
+      const now = Date.now()
+
+      if (magnitude > lastMagnitude && magnitude > 11.6) {
+        isRising = true
+      } else if (isRising && magnitude < lastMagnitude) {
+        if (now - lastStepTime >= 240) {
+          lastStepTime = now
+          setSteps((prev) => prev + 1)
+          setIsWebMotionActive(true)
+        }
+        isRising = false
+      }
+      lastMagnitude = magnitude
+    }
+
+    if (typeof window !== "undefined" && "DeviceMotionEvent" in window) {
+      const DME = window.DeviceMotionEvent as unknown as { requestPermission?: () => Promise<string> }
+      if (typeof DME.requestPermission === "function") {
+        DME.requestPermission().then((res) => {
+          if (res === "granted") {
+            window.addEventListener("devicemotion", handleMotion)
+          }
+        }).catch(() => {})
+      } else {
+        window.addEventListener("devicemotion", handleMotion)
+      }
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("devicemotion", handleMotion)
+      }
+    }
+  }, [trackingState, hasNativeStepSensor])
+
   // Initialize Leaflet with Google Maps
   const initLeaflet = useCallback(async () => {
     if (!mapContainerRef.current || mapInstanceRef.current) return
@@ -324,11 +380,17 @@ export default function HealthTrackingPage() {
 
   // Running telemetry stats
   const calculatedStats = useMemo(() => {
-    const km = distanceMeters / 1000
-    const paceMinPerKm = km > 0.05 ? elapsedSeconds / 60 / km : 0
-    const calories = Math.round(km * 65)
-    const effectiveSteps = hasNativeStepSensor ? steps : Math.round(distanceMeters / 0.76)
-    const cadenceSpm = elapsedSeconds > 20 ? Math.round(effectiveSteps / (elapsedSeconds / 60)) : 0
+    // If indoor mode, distance is calculated directly from steps (avg running stride: 0.75m)
+    // Or in outdoor mode if user is stationary/running in place (steps > 15 but distanceMeters < 20)
+    const effectiveMeters =
+      runMode === "indoor"
+        ? steps * 0.75
+        : Math.max(distanceMeters, steps > 15 && distanceMeters < 20 ? steps * 0.75 : distanceMeters)
+    const km = effectiveMeters / 1000
+    const paceMinPerKm = km > 0.05 ? elapsedSeconds / 60 / km : (steps > 10 && elapsedSeconds > 10 ? (elapsedSeconds / 60) / (km || 0.01) : 0)
+    const calories = Math.round(km * 65 + (runMode === "indoor" || distanceMeters < 20 ? steps * 0.045 : 0))
+    const effectiveSteps = hasNativeStepSensor || isWebMotionActive || steps > 0 ? steps : Math.round(distanceMeters / 0.76)
+    const cadenceSpm = elapsedSeconds > 15 ? Math.round(effectiveSteps / (elapsedSeconds / 60)) : 0
     const progressPercent = targetGoalKm ? Math.min(100, Math.round((km / targetGoalKm) * 100)) : null
 
     return {
@@ -341,7 +403,7 @@ export default function HealthTrackingPage() {
       cadenceSpm,
       progressPercent,
     }
-  }, [distanceMeters, elapsedSeconds, hasNativeStepSensor, steps, targetGoalKm])
+  }, [distanceMeters, elapsedSeconds, hasNativeStepSensor, isWebMotionActive, runMode, steps, targetGoalKm])
 
   // Split Laps Tracker (every 1 km)
   useEffect(() => {
@@ -394,7 +456,7 @@ export default function HealthTrackingPage() {
                 setSteps(currentNativeSteps)
               }
             }
-          }, 1000)
+          }, 400)
         } catch {
           // ignore
         }
@@ -574,7 +636,12 @@ export default function HealthTrackingPage() {
       stepIntervalRef.current = null
     }
 
-    if (distanceMeters < 30 && elapsedSeconds < 15) {
+    const effectiveDistance =
+      runMode === "indoor"
+        ? calculatedStats.effectiveSteps * 0.75
+        : Math.max(distanceMeters, calculatedStats.effectiveSteps * 0.75)
+
+    if (effectiveDistance < 20 && elapsedSeconds < 15 && calculatedStats.effectiveSteps < 30) {
       showAlert(
         isBm ? "Sesi Terlalu Pendek" : "Session Too Short",
         isBm ? "Jarak atau masa larian terlalu singkat untuk direkodkan." : "Run session is too short to record.",
@@ -590,9 +657,10 @@ export default function HealthTrackingPage() {
       startTime: startTimestampRef.current,
       endTime: Date.now(),
       durationSeconds: elapsedSeconds,
-      distanceMeters,
+      distanceMeters: Math.round(effectiveDistance),
       steps: calculatedStats.effectiveSteps,
       stepSource: hasNativeStepSensor ? "native" : "calculated",
+      mode: runMode,
       caloriesKcal: calculatedStats.calories,
       avgPaceMinPerKm: calculatedStats.paceNumber,
       splits: splits.length > 0 ? splits : undefined,
@@ -1478,7 +1546,9 @@ export default function HealthTrackingPage() {
                   <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-widest text-[var(--muted)]">
                     <span>
                       {trackingState === "running"
-                        ? isBm ? "● SEDANG BERLARI" : "● LIVE RUN"
+                        ? runMode === "indoor"
+                          ? isBm ? "● LARI SETEMPAT / TREADMILL" : "● INDOOR / TREADMILL"
+                          : isBm ? "● SEDANG BERLARI (GPS)" : "● LIVE RUN (GPS)"
                         : trackingState === "paused"
                         ? isBm ? "❚❚ DIJEDA" : "❚❚ PAUSED"
                         : isBm ? "SEDIA UNTUK LARI" : "READY TO RUN"}
@@ -1508,10 +1578,52 @@ export default function HealthTrackingPage() {
                     </span>
                   </div>
 
-                  {/* Target Goal chips (when idle) */}
+                  {/* Target Goal & Run Mode (when idle) */}
                   {trackingState === "idle" && (
-                    <div className="mt-6 border-t border-[var(--divider)] pt-4">
-                      <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
+                    <div className="mt-6 border-t border-[var(--divider)] pt-4 space-y-4">
+                      {/* Mode Segmented Selector */}
+                      <div className="flex flex-col items-center">
+                        <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
+                          {isBm ? "Pilih Mod Larian:" : "Select Run Mode:"}
+                        </div>
+                        <div className="inline-flex rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-1 w-full max-w-sm">
+                          <button
+                            type="button"
+                            onClick={() => setRunMode("outdoor")}
+                            className={cn(
+                              "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 px-3 text-xs font-black transition",
+                              runMode === "outdoor"
+                                ? "bg-[var(--card)] text-[var(--text)] shadow-xs border border-[var(--border)]"
+                                : "text-[var(--muted)] hover:text-[var(--text)]"
+                            )}
+                          >
+                            <Navigation size={13} />
+                            <span>{isBm ? "Luar (GPS)" : "Outdoor (GPS)"}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRunMode("indoor")}
+                            className={cn(
+                              "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 px-3 text-xs font-black transition",
+                              runMode === "indoor"
+                                ? "bg-[var(--card)] text-[var(--text)] shadow-xs border border-[var(--border)]"
+                                : "text-[var(--muted)] hover:text-[var(--text)]"
+                            )}
+                          >
+                            <Footprints size={13} />
+                            <span>{isBm ? "Setempat / Treadmill" : "Indoor / Treadmill"}</span>
+                          </button>
+                        </div>
+                        {runMode === "indoor" && (
+                          <p className="mt-2 text-[11px] font-medium text-[var(--muted)] text-center">
+                            {isBm
+                              ? "⚡ Penderia langkah aktif: Jarak & kalori dikira daripada langkah setempat."
+                              : "⚡ Step sensor active: Distance & calories calculated from stationary steps."}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] text-center">
                         {isBm ? "Tetapkan Sasaran Larian:" : "Set Target Goal:"}
                       </div>
                       <div className="flex flex-wrap items-center justify-center gap-1.5">
@@ -2150,29 +2262,42 @@ export default function HealthTrackingPage() {
             </div>
 
             <div className="my-5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-4 text-center md:my-6 md:p-5">
+              <div className="flex items-center justify-center gap-1.5 mb-1">
+                <span className="rounded-full border border-[var(--border)] bg-[var(--card)] px-2.5 py-0.5 text-[10px] font-bold text-[var(--muted)]">
+                  {completedSession.mode === "indoor"
+                    ? isBm ? "🏠 Larian Setempat / Treadmill" : "🏠 Indoor / Treadmill"
+                    : isBm ? "🏃 Larian Luar (GPS)" : "🏃 Outdoor Run (GPS)"}
+                </span>
+              </div>
               <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">{isBm ? "JUMLAH JARAK" : "TOTAL DISTANCE"}</div>
               <div className="mt-1 text-4xl font-black tabular-nums text-[var(--text)] md:text-5xl">
                 {(completedSession.distanceMeters / 1000).toFixed(2)} <span className="text-base font-bold text-[var(--muted)]">KM</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-2.5 md:p-3">
-                <div className="text-[10px] font-bold uppercase text-[var(--muted)]">{isBm ? "Pace Purata" : "Avg Pace"}</div>
-                <div className="mt-1 text-xs font-black tabular-nums text-[var(--text)] md:text-sm">
+            <div className="grid grid-cols-4 gap-1.5 text-center">
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-2">
+                <div className="text-[9px] font-bold uppercase text-[var(--muted)]">{isBm ? "Langkah" : "Steps"}</div>
+                <div className="mt-1 text-xs font-black tabular-nums text-[var(--text)]">
+                  {completedSession.steps.toLocaleString()}
+                </div>
+              </div>
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-2">
+                <div className="text-[9px] font-bold uppercase text-[var(--muted)]">{isBm ? "Pace" : "Pace"}</div>
+                <div className="mt-1 text-xs font-black tabular-nums text-[var(--text)]">
                   {formatPace(completedSession.avgPaceMinPerKm)}
                 </div>
               </div>
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-2.5 md:p-3">
-                <div className="text-[10px] font-bold uppercase text-[var(--muted)]">{isBm ? "Masa" : "Time"}</div>
-                <div className="mt-1 text-xs font-black tabular-nums text-[var(--text)] font-mono md:text-sm">
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-2">
+                <div className="text-[9px] font-bold uppercase text-[var(--muted)]">{isBm ? "Masa" : "Time"}</div>
+                <div className="mt-1 text-xs font-black tabular-nums text-[var(--text)] font-mono">
                   {formatDuration(completedSession.durationSeconds)}
                 </div>
               </div>
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-2.5 md:p-3">
-                <div className="text-[10px] font-bold uppercase text-[var(--muted)]">{isBm ? "Kalori" : "Calories"}</div>
-                <div className="mt-1 text-xs font-black tabular-nums text-[var(--text)] md:text-sm">
-                  {completedSession.caloriesKcal} kcal
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-2">
+                <div className="text-[9px] font-bold uppercase text-[var(--muted)]">{isBm ? "Kalori" : "Calories"}</div>
+                <div className="mt-1 text-xs font-black tabular-nums text-[var(--text)]">
+                  {completedSession.caloriesKcal}
                 </div>
               </div>
             </div>

@@ -1075,11 +1075,14 @@ export default function ChatPage() {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
-          echoCancellation: true,
+          echoCancellation: false,
           noiseSuppression: true,
           autoGainControl: true,
         },
       })
+      if (typeof (window as any).AndroidApp?.onAudioRecordingStarted === "function") {
+        (window as any).AndroidApp.onAudioRecordingStarted()
+      }
       const voiceMime = preferredVoiceMime()
       const recorder = voiceMime
         ? new MediaRecorder(stream, voiceMime)
@@ -1092,6 +1095,9 @@ export default function ChatPage() {
       }
       recorder.onstop = async () => {
         stream.getTracks().forEach((tr) => tr.stop())
+        if (typeof (window as any).AndroidApp?.onAudioRecordingStopped === "function") {
+          (window as any).AndroidApp.onAudioRecordingStopped()
+        }
         mediaRecorderRef.current = null
         voiceReadyRef.current = false
         const submit = voiceSubmitRef.current
@@ -1116,6 +1122,9 @@ export default function ChatPage() {
         stopVoice(false)
       }
     } catch (err: any) {
+      if (typeof (window as any).AndroidApp?.onAudioRecordingStopped === "function") {
+        (window as any).AndroidApp.onAudioRecordingStopped()
+      }
       const denied =
         err?.name === "NotAllowedError" ||
         err?.name === "PermissionDeniedError" ||
