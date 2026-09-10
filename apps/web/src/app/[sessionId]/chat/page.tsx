@@ -33,6 +33,7 @@ import { SmartImage } from "@/components/ui/SmartImage"
 import ImageSourceSheet from "@/components/ui/ImageSourceSheet"
 import Calculator from "@/components/calculator/Calculator"
 import { ChatFormattedText } from "@/lib/chat-format"
+import ChatQuickPanel from "@/components/chat/ChatQuickPanel"
 import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
 import { usePageAlert } from "@/hooks/usePageAlert"
@@ -399,6 +400,17 @@ export default function ChatPage() {
   useEffect(() => {
     resizeComposerTextarea()
   }, [input, resizeComposerTextarea])
+
+  const insertKeyword = (keyword: string) => {
+    setInput((prev) => {
+      const base = prev.trimEnd()
+      return base ? `${base} ${keyword} ` : `${keyword} `
+    })
+    window.requestAnimationFrame(() => {
+      textareaRef.current?.focus()
+      resizeComposerTextarea()
+    })
+  }
 
   useEffect(() => {
     return () => {
@@ -1537,6 +1549,7 @@ export default function ChatPage() {
           />
 
           <div className="flex flex-col gap-2">
+            <ChatQuickPanel lang={lang} onPick={insertKeyword} />
             <div className={cn("chat-composer-shell flex min-h-12 items-end rounded-2xl border border-[color:var(--border)] px-3 py-2", composerBg)}>
               <div className="flex min-h-8 flex-1 items-center px-1 py-0.5">
                 <textarea
