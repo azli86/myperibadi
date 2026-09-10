@@ -1245,11 +1245,10 @@ export default function ChatPage() {
     ? "bg-[var(--surface-tint)] text-[var(--text)]"
     : "bg-[var(--surface-tint-strong)] text-[var(--text)]"
   const showSendButton = input.trim().length > 0 || !!selectedFile
+  const composerPlainButton = "text-[var(--muted)] hover:text-[var(--text)]"
   const sendButtonBg = canSend
-    ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:opacity-95"
-    : isLightTheme
-      ? "bg-[var(--surface-tint-strong)] text-[var(--muted)]"
-      : "bg-[var(--surface-tint)] text-[color-mix(in_srgb,var(--text)_45%,transparent)]"
+    ? "text-[var(--btn-primary-bg)]"
+    : "text-[var(--muted)]"
 
   return (
     <div
@@ -1575,7 +1574,7 @@ export default function ChatPage() {
           />
 
           <div className="flex flex-col gap-2">
-            <div className={cn("chatgpt-composer-shell flex min-h-12 items-end rounded-2xl border border-[color:var(--border)] px-3 py-2", composerBg)}>
+            <div className={cn("chat-composer-shell flex min-h-12 items-end rounded-2xl border border-[color:var(--border)] px-3 py-2", composerBg)}>
               <div className="flex min-h-8 flex-1 items-center px-1 py-0.5">
                 <textarea
                   ref={textareaRef}
@@ -1605,7 +1604,7 @@ export default function ChatPage() {
                 type="button"
                 aria-label={lang === "EN" ? "Calculator" : "Kalkulator"}
                 onClick={() => { setIsCommandMenuOpen(false); setIsCalculatorOpen((prev) => !prev) }}
-                className={cn("chatgpt-composer-control flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-colors", mobileControlButton)}
+                className={cn("chat-composer-control flex h-11 w-11 shrink-0 items-center justify-center transition-colors active:scale-95", composerPlainButton)}
               >
                 <CalculatorIcon size={20} />
               </button>
@@ -1613,7 +1612,7 @@ export default function ChatPage() {
                 type="button"
                 aria-label={lang === "EN" ? "Photo" : "Gambar"}
                 onClick={() => { setIsCommandMenuOpen(false); setIsPhotoSheetOpen(true) }}
-                className={cn("chatgpt-composer-control flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-colors", mobileControlButton)}
+                className={cn("chat-composer-control flex h-11 w-11 shrink-0 items-center justify-center transition-colors active:scale-95", composerPlainButton)}
               >
                 <ImageIcon size={20} />
               </button>
@@ -1622,7 +1621,7 @@ export default function ChatPage() {
                 aria-label={lang === "EN" ? "Location" : "Lokasi"}
                 disabled={isLocating}
                 onClick={handlePinLocation}
-                className={cn("chatgpt-composer-control flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50", mobileControlButton)}
+                className={cn("chat-composer-control flex h-11 w-11 shrink-0 items-center justify-center transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-50", composerPlainButton)}
               >
                 {isLocating ? <Loader2 size={20} className="animate-spin" /> : <MapPin size={20} />}
               </button>
@@ -1634,7 +1633,7 @@ export default function ChatPage() {
                   type="button"
                   disabled={!canSend}
                   onClick={sendCurrentInput}
-                  className={cn("chatgpt-send-button flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-100", sendButtonBg)}
+                  className={cn("chat-composer-control flex h-11 w-11 shrink-0 items-center justify-center transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-100", sendButtonBg)}
                 >
                   {sending || isLocating ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
                 </button>
@@ -1699,12 +1698,12 @@ export default function ChatPage() {
                 onContextMenu={(e) => e.preventDefault()}
                 style={{ transform: `translateX(${voiceSlideX}px)` }}
                 className={cn(
-                  "chatgpt-composer-control flex h-12 w-12 shrink-0 touch-none select-none items-center justify-center rounded-full border transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-50",
+                  "chat-composer-control flex h-11 w-11 shrink-0 touch-none select-none items-center justify-center transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-50",
                   isVoiceRecording
                     ? voiceSlideCancel
-                      ? "border-transparent bg-[#ef4444] text-white"
-                      : "animate-pulse border-transparent bg-[#ef4444] text-white"
-                    : mobileControlButton
+                      ? "rounded-full bg-[#ef4444] text-white"
+                      : "animate-pulse rounded-full bg-[#ef4444] text-white"
+                    : composerPlainButton
                 )}
               >
                 {voiceBusy ? <Loader2 size={18} className="animate-spin" /> : <Mic size={20} />}

@@ -505,7 +505,7 @@ html[data-theme="dark"] [class*="border-[color:var(--border-strong)]"] {
 html[data-theme="dark"] .balance-hero,
 html[data-theme="dark"] .portal-download-card,
 html[data-theme="dark"] .purple-chrome,
-html[data-theme="dark"] .chatgpt-composer-shell {
+html[data-theme="dark"] .chat-composer-shell {
   border-color: var(--border) !important;
 }
 
@@ -970,22 +970,22 @@ html[data-theme="light"] .chat-composer-textarea::placeholder {
   color: var(--muted) !important;
 }
 
-.chatgpt-composer-shell {
+.chat-composer-shell {
   border-radius: var(--card-radius-lg) !important;
   transition: background-color 180ms ease, border-color 180ms ease;
 }
 
-.chatgpt-composer-control,
-.chatgpt-send-button {
+.chat-composer-control,
+.chat-send-button {
   border-radius: 9999px !important;
 }
 
-html[data-theme="light"] .chatgpt-composer-shell {
+html[data-theme="light"] .chat-composer-shell {
   background-color: var(--card) !important;
   border-color: var(--border) !important;
 }
 
-html[data-theme="dark"] .chatgpt-composer-shell {
+html[data-theme="dark"] .chat-composer-shell {
   background-color: var(--card) !important;
   border-color: var(--border) !important;
 }
@@ -1014,8 +1014,8 @@ html[data-theme="light"] .chat-bot-bubble {
   color: var(--text) !important;
 }
 
-.chatgpt-send-button:not(:disabled),
-button.chatgpt-send-button:not(:disabled) {
+.chat-send-button:not(:disabled),
+button.chat-send-button:not(:disabled) {
   background: var(--btn-primary-bg) !important;
   color: var(--btn-primary-text) !important;
 }
