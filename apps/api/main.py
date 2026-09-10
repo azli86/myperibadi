@@ -42,6 +42,14 @@ warnings.filterwarnings(
     category=DeprecationWarning,
 )
 
+# python_multipart warns once per chunk for trailing bytes after the closing
+# boundary (`Skipping data after last boundary`). The closing boundary already
+# ended the part, so the parse succeeds; some clients just pad the body. Keep
+# real parse errors (they raise) and drop the per-chunk noise from the logs.
+import logging
+
+logging.getLogger("python_multipart").setLevel(logging.ERROR)
+
 # Email verification grace: how long a new user has to verify before the account
 # is auto-disabled, and how long a verify link stays valid. Extended from 2 to 14
 # days because 2 days was trapping users whose verify link expired (token purged)
