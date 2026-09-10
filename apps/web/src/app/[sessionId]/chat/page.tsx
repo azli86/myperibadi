@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils"
 import { SmartImage } from "@/components/ui/SmartImage"
 import ImageSourceSheet from "@/components/ui/ImageSourceSheet"
 import Calculator from "@/components/calculator/Calculator"
+import { ChatFormattedText } from "@/lib/chat-format"
 import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
 import { usePageAlert } from "@/hooks/usePageAlert"
@@ -1393,7 +1394,7 @@ export default function ChatPage() {
                     />
                   )}
                   {msg.text && (
-                    <p className={cn("whitespace-pre-wrap", chatTextSize)}>{msg.text}</p>
+                    <ChatFormattedText text={msg.text} className={cn("whitespace-pre-wrap", chatTextSize)} />
                   )}
                   {msg.fileName && (
                     <div className={cn("mt-3 flex items-center gap-1.5 text-[0.6875rem] font-medium", userAttachmentText)}>
@@ -1419,7 +1420,7 @@ export default function ChatPage() {
                     />
                   )}
                   {msg.text && (
-                    <p className={cn("whitespace-pre-wrap", chatTextSize)}>{msg.text}</p>
+                    <ChatFormattedText text={msg.text} className={cn("whitespace-pre-wrap", chatTextSize)} />
                   )}
                   {msg.fileName && (
                     <div className="mt-2 flex items-center gap-1.5 text-[0.6875rem] font-medium text-[var(--muted)]">
