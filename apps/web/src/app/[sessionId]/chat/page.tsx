@@ -24,18 +24,14 @@ import {
   Grid2X2,
   Bot,
   Settings,
-  Sparkle,
   Mic,
   Calculator as CalculatorIcon,
   type LucideIcon,
 } from "lucide-react"
-import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { SmartImage } from "@/components/ui/SmartImage"
 import ImageSourceSheet from "@/components/ui/ImageSourceSheet"
 import Calculator from "@/components/calculator/Calculator"
-import ChatRichMessage, { type ChatAction } from "@/components/chat/ChatRichMessage"
-import TxnFxOverlay, { detectTxnFx, type TxnFxKind } from "@/components/chat/TxnFxOverlay"
 import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
 import { usePageAlert } from "@/hooks/usePageAlert"
@@ -305,7 +301,6 @@ export default function ChatPage() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [sending, setSending] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
-  const [txnFxKind, setTxnFxKind] = useState<TxnFxKind | null>(null)
   const [isLocating, setIsLocating] = useState(false)
   const [errorText, setErrorText] = useState("")
   const [isVoiceRecording, setIsVoiceRecording] = useState(false)
@@ -880,12 +875,8 @@ export default function ChatPage() {
       // Artificial delay for natural feel
       // USER REQUEST: Skip delay for transactions and attachments, longer for normal chat
       const isTransaction = replyText?.trim().startsWith("*Done!") || replyText?.trim().includes("TXN")
-      // Celebrate income / fly-money for expense (web chat only)
-      if (isTransaction) {
-        const fx = detectTxnFx(String(replyText), text)
-        if (fx) setTxnFxKind(fx)
-      }
-      const minDelay = (activeFile || isTransaction) ? 0 : 4000
+      void isTransaction
+      const minDelay = 0
       
       const elapsed = Date.now() - now
       if (elapsed < minDelay) {
@@ -1194,47 +1185,6 @@ export default function ChatPage() {
   const mutedText = "text-[var(--muted)]"
   const subtleText = "text-[var(--muted)]"
   const composerBg = "bg-[var(--card)]"
-  const handleChatAction = (action: ChatAction) => {
-    if (sending || isTyping || isLocating) return
-    if (action.type === "send") {
-      const value = action.text
-      if (value.endsWith(" ") || value.includes("…")) {
-        setInput(value.replace(/…/g, ""))
-        setIsCommandMenuOpen(false)
-        setIsAttachmentMenuOpen(false)
-        window.requestAnimationFrame(() => {
-          textareaRef.current?.focus()
-          resizeComposerTextarea()
-        })
-        return
-      }
-      void submitMessage(undefined, value)
-      return
-    }
-    if (action.type === "attach") {
-      const ref = (action.txnRef || "").trim().toUpperCase() || null
-      if (!ref) {
-        showAlert(
-          lang === "EN" ? "No transaction" : "Tiada transaksi",
-          lang === "EN"
-            ? "This card has no TXN id. Send an expense first, then attach the receipt."
-            : "Kad ini tiada ID TXN. Hantar belanja dulu, kemudian lampir resit.",
-          "warning"
-        )
-        return
-      }
-      pendingTxnAttachRef.current = ref
-      // Keep composer free; attach uses target_txn_ref, not typed text
-      openAttachmentPicker(action.mode)
-      return
-    }
-    if (action.type === "open_commands") {
-      setIsCommandMenuOpen(true)
-      setInput("/")
-      window.requestAnimationFrame(() => textareaRef.current?.focus())
-    }
-  }
-
   const mobileControlButton = isLightTheme
     ? "border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[var(--surface-tint)]"
     : "border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[var(--surface-tint-strong)]"
@@ -1391,10 +1341,8 @@ export default function ChatPage() {
         {messages.map((msg) => {
           const isUser = msg.role === "user"
           return (
-            <motion.div
+            <div
               key={msg.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
               className={cn("flex w-full min-w-0 overflow-visible", isUser ? "justify-end" : "justify-start")}
             >
               {isUser ? (
@@ -1413,7 +1361,9 @@ export default function ChatPage() {
                       loading="eager"
                     />
                   )}
-                  <ChatRichMessage text={msg.text} isUser isLight={isLightTheme} lang={lang} />
+                  {msg.text && (
+                    <p className="whitespace-pre-wrap text-[0.9375rem] leading-relaxed md:text-base">{msg.text}</p>
+                  )}
                   {msg.fileName && (
                     <div className={cn("mt-3 flex items-center gap-1.5 text-[0.6875rem] font-medium", userAttachmentText)}>
                       {msg.fileType?.startsWith("image/") ? <ImageIcon size={12} /> : <FileText size={12} />}
@@ -1437,7 +1387,9 @@ export default function ChatPage() {
                       loading="eager"
                     />
                   )}
-                  <ChatRichMessage text={msg.text} isLight={isLightTheme} lang={lang} disabled={sending || isTyping || isLocating} onAction={handleChatAction} />
+                  {msg.text && (
+                    <p className="whitespace-pre-wrap text-[0.9375rem] leading-relaxed md:text-base">{msg.text}</p>
+                  )}
                   {msg.fileName && (
                     <div className="mt-2 flex items-center gap-1.5 text-[0.6875rem] font-medium text-[var(--muted)]">
                       {msg.fileType?.startsWith("image/") ? <ImageIcon size={12} /> : <FileText size={12} />}
@@ -1446,37 +1398,16 @@ export default function ChatPage() {
                   )}
                 </div>
               )}
-            </motion.div>
+            </div>
           )
         })}
 
         {isTyping && (
           <div className="flex w-full justify-start">
-            <div className={cn("inline-flex items-center gap-1.5 rounded-2xl border px-3.5 py-2.5", bubbleBotBg)}>
-              <motion.span
-                animate={{ scale: [1, 1.15, 1], rotate: [0, 8, -8, 0] }}
-                transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-                className="text-[var(--accent)]"
-              >
-                <Sparkle size={15} fill="currentColor" />
-              </motion.span>
-              <motion.span
-                aria-label="Thinking"
-                className="bg-clip-text text-sm font-medium text-transparent"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(90deg, var(--muted) 0%, var(--muted) 35%, var(--text) 50%, var(--muted) 65%, var(--muted) 100%)",
-                  backgroundSize: "200% 100%",
-                }}
-                animate={{ backgroundPosition: ["150% 0%", "-50% 0%"] }}
-                transition={{
-                  duration: 1.4,
-                  repeat: Infinity,
-                  ease: "linear",
-                }}
-              >
-                Thinking...
-              </motion.span>
+            <div className={cn("inline-flex items-center gap-1 rounded-2xl border px-3.5 py-3", bubbleBotBg)}>
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--muted)]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--muted)]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--muted)]" />
             </div>
           </div>
         )}
@@ -1747,7 +1678,6 @@ export default function ChatPage() {
         {errorText && <p className="px-1 text-[0.6875rem] font-medium text-red-400">{errorText}</p>}
         </div>
       </div>
-      <TxnFxOverlay kind={txnFxKind} onDone={() => setTxnFxKind(null)} />
       {voiceConfirmText !== null && (
         <div className="fixed inset-0 z-[710] flex items-end justify-center sm:items-center">
           <div
