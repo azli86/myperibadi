@@ -41,7 +41,7 @@ export default function ChatQuickPanel({
       .then((data: Category[]) => {
         const list = Array.isArray(data) ? data : []
         setCategories(list)
-        setActiveId(list.length ? list[0].id : null)
+        setActiveId(null)
       })
       .catch(() => {})
       .finally(() => setLoadingCats(false))
@@ -63,6 +63,20 @@ export default function ChatQuickPanel({
 
   const activeKeywords = activeId != null ? keywords[activeId] : undefined
   const label = lang === "EN" ? "Category keywords" : "Keyword kategori"
+  const groups = [
+    {
+      key: "income",
+      title: lang === "EN" ? "Income" : "Pendapatan",
+      chip: "text-[var(--income)]",
+      items: categories.filter((cat) => cat.kind === "income"),
+    },
+    {
+      key: "expense",
+      title: lang === "EN" ? "Expenses" : "Belanja",
+      chip: "text-[var(--expense)]",
+      items: categories.filter((cat) => cat.kind !== "income"),
+    },
+  ].filter((group) => group.items.length > 0)
 
   return (
     <div className="flex flex-col gap-2">
@@ -92,32 +106,39 @@ export default function ChatQuickPanel({
               {lang === "EN" ? "No categories found" : "Tiada kategori dijumpai"}
             </p>
           ) : (
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setActiveId(cat.id)}
-                    className={cn(
-                      "shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                      cat.kind === "income"
-                        ? "text-[var(--income)]"
-                        : cat.kind === "expense"
-                          ? "text-[var(--expense)]"
-                          : "text-[var(--muted)]",
-                      cat.id === activeId
-                        ? "border-transparent bg-[var(--surface-tint-strong)]"
-                        : "border-[color:var(--border)] hover:bg-[color:var(--surface-tint)]"
-                    )}
-                  >
-                    {cat.name}
-                  </button>
-                ))}
-              </div>
+            <div className="flex flex-col gap-2.5">
+              {groups.map((group) => (
+                <div key={group.key} className="flex flex-col gap-1.5">
+                  <span className={cn("px-1 text-[0.625rem] font-bold uppercase tracking-wide", group.chip)}>
+                    {group.title}
+                  </span>
+                  <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {group.items.map((cat) => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setActiveId(cat.id)}
+                        className={cn(
+                          "shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                          group.chip,
+                          cat.id === activeId
+                            ? "border-transparent bg-[var(--surface-tint-strong)]"
+                            : "border-[color:var(--border)] hover:bg-[color:var(--surface-tint)]"
+                        )}
+                      >
+                        {cat.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
 
               <div className="max-h-36 overflow-y-auto border-t border-[color:var(--border)] pt-2">
-                {loadingKw && !activeKeywords ? (
+                {activeId == null ? (
+                  <p className="px-1 py-1.5 text-xs text-[var(--muted)]">
+                    {lang === "EN" ? "Tap a category to see its keywords" : "Ketik kategori untuk lihat keyword"}
+                  </p>
+                ) : loadingKw && !activeKeywords ? (
                   <div className="flex items-center gap-2 px-1 py-1.5 text-xs text-[var(--muted)]">
                     <Loader2 size={13} className="animate-spin" />
                     {lang === "EN" ? "Loading..." : "Memuatkan..."}

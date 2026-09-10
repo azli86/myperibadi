@@ -1056,6 +1056,7 @@ export default function ChatPage() {
   const startVoiceHold = async () => {
     if (voiceReadyRef.current || isVoiceRecording || voiceBusy || isLocating) return
     voiceCancelRef.current = false
+    voiceReleaseRef.current = false
     setVoiceSlideCancel(false)
     setVoiceSlideX(0)
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -1099,7 +1100,6 @@ export default function ChatPage() {
         ? new MediaRecorder(stream, voiceMime)
         : new MediaRecorder(stream)
       voiceChunksRef.current = []
-      voiceReleaseRef.current = false
       mediaRecorderRef.current = recorder
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) voiceChunksRef.current.push(e.data)
@@ -1623,8 +1623,18 @@ export default function ChatPage() {
                 title={lang === "EN" ? "Hold to talk, slide left to cancel" : "Tahan untuk bercakap, gelongsor kiri untuk batal"}
                 disabled={voiceBusy || isLocating}
                 onPointerDown={(e) => {
-                  if (voiceBusy || isLocating || voiceReadyRef.current || isVoiceRecording) return
+                  if (voiceBusy || isLocating) return
                   e.preventDefault()
+                  // Recording already running although no finger is down (mic warm-up
+                  // finished after the press) → a tap stops and sends it.
+                  if (voiceReadyRef.current || isVoiceRecording) {
+                    voiceHoldRef.current = false
+                    voiceCancelRef.current = false
+                    setVoiceSlideCancel(false)
+                    setVoiceSlideX(0)
+                    endVoiceHold()
+                    return
+                  }
                   try {
                     e.currentTarget.setPointerCapture(e.pointerId)
                   } catch {}
