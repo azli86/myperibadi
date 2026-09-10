@@ -7,7 +7,6 @@ import { useParams, useSearchParams } from "next/navigation"
 import {
   Send,
   ArrowLeft,
-  Plus,
   Loader2,
   X,
   ImageIcon,
@@ -27,6 +26,7 @@ import {
   Settings,
   Sparkle,
   Mic,
+  Calculator as CalculatorIcon,
   type LucideIcon,
 } from "lucide-react"
 import { motion } from "framer-motion"
@@ -297,8 +297,9 @@ export default function ChatPage() {
   const [input, setInput] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [selectedPreviewUrl, setSelectedPreviewUrl] = useState<string | null>(null)
-  const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false)
   const [isPhotoSheetOpen, setIsPhotoSheetOpen] = useState(false)
+  // ponytail: flag kept (still set by pickers); attachment menu UI removed
+  const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false)
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false)
   const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -1243,7 +1244,6 @@ export default function ChatPage() {
   const mobileCommandBadge = isLightTheme
     ? "bg-[var(--surface-tint)] text-[var(--text)]"
     : "bg-[var(--surface-tint-strong)] text-[var(--text)]"
-  const composerIconBg = mobileIconTile
   const sendButtonBg = canSend
     ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:opacity-95"
     : isLightTheme
@@ -1573,86 +1573,14 @@ export default function ChatPage() {
             onGallery={() => { setIsPhotoSheetOpen(false); openAttachmentPicker("gallery") }}
           />
 
-          <div className="flex items-end gap-2">
-            <div className="relative shrink-0">
-              <button
-                type="button"
-                aria-label={lang === "EN" ? "Open attachment options" : "Buka pilihan lampiran"}
-                aria-haspopup="menu"
-                aria-expanded={isAttachmentMenuOpen}
-                onClick={() => {
-                  setIsCommandMenuOpen(false)
-                  setIsCalculatorOpen(false)
-                  setIsAttachmentMenuOpen((prev) => !prev)
-                }}
-                className={cn("chatgpt-composer-control flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-colors", mobileControlButton)}
-              >
-                <Plus size={21} strokeWidth={2.4} />
-              </button>
-
-              {isAttachmentMenuOpen && (
-                <div
-                  role="menu"
-                  className={cn("absolute bottom-14 left-0 z-30 w-60 rounded-2xl border border-white/[0.08] p-2.5", composerBg)}
-                >
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      setIsAttachmentMenuOpen(false)
-                      setIsCalculatorOpen((prev) => !prev)
-                    }}
-                    className="flex w-full items-center gap-3 rounded-full px-3 py-2.5 text-left transition-colors hover:bg-[color:var(--surface-tint)]"
-                  >
-                    <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", composerIconBg)}>
-                      <Plus size={16} />
-                    </span>
-                    <span className="min-w-0">
-                      <span className={cn("block truncate text-sm font-semibold", titleText)}>{lang === "EN" ? "Calculator" : "Kalkulator"}</span>
-                      <span className={cn("block truncate text-[0.6875rem]", subtleText)}>{lang === "EN" ? "Quick math beside chat" : "Kira cepat sebelah chat"}</span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => { setIsAttachmentMenuOpen(false); setIsPhotoSheetOpen(true) }}
-                    className="flex w-full items-center gap-3 rounded-full px-3 py-2.5 text-left transition-colors hover:bg-[color:var(--surface-tint)]"
-                  >
-                    <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", composerIconBg)}>
-                      <ImageIcon size={16} />
-                    </span>
-                    <span className="min-w-0">
-                      <span className={cn("block truncate text-sm font-semibold", titleText)}>{lang === "EN" ? "Photo" : "Gambar"}</span>
-                      <span className={cn("block truncate text-[0.6875rem]", subtleText)}>{lang === "EN" ? "Camera or gallery" : "Kamera atau galeri"}</span>
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    disabled={isLocating}
-                    onClick={handlePinLocation}
-                    className="flex w-full items-center gap-3 rounded-full px-3 py-2.5 text-left transition-colors hover:bg-[color:var(--surface-tint)] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", composerIconBg)}>
-                      {isLocating ? <Loader2 size={16} className="animate-spin" /> : <MapPin size={16} />}
-                    </span>
-                    <span className="min-w-0">
-                      <span className={cn("block truncate text-sm font-semibold", titleText)}>{lang === "EN" ? "Location" : "Lokasi"}</span>
-                      <span className={cn("block truncate text-[0.6875rem]", subtleText)}>{lang === "EN" ? "Send current location" : "Hantar lokasi semasa"}</span>
-                    </span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className={cn("chatgpt-composer-shell flex min-h-12 flex-1 items-end gap-1.5 rounded-2xl border border-[color:var(--border)] px-3 py-2", composerBg)}>
+          <div className="flex flex-col gap-2">
+            <div className={cn("chatgpt-composer-shell flex min-h-12 items-end rounded-2xl border border-[color:var(--border)] px-3 py-2", composerBg)}>
               <div className="flex min-h-8 flex-1 items-center px-1 py-0.5">
                 <textarea
                   ref={textareaRef}
                   value={input}
                   onChange={(e) => handleComposerInputChange(e.target.value)}
                   onFocus={() => {
-                    setIsAttachmentMenuOpen(false)
                     if (input.trimStart().startsWith("/")) {
                       setIsCommandMenuOpen(true)
                     }
@@ -1669,18 +1597,47 @@ export default function ChatPage() {
                   style={{ overflowWrap: "anywhere" }}
                 />
               </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                aria-label={lang === "EN" ? "Calculator" : "Kalkulator"}
+                onClick={() => { setIsCommandMenuOpen(false); setIsCalculatorOpen((prev) => !prev) }}
+                className={cn("chatgpt-composer-control flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-colors", mobileControlButton)}
+              >
+                <CalculatorIcon size={20} />
+              </button>
+              <button
+                type="button"
+                aria-label={lang === "EN" ? "Photo" : "Gambar"}
+                onClick={() => { setIsCommandMenuOpen(false); setIsPhotoSheetOpen(true) }}
+                className={cn("chatgpt-composer-control flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-colors", mobileControlButton)}
+              >
+                <ImageIcon size={20} />
+              </button>
+              <button
+                type="button"
+                aria-label={lang === "EN" ? "Location" : "Lokasi"}
+                disabled={isLocating}
+                onClick={handlePinLocation}
+                className={cn("chatgpt-composer-control flex h-12 w-12 shrink-0 items-center justify-center rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-50", mobileControlButton)}
+              >
+                {isLocating ? <Loader2 size={20} className="animate-spin" /> : <MapPin size={20} />}
+              </button>
+
+              <div className="flex-1" />
 
               <button
                 type="button"
                 disabled={!canSend}
                 onClick={sendCurrentInput}
-                className={cn("chatgpt-send-button flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-100", sendButtonBg)}
+                className={cn("chatgpt-send-button flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-100", sendButtonBg)}
               >
-                {sending || isLocating ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                {sending || isLocating ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
               </button>
-            </div>
 
-            <div className="relative shrink-0">
+              <div className="relative shrink-0">
               <button
                 type="button"
                 aria-label={lang === "EN" ? "Hold to talk" : "Tahan untuk bercakap"}
@@ -1698,7 +1655,6 @@ export default function ChatPage() {
                   setVoiceSlideX(0)
                   voiceStartXRef.current = e.clientX
                   voiceHoldRef.current = true
-                  setIsAttachmentMenuOpen(false)
                   setIsCommandMenuOpen(false)
                   void startVoiceHold()
                 }}
@@ -1773,6 +1729,7 @@ export default function ChatPage() {
                   )}
                 </div>
               )}
+            </div>
             </div>
           </div>
 
