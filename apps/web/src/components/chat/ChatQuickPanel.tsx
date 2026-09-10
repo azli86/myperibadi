@@ -5,7 +5,7 @@ import { ChevronDown, Loader2, Tag } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getAccessToken } from "@/lib/auth-session"
 
-type Category = { id: number; name: string }
+type Category = { id: number; name: string; kind?: string }
 type Keyword = { id: number; keyword: string }
 
 /**
@@ -101,9 +101,14 @@ export default function ChatQuickPanel({
                     onClick={() => setActiveId(cat.id)}
                     className={cn(
                       "shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                      cat.kind === "income"
+                        ? "text-[var(--income)]"
+                        : cat.kind === "expense"
+                          ? "text-[var(--expense)]"
+                          : "text-[var(--muted)]",
                       cat.id === activeId
-                        ? "border-transparent bg-[var(--surface-tint-strong)] text-[var(--text)]"
-                        : "border-[color:var(--border)] text-[var(--muted)] hover:bg-[color:var(--surface-tint)]"
+                        ? "border-transparent bg-[var(--surface-tint-strong)]"
+                        : "border-[color:var(--border)] hover:bg-[color:var(--surface-tint)]"
                     )}
                   >
                     {cat.name}
