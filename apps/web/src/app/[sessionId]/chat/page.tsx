@@ -1244,6 +1244,7 @@ export default function ChatPage() {
   const mobileCommandBadge = isLightTheme
     ? "bg-[var(--surface-tint)] text-[var(--text)]"
     : "bg-[var(--surface-tint-strong)] text-[var(--text)]"
+  const showSendButton = input.trim().length > 0 || !!selectedFile
   const sendButtonBg = canSend
     ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] hover:opacity-95"
     : isLightTheme
@@ -1628,15 +1629,18 @@ export default function ChatPage() {
 
               <div className="flex-1" />
 
-              <button
-                type="button"
-                disabled={!canSend}
-                onClick={sendCurrentInput}
-                className={cn("chatgpt-send-button flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-100", sendButtonBg)}
-              >
-                {sending || isLocating ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-              </button>
+              {showSendButton && (
+                <button
+                  type="button"
+                  disabled={!canSend}
+                  onClick={sendCurrentInput}
+                  className={cn("chatgpt-send-button flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-100", sendButtonBg)}
+                >
+                  {sending || isLocating ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                </button>
+              )}
 
+              {!showSendButton && (
               <div className="relative shrink-0">
               <button
                 type="button"
@@ -1730,6 +1734,7 @@ export default function ChatPage() {
                 </div>
               )}
             </div>
+              )}
             </div>
           </div>
 
