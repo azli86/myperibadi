@@ -299,6 +299,7 @@ export default function ChatPage() {
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false)
   const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [chatTextLevel, setChatTextLevel] = useState(1)
   const [sending, setSending] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
   const [isLocating, setIsLocating] = useState(false)
@@ -370,6 +371,11 @@ export default function ChatPage() {
   const canSend = useMemo(() => {
     return !sending && !isTyping && !isLocating && (input.trim().length > 0 || !!selectedFile)
   }, [sending, isTyping, isLocating, input, selectedFile])
+
+  useEffect(() => {
+    const stored = Number(window.localStorage.getItem("chat.textLevel.v1"))
+    if (Number.isInteger(stored) && stored >= 0 && stored < 4) setChatTextLevel(stored)
+  }, [])
 
   useEffect(() => {
     if (!listRef.current) return
@@ -1196,6 +1202,20 @@ export default function ChatPage() {
     : "bg-[var(--surface-tint-strong)] text-[var(--text)]"
   const showSendButton = input.trim().length > 0 || !!selectedFile
   const composerPlainButton = "text-[var(--muted)] hover:text-[var(--text)]"
+  const chatTextSizeClasses = [
+    "text-[0.8125rem] leading-snug",
+    "text-[0.9375rem] leading-relaxed",
+    "text-[1.0625rem] leading-relaxed",
+    "text-[1.1875rem] leading-relaxed",
+  ]
+  const chatTextSize = chatTextSizeClasses[chatTextLevel] ?? chatTextSizeClasses[1]
+  const cycleChatTextSize = () => {
+    setChatTextLevel((prev) => {
+      const next = (prev + 1) % chatTextSizeClasses.length
+      try { window.localStorage.setItem("chat.textLevel.v1", String(next)) } catch {}
+      return next
+    })
+  }
   const sendButtonBg = canSend
     ? "text-[var(--btn-primary-bg)]"
     : "text-[var(--muted)]"
@@ -1246,8 +1266,18 @@ export default function ChatPage() {
             >
               <Menu size={18} strokeWidth={2.3} />
             </button>
-            <Link
-              href={`/${sessionId}`}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                aria-label={lang === "EN" ? `Text size ${chatTextLevel + 1} of 4` : `Saiz teks ${chatTextLevel + 1} daripada 4`}
+                title={lang === "EN" ? "Text size" : "Saiz teks"}
+                onClick={cycleChatTextSize}
+                className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors", mobileControlButton)}
+              >
+                <span className="font-black leading-none" style={{ fontSize: `${11 + chatTextLevel * 3}px` }}>A</span>
+              </button>
+              <Link
+                href={`/${sessionId}`}
               aria-label={lang === "EN" ? "Back to dashboard" : "Kembali ke dashboard"}
               onClick={() => {
                 setIsAttachmentMenuOpen(false)
@@ -1258,6 +1288,7 @@ export default function ChatPage() {
             >
               <X size={17} strokeWidth={2.4} />
             </Link>
+            </div>
           </div>
           <div className={cn("flex min-w-0 items-center justify-center gap-1.5 rounded-full border border-[color:var(--border)] px-3 py-2", surfaceBg)}>
             <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("shrink-0", subtleText)}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -1362,7 +1393,7 @@ export default function ChatPage() {
                     />
                   )}
                   {msg.text && (
-                    <p className="whitespace-pre-wrap text-[0.9375rem] leading-relaxed md:text-base">{msg.text}</p>
+                    <p className={cn("whitespace-pre-wrap", chatTextSize)}>{msg.text}</p>
                   )}
                   {msg.fileName && (
                     <div className={cn("mt-3 flex items-center gap-1.5 text-[0.6875rem] font-medium", userAttachmentText)}>
@@ -1388,7 +1419,7 @@ export default function ChatPage() {
                     />
                   )}
                   {msg.text && (
-                    <p className="whitespace-pre-wrap text-[0.9375rem] leading-relaxed md:text-base">{msg.text}</p>
+                    <p className={cn("whitespace-pre-wrap", chatTextSize)}>{msg.text}</p>
                   )}
                   {msg.fileName && (
                     <div className="mt-2 flex items-center gap-1.5 text-[0.6875rem] font-medium text-[var(--muted)]">
