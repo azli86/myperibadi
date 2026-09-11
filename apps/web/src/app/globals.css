@@ -970,6 +970,22 @@ html[data-theme="light"] .chat-composer-textarea::placeholder {
   color: var(--muted) !important;
 }
 
+.chat-composer-card {
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+html[data-theme="light"] .chat-composer-card {
+  background-color: color-mix(in srgb, var(--card) 96%, transparent) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 14px 34px color-mix(in srgb, var(--brand-navy) 12%, transparent);
+}
+
+html[data-theme="dark"] .chat-composer-card {
+  background-color: color-mix(in srgb, var(--card) 92%, transparent) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
 .chat-composer-shell {
   border-radius: var(--card-radius-lg) !important;
   transition: background-color 180ms ease, border-color 180ms ease;
