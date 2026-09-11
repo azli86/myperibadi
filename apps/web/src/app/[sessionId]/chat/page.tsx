@@ -1525,10 +1525,13 @@ export default function ChatPage() {
             </div>
           )}
 
+          {/* `capture` is only honoured by browsers when accept is image/* — an explicit
+              MIME list makes Android open the file picker (or nothing) instead of the
+              camera app. Type validation still happens in handlePickFile. */}
           <input
             ref={cameraInputRef}
             type="file"
-            accept={IMAGE_PICKER_ACCEPT}
+            accept="image/*"
             capture="environment"
             className="hidden"
             onChange={(e) => handlePickFile(e.target.files?.[0] || null)}
@@ -1544,8 +1547,8 @@ export default function ChatPage() {
           <ImageSourceSheet
             open={isPhotoSheetOpen}
             onClose={() => setIsPhotoSheetOpen(false)}
-            onCamera={() => { setIsPhotoSheetOpen(false); openAttachmentPicker("camera") }}
-            onGallery={() => { setIsPhotoSheetOpen(false); openAttachmentPicker("gallery") }}
+            onCamera={() => { openAttachmentPicker("camera"); setIsPhotoSheetOpen(false) }}
+            onGallery={() => { openAttachmentPicker("gallery"); setIsPhotoSheetOpen(false) }}
           />
 
           <div className="flex flex-col gap-2">

@@ -409,7 +409,7 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
 
   return createPortal(
       <>
-        <input ref={cameraRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="hidden" onChange={pick(cameraRef)} disabled={busy} />
+        <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={pick(cameraRef)} disabled={busy} />
       <input ref={galleryRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={pick(galleryRef)} disabled={busy} />
       <div
         className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center"

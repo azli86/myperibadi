@@ -1549,7 +1549,7 @@ export default function WalletSettingsPage() {
                       >
                         <Upload size={14} /> {uploadingWalletId === activeWallet.id ? tr("Sedang upload…", "Uploading…") : tr("Imej Dompet", "Wallet Image")}
                       </button>
-                      <input ref={editCameraRef} type="file" accept="image/png,image/jpeg,image/webp" capture="environment" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadWalletImage(file, activeWallet); e.target.value = "" }} />
+                      <input ref={editCameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadWalletImage(file, activeWallet); e.target.value = "" }} />
                       <input ref={editGalleryRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadWalletImage(file, activeWallet); e.target.value = "" }} />
                       {activeWallet.image_url ? (
                         <button
