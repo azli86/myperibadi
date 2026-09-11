@@ -35,7 +35,7 @@ import {
   Square,
 } from "lucide-react"
 import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import { cn, getTodayDateInTimeZone } from "@/lib/utils"
 import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
@@ -50,7 +50,6 @@ import { formatCurrencyLabel } from "@/components/ui/MoneyAmount"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { onDataChanged, shouldRefetchFor } from "@/hooks/useRealtime"
-import { getLandingPath } from "@/lib/landing-page"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 import { MonthlyChecklistSection } from "@/components/dashboard/MonthlyChecklistSection"
 import { VehicleOverdueWidget } from "@/components/dashboard/VehicleOverdueWidget"
@@ -395,25 +394,17 @@ function MiniVerifiedGemBadge({ outlined = false, icon = "verified" }: { outline
   )
 }
 
-// App-entry redirect for the "Halaman Utama" setting. Module scope = once per
-// page load: opening the app at /{sessionId} (wrapper/bookmark) jumps to the
-// chosen screen, but tapping Home later in the same session still works.
-let landingRedirectApplied = false
+// App-entry redirect lives in `src/middleware.ts` (reads the landing cookie before
+// this route renders). Do NOT redirect here: opening the app straight into another
+// screen means this module loads late, so a first-render redirect would fight the
+// user's own navigation (e.g. the chat page's close button).
 
 export default function Dashboard() {
   const params = useParams()
-  const router = useRouter()
   const { lang, timezone, timeFormat, t } = useLang()
   const { resolvedTheme } = useTheme()
   const sessionId = params.sessionId as string || ""
   const isLight = resolvedTheme === "light"
-
-  useEffect(() => {
-    if (landingRedirectApplied || !sessionId) return
-    landingRedirectApplied = true
-    const path = getLandingPath(sessionId)
-    if (path !== `/${sessionId}`) router.replace(path)
-  }, [sessionId, router])
 
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
