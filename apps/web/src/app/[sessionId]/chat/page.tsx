@@ -1551,7 +1551,7 @@ export default function ChatPage() {
 
           <div className="flex flex-col gap-2">
             <ChatQuickPanel lang={lang} onPick={insertKeyword} />
-            <div className={cn("chat-composer-shell flex min-h-12 items-end rounded-2xl border border-[color:var(--border)] px-3 py-2", composerBg)}>
+            <div className={cn("chat-composer-shell flex min-h-12 items-end gap-1 rounded-2xl border border-[color:var(--border)] py-2 pl-3 pr-2", composerBg)}>
               <div className="flex min-h-8 flex-1 items-center px-1 py-0.5">
                 <textarea
                   ref={textareaRef}
@@ -1574,53 +1574,50 @@ export default function ChatPage() {
                   style={{ overflowWrap: "anywhere" }}
                 />
               </div>
-            </div>
 
-            <div className="flex items-center gap-2">
               <button
                 type="button"
                 aria-label={lang === "EN" ? "Calculator" : "Kalkulator"}
                 onClick={() => { setIsCommandMenuOpen(false); setIsCalculatorOpen((prev) => !prev) }}
-                className={cn("chat-composer-control flex h-11 w-11 shrink-0 items-center justify-center transition-colors active:scale-95", composerPlainButton)}
+                className={cn("chat-composer-control flex h-9 w-9 shrink-0 items-center justify-center transition-colors active:scale-95", composerPlainButton)}
               >
-                <CalculatorIcon size={20} />
+                <CalculatorIcon size={19} />
               </button>
               <button
                 type="button"
                 aria-label={lang === "EN" ? "Camera" : "Kamera"}
                 onClick={() => { setIsCommandMenuOpen(false); openAttachmentPicker("camera") }}
-                className={cn("chat-composer-control flex h-11 w-11 shrink-0 items-center justify-center transition-colors active:scale-95", composerPlainButton)}
+                className={cn("chat-composer-control flex h-9 w-9 shrink-0 items-center justify-center transition-colors active:scale-95", composerPlainButton)}
               >
-                <Camera size={20} />
+                <Camera size={19} />
               </button>
               <button
                 type="button"
                 aria-label={lang === "EN" ? "Gallery" : "Galeri"}
                 onClick={() => { setIsCommandMenuOpen(false); openAttachmentPicker("gallery") }}
-                className={cn("chat-composer-control flex h-11 w-11 shrink-0 items-center justify-center transition-colors active:scale-95", composerPlainButton)}
+                className={cn("chat-composer-control flex h-9 w-9 shrink-0 items-center justify-center transition-colors active:scale-95", composerPlainButton)}
               >
-                <ImageIcon size={20} />
+                <ImageIcon size={19} />
               </button>
               <button
                 type="button"
                 aria-label={lang === "EN" ? "Location" : "Lokasi"}
                 disabled={isLocating}
                 onClick={handlePinLocation}
-                className={cn("chat-composer-control flex h-11 w-11 shrink-0 items-center justify-center transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-50", composerPlainButton)}
+                className={cn("chat-composer-control flex h-9 w-9 shrink-0 items-center justify-center transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-50", composerPlainButton)}
               >
-                {isLocating ? <Loader2 size={20} className="animate-spin" /> : <MapPin size={20} />}
+                {isLocating ? <Loader2 size={19} className="animate-spin" /> : <MapPin size={19} />}
               </button>
-
-              <div className="flex-1" />
 
               {showSendButton && (
                 <button
                   type="button"
                   disabled={!canSend}
                   onClick={sendCurrentInput}
-                  className={cn("chat-composer-control flex h-11 w-11 shrink-0 items-center justify-center transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-100", sendButtonBg)}
+                  aria-label={lang === "EN" ? "Send" : "Hantar"}
+                  className={cn("chat-composer-control flex h-9 w-9 shrink-0 items-center justify-center transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-100", sendButtonBg)}
                 >
-                  {sending || isLocating ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                  {sending || isLocating ? <Loader2 size={19} className="animate-spin" /> : <Send size={19} />}
                 </button>
               )}
 
@@ -1693,7 +1690,7 @@ export default function ChatPage() {
                 onContextMenu={(e) => e.preventDefault()}
                 style={{ transform: `translateX(${voiceSlideX}px)` }}
                 className={cn(
-                  "chat-composer-control flex h-11 w-11 shrink-0 touch-none select-none items-center justify-center transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-50",
+                  "chat-composer-control flex h-9 w-9 shrink-0 touch-none select-none items-center justify-center transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-50",
                   isVoiceRecording
                     ? voiceSlideCancel
                       ? "rounded-full bg-[#ef4444] text-white"
@@ -1701,7 +1698,7 @@ export default function ChatPage() {
                     : composerPlainButton
                 )}
               >
-                {voiceBusy ? <Loader2 size={18} className="animate-spin" /> : <Mic size={20} />}
+                {voiceBusy ? <Loader2 size={18} className="animate-spin" /> : <Mic size={19} />}
               </button>
               {isVoiceRecording && (
                 <div
