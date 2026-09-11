@@ -37,6 +37,80 @@ def _safe_print(message: str) -> None:
             except Exception:
                 pass
 
+
+def _business_timestamp() -> str:
+    return datetime.now(_get_business_timezone()).strftime("%d/%m/%Y %H:%M")
+
+
+async def _build_category_reply(
+    db: AsyncSession, *, household_id: Optional[str], arg: str, language: str
+) -> str:
+    """`category` = list categories + keyword counts; `category <nama>` = keywords."""
+    is_en = (language or "BM").upper() == "EN"
+    if not household_id:
+        return "Tiada kategori dijumpai." if not is_en else "No categories found."
+
+    rows = (
+        await db.execute(
+            select(models.Category)
+            .where(models.Category.household_id == household_id, models.Category.is_internal.is_(False))
+            .order_by(models.Category.name)
+        )
+    ).scalars().all()
+    if not rows:
+        return "Tiada kategori dijumpai." if not is_en else "No categories found."
+
+    query = " ".join((arg or "").split()).casefold()
+    if not query:
+        counts = dict(
+            (
+                await db.execute(
+                    select(models.CategoryKeyword.category_id, func.count())
+                    .where(models.CategoryKeyword.category_id.in_([c.id for c in rows]))
+                    .group_by(models.CategoryKeyword.category_id)
+                )
+            ).all()
+        )
+        lines = ["🏷️ *Kategori & Keyword*" if not is_en else "🏷️ *Categories & Keywords*"]
+        for cat in rows[:30]:
+            count = counts.get(cat.id, 0)
+            unit = "keyword" if not is_en or count == 1 else "keywords"
+            lines.append(f"• {cat.name} — {count} {unit}")
+        lines.append(
+            "Hantar `category <nama>` untuk lihat keyword."
+            if not is_en
+            else "Send `category <name>` to see keywords."
+        )
+        return "\n".join(lines)
+
+    match = next((c for c in rows if query in (c.name or "").casefold()), None)
+    if match is None:
+        return (
+            f"Kategori '{arg}' tak dijumpai. Hantar `category` untuk senarai."
+            if not is_en
+            else f"Category '{arg}' not found. Send `category` for the list."
+        )
+
+    keywords = (
+        await db.execute(
+            select(models.CategoryKeyword.keyword)
+            .where(models.CategoryKeyword.category_id == match.id)
+            .order_by(models.CategoryKeyword.keyword)
+        )
+    ).scalars().all()
+    if not keywords:
+        return f"🏷️ *{match.name}*\nTiada keyword disimpan." if not is_en else f"🏷️ *{match.name}*\nNo keywords saved."
+
+    header = (
+        f"🏷️ *{match.name}* — {len(keywords)} keyword:"
+        if not is_en or len(keywords) == 1
+        else f"🏷️ *{match.name}* — {len(keywords)} keywords:"
+    )
+    lines = [header] + [f"• {kw}" for kw in keywords[:20]]
+    if len(keywords) > 20:
+        lines.append(f"… +{len(keywords) - 20}")
+    return "\n".join(lines)
+
 STANDARD_CATEGORIES = [
     {"name": "Makanan & Minuman", "kind": "expense", "icon_name": "utensils-crossed", "keywords": ["nasi", "makan", "minum", "kfc", "mcd", "kedai"]},
     {"name": "Pengangkutan", "kind": "expense", "icon_name": "car-front", "keywords": ["grab", "minyak", "parking", "tol", "petrol"]},
@@ -4482,6 +4556,8 @@ async def _process_whatsapp_message_impl(
                 return t.get("no_wallets_found", "Tiada dompet dijumpai."), None
             
             msg = t.get("wallet_list_title", "💼 *Senarai Dompet Anda:*\n\n")
+            # Balance is a snapshot — show when the bot read it.
+            msg = f"🕒 {_business_timestamp()}\n{msg}"
             total = 0
             for w in wallets:
                 inc_res = await db.execute(select(func.sum(models.Transaction.amount)).where(models.Transaction.wallet_id == w.id, models.Transaction.type == "income"))
@@ -4494,6 +4570,26 @@ async def _process_whatsapp_message_impl(
             
             msg += t.get("wallet_total", "\n└─ *Jumlah Keseluruhan* : RM{total}").format(total=f"{total:,.2f}")
             return msg, None
+
+        # `category` / `category <nama>` — list categories with keyword counts, or
+        # the keywords saved for one category.
+        category_arg: Optional[str] = None
+        if lowered in {"category", "kategori", "categories", "kata kunci", "keyword", "keywords"}:
+            category_arg = ""
+        elif lowered.startswith(("category ", "kategori ", "keyword ", "kata kunci ")):
+            category_arg = lowered.split(" ", 1)[1].strip()
+            # Drop conversational lead-ins: "keyword apa untuk makanan" -> "makanan".
+            words = category_arg.split()
+            while words and words[0] in {
+                "apa", "apakah", "ada", "saya", "nak", "mahu", "untuk", "bagi",
+                "for", "of", "the", "keyword", "keywords", "kata", "kunci",
+            }:
+                words.pop(0)
+            category_arg = " ".join(words)
+        if category_arg is not None:
+            return await _build_category_reply(
+                db, household_id=household_id, arg=category_arg, language=user_lang
+            ), None
 
         if lowered == "summary":
             today = current_business_date()

@@ -32,6 +32,10 @@ def test_category_arg_sanitised():
     assert build_command_text("budget_remaining", "x") is None
     assert build_command_text("budget_remaining", "a" * 60) is None
     assert sanitize_category(["makanan"]) is None
+    assert build_command_text("category_list") == "category"
+    assert build_command_text("category_keywords", "Makanan") == "category makanan"
+    # No usable category -> directory listing instead of a dead end.
+    assert build_command_text("category_keywords", "") == "category"
 
 
 def test_parse_router_reply():

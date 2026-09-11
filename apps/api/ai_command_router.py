@@ -76,6 +76,19 @@ READ_ONLY_COMMANDS: dict[str, dict[str, str]] = {
         "example": "langganan saya apa",
         "template": "subx list",
     },
+    "category_list": {
+        "bm": "senarai kategori dan bilangan keyword",
+        "en": "category list with keyword counts",
+        "example": "kategori apa saya ada",
+        "template": "category",
+    },
+    "category_keywords": {
+        "bm": "keyword yang disimpan untuk satu kategori",
+        "en": "keywords saved for one category",
+        "example": "keyword untuk makanan",
+        "template": "category {category}",
+        "fallback_template": "category",
+    },
 }
 
 CATEGORY_PATTERN = re.compile(r"[^\w\s\-]", re.UNICODE)
@@ -101,7 +114,7 @@ def build_command_text(command_id: Any, category: Any = None) -> Optional[str]:
         return template
     cleaned = sanitize_category(category)
     if not cleaned:
-        return None
+        return spec.get("fallback_template")
     return template.format(category=cleaned)
 
 
@@ -137,6 +150,8 @@ def build_router_prompt(language: str) -> str:
         "Reply with JSON only, no prose: "
         '{"command": "<id or none>", "category": "<category name or empty>"}\n'
         "Use \"category\" only for budget_remaining (single word, e.g. makanan).\n"
+        "For category_keywords you MUST fill \"category\" with the named category, e.g. "
+        '{"command": "category_keywords", "category": "pengangkutan"}.\n'
         "If the message is a new expense/income entry, a greeting, or nothing "
         'matches, reply {"command": "none", "category": ""}.\n'
         "Available commands:\n" + "\n".join(lines)
