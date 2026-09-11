@@ -1453,10 +1453,10 @@ export default function ChatPage() {
 
         {isTyping && (
           <div className="flex w-full justify-start">
-            <div className={cn("inline-flex items-center gap-1 rounded-2xl border px-3.5 py-3", bubbleBotBg)}>
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--muted)]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--muted)]" />
-              <span className="h-1.5 w-1.5 rounded-full bg-[var(--muted)]" />
+            <div className={cn("inline-flex items-center gap-1 rounded-2xl border px-3.5 py-3", bubbleBotBg)} aria-label={lang === "EN" ? "Typing" : "Sedang menaip"}>
+              <span className="chat-typing-dot h-1.5 w-1.5 rounded-full bg-[var(--muted)]" />
+              <span className="chat-typing-dot h-1.5 w-1.5 rounded-full bg-[var(--muted)]" />
+              <span className="chat-typing-dot h-1.5 w-1.5 rounded-full bg-[var(--muted)]" />
             </div>
           </div>
         )}

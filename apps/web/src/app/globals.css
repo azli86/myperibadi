@@ -3155,3 +3155,19 @@ html[data-theme="light"] [class~="border-gray-300"] {
 .animate-wizard-fade-up { animation: wizard-fade-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
 @keyframes ptrspin { to { transform: rotate(360deg); } }
+
+@keyframes chat-typing-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.55; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+
+.chat-typing-dot {
+  animation: chat-typing-dot 1.1s ease-in-out infinite;
+}
+
+.chat-typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.chat-typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-typing-dot { animation: none; }
+}
