@@ -17,6 +17,7 @@ import models
 import storage_service
 import budget_service
 import llm_service
+import ai_command_router
 import location_service
 from time_utils import current_business_date, _get_business_timezone
 from bot_responses import CHAT_AUTO_REPLIES, INSTRUCTIONAL_FALLBACKS, normalize_message_text
@@ -4804,7 +4805,33 @@ async def _process_whatsapp_message_impl(
                     print(f"[BOT] Using location-help fallback before LLM for user={user_id} channel={source_channel}")
                     return location_reply, None
 
-            # 0. Try AI first for non-transaction chat so the assistant feels more natural.
+            # 0. Natural-language question -> existing read-only command. The AI only
+            # picks the command; the deterministic handler runs it (allow_llm_fallback
+            # = False stops this from re-entering).
+            if allow_llm_fallback:
+                routed_command = await ai_command_router.route_natural_language_to_command(
+                    db,
+                    user_id=user_id,
+                    text=raw_text,
+                    language=user_lang,
+                    source_channel=source_channel,
+                )
+                if routed_command:
+                    routed_reply, _ = await _process_whatsapp_message_impl(
+                        db,
+                        user_id,
+                        phone,
+                        routed_command,
+                        source_channel=source_channel,
+                        show_current_balance=show_current_balance,
+                        show_expense_amount=show_expense_amount,
+                        show_income_amount=show_income_amount,
+                        allow_llm_fallback=False,
+                    )
+                    if routed_reply:
+                        return routed_reply, None
+
+            # 0b. Try AI first for non-transaction chat so the assistant feels more natural.
             if allow_llm_fallback and llm_service.is_llm_reply_enabled_for_channel(source_channel):
                 llm_reply = await llm_service.request_budget_reply(
                     db,
