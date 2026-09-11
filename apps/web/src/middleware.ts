@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { LANDING_COOKIE, landingPathForId } from "@/lib/landing-page"
+import { SESSION_COOKIE } from "@/lib/auth-session"
+
+// Session ids are generated as UUIDs — anything else is refused (path safety).
+const SESSION_ID_PATTERN = /^[A-Za-z0-9._-]{1,64}$/
 
 // Top-level routes that are NOT the [sessionId] app shell.
 const NON_APP_ROUTES = new Set([
@@ -33,14 +37,18 @@ export function middleware(request: NextRequest) {
     (fetchDest === null || fetchDest === "document") &&
     !(request.headers.get("accept") || "").includes("text/x-component")
   const segments = url.pathname.split("/").filter(Boolean)
-  if (
-    isDocumentLoad &&
-    (request.method === "GET" || request.method === "HEAD") &&
-    segments.length === 1 &&
-    !NON_APP_ROUTES.has(segments[0])
-  ) {
-    const landingPath = landingPathForId(request.cookies.get(LANDING_COOKIE)?.value)
-    if (landingPath) {
+  const landingPath = landingPathForId(request.cookies.get(LANDING_COOKIE)?.value)
+  if (isDocumentLoad && (request.method === "GET" || request.method === "HEAD") && landingPath) {
+    // App open at "/" (PWA icon, bookmark): go straight to the chosen screen.
+    if (segments.length === 0) {
+      const sessionId = request.cookies.get(SESSION_COOKIE)?.value || ""
+      if (SESSION_ID_PATTERN.test(sessionId)) {
+        url.pathname = `/${sessionId}${landingPath}`
+        return NextResponse.redirect(url)
+      }
+    }
+    // Hard load of /{sessionId} (wrapper, deep link): same, before the dashboard renders.
+    if (segments.length === 1 && !NON_APP_ROUTES.has(segments[0])) {
       url.pathname = `/${segments[0]}${landingPath}`
       return NextResponse.redirect(url)
     }

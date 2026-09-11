@@ -6,6 +6,20 @@ export const SESSION_ID_STORAGE_KEY = "sessionId"
 export const EMAIL_VERIFIED_STORAGE_KEY = "email_verified"
 export const AUTH_SESSION_CHANGED_EVENT = "budget-auth-session-changed"
 export const COOKIE_AUTH_SENTINEL = "__cookie_auth__"
+// Mirrored to a cookie so middleware can redirect "/" server-side (app open) without
+// waiting for JS. Not a secret — the session id is already part of every URL.
+export const SESSION_COOKIE = "budget_session"
+const DEVICE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
+
+function writeDeviceCookie(name: string, value: string) {
+  if (!isBrowser()) return
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${DEVICE_COOKIE_MAX_AGE}; SameSite=Lax`
+}
+
+function clearDeviceCookie(name: string) {
+  if (!isBrowser()) return
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`
+}
 
 function isBrowser(): boolean {
   return typeof window !== "undefined"
@@ -134,9 +148,13 @@ export function ensureSessionId(): string | null {
   migrateSessionStorageAuth()
   const store = authStore()
   const existing = store?.getItem(SESSION_ID_STORAGE_KEY)
-  if (existing) return existing
+  if (existing) {
+    writeDeviceCookie(SESSION_COOKIE, existing)
+    return existing
+  }
   const next = generateSessionId()
   store?.setItem(SESSION_ID_STORAGE_KEY, next)
+  writeDeviceCookie(SESSION_COOKIE, next)
   return next
 }
 
@@ -159,6 +177,7 @@ export function clearAuthSession() {
   store?.removeItem(REFRESH_TOKEN_STORAGE_KEY)
   store?.removeItem(SESSION_ID_STORAGE_KEY)
   store?.removeItem(EMAIL_VERIFIED_STORAGE_KEY)
+  clearDeviceCookie(SESSION_COOKIE)
   notifyAuthSessionChanged()
 }
 
