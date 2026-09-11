@@ -997,13 +997,13 @@ html[data-theme="dark"] .chat-composer-card {
 }
 
 html[data-theme="light"] .chat-composer-shell {
-  background-color: var(--card) !important;
-  border-color: var(--border) !important;
+  background-color: var(--surface-tint) !important;
+  border-color: transparent !important;
 }
 
 html[data-theme="dark"] .chat-composer-shell {
-  background-color: var(--card) !important;
-  border-color: var(--border) !important;
+  background-color: color-mix(in srgb, var(--text) 7%, var(--card)) !important;
+  border-color: transparent !important;
 }
 
 /* Chat bubbles — brand accents */

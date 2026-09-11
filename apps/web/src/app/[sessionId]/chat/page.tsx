@@ -1209,6 +1209,8 @@ export default function ChatPage() {
   const mutedText = "text-[var(--muted)]"
   const subtleText = "text-[var(--muted)]"
   const composerBg = "bg-[var(--card)]"
+  // Slightly recessed well so the textarea reads as inside the floating card.
+  const composerInputBg = isLightTheme ? "bg-[var(--surface-tint)]" : "bg-[color-mix(in_srgb,var(--text)_7%,var(--card))]"
   const mobileControlButton = isLightTheme
     ? "border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[var(--surface-tint)]"
     : "border-[color:var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[var(--surface-tint-strong)]"
@@ -1551,7 +1553,7 @@ export default function ChatPage() {
 
           <div className={cn("chat-composer-card flex flex-col gap-2 rounded-3xl border border-[color:var(--border)] p-3", composerBg)}>
             <ChatQuickPanel lang={lang} onPick={insertKeyword} />
-            <div className={cn("chat-composer-shell flex min-h-12 items-end rounded-2xl px-3 py-2", composerBg)}>
+            <div className={cn("chat-composer-shell flex min-h-12 items-end rounded-2xl px-3 py-2", composerInputBg)}>
               <div className="flex min-h-8 flex-1 items-center px-1 py-0.5">
                 <textarea
                   ref={textareaRef}
@@ -1732,13 +1734,13 @@ export default function ChatPage() {
             </div>
               )}
             </div>
-          </div>
 
-          {isCalculatorOpen && (
-            <div className="mt-3">
-              <Calculator embedded />
-            </div>
-          )}
+            {isCalculatorOpen && (
+              <div className="border-t border-[color:var(--border)] pt-2">
+                <Calculator embedded />
+              </div>
+            )}
+          </div>
         </div>
 
         {errorText && <p className="px-1 text-[0.6875rem] font-medium text-red-400">{errorText}</p>}
