@@ -1,5 +1,9 @@
-// Which screen the app opens on. Per-device setting (localStorage) — no API round trip.
+// Which screen the app opens on. Per-device setting (localStorage + cookie) — no API round trip.
+// The cookie mirrors localStorage so middleware can redirect server-side, before
+// the dashboard ever renders.
 export const LANDING_PAGE_KEY = "budget.landingPage.v1"
+export const LANDING_COOKIE = "budget_landing"
+const LANDING_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
 export type LandingPage = { id: string; path: string; bm: string; en: string }
 
@@ -15,12 +19,32 @@ export const LANDING_PAGES: LandingPage[] = [
 
 export function getLandingPageId(): string {
   if (typeof window === "undefined") return LANDING_PAGES[0].id
-  return window.localStorage.getItem(LANDING_PAGE_KEY) || LANDING_PAGES[0].id
+  const stored = window.localStorage.getItem(LANDING_PAGE_KEY) || readCookie() || LANDING_PAGES[0].id
+  // Keep the server-side redirect in sync (covers devices that set it pre-cookie).
+  if (readCookie() !== stored) writeCookie(stored)
+  return stored
 }
 
 export function setLandingPageId(id: string) {
   if (typeof window === "undefined") return
   window.localStorage.setItem(LANDING_PAGE_KEY, id)
+  writeCookie(id)
+}
+
+/** Path suffix for a known landing id, or null when it means "stay on dashboard". */
+export function landingPathForId(id: string | undefined | null): string | null {
+  const page = LANDING_PAGES.find((p) => p.id === id && p.path)
+  return page ? page.path : null
+}
+
+function readCookie(): string {
+  const parts = document.cookie ? document.cookie.split("; ") : []
+  const hit = parts.find((c) => c.startsWith(`${LANDING_COOKIE}=`))
+  return hit ? decodeURIComponent(hit.slice(LANDING_COOKIE.length + 1)) : ""
+}
+
+function writeCookie(id: string) {
+  document.cookie = `${LANDING_COOKIE}=${encodeURIComponent(id)}; path=/; max-age=${LANDING_COOKIE_MAX_AGE}; SameSite=Lax`
 }
 
 /** Post-login / app-open destination for this device. */
