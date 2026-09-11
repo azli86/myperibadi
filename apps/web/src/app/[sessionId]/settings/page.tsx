@@ -34,6 +34,7 @@ import {
   Moon,
   Monitor,
   ShieldCheck,
+  Home,
   X,
   type LucideIcon,
 } from "lucide-react"
@@ -52,6 +53,7 @@ import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { UserAvatar } from "@/components/ui/UserAvatar"
 import AvatarPickerSheet from "@/components/ui/AvatarPickerSheet"
 import { AddAccountModal } from "@/components/ui/AddAccountModal"
+import { LANDING_PAGES, getLandingPageId, setLandingPageId } from "@/lib/landing-page"
 
 type ProfileData = {
   id: string
@@ -165,6 +167,10 @@ export default function SettingsPage() {
   }
 
   const closeMobileSheet = useCallback(() => setActiveMobileSheet(null), [])
+
+  // Landing page ("Halaman Utama") — read after mount, never in useState (React #418).
+  const [landingPage, setLandingPage] = useState(LANDING_PAGES[0].id)
+  useEffect(() => setLandingPage(getLandingPageId()), [])
 
   const { requestClose: requestMobileSheetClose, requestCloseThen: requestMobileSheetCloseThen } =
     useOverlayBackClose({
@@ -865,10 +871,32 @@ export default function SettingsPage() {
               </div>
               <ChevronRight size={15} className="text-[var(--muted)]" />
             </button>
+
+            {/* Halaman Utama */}
+            <label className="flex w-full items-center gap-3.5 px-4 py-3.5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--text)] border border-[var(--border)]">
+                <Home size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs md:text-sm font-bold text-[var(--text)]">{tr("Halaman Utama", "Main Page")}</p>
+                <p className="truncate text-[0.7rem] text-[var(--muted)]">
+                  {tr("Skrin yang dibuka bila app bermula", "Screen opened when the app starts")}
+                </p>
+              </div>
+              <select
+                value={landingPage}
+                onChange={(e) => { setLandingPage(e.target.value); setLandingPageId(e.target.value) }}
+                className="shrink-0 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-1.5 text-xs font-bold text-[var(--text)] outline-none focus:border-emerald-500"
+              >
+                {LANDING_PAGES.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {isBm ? o.bm : o.en}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
         </section>
-
-        {/* ─── Group 2: Sistem & Panduan ─── */}
         <section className="px-1 space-y-2">
           <p className="px-3 text-[0.68rem] font-black uppercase tracking-[0.18em] text-[var(--muted)]">
             {tr("Sistem & Panduan", "System & Handbook")}
@@ -1584,6 +1612,23 @@ export default function SettingsPage() {
                           )
                         })}
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                        {tr("Halaman Utama", "Main Page")}
+                      </label>
+                      <select
+                        value={landingPage}
+                        onChange={(e) => { setLandingPage(e.target.value); setLandingPageId(e.target.value) }}
+                        className="mt-1.5 w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-xs font-bold text-[var(--text)] outline-none focus:border-emerald-500"
+                      >
+                        {LANDING_PAGES.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {isBm ? o.bm : o.en}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </section>
