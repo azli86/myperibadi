@@ -10,6 +10,7 @@ import {
   Loader2,
   X,
   ImageIcon,
+  Camera,
   FileText,
   ShieldCheck,
   MapPin,
@@ -30,7 +31,6 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SmartImage } from "@/components/ui/SmartImage"
-import ImageSourceSheet from "@/components/ui/ImageSourceSheet"
 import Calculator from "@/components/calculator/Calculator"
 import { ChatFormattedText } from "@/lib/chat-format"
 import ChatQuickPanel from "@/components/chat/ChatQuickPanel"
@@ -295,7 +295,6 @@ export default function ChatPage() {
   const [input, setInput] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [selectedPreviewUrl, setSelectedPreviewUrl] = useState<string | null>(null)
-  const [isPhotoSheetOpen, setIsPhotoSheetOpen] = useState(false)
   // ponytail: flag kept (still set by pickers); attachment menu UI removed
   const [isAttachmentMenuOpen, setIsAttachmentMenuOpen] = useState(false)
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false)
@@ -334,6 +333,7 @@ export default function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const cameraInputRef = useRef<HTMLInputElement | null>(null)
   const galleryInputRef = useRef<HTMLInputElement | null>(null)
+  const lastPickerOpenRef = useRef(0)
   const objectUrlsRef = useRef<string[]>([])
   const pendingTxnAttachRef = useRef<string | null>(null)
   const processedShareTokensRef = useRef<Set<string>>(new Set())
@@ -678,6 +678,11 @@ export default function ChatPage() {
   }, [sharedToken, lang])
 
   const openAttachmentPicker = (source: "camera" | "gallery") => {
+    // A duplicate click dispatch (touch + emulated mouse) would otherwise open
+    // the picker twice in a row.
+    const now = Date.now()
+    if (now - lastPickerOpenRef.current < 500) return
+    lastPickerOpenRef.current = now
     setIsAttachmentMenuOpen(false)
     const input = source === "camera" ? cameraInputRef.current : galleryInputRef.current
     if (!input) return
@@ -1544,13 +1549,6 @@ export default function ChatPage() {
             onChange={(e) => handlePickFile(e.target.files?.[0] || null)}
           />
 
-          <ImageSourceSheet
-            open={isPhotoSheetOpen}
-            onClose={() => setIsPhotoSheetOpen(false)}
-            onCamera={() => { openAttachmentPicker("camera"); setIsPhotoSheetOpen(false) }}
-            onGallery={() => { openAttachmentPicker("gallery"); setIsPhotoSheetOpen(false) }}
-          />
-
           <div className="flex flex-col gap-2">
             <ChatQuickPanel lang={lang} onPick={insertKeyword} />
             <div className={cn("chat-composer-shell flex min-h-12 items-end rounded-2xl border border-[color:var(--border)] px-3 py-2", composerBg)}>
@@ -1589,8 +1587,16 @@ export default function ChatPage() {
               </button>
               <button
                 type="button"
-                aria-label={lang === "EN" ? "Photo" : "Gambar"}
-                onClick={() => { setIsCommandMenuOpen(false); setIsPhotoSheetOpen(true) }}
+                aria-label={lang === "EN" ? "Camera" : "Kamera"}
+                onClick={() => { setIsCommandMenuOpen(false); openAttachmentPicker("camera") }}
+                className={cn("chat-composer-control flex h-11 w-11 shrink-0 items-center justify-center transition-colors active:scale-95", composerPlainButton)}
+              >
+                <Camera size={20} />
+              </button>
+              <button
+                type="button"
+                aria-label={lang === "EN" ? "Gallery" : "Galeri"}
+                onClick={() => { setIsCommandMenuOpen(false); openAttachmentPicker("gallery") }}
                 className={cn("chat-composer-control flex h-11 w-11 shrink-0 items-center justify-center transition-colors active:scale-95", composerPlainButton)}
               >
                 <ImageIcon size={20} />
