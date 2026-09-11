@@ -3157,8 +3157,26 @@ html[data-theme="light"] [class~="border-gray-300"] {
 @keyframes ptrspin { to { transform: rotate(360deg); } }
 
 @keyframes chat-typing-dot {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.55; }
-  30% { transform: translateY(-3px); opacity: 1; }
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+    border-radius: 9999px;
+    opacity: 0.55;
+  }
+  25% {
+    transform: translateY(-4px) rotate(45deg);
+    border-radius: 1px;
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(0) rotate(90deg);
+    border-radius: 1px;
+    opacity: 0.85;
+  }
+  75% {
+    transform: translateY(-2px) rotate(135deg);
+    border-radius: 9999px;
+    opacity: 1;
+  }
 }
 
 .chat-typing-dot {
