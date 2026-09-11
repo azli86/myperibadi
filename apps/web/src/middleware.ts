@@ -24,12 +24,17 @@ export function middleware(request: NextRequest) {
 
   // "Halaman Utama": on a hard load of /{sessionId} (app open, bookmark, wrapper)
   // send the browser straight to the chosen screen — dashboard never renders.
-  // Client-side navigations (RSC/prefetch) are left alone so tapping Home works.
-  const isClientNav =
-    request.headers.get("rsc") === "1" || Boolean(request.headers.get("next-router-prefetch"))
+  // In-app navigations are left alone so tapping Home works. Next 16 strips the
+  // RSC/prefetch headers from middleware, so sniff the fetch metadata instead:
+  // document loads are Sec-Fetch-Dest: document, RSC fetches ask for
+  // text/x-component / Sec-Fetch-Dest: empty.
+  const fetchDest = request.headers.get("sec-fetch-dest")
+  const isDocumentLoad =
+    (fetchDest === null || fetchDest === "document") &&
+    !(request.headers.get("accept") || "").includes("text/x-component")
   const segments = url.pathname.split("/").filter(Boolean)
   if (
-    !isClientNav &&
+    isDocumentLoad &&
     (request.method === "GET" || request.method === "HEAD") &&
     segments.length === 1 &&
     !NON_APP_ROUTES.has(segments[0])
