@@ -1465,7 +1465,9 @@ export default function ChatPage() {
         </div>
       </div>
 
-      <div className={cn("px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+1rem)]", sectionBg)}>
+      {/* Composer sits flush against the bottom edge (fixed bar), so the message list above it
+          scrolls underneath. No floating card — the bar itself is the surface. */}
+      <div className={cn("chat-composer border-t border-[color:var(--border)] px-4 pt-2.5 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]", composerBg)}>
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
         {selectedFile && (
           <div className={cn("chat-composer-surface flex items-center justify-between gap-3 rounded-2xl border border-white/[0.08] px-3 py-2.5", composerBg)}>
@@ -1551,7 +1553,7 @@ export default function ChatPage() {
             onChange={(e) => handlePickFile(e.target.files?.[0] || null)}
           />
 
-          <div className={cn("chat-composer-card flex flex-col gap-2 rounded-3xl border border-[color:var(--border)] p-3", composerBg)}>
+          <div className="flex flex-col gap-2">
             <ChatQuickPanel lang={lang} onPick={insertKeyword} />
             <div className={cn("chat-composer-shell flex min-h-12 items-end rounded-2xl px-3 py-2", composerInputBg)}>
               <div className="flex min-h-8 flex-1 items-center px-1 py-0.5">
