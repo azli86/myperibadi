@@ -29,7 +29,7 @@ ARGS = dict(
     wallet_plain="Public Bank",
     wallet_balance="RM 40.00",
     txn_date="12/09/2026",
-    time_note="\nTime: 10.00AM",
+    time_note="\nTime: *10.00AM*",
     balance="RM 187.40",
     backdate_hint="",
     private_value="RM ••••••",
@@ -43,9 +43,20 @@ def check(lang):
         txn_type_label="Expense" if lang == "EN" else "Perbelanjaan", **ARGS
     )
     assert "•" not in out, f"{lang}: bullet prefix left behind: {out!r}"
+    assert out.count("*") % 2 == 0, f"{lang}: unbalanced bold markers: {out!r}"
     head = out.split("\n")
     assert head[0].startswith("🔴 *TXN26-WMASOD*"), head[0]
     assert head[1] == "", f"{lang}: expected blank line after ref id"
+    # Values are bolded; labels stay plain so the line reads without markdown noise.
+    for line in out.split("\n"):
+        if ": " in line and not line.startswith("🔴"):
+            label, _, value = line.partition(": ")
+            if label in ("Nota", "Note"):
+                # Free text: the user's own note may contain markdown.
+                continue
+            assert "*" not in label, f"{lang}: label bolded: {line!r}"
+            if value:
+                assert value.startswith("*") and value.endswith("*"), f"{lang}: value not bolded: {line!r}"
     rule = RULE_LINE
     assert out.count(rule) == 2, f"{lang}: separator count"
     assert "Balance Wallet" in out or "Baki Dompet" in out, f"{lang}: wallet balance line"

@@ -326,8 +326,8 @@ BOT_TRANSLATIONS = {
         "no_amount": "Maaf, saya tidak dapat menemui jumlah (amount) dalam mesej anda.",
         "invalid_date_token": "Format tarikh tidak sah. Guna `@DDMMYYYY` contoh: `grab 18.50 @05042026`.",
         "wallet_not_found": "Ralat: Wallet personal tidak dijumpai.",
-        "saved": "{status_mark} *{ref_id}*\n\nJenis: {txn_type_label}\nNota: {text}\nKategori: {cat}\n\nJumlah: {amount}\nDompet: {wallet_plain}\nBaki Dompet: {balance}\nTarikh: {txn_date}{time_note}\n{rule}\nJumlah Semua Dompet: {balance}\n{rule}{backdate_hint}",
-        "saved_hidden_balance": "{status_mark} *{ref_id}*\n\nJenis: {txn_type_label}\nNota: {text}\nKategori: {cat}\n\nJumlah: {amount}\nDompet: {wallet_plain}\nBaki Dompet: {private_value}\nTarikh: {txn_date}{time_note}\n{rule}\nJumlah Semua Dompet: {private_value}\n{rule}{backdate_hint}",
+        "saved": "{status_mark} *{ref_id}*\n\nJenis: *{txn_type_label}*\nNota: {text}\nKategori: *{cat}*\n\nJumlah: *{amount}*\nDompet: *{wallet_plain}*\nBaki Dompet: *{wallet_balance}*\nTarikh: *{txn_date}*{time_note}\n{rule}\nJumlah Semua Dompet: *{balance}*\n{rule}{backdate_hint}",
+        "saved_hidden_balance": "{status_mark} *{ref_id}*\n\nJenis: *{txn_type_label}*\nNota: {text}\nKategori: *{cat}*\n\nJumlah: *{amount}*\nDompet: *{wallet_plain}*\nBaki Dompet: *{private_value}*\nTarikh: *{txn_date}*{time_note}\n{rule}\nJumlah Semua Dompet: *{private_value}*\n{rule}{backdate_hint}",
         "error": "Maaf, ralat teknikal berlaku semasa menyimpan data anda.",
         "no_note": "Tiada nota",
         "lang_switched": "Bahasa telah ditukar ke Bahasa Melayu.",
@@ -393,8 +393,8 @@ BOT_TRANSLATIONS = {
         "no_amount": "Sorry, I couldn't find an amount in your message.",
         "invalid_date_token": "Invalid date format. Use `@DDMMYYYY`, e.g. `grab 18.50 @05042026`.",
         "wallet_not_found": "Error: Personal wallet not found.",
-        "saved": "{status_mark} *{ref_id}*\n\nType: {txn_type_label}\nNote: {text}\nCategory: {cat}\n\nAmount: {amount}\nWallet: {wallet_plain}\nBalance Wallet: {wallet_balance}\nDate: {txn_date}{time_note}\n{rule}\nAll Wallets Balance: {balance}\n{rule}{backdate_hint}",
-        "saved_hidden_balance": "{status_mark} *{ref_id}*\n\nType: {txn_type_label}\nNote: {text}\nCategory: {cat}\n\nAmount: {amount}\nWallet: {wallet_plain}\nBalance Wallet: {private_value}\nDate: {txn_date}{time_note}\n{rule}\nAll Wallets Balance: {private_value}\n{rule}{backdate_hint}",
+        "saved": "{status_mark} *{ref_id}*\n\nType: *{txn_type_label}*\nNote: {text}\nCategory: *{cat}*\n\nAmount: *{amount}*\nWallet: *{wallet_plain}*\nBalance Wallet: *{wallet_balance}*\nDate: *{txn_date}*{time_note}\n{rule}\nAll Wallets Balance: *{balance}*\n{rule}{backdate_hint}",
+        "saved_hidden_balance": "{status_mark} *{ref_id}*\n\nType: *{txn_type_label}*\nNote: {text}\nCategory: *{cat}*\n\nAmount: *{amount}*\nWallet: *{wallet_plain}*\nBalance Wallet: *{private_value}*\nDate: *{txn_date}*{time_note}\n{rule}\nAll Wallets Balance: *{private_value}*\n{rule}{backdate_hint}",
         "error": "Sorry, a technical error occurred while saving your data.",
         "no_note": "No note",
         "lang_switched": "Language switched to English.",
@@ -5423,7 +5423,7 @@ async def _process_whatsapp_message_impl(
         )
         multi_item_note = ""
         time_label = "Time" if user_lang == "EN" else "Masa"
-        time_note = f"\n{time_label}: {txn_time}" if parsed_txn_time else ""
+        time_note = f"\n{time_label}: *{txn_time}*" if parsed_txn_time else ""
         if multi_item_transaction:
             item_title = "Senarai Item" if user_lang == "BM" else "Items"
             item_lines = []
