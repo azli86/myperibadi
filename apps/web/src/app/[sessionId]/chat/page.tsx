@@ -89,6 +89,7 @@ type ChatMessage = {
   role: ChatRole
   text: string
   createdAt: number
+  sourceChannel?: string
   fileName?: string
   fileType?: string
   previewUrl?: string
@@ -299,6 +300,10 @@ export default function ChatPage() {
   const { resolvedTheme } = useTheme()
   const [viewportHeight, setViewportHeight] = useState<number | null>(null)
   const [viewportOffsetTop, setViewportOffsetTop] = useState(0)
+  // The soft keyboard shrinks the visual viewport; when it is open the home-bar
+  // safe area is already covered by the keyboard, so keeping the inset added a
+  // dead strip above the keyboard and made the composer jump.
+  const [keyboardOpen, setKeyboardOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -509,6 +514,7 @@ export default function ChatPage() {
     if (!viewport) {
       setViewportHeight(window.innerHeight)
       setViewportOffsetTop(0)
+      setKeyboardOpen(false)
       return
     }
 
@@ -517,8 +523,12 @@ export default function ChatPage() {
     const updateViewport = () => {
       cancelAnimationFrame(frame)
       frame = window.requestAnimationFrame(() => {
-        setViewportHeight(Math.round(viewport.height))
+        const height = Math.round(viewport.height)
+        setViewportHeight(height)
         setViewportOffsetTop(Math.max(0, Math.round(viewport.offsetTop)))
+        // visualViewport shrinks by roughly the keyboard height. A 120px margin
+        // separates "keyboard open" from browser chrome / URL bar hiding.
+        setKeyboardOpen(window.innerHeight - height > 120)
       })
     }
 
@@ -551,6 +561,7 @@ export default function ChatPage() {
       role: message.role,
       text: cleanedText,
       createdAt: parseApiTimestamp(message.created_at),
+      sourceChannel: message.source_channel || undefined,
       fileName: message.attachment?.file_name || message.file_name || undefined,
       fileType: attachmentMime,
       previewUrl: attachmentUrl && attachmentMime?.startsWith("image/") ? normalizeAttachmentProxyUrl(attachmentUrl) : undefined,
@@ -1505,8 +1516,17 @@ export default function ChatPage() {
         className={cn("flex-1 overflow-y-auto px-4 py-6", pageBg)}
       >
         <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4 overflow-visible">
-        {messages.map((msg) => {
+        {messages.map((msg, index) => {
           const isUser = msg.role === "user"
+          // WhatsApp-style grouping: only label the first bot message in a run, so
+          // a multi-bubble answer is not stamped with the same header every line.
+          const showBotLabel = !isUser && messages[index - 1]?.role !== "bot"
+          const botLabel =
+            msg.sourceChannel === "whatsapp"
+              ? lang === "EN" ? "WhatsApp Bot" : "Bot WhatsApp"
+              : msg.sourceChannel === "telegram"
+                ? "Telegram Bot"
+                : lang === "EN" ? "AI Assistant" : "Pembantu AI"
           return (
             <div
               key={msg.id}
@@ -1560,6 +1580,12 @@ export default function ChatPage() {
                     bubbleBotBg
                   )}
                 >
+                  {showBotLabel && (
+                    <div className="mb-1.5 flex items-center gap-1.5 text-[0.6875rem] font-bold text-[var(--muted)]">
+                      <Bot size={12} />
+                      <span>{botLabel}</span>
+                    </div>
+                  )}
                   {msg.previewUrl && msg.fileType?.startsWith("image/") && (
                     <button
                       type="button"
@@ -1613,7 +1639,11 @@ export default function ChatPage() {
 
       {/* Composer sits flush against the bottom edge (fixed bar), so the message list above it
           scrolls underneath. No floating card — the bar itself is the surface. */}
-      <div className={cn("chat-composer border-t border-[color:var(--border)] px-4 pt-2.5 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]", composerBg)}>
+      <div className={cn(
+        "chat-composer border-t border-[color:var(--border)] px-4 pt-2.5",
+        keyboardOpen ? "pb-1" : "pb-[calc(env(safe-area-inset-bottom)+0.5rem)]",
+        composerBg,
+      )}>
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
         {selectedFile && (
           <div className={cn("chat-composer-surface flex items-center justify-between gap-3 rounded-2xl border border-white/[0.08] px-3 py-2.5", composerBg)}>
