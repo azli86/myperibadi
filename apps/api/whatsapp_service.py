@@ -211,6 +211,36 @@ def _take_pending_receipt_media(user_id: str, source_channel: str) -> Optional[d
     return media
 
 
+async def _link_attachment_to_chat_message(
+    db: AsyncSession, *, user_id: str, attachment: models.Attachment
+) -> None:
+    """Point the receipt's chat bubble at the freshly stored attachment.
+
+    The bubble is written while the bot is still asking for a category (no media row
+    yet), so without this the history shows a file name with no image.
+    """
+    name = Path(attachment.file_name or "").name
+    if not name:
+        return
+    result = await db.execute(
+        select(models.ChatMessage)
+        .where(
+            models.ChatMessage.user_id == user_id,
+            models.ChatMessage.attachment_id.is_(None),
+            models.ChatMessage.file_name == name,
+        )
+        .order_by(models.ChatMessage.id.desc())
+        .limit(1)
+    )
+    message = result.scalars().first()
+    if message is None:
+        return
+    message.attachment_id = attachment.id
+    message.mime_type = attachment.mime_type or message.mime_type
+    message.size_bytes = attachment.size_bytes or message.size_bytes
+    await db.commit()
+
+
 def _set_pending_category_selection(user_id: str, source_channel: str, payload: dict[str, Any]) -> None:
     payload = dict(payload)
     payload["created_at_ts"] = datetime.utcnow().timestamp()
@@ -5651,6 +5681,14 @@ async def _process_whatsapp_media_message_impl(
                 except Exception:
                     pass
             raise
+
+        # The receipt bubble was persisted earlier in the flow (before the category
+        # prompt), so it has no attachment_id yet. Link it now that the row exists,
+        # otherwise the chat history can only show the file name forever.
+        try:
+            await _link_attachment_to_chat_message(db, user_id=user_id, attachment=attachment)
+        except Exception as exc:
+            print(f"[WA] Chat attachment link skipped: {type(exc).__name__}")
 
         balance = await get_user_balance(db, user_id)
         receipt_template = t["receipt_success_hidden_balance"] if hide_group_balance else t["receipt_success"]
