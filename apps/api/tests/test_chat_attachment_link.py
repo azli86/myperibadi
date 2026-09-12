@@ -100,7 +100,65 @@ async def _run() -> None:
     print("chat attachment linking OK")
 
 
+async def _check_deleted_flag() -> None:
+    """An image bubble with no attachment row must be flagged as deleted."""
+    from sqlalchemy.orm import selectinload
+    from main import _serialize_chat_message
+
+    class _NoRequest:
+        pass
+
+    async with SessionLocal() as db:
+        message = (
+            await db.execute(
+                select(models.ChatMessage)
+                .options(selectinload(models.ChatMessage.attachment))
+                .where(
+                    models.ChatMessage.source_channel == "chat",
+                    models.ChatMessage.attachment_id.is_not(None),
+                )
+                .limit(1)
+            )
+        ).scalars().first()
+
+        if message is None:
+            print("skip: no linked receipt bubble for the deleted-flag check")
+            return
+
+        live = _serialize_chat_message(message, _NoRequest())
+        assert live.attachment_deleted is False, "live attachment flagged as deleted"
+        assert live.attachment is not None, "live attachment lost its proxy url"
+
+        # Simulate the transaction-delete path: attachment link cleared, row gone.
+        original_id = message.attachment_id
+        original_mime = message.mime_type
+        message.attachment = None
+        message.attachment_id = None
+
+        deleted = _serialize_chat_message(message, _NoRequest())
+        assert deleted.attachment_deleted is True, "deleted image not flagged"
+        assert deleted.attachment is None, "deleted image still exposes a url"
+
+        # Non-image uploads keep showing their file name; no placeholder.
+        message.mime_type = "application/pdf"
+        as_file = _serialize_chat_message(message, _NoRequest())
+        assert as_file.attachment_deleted is False, "non-image wrongly flagged as deleted"
+
+        message.mime_type = original_mime
+        db.expire(message)
+        await db.rollback()
+        del original_id
+
+    print("deleted attachment flag OK")
+
+
 if __name__ == "__main__":
     import asyncio
 
-    asyncio.run(_run())
+    async def _all() -> None:
+        await _run()
+        await _check_deleted_flag()
+
+    # One loop only: the engine's connection pool is bound to the loop it was
+    # first used on, so a second asyncio.run() invalidates it.
+    asyncio.run(_all())

@@ -3201,3 +3201,10 @@ html[data-theme="light"] [class~="border-gray-300"] {
 @media (prefers-reduced-motion: reduce) {
   .chat-typing-dot { animation: none; }
 }
+
+/* Deleted-attachment placeholder: Telegram-style unreadable smudge, no image data left. */
+.chat-deleted-blur {
+  filter: blur(4px);
+  opacity: 0.55;
+  user-select: none;
+}

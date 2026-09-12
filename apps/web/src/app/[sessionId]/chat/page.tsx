@@ -26,6 +26,7 @@ import {
   Bot,
   Settings,
   Mic,
+  ImageOff,
   Calculator as CalculatorIcon,
   type LucideIcon,
 } from "lucide-react"
@@ -74,6 +75,7 @@ type ChatApiMessage = {
   mime_type?: string | null
   size_bytes?: number | null
   attachment?: ChatAttachment | null
+  attachment_deleted?: boolean
   created_at: string
 }
 
@@ -85,6 +87,7 @@ type ChatMessage = {
   fileName?: string
   fileType?: string
   previewUrl?: string
+  attachmentDeleted?: boolean
 }
 
 type CommandItem = {
@@ -540,6 +543,7 @@ export default function ChatPage() {
       fileName: message.attachment?.file_name || message.file_name || undefined,
       fileType: attachmentMime,
       previewUrl: attachmentUrl && attachmentMime?.startsWith("image/") ? normalizeAttachmentProxyUrl(attachmentUrl) : undefined,
+      attachmentDeleted: Boolean(message.attachment_deleted),
     }
   }
 
@@ -1313,7 +1317,7 @@ export default function ChatPage() {
           <div className={cn("flex min-w-0 items-center justify-center gap-1.5 rounded-full border border-[color:var(--border)] px-3 py-2", surfaceBg)}>
             <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("shrink-0", subtleText)}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             <p className={cn("truncate text-[0.6875rem] font-medium", subtleText)}>
-              {lang === "EN" ? "Chat history clears automatically every 24 hours" : "Sejarah chat dikosongkan secara automatik setiap 24 jam"}
+              {lang === "EN" ? "Chat history clears automatically after 60 days" : "Sejarah chat dikosongkan secara automatik selepas 60 hari"}
             </p>
           </div>
         </div>
@@ -1323,7 +1327,7 @@ export default function ChatPage() {
         <div className="mx-auto flex w-full max-w-5xl items-center justify-center gap-1.5 px-6 py-2.5 lg:max-w-none">
           <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("shrink-0", subtleText)}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           <p className={cn("truncate text-[0.6875rem] font-medium", subtleText)}>
-            {lang === "EN" ? "Chat history clears automatically every 24 hours" : "Sejarah chat dikosongkan secara automatik setiap 24 jam"}
+            {lang === "EN" ? "Chat history clears automatically after 60 days" : "Sejarah chat dikosongkan secara automatik selepas 60 hari"}
           </p>
         </div>
       </div>
@@ -1412,10 +1416,18 @@ export default function ChatPage() {
                       loading="eager"
                     />
                   )}
+                  {msg.attachmentDeleted && (
+                    <div className="mb-3 flex h-32 w-56 max-w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-[color:var(--border)]">
+                      <ImageOff size={20} className="chat-deleted-blur" />
+                      <span className="chat-deleted-blur text-xs font-medium">
+                        {lang === "EN" ? "Photo deleted" : "Gambar dipadam"}
+                      </span>
+                    </div>
+                  )}
                   {msg.text && (
                     <ChatFormattedText text={msg.text} className={cn("whitespace-pre-wrap", chatTextSize)} />
                   )}
-                  {msg.fileName && (
+                  {msg.fileName && !msg.attachmentDeleted && (
                     <div className={cn("mt-3 flex items-center gap-1.5 text-[0.6875rem] font-medium", userAttachmentText)}>
                       {msg.fileType?.startsWith("image/") ? <ImageIcon size={12} /> : <FileText size={12} />}
                       <span className="truncate">{msg.fileName}</span>
@@ -1438,10 +1450,18 @@ export default function ChatPage() {
                       loading="eager"
                     />
                   )}
+                  {msg.attachmentDeleted && (
+                    <div className="mb-2.5 flex h-32 w-56 max-w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-[color:var(--border)]">
+                      <ImageOff size={20} className="chat-deleted-blur" />
+                      <span className="chat-deleted-blur text-xs font-medium">
+                        {lang === "EN" ? "Photo deleted" : "Gambar dipadam"}
+                      </span>
+                    </div>
+                  )}
                   {msg.text && (
                     <ChatFormattedText text={msg.text} className={cn("whitespace-pre-wrap", chatTextSize)} />
                   )}
-                  {msg.fileName && (
+                  {msg.fileName && !msg.attachmentDeleted && (
                     <div className="mt-2 flex items-center gap-1.5 text-[0.6875rem] font-medium text-[var(--muted)]">
                       {msg.fileType?.startsWith("image/") ? <ImageIcon size={12} /> : <FileText size={12} />}
                       <span className="truncate">{msg.fileName}</span>

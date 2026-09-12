@@ -514,6 +514,9 @@ PIN_LENGTH = int(os.getenv("PIN_LENGTH", "6"))
 PIN_MAX_FAILED_ATTEMPTS = int(os.getenv("PIN_MAX_FAILED_ATTEMPTS", "5"))
 PIN_LOCK_MINUTES = int(os.getenv("PIN_LOCK_MINUTES", "15"))
 WHATSAPP_INBOUND_EVENT_RETENTION_DAYS = int(os.getenv("WHATSAPP_INBOUND_EVENT_RETENTION_DAYS", "14"))
+# Chat history retention. 60 days keeps the web thread usable as a receipt log;
+# attachment files are still removed when their transaction is deleted.
+CHAT_RETENTION_DAYS = int(os.getenv("CHAT_RETENTION_DAYS", "60"))
 RECEIPT_DIRECT_UPLOAD_MAX_BYTES = int(os.getenv("RECEIPT_DIRECT_UPLOAD_MAX_BYTES", str(8 * 1024 * 1024)))
 TELEGRAM_MAX_MEDIA_BYTES = int(os.getenv("TELEGRAM_MAX_MEDIA_BYTES", str(RECEIPT_DIRECT_UPLOAD_MAX_BYTES)))
 RECEIPT_DIRECT_UPLOAD_EXPIRES_SECONDS = int(os.getenv("RECEIPT_DIRECT_UPLOAD_EXPIRES_SECONDS", "300"))
@@ -1209,14 +1212,14 @@ async def seed_tax_rules_on_startup():
 
 @app.on_event("startup")
 async def start_chat_cleanup_task():
-    """Background task: delete chat messages older than 24 hours every hour."""
+    """Background task: delete chat messages older than the retention window every hour."""
     async def _cleanup_loop():
         while True:
             await asyncio.sleep(3600)  # Run every 1 hour
             try:
                 async with database.SessionLocal() as db:
                     from datetime import timedelta
-                    cutoff = datetime.utcnow() - timedelta(hours=24)
+                    cutoff = datetime.utcnow() - timedelta(days=CHAT_RETENTION_DAYS)
                     inbound_event_cutoff = datetime.utcnow() - timedelta(days=WHATSAPP_INBOUND_EVENT_RETENTION_DAYS)
                     # Find old messages with attachments to clean R2
                     result = await db.execute(
@@ -10299,6 +10302,12 @@ def _serialize_chat_message(
         size_bytes=chat_message.size_bytes,
         attachment=attachment,
         created_at=chat_message.created_at,
+        attachment_deleted=bool(
+            preloaded_attachment is None
+            and chat_message.attachment_id is None
+            and chat_message.mime_type
+            and chat_message.mime_type.startswith("image/")
+        ),
     )
 
 

@@ -376,6 +376,10 @@ class ChatMessageResponse(BaseModel):
     size_bytes: Optional[int] = None
     attachment: Optional[AttachmentResponse] = None
     created_at: datetime
+    # True when the bubble was a receipt whose file has since been removed (its
+    # transaction was deleted). The client shows a blurred placeholder instead of
+    # a bare file name.
+    attachment_deleted: bool = False
 
     class Config:
         from_attributes = True
