@@ -326,8 +326,8 @@ BOT_TRANSLATIONS = {
         "no_amount": "Maaf, saya tidak dapat menemui jumlah (amount) dalam mesej anda.",
         "invalid_date_token": "Format tarikh tidak sah. Guna `@DDMMYYYY` contoh: `grab 18.50 @05042026`.",
         "wallet_not_found": "Ralat: Wallet personal tidak dijumpai.",
-        "saved": "{status_mark} *{ref_id}*\n• Jenis: *{txn_type_label}*\n• Nota: {text}\n• Wallet: *{wallet_name}*\n• Kategori: *{cat}*\n• Jumlah : *{amount}*\n• Tarikh: *{txn_date}*{time_note}\n• Baki Semasa : *{balance}*{backdate_hint}",
-        "saved_hidden_balance": "{status_mark} *{ref_id}*\n• Jenis: *{txn_type_label}*\n• Nota: {text}\n• Wallet: *{wallet_name}*\n• Kategori: *{cat}*\n• Jumlah : *{amount}*\n• Tarikh: *{txn_date}*{time_note}\n• Baki Semasa : *{private_value}*{backdate_hint}",
+        "saved": "{status_mark} *{ref_id}*\n\nJenis: {txn_type_label}\nNota: {text}\nKategori: {cat}\n\nJumlah: {amount}\nDompet: {wallet_plain}\nBaki Dompet: {balance}\nTarikh: {txn_date}{time_note}\n────────────────\nJumlah Semua Dompet: {balance}\n────────────────{backdate_hint}",
+        "saved_hidden_balance": "{status_mark} *{ref_id}*\n\nJenis: {txn_type_label}\nNota: {text}\nKategori: {cat}\n\nJumlah: {amount}\nDompet: {wallet_plain}\nBaki Dompet: {private_value}\nTarikh: {txn_date}{time_note}\n────────────────\nJumlah Semua Dompet: {private_value}\n────────────────{backdate_hint}",
         "error": "Maaf, ralat teknikal berlaku semasa menyimpan data anda.",
         "no_note": "Tiada nota",
         "lang_switched": "Bahasa telah ditukar ke Bahasa Melayu.",
@@ -393,8 +393,8 @@ BOT_TRANSLATIONS = {
         "no_amount": "Sorry, I couldn't find an amount in your message.",
         "invalid_date_token": "Invalid date format. Use `@DDMMYYYY`, e.g. `grab 18.50 @05042026`.",
         "wallet_not_found": "Error: Personal wallet not found.",
-        "saved": "{status_mark} *{ref_id}*\n• Type: *{txn_type_label}*\n• Note: {text}\n• Wallet: *{wallet_name}*\n• Category: *{cat}*\n• Amount : *{amount}*\n• Date: *{txn_date}*{time_note}\n• Current Balance : *{balance}*{backdate_hint}",
-        "saved_hidden_balance": "{status_mark} *{ref_id}*\n• Type: *{txn_type_label}*\n• Note: {text}\n• Wallet: *{wallet_name}*\n• Category: *{cat}*\n• Amount : *{amount}*\n• Date: *{txn_date}*{time_note}\n• Current Balance : *{private_value}*{backdate_hint}",
+        "saved": "{status_mark} *{ref_id}*\n\nType: {txn_type_label}\nNote: {text}\nCategory: {cat}\n\nAmount: {amount}\nWallet: {wallet_plain}\nBalance Wallet: {wallet_balance}\nDate: {txn_date}{time_note}\n────────────────\nAll Wallets Balance: {balance}\n────────────────{backdate_hint}",
+        "saved_hidden_balance": "{status_mark} *{ref_id}*\n\nType: {txn_type_label}\nNote: {text}\nCategory: {cat}\n\nAmount: {amount}\nWallet: {wallet_plain}\nBalance Wallet: {private_value}\nDate: {txn_date}{time_note}\n────────────────\nAll Wallets Balance: {private_value}\n────────────────{backdate_hint}",
         "error": "Sorry, a technical error occurred while saving your data.",
         "no_note": "No note",
         "lang_switched": "Language switched to English.",
@@ -3653,22 +3653,22 @@ async def _format_money_lifespan_message(
     if txn_amount is not None and abs(float(txn_amount)) > 0.004:
         txn_amount_text = _format_lifespan_money(float(txn_amount), rounded=True)
         if language == "EN":
-            txn_prefix = f"Received *{txn_amount_text}*. " if (txn_type or "").lower() == "income" else f"Spent *{txn_amount_text}* recorded. "
+            txn_prefix = f"Received {txn_amount_text}.\n" if (txn_type or "").lower() == "income" else f"Spent {txn_amount_text} recorded.\n"
         else:
-            txn_prefix = f"Pendapatan *{txn_amount_text}* direkod. " if (txn_type or "").lower() == "income" else f"Belanja *{txn_amount_text}* dicatat. "
+            txn_prefix = f"Pendapatan {txn_amount_text} direkod.\n" if (txn_type or "").lower() == "income" else f"Belanja {txn_amount_text} dicatat.\n"
 
     if language == "EN":
         return (
-            f"\n\n{txn_prefix}{'Your balance is now' if txn_prefix else 'Your balance is now'} *{balance_text}*. "
-            f"It can last about {days_left} more days. "
-            f"Try to stay under *{daily_text}* per day until the next reset. "
-            f"Money status: {status_text}."
+            f"\n{txn_prefix}Your balance is now *{balance_text}*.\n"
+            f"Can last about {days_left} days.\n\n"
+            f"Daily budget: *{daily_text}*\n"
+            f"Status: {status_text}"
         )
     return (
-        f"\n\n{txn_prefix}{'Baki tinggal' if txn_prefix else 'Baki sekarang'} *{balance_text}*. "
-        f"Boleh tahan {days_left} hari lagi. "
-        f"Cuba jaga bawah *{daily_text}* sehari sehingga reset seterusnya. "
-        f"Status duit: {status_text}."
+        f"\n{txn_prefix}Baki sekarang *{balance_text}*.\n"
+        f"Boleh tahan {days_left} hari lagi.\n\n"
+        f"Bajet harian: *{daily_text}*\n"
+        f"Status: {status_text}"
     )
 
     return f"\n\nAnda boleh berbelanja {daily_budget_text} untuk bertahan sehingga {days_text} (Hujung Bulan)."
@@ -5416,9 +5416,8 @@ async def _process_whatsapp_message_impl(
             txn_amount=None if hide_saved_amount else amount,
         )
         multi_item_note = ""
-        time_note = f"\n• Masa: *{txn_time}*" if parsed_txn_time else ""
-        if user_lang == "EN" and time_note:
-            time_note = f"\n• Time: *{txn_time}*"
+        time_label = "Time" if user_lang == "EN" else "Masa"
+        time_note = f"\n{time_label}: {txn_time}" if parsed_txn_time else ""
         if multi_item_transaction:
             item_title = "Senarai Item" if user_lang == "BM" else "Items"
             item_lines = []
@@ -5458,6 +5457,8 @@ async def _process_whatsapp_message_impl(
             ref_id=txn.reference_id,
             text=reply_note,
             wallet_name=wallet_reply_name,
+            wallet_plain=wallet_display_name(wallet),
+            wallet_balance=private_value if hide_group_balance else f"RM {wallet_balance:,.2f}",
             cat=cat_name,
             txn_type_label=txn_type_label,
             status_mark=status_mark,
