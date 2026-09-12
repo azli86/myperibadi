@@ -328,6 +328,9 @@ export default function ChatPage() {
   const voiceCancelRef = useRef(false)
   const [voiceSlideCancel, setVoiceSlideCancel] = useState(false)
   const [voiceSlideX, setVoiceSlideX] = useState(0)
+  // Full-screen viewer for a tapped chat image. Mobile chat bubbles are capped by
+  // the bubble width, so the only way to read a receipt is to open it.
+  const [viewerImage, setViewerImage] = useState<{ url: string; name?: string } | null>(null)
   // Active hold gesture listeners. Bound to window, not the button: the mic button
   // leaves the DOM the moment recording starts, which would drop pointer capture
   // and leave the recording stuck with no way to release or cancel.
@@ -1263,6 +1266,15 @@ export default function ChatPage() {
     voiceGestureCleanupRef.current = null
   }, [])
 
+  useEffect(() => {
+    if (!viewerImage) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setViewerImage(null)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [viewerImage])
+
   const sendVoiceBlob = async (blob: Blob) => {
     setVoiceBusy(true)
     try {
@@ -1508,13 +1520,20 @@ export default function ChatPage() {
                   )}
                 >
                   {msg.previewUrl && msg.fileType?.startsWith("image/") && (
-                    <SmartImage
-                      src={msg.previewUrl}
-                      alt={msg.fileName || "attachment"}
-                      className="mb-3 max-h-48 w-full overflow-hidden rounded-xl"
-                      imgClassName="max-h-48 w-full object-cover"
-                      loading="eager"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setViewerImage({ url: msg.previewUrl!, name: msg.fileName })}
+                      aria-label={lang === "EN" ? "Open image" : "Buka gambar"}
+                      className="mb-1 block max-w-full overflow-hidden rounded-xl"
+                    >
+                      <SmartImage
+                        src={msg.previewUrl}
+                        alt={msg.fileName || "attachment"}
+                        className="h-auto w-fit max-w-full overflow-hidden rounded-xl"
+                        imgClassName="max-h-72 w-auto max-w-full rounded-xl object-contain"
+                        loading="eager"
+                      />
+                    </button>
                   )}
                   {msg.attachmentDeleted && (
                     <div className="mb-3 flex h-32 w-56 max-w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-[color:var(--border)]">
@@ -1542,13 +1561,20 @@ export default function ChatPage() {
                   )}
                 >
                   {msg.previewUrl && msg.fileType?.startsWith("image/") && (
-                    <SmartImage
-                      src={msg.previewUrl}
-                      alt={msg.fileName || "attachment"}
-                      className="mb-2.5 max-h-44 w-full overflow-hidden rounded-xl"
-                      imgClassName="max-h-44 w-full object-cover"
-                      loading="eager"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setViewerImage({ url: msg.previewUrl!, name: msg.fileName })}
+                      aria-label={lang === "EN" ? "Open image" : "Buka gambar"}
+                      className="mb-2.5 block max-w-full overflow-hidden rounded-xl"
+                    >
+                      <SmartImage
+                        src={msg.previewUrl}
+                        alt={msg.fileName || "attachment"}
+                        className="h-auto w-fit max-w-full overflow-hidden rounded-xl"
+                        imgClassName="max-h-72 w-auto max-w-full rounded-xl object-contain"
+                        loading="eager"
+                      />
+                    </button>
                   )}
                   {msg.attachmentDeleted && (
                     <div className="mb-2.5 flex h-32 w-56 max-w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-[color:var(--border)]">
@@ -1891,6 +1917,33 @@ export default function ChatPage() {
                 {lang === "EN" ? "Send" : "Hantar"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {viewerImage && (
+        <div
+          className="fixed inset-0 z-[80] flex flex-col bg-black/95"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setViewerImage(null)}
+        >
+          <div className="flex items-center justify-end px-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-2">
+            <button
+              type="button"
+              aria-label={lang === "EN" ? "Close" : "Tutup"}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white transition active:scale-95"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          {/* Native scroll + pinch-zoom: no custom gesture code to keep in sync. */}
+          <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto px-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+            <img
+              src={viewerImage.url}
+              alt={viewerImage.name || "attachment"}
+              className="max-h-full max-w-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         </div>
       )}
