@@ -519,16 +519,35 @@ export default function ChatPage() {
     }
 
     let frame = 0
+    // Hysteresis + last-value cache. The keyboard slide fires dozens of resize
+    // events; each one used to schedule a React update, and a value sitting on
+    // the threshold made keyboardOpen flip back and forth — that flicker is the
+    // jitter above the keyboard.
+    let lastHeight = -1
+    let lastTop = -1
+    let lastKeyboard = false
 
     const updateViewport = () => {
       cancelAnimationFrame(frame)
       frame = window.requestAnimationFrame(() => {
         const height = Math.round(viewport.height)
-        setViewportHeight(height)
-        setViewportOffsetTop(Math.max(0, Math.round(viewport.offsetTop)))
-        // visualViewport shrinks by roughly the keyboard height. A 120px margin
-        // separates "keyboard open" from browser chrome / URL bar hiding.
-        setKeyboardOpen(window.innerHeight - height > 120)
+        const top = Math.max(0, Math.round(viewport.offsetTop))
+        const gap = window.innerHeight - height
+        // Two thresholds: open at >150, close at <100. The band between them is
+        // held at the current state so a mid-animation height cannot thrash it.
+        const keyboard = gap > 150 ? true : gap < 100 ? false : lastKeyboard
+        if (height !== lastHeight) {
+          lastHeight = height
+          setViewportHeight(height)
+        }
+        if (top !== lastTop) {
+          lastTop = top
+          setViewportOffsetTop(top)
+        }
+        if (keyboard !== lastKeyboard) {
+          lastKeyboard = keyboard
+          setKeyboardOpen(keyboard)
+        }
       })
     }
 
