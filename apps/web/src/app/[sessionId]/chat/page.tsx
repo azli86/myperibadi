@@ -6,7 +6,6 @@ import Link from "next/link"
 import { useParams, useSearchParams } from "next/navigation"
 import {
   Send,
-  ArrowLeft,
   Loader2,
   X,
   ImageIcon,
@@ -27,6 +26,8 @@ import {
   Settings,
   Mic,
   ImageOff,
+  ChevronLeft,
+  Trash2,
   Calculator as CalculatorIcon,
   type LucideIcon,
 } from "lucide-react"
@@ -49,6 +50,10 @@ type ChatAttachment = {
   size_bytes?: number | null
   proxy_url: string
 }
+
+// Drag distance (px) that arms the cancel. Tuned so the gesture reads as a
+// deliberate swipe, not a wobble while holding the phone.
+const VOICE_CANCEL_DX = 72
 
 const normalizeAttachmentProxyUrl = (rawUrl: string): string => {
   if (!rawUrl) return rawUrl
@@ -323,7 +328,6 @@ export default function ChatPage() {
   const voiceCancelRef = useRef(false)
   const [voiceSlideCancel, setVoiceSlideCancel] = useState(false)
   const [voiceSlideX, setVoiceSlideX] = useState(0)
-
   // Voice hold timer
   useEffect(() => {
     if (!isVoiceRecording) return
@@ -1602,6 +1606,44 @@ export default function ChatPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              {isVoiceRecording ? (
+                /* Recording replaces the whole button row: one full-width bar whose
+                   slide track moves with the finger. No floating chip, nothing that
+                   shifts position under the thumb. */
+                <div
+                  className={cn(
+                    "voice-rec-bar flex h-11 min-w-0 flex-1 items-center gap-3 overflow-hidden rounded-full px-4 text-sm font-semibold transition-colors",
+                    voiceSlideCancel ? "voice-rec-bar-cancel" : "voice-rec-bar-live"
+                  )}
+                >
+                  <span className="relative flex h-2.5 w-2.5 shrink-0 items-center justify-center">
+                    <span className={cn("absolute inline-flex h-full w-full rounded-full", voiceSlideCancel ? "bg-white/50" : "bg-[#ef4444]", "voice-rec-ping")} />
+                    <span className={cn("relative inline-flex h-2.5 w-2.5 rounded-full", voiceSlideCancel ? "bg-white" : "bg-[#ef4444]")} />
+                  </span>
+                  <span className="shrink-0 tabular-nums">
+                    {Math.floor(voiceSecs / 60)}:{String(voiceSecs % 60).padStart(2, "0")}
+                  </span>
+                  <div className="relative min-w-0 flex-1 overflow-hidden">
+                    <span
+                      className="flex items-center gap-1.5 whitespace-nowrap text-[0.8125rem] font-medium opacity-80"
+                      style={{ transform: `translateX(${voiceSlideX}px)` }}
+                    >
+                      <ChevronLeft size={14} className="shrink-0" />
+                      {lang === "EN" ? "Slide left to cancel" : "Gelongsor kiri untuk batal"}
+                    </span>
+                    <span
+                      className={cn(
+                        "absolute inset-y-0 left-0 flex items-center gap-1.5 whitespace-nowrap text-[0.8125rem] font-bold transition-opacity duration-150",
+                        voiceSlideCancel ? "opacity-100" : "opacity-0"
+                      )}
+                    >
+                      <Trash2 size={14} className="shrink-0" />
+                      {lang === "EN" ? "Release to cancel" : "Lepas untuk batal"}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <>
               <button
                 type="button"
                 aria-label={lang === "EN" ? "Calculator" : "Kalkulator"}
@@ -1685,8 +1727,10 @@ export default function ChatPage() {
                 onPointerMove={(e) => {
                   if (!voiceHoldRef.current) return
                   const dx = e.clientX - voiceStartXRef.current
-                  setVoiceSlideX(Math.max(-96, dx))
-                  const cancel = dx < -64
+                  // Track the finger only until the cancel threshold, then pin it there so
+                  // the label stays readable instead of sliding out of the bar.
+                  setVoiceSlideX(Math.max(-VOICE_CANCEL_DX, dx))
+                  const cancel = dx < -VOICE_CANCEL_DX
                   if (cancel !== voiceCancelRef.current) {
                     voiceCancelRef.current = cancel
                     setVoiceSlideCancel(cancel)
@@ -1717,43 +1761,18 @@ export default function ChatPage() {
                   cancelVoice()
                 }}
                 onContextMenu={(e) => e.preventDefault()}
-                style={{ transform: `translateX(${voiceSlideX}px)` }}
                 className={cn(
                   "chat-composer-control flex h-11 w-11 shrink-0 touch-none select-none items-center justify-center transition-colors active:scale-95 disabled:cursor-not-allowed disabled:opacity-50",
-                  isVoiceRecording
-                    ? voiceSlideCancel
-                      ? "rounded-full bg-[#ef4444] text-white"
-                      : "animate-pulse rounded-full bg-[#ef4444] text-white"
+                  voiceSlideCancel
+                    ? "rounded-full bg-[#ef4444] text-white"
                     : composerPlainButton
                 )}
               >
                 {voiceBusy ? <Loader2 size={18} className="animate-spin" /> : <Mic size={20} />}
               </button>
-              {isVoiceRecording && (
-                <div
-                  className={cn(
-                    "pointer-events-none absolute bottom-full right-0 mb-3 flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-1.5 text-[0.6875rem] font-bold shadow-lg",
-                    voiceSlideCancel ? "bg-[#ef4444] text-white" : "bg-[color:var(--surface-tint)] text-[var(--text)]"
-                  )}
-                  style={{ transform: `translateX(${voiceSlideX}px)` }}
-                >
-                  {voiceSlideCancel ? (
-                    <span className="flex items-center gap-1.5">
-                      <X size={11} /> {lang === "EN" ? "Release to cancel" : "Lepas untuk batal"}
-                    </span>
-                  ) : (
-                    <>
-                      <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-[#ef4444]" />
-                      <span className="tabular-nums">{Math.floor(voiceSecs / 60)}:{String(voiceSecs % 60).padStart(2, "0")}</span>
-                      <span className="flex items-center gap-1 opacity-70">
-                        <ArrowLeft size={11} />
-                        {lang === "EN" ? "Slide to cancel" : "Gelongsor batal"}
-                      </span>
-                    </>
-                  )}
-                </div>
-              )}
             </div>
+              )}
+                </>
               )}
             </div>
 
