@@ -175,6 +175,16 @@ async function refreshTokens(rawFetch: typeof window.fetch): Promise<string | nu
 
 export default function AuthSessionSync() {
   useEffect(() => {
+    // The "Halaman Utama" setting was removed. Drop its localStorage mirror so a
+    // stale value cannot be read back by any cached bundle.
+    try {
+      window.localStorage.removeItem("budget.landingPage.v1")
+    } catch {
+      // Private mode / storage disabled — nothing to clean.
+    }
+  }, [])
+
+  useEffect(() => {
     const originalFetch = window.fetch.bind(window)
     const isPublicPage = isAuthPublicPage(window.location.pathname)
 

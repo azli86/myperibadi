@@ -35,7 +35,7 @@ try {
   console.error("[sw.js] Firebase init failed:", e)
 }
 
-const CACHE_NAME = "budget-by-digitalport-shell-v53"
+const CACHE_NAME = "budget-by-digitalport-shell-v54"
 const APP_SHELL = [
   "/offline",
   "/icon-192-v3.png",

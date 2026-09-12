@@ -1,4 +1,3 @@
-import { getLandingPath } from "@/lib/landing-page"
 
 export const ACCESS_TOKEN_STORAGE_KEY = "token"
 export const REFRESH_TOKEN_STORAGE_KEY = "refresh_token"
@@ -182,9 +181,8 @@ export function clearAuthSession() {
 }
 
 export function getLoginRedirectPath(sessionId: string): string {
-  // Honours the "Halaman Utama" setting: the app opens on whichever screen
-  // the user picked (Settings → Keutamaan & Paparan).
-  return getLandingPath(sessionId)
+  // The app always opens on the dashboard.
+  return `/${sessionId}`
 }
 
 export async function logoutAuthSession() {
