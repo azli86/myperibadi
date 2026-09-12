@@ -328,6 +328,10 @@ export default function ChatPage() {
   const voiceCancelRef = useRef(false)
   const [voiceSlideCancel, setVoiceSlideCancel] = useState(false)
   const [voiceSlideX, setVoiceSlideX] = useState(0)
+  // Active hold gesture listeners. Bound to window, not the button: the mic button
+  // leaves the DOM the moment recording starts, which would drop pointer capture
+  // and leave the recording stuck with no way to release or cancel.
+  const voiceGestureCleanupRef = useRef<(() => void) | null>(null)
   // Voice hold timer
   useEffect(() => {
     if (!isVoiceRecording) return
@@ -1059,11 +1063,13 @@ export default function ChatPage() {
   }
   const cancelVoice = () => {
     voiceHoldRef.current = false
-    if (voiceBusy) return
+    // Do NOT bail out on voiceBusy: that is the transcribe-in-flight state, and
+    // returning here is what left the composer stuck with no way to recover.
     if (voiceReadyRef.current) {
       stopVoice(false)
     } else {
       voiceReleaseRef.current = true
+      setIsVoiceRecording(false)
     }
   }
   const startVoiceHold = async () => {
@@ -1073,6 +1079,7 @@ export default function ChatPage() {
     setVoiceSlideCancel(false)
     setVoiceSlideX(0)
     if (!navigator.mediaDevices?.getUserMedia) {
+      voiceHoldRef.current = false
       showAlert(
         lang === "EN" ? "Voice unsupported" : "Suara tidak disokong",
         lang === "EN" ? "Voice recording is not supported on this browser. Please open the app in Chrome or Safari." : "Rakaman suara tidak disokong pada pelayar ini. Sila buka aplikasi dalam Chrome atau Safari.",
@@ -1086,6 +1093,7 @@ export default function ChatPage() {
         ? await (navigator.permissions as any).query({ name: "microphone" as any })
         : null
       if (perm?.state === "denied") {
+        voiceHoldRef.current = false
         showAlert(
           lang === "EN" ? "Mic blocked" : "Mikrofon disekat",
           lang === "EN"
@@ -1149,6 +1157,16 @@ export default function ChatPage() {
       if (typeof (window as any).AndroidApp?.onAudioRecordingStopped === "function") {
         (window as any).AndroidApp.onAudioRecordingStopped()
       }
+      // Mic never opened. Drop the hold state so the composer returns to normal
+      // instead of staying in the recording look until the page is reloaded.
+      voiceHoldRef.current = false
+      voiceReadyRef.current = false
+      voiceReleaseRef.current = false
+      voiceGestureCleanupRef.current?.()
+      voiceGestureCleanupRef.current = null
+      setIsVoiceRecording(false)
+      setVoiceSlideCancel(false)
+      setVoiceSlideX(0)
       const denied =
         err?.name === "NotAllowedError" ||
         err?.name === "PermissionDeniedError" ||
@@ -1166,6 +1184,84 @@ export default function ChatPage() {
       )
     }
   }
+
+  const beginVoiceGesture = (clientX: number) => {
+    voiceStartXRef.current = clientX
+    voiceStartTsRef.current = Date.now()
+    voiceCancelRef.current = false
+    setVoiceSlideCancel(false)
+    setVoiceSlideX(0)
+    voiceHoldRef.current = true
+
+    const finish = (cancelled: boolean) => {
+      const cleanup = voiceGestureCleanupRef.current
+      voiceGestureCleanupRef.current = null
+      cleanup?.()
+      voiceHoldRef.current = false
+      voiceCancelRef.current = false
+      setVoiceSlideCancel(false)
+      setVoiceSlideX(0)
+      if (cancelled) cancelVoice()
+    }
+
+    const onMove = (e: PointerEvent) => {
+      if (!voiceHoldRef.current) return
+      const dx = e.clientX - voiceStartXRef.current
+      // Track the finger only until the cancel threshold, then pin it there so
+      // the label stays readable instead of sliding out of the bar.
+      setVoiceSlideX(Math.max(-VOICE_CANCEL_DX, dx))
+      const armed = dx < -VOICE_CANCEL_DX
+      if (armed !== voiceCancelRef.current) {
+        voiceCancelRef.current = armed
+        setVoiceSlideCancel(armed)
+      }
+    }
+
+    const onUp = () => {
+      if (!voiceHoldRef.current) return
+      const armed = voiceCancelRef.current
+      const quickTap = Date.now() - (voiceStartTsRef.current || 0) < 450
+      finish(armed)
+      if (armed) {
+        showAlert(lang === "EN" ? "Voice deleted" : "Suara dipadam", "", "success")
+      } else if (quickTap) {
+        // A tap is not a recording. Tell the user how it works instead of silently
+        // discarding what they may think was a sent message. mark the release too,
+        // otherwise a slow mic warm-up would still open the recorder after the tap.
+        voiceReleaseRef.current = true
+        voiceSubmitRef.current = false
+        showAlert(
+          lang === "EN" ? "Hold to talk" : "Tahan untuk bercakap",
+          lang === "EN" ? "Press and hold the mic to record." : "Tekan dan tahan butang mic untuk merakam.",
+          "error",
+        )
+      } else {
+        endVoiceHold()
+      }
+    }
+
+    const onCancel = () => {
+      if (!voiceHoldRef.current) return
+      finish(true)
+    }
+
+    voiceGestureCleanupRef.current = () => {
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", onUp)
+      window.removeEventListener("pointercancel", onCancel)
+      window.removeEventListener("blur", onCancel)
+    }
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
+    window.addEventListener("pointercancel", onCancel)
+    window.addEventListener("blur", onCancel)
+  }
+
+  // A gesture must never outlive the screen.
+  useEffect(() => () => {
+    voiceGestureCleanupRef.current?.()
+    voiceGestureCleanupRef.current = null
+  }, [])
 
   const sendVoiceBlob = async (blob: Blob) => {
     setVoiceBusy(true)
@@ -1712,53 +1808,9 @@ export default function ChatPage() {
                     endVoiceHold()
                     return
                   }
-                  try {
-                    e.currentTarget.setPointerCapture(e.pointerId)
-                  } catch {}
-                  voiceStartTsRef.current = Date.now()
-                  voiceCancelRef.current = false
-                  setVoiceSlideCancel(false)
-                  setVoiceSlideX(0)
-                  voiceStartXRef.current = e.clientX
-                  voiceHoldRef.current = true
                   setIsCommandMenuOpen(false)
+                  beginVoiceGesture(e.clientX)
                   void startVoiceHold()
-                }}
-                onPointerMove={(e) => {
-                  if (!voiceHoldRef.current) return
-                  const dx = e.clientX - voiceStartXRef.current
-                  // Track the finger only until the cancel threshold, then pin it there so
-                  // the label stays readable instead of sliding out of the bar.
-                  setVoiceSlideX(Math.max(-VOICE_CANCEL_DX, dx))
-                  const cancel = dx < -VOICE_CANCEL_DX
-                  if (cancel !== voiceCancelRef.current) {
-                    voiceCancelRef.current = cancel
-                    setVoiceSlideCancel(cancel)
-                  }
-                }}
-                onPointerUp={() => {
-                  if (!voiceHoldRef.current) return
-                  voiceHoldRef.current = false
-                  const cancel = voiceCancelRef.current
-                  voiceCancelRef.current = false
-                  setVoiceSlideCancel(false)
-                  setVoiceSlideX(0)
-                  const quickTap = Date.now() - (voiceStartTsRef.current || 0) < 450
-                  if (cancel || quickTap) {
-                    cancelVoice()
-                    if (!quickTap) {
-                      showAlert(lang === "EN" ? "Voice deleted" : "Suara dipadam", "", "success")
-                    }
-                  } else {
-                    endVoiceHold()
-                  }
-                }}
-                onPointerCancel={() => {
-                  voiceHoldRef.current = false
-                  voiceCancelRef.current = false
-                  setVoiceSlideCancel(false)
-                  setVoiceSlideX(0)
-                  cancelVoice()
                 }}
                 onContextMenu={(e) => e.preventDefault()}
                 className={cn(
