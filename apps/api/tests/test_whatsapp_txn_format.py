@@ -9,6 +9,8 @@ import sys
 
 sys.path.insert(0, ".")
 
+from whatsapp_service import RULE_LINE, format_corporate_bot_reply  # noqa: E402
+
 
 
 def _template(lang):
@@ -32,6 +34,7 @@ ARGS = dict(
     backdate_hint="",
     private_value="RM ••••••",
     wallet_name="x",
+    rule=RULE_LINE,
 )
 
 
@@ -43,9 +46,13 @@ def check(lang):
     head = out.split("\n")
     assert head[0].startswith("🔴 *TXN26-WMASOD*"), head[0]
     assert head[1] == "", f"{lang}: expected blank line after ref id"
-    assert out.count("────────────────") == 2, f"{lang}: separator count"
+    rule = RULE_LINE
+    assert out.count(rule) == 2, f"{lang}: separator count"
     assert "Balance Wallet" in out or "Baki Dompet" in out, f"{lang}: wallet balance line"
     assert "All Wallets Balance" in out or "Jumlah Semua Dompet" in out, f"{lang}: total line"
+    # The corporate-style scrub deletes decorative rule lines; ours must survive it.
+    cleaned = format_corporate_bot_reply(out)
+    assert cleaned.count(rule) == 2, f"{lang}: separator stripped by formatter"
     print(f"{lang} OK")
     print(out)
     print()

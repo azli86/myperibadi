@@ -326,8 +326,8 @@ BOT_TRANSLATIONS = {
         "no_amount": "Maaf, saya tidak dapat menemui jumlah (amount) dalam mesej anda.",
         "invalid_date_token": "Format tarikh tidak sah. Guna `@DDMMYYYY` contoh: `grab 18.50 @05042026`.",
         "wallet_not_found": "Ralat: Wallet personal tidak dijumpai.",
-        "saved": "{status_mark} *{ref_id}*\n\nJenis: {txn_type_label}\nNota: {text}\nKategori: {cat}\n\nJumlah: {amount}\nDompet: {wallet_plain}\nBaki Dompet: {balance}\nTarikh: {txn_date}{time_note}\n────────────────\nJumlah Semua Dompet: {balance}\n────────────────{backdate_hint}",
-        "saved_hidden_balance": "{status_mark} *{ref_id}*\n\nJenis: {txn_type_label}\nNota: {text}\nKategori: {cat}\n\nJumlah: {amount}\nDompet: {wallet_plain}\nBaki Dompet: {private_value}\nTarikh: {txn_date}{time_note}\n────────────────\nJumlah Semua Dompet: {private_value}\n────────────────{backdate_hint}",
+        "saved": "{status_mark} *{ref_id}*\n\nJenis: {txn_type_label}\nNota: {text}\nKategori: {cat}\n\nJumlah: {amount}\nDompet: {wallet_plain}\nBaki Dompet: {balance}\nTarikh: {txn_date}{time_note}\n{rule}\nJumlah Semua Dompet: {balance}\n{rule}{backdate_hint}",
+        "saved_hidden_balance": "{status_mark} *{ref_id}*\n\nJenis: {txn_type_label}\nNota: {text}\nKategori: {cat}\n\nJumlah: {amount}\nDompet: {wallet_plain}\nBaki Dompet: {private_value}\nTarikh: {txn_date}{time_note}\n{rule}\nJumlah Semua Dompet: {private_value}\n{rule}{backdate_hint}",
         "error": "Maaf, ralat teknikal berlaku semasa menyimpan data anda.",
         "no_note": "Tiada nota",
         "lang_switched": "Bahasa telah ditukar ke Bahasa Melayu.",
@@ -393,8 +393,8 @@ BOT_TRANSLATIONS = {
         "no_amount": "Sorry, I couldn't find an amount in your message.",
         "invalid_date_token": "Invalid date format. Use `@DDMMYYYY`, e.g. `grab 18.50 @05042026`.",
         "wallet_not_found": "Error: Personal wallet not found.",
-        "saved": "{status_mark} *{ref_id}*\n\nType: {txn_type_label}\nNote: {text}\nCategory: {cat}\n\nAmount: {amount}\nWallet: {wallet_plain}\nBalance Wallet: {wallet_balance}\nDate: {txn_date}{time_note}\n────────────────\nAll Wallets Balance: {balance}\n────────────────{backdate_hint}",
-        "saved_hidden_balance": "{status_mark} *{ref_id}*\n\nType: {txn_type_label}\nNote: {text}\nCategory: {cat}\n\nAmount: {amount}\nWallet: {wallet_plain}\nBalance Wallet: {private_value}\nDate: {txn_date}{time_note}\n────────────────\nAll Wallets Balance: {private_value}\n────────────────{backdate_hint}",
+        "saved": "{status_mark} *{ref_id}*\n\nType: {txn_type_label}\nNote: {text}\nCategory: {cat}\n\nAmount: {amount}\nWallet: {wallet_plain}\nBalance Wallet: {wallet_balance}\nDate: {txn_date}{time_note}\n{rule}\nAll Wallets Balance: {balance}\n{rule}{backdate_hint}",
+        "saved_hidden_balance": "{status_mark} *{ref_id}*\n\nType: {txn_type_label}\nNote: {text}\nCategory: {cat}\n\nAmount: {amount}\nWallet: {wallet_plain}\nBalance Wallet: {private_value}\nDate: {txn_date}{time_note}\n{rule}\nAll Wallets Balance: {private_value}\n{rule}{backdate_hint}",
         "error": "Sorry, a technical error occurred while saving your data.",
         "no_note": "No note",
         "lang_switched": "Language switched to English.",
@@ -477,6 +477,9 @@ EMOJI_PATTERN = re.compile(
     re.UNICODE,
 )
 DECORATIVE_LINE_PATTERN = re.compile(r"(?m)^[ \t]*(?:[•\-\u2500-\u257F_=][ \t]*){2,}$")
+# Real separator used by the transaction confirmation layout. Distinct from the
+# decorative rules the scrub above is meant to remove.
+RULE_LINE = "\u2500" * 16
 
 
 def format_corporate_bot_reply(reply: Optional[str]) -> Optional[str]:
@@ -488,8 +491,11 @@ def format_corporate_bot_reply(reply: Optional[str]) -> Optional[str]:
     if not text:
         return text
 
-    if not text:
-        return text
+    # The transaction layout uses a full-width rule as a real separator, but the
+    # decorative-line scrub below deletes any line made only of box-drawing
+    # characters. Park them under a sentinel and put them back at the end.
+    rule_sentinel = "\x00RULE\x00"
+    text = text.replace(RULE_LINE, rule_sentinel)
 
     text = EMOJI_PATTERN.sub("", text)
     text = text.replace("\ufe0f", "").replace("\u200d", "").replace("\u20e3", "")
@@ -516,7 +522,7 @@ def format_corporate_bot_reply(reply: Optional[str]) -> Optional[str]:
     text = text.replace("*Done | Receipt Uploaded*", "📎 *Done | Receipt Uploaded*")
     text = re.sub(r"(?m)^Pilihan wallet:", "⚠️ Pilihan wallet:", text)
     text = re.sub(r"(?m)^Wallet options:", "⚠️ Wallet options:", text)
-    return text
+    return text.replace(rule_sentinel, RULE_LINE)
 
 
 
@@ -3055,7 +3061,7 @@ async def ensure_personal_wallet(db: AsyncSession, user_id: str) -> models.Walle
 AMOUNT_PATTERN = re.compile(r"(?:^|\s|[Rr][Mm])\s?(\d+(?:\.\d{1,2})?)(?![A-Za-z])\b")
 
 
-# ── Spoken-number support for voice notes ─────────────────────────────
+# ── Spoken-number support for voice notes ─────────────────
 # Maps Malay/English number words to digits so spoken amounts can be read,
 # e.g. "makan dua ringgit" -> "makan 2", "gaji dua ribu" -> "gaji 2000".
 _NUM_WORDS = {
@@ -5468,6 +5474,7 @@ async def _process_whatsapp_message_impl(
             balance=private_value if hide_group_balance else f"RM {balance:,.2f}",
             backdate_hint=backdate_hint,
             private_value=private_value,
+            rule=RULE_LINE,
         ) + multi_item_note + category_suggestion_note + wallet_switch_note + lifespan_note, txn
     except Exception as e:
         import traceback
