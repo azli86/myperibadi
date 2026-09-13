@@ -1,11 +1,13 @@
 "use client"
 
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   AlertCircle,
   Calendar,
   Check,
   Loader2,
+  Pencil,
+  Trash2,
   Wallet as WalletIcon,
 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
@@ -69,18 +71,58 @@ export default function EventDetailPage() {
   const { lang } = useLang()
   const isBm = lang === "BM"
   const tr = useCallback((bm: string, en: string) => (isBm ? bm : en), [isBm])
-  const { showAlert, alertModal } = usePageAlert(lang)
+  const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
 
   const [event, setEvent] = useState<EventItem | null>(null)
   const [transactions, setTransactions] = useState<EventTransaction[]>([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [busyId, setBusyId] = useState<number | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  // usePageAlert returns a fresh function on every render, so it must never appear
+  // in a useCallback/useEffect dependency list: doing so recreated `load` each
+  // render, re-ran its effect, and looped until React threw "Maximum update depth".
+  const showAlertRef = useRef(showAlert)
+  const showConfirmRef = useRef(showConfirm)
+  useEffect(() => {
+    showAlertRef.current = showAlert
+    showConfirmRef.current = showConfirm
+  }, [showAlert, showConfirm])
 
   const authHeaders = useCallback((): Record<string, string> => {
     const token = getAccessToken()
     return token ? { Authorization: `Bearer ${token}` } : {}
   }, [])
+
+  const handleDelete = useCallback(() => {
+    if (!event) return
+    showConfirmRef.current(
+      tr("Padam acara?", "Delete event?"),
+      tr(`Padam ${event.name}?`, `Delete ${event.name}?`),
+      async () => {
+        setDeleting(true)
+        try {
+          const res = await fetch(`/api/events/${event.id}`, {
+            method: "DELETE",
+            headers: authHeaders(),
+          })
+          if (!res.ok) {
+            const payload = (await res.json().catch(() => null)) as { detail?: string } | null
+            throw new Error(payload?.detail || tr("Gagal padam acara.", "Failed to delete event."))
+          }
+          router.replace(`/${sessionId}/event`)
+        } catch (err) {
+          showAlertRef.current(
+            tr("Gagal padam", "Delete failed"),
+            err instanceof Error ? err.message : tr("Gagal padam acara.", "Failed to delete event."),
+            "error"
+          )
+          setDeleting(false)
+        }
+      },
+      "warning"
+    )
+  }, [event, sessionId, router, authHeaders, tr])
 
   const load = useCallback(async () => {
     if (!Number.isFinite(eventId)) {
@@ -103,7 +145,7 @@ export default function EventDetailPage() {
       // still useful, so fall back to an empty list.
       setTransactions(txnRes.ok ? await txnRes.json().catch(() => []) : [])
     } catch (err) {
-      showAlert(
+      showAlertRef.current(
         tr("Ralat", "Error"),
         err instanceof Error ? err.message : tr("Gagal muat acara.", "Failed to load event."),
         "error"
@@ -111,7 +153,7 @@ export default function EventDetailPage() {
     } finally {
       setLoading(false)
     }
-  }, [eventId, authHeaders, tr, showAlert])
+  }, [eventId, authHeaders, tr])
 
   useEffect(() => {
     void load()
@@ -137,7 +179,7 @@ export default function EventDetailPage() {
         await load()
       } catch (err) {
         setTransactions((prev) => prev.map((t) => (t.id === txn.id ? { ...t, included: txn.included } : t)))
-        showAlert(
+        showAlertRef.current(
           tr("Gagal kemas kini", "Update failed"),
           err instanceof Error ? err.message : tr("Gagal kemas kini transaksi.", "Failed to update transaction."),
           "error"
@@ -146,7 +188,7 @@ export default function EventDetailPage() {
         setBusyId(null)
       }
     },
-    [eventId, authHeaders, load, tr, showAlert]
+    [eventId, authHeaders, load, tr]
   )
 
   // Recompute locally so the tick and the totals never disagree while a refresh
@@ -220,13 +262,35 @@ export default function EventDetailPage() {
     </div>
   )
 
+  const actions = (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={() => router.push(`/${sessionId}/event?edit=${event.id}`)}
+        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] active:scale-95"
+      >
+        <Pencil size={14} />
+        <span className="hidden sm:inline">{tr("Edit", "Edit")}</span>
+      </button>
+      <button
+        type="button"
+        onClick={handleDelete}
+        disabled={deleting}
+        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold text-[var(--muted)] transition hover:bg-rose-500/10 hover:text-rose-500 active:scale-95 disabled:opacity-50"
+      >
+        {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+        <span className="hidden sm:inline">{tr("Padam", "Delete")}</span>
+      </button>
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-[var(--page-bg)] pb-24">
       <div className="md:hidden">
-        <MobilePageHeader title={event.name} fallbackHref={`/${sessionId}/event`} />
+        <MobilePageHeader title={event.name} fallbackHref={`/${sessionId}/event`} action={actions} />
       </div>
       <div className="hidden md:block">
-        <DesktopPageHeader title={tr("Butiran Acara", "Event Details")} backHref={`/${sessionId}/event`} />
+        <DesktopPageHeader title={tr("Butiran Acara", "Event Details")} backHref={`/${sessionId}/event`} actions={actions} />
       </div>
 
       <DesktopPageBody>

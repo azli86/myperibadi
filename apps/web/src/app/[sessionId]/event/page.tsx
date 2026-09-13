@@ -13,6 +13,7 @@ import {
   PartyPopper,
   Plus,
   Sparkles,
+  Pencil,
   Trash2,
   Upload,
   Wallet as WalletIcon,
@@ -21,7 +22,7 @@ import {
   CheckCircle2,
   AlertCircle,
 } from "lucide-react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { createPortal } from "react-dom"
 import { getAccessToken } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
@@ -243,6 +244,18 @@ export default function EventPage() {
     onClose: closeCreateSheet,
   })
 
+  // The detail page cannot host the edit sheet (it owns a different form), so it
+  // links back here with ?edit=<id>; open the sheet once the events arrive.
+  const editParam = useSearchParams().get("edit")
+  const openedEditRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!editParam || openedEditRef.current === editParam) return
+    const match = events.find((ev) => String(ev.id) === editParam)
+    if (!match) return
+    openedEditRef.current = editParam
+    openEditSheet(match)
+  }, [editParam, events, openEditSheet])
+
   async function handleSaveEvent(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name.trim()) {
@@ -432,7 +445,7 @@ export default function EventPage() {
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault()
-            openEditSheet(ev)
+            router.push(`/${sessionId}/event/${ev.id}`)
           }
         }}
         className={cn(
@@ -489,6 +502,17 @@ export default function EventPage() {
                     {tr("Semua Wallet", "All Wallets")}
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    openEditSheet(ev)
+                  }}
+                  className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] active:scale-95"
+                  aria-label={tr("Edit", "Edit")}
+                >
+                  <Pencil size={15} />
+                </button>
                 <button
                   type="button"
                   onClick={(e) => {
