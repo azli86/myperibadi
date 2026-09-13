@@ -71,6 +71,19 @@ const normalizeAttachmentProxyUrl = (rawUrl: string): string => {
   }
 }
 
+// The same-origin /api/attachments proxy authenticates with the bdp_access cookie,
+// but an <img> request cannot carry an Authorization header — a plain Android
+// WebView wrapper does not reliably attach that cookie either, so images sat on
+// the loader forever while the PWA (real Chrome) was fine. Append the access
+// token so the proxy can authenticate the request itself.
+const resolveAttachmentUrl = (proxyUrl: string | undefined): string | undefined => {
+  if (!proxyUrl) return undefined
+  const normalized = normalizeAttachmentProxyUrl(proxyUrl)
+  const token = getAccessToken()
+  if (!token) return normalized
+  return `${normalized}${normalized.includes("?") ? "&" : "?"}t=${encodeURIComponent(token)}`
+}
+
 type ChatApiMessage = {
   id: number
   role: ChatRole
@@ -633,7 +646,10 @@ export default function ChatPage() {
       sourceChannel: message.source_channel || undefined,
       fileName: message.attachment?.file_name || message.file_name || undefined,
       fileType: attachmentMime,
-      previewUrl: attachmentUrl && attachmentMime?.startsWith("image/") ? normalizeAttachmentProxyUrl(attachmentUrl) : undefined,
+      previewUrl:
+        attachmentMime?.startsWith("image/")
+          ? resolveAttachmentUrl(attachmentUrl)
+          : undefined,
       attachmentDeleted: Boolean(message.attachment_deleted),
     }
   }

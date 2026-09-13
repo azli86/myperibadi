@@ -1531,9 +1531,18 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
 async def get_current_user(request: Request, token: str | None = Depends(oauth2_scheme), db: AsyncSession = Depends(database.get_db)):
     header_token = (token or "").strip()
     cookie_token = (request.cookies.get(AUTH_ACCESS_COOKIE_NAME) or "").strip()
+    # An <img>/<video> request cannot set an Authorization header, and a plain
+    # Android WebView does not always forward the auth cookie for them. Media
+    # URLs carry the access token in ?t= — accepted ONLY on the attachment file
+    # routes, never globally, so a leaked URL cannot be replayed against the API.
+    query_token = ""
+    if request.url.path.startswith("/attachments/") or request.url.path.startswith("/api/attachments/"):
+        query_token = (request.query_params.get("t") or "").strip()
     payload = auth_utils.decode_access_token(header_token) if header_token else None
     if payload is None and cookie_token:
         payload = auth_utils.decode_access_token(cookie_token)
+    if payload is None and query_token:
+        payload = auth_utils.decode_access_token(query_token)
     if payload is None:
         raise HTTPException(status_code=401, detail="Invalid token")
     
