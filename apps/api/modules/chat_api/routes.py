@@ -218,15 +218,26 @@ async def get_web_chat_messages_route(
     current_user: models.User,
     db: AsyncSession,
     serialize_chat_message: Callable[..., schemas.ChatMessageResponse],
+    limit: int | None = None,
+    before_id: int | None = None,
 ) -> list[schemas.ChatMessageResponse]:
-    result = await db.execute(
+    # Newest-first window, then flipped back to chronological order for the client.
+    # Without a limit this returned the whole thread (hundreds of rows, each with a
+    # selectinload) on every open, which is what made the page slow.
+    query = (
         select(models.ChatMessage)
         .options(selectinload(models.ChatMessage.attachment))
         .where(
             models.ChatMessage.user_id == current_user.id,
             models.ChatMessage.source_channel == "chat",
         )
-        .order_by(models.ChatMessage.created_at.asc(), models.ChatMessage.id.asc())
     )
-    messages = result.scalars().all()
+    if before_id is not None:
+        query = query.where(models.ChatMessage.id < before_id)
+    query = query.order_by(models.ChatMessage.id.desc())
+    if limit is not None:
+        query = query.limit(limit)
+    result = await db.execute(query)
+    messages = list(result.scalars().all())
+    messages.reverse()
     return [serialize_chat_message(message, request) for message in messages]

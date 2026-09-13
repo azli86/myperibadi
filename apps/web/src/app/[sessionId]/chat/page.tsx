@@ -316,6 +316,12 @@ export default function ChatPage() {
   const [chatTextLevel, setChatTextLevel] = useState(1)
   const [sending, setSending] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
+  // Older messages load on demand: opening the page used to pull the whole thread
+  // (hundreds of rows, each with its attachment) which is what made chat slow.
+  const CHAT_PAGE_SIZE = 10
+  const [hasMoreHistory, setHasMoreHistory] = useState(false)
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  const historyAnchorRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null)
   const [isLocating, setIsLocating] = useState(false)
   const [errorText, setErrorText] = useState("")
   const [isVoiceRecording, setIsVoiceRecording] = useState(false)
@@ -400,8 +406,51 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!listRef.current) return
+    // Prepending older history must not yank the view: restore the distance from
+    // the bottom so the message the user was reading stays put.
+    const anchor = historyAnchorRef.current
+    if (anchor) {
+      historyAnchorRef.current = null
+      const el = listRef.current
+      el.scrollTop = el.scrollHeight - anchor.scrollHeight + anchor.scrollTop
+      return
+    }
     listRef.current.scrollTop = listRef.current.scrollHeight
   }, [messages, sending, isTyping])
+
+  const loadOlderMessages = async () => {
+    const oldest = messages.find((m) => !m.id.startsWith("intro-"))
+    if (!oldest || loadingHistory || !hasMoreHistory) return
+    const el = listRef.current
+    setLoadingHistory(true)
+    if (el) historyAnchorRef.current = { scrollHeight: el.scrollHeight, scrollTop: el.scrollTop }
+    try {
+      const token = getAccessToken()
+      const res = await fetch(`/api/chat/messages?limit=${CHAT_PAGE_SIZE}&before_id=${oldest.id}`, {
+        credentials: "include",
+        headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      })
+      const data = await res.json().catch(() => [])
+      if (!res.ok || !Array.isArray(data) || data.length === 0) {
+        historyAnchorRef.current = null
+        setHasMoreHistory(false)
+        return
+      }
+      const mapped = data.map(mapApiMessage).filter(Boolean) as ChatMessage[]
+      setHasMoreHistory(data.length === CHAT_PAGE_SIZE)
+      setMessages((prev) => [...mapped, ...prev])
+    } catch {
+      historyAnchorRef.current = null
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  const handleListScroll = () => {
+    const el = listRef.current
+    if (!el || el.scrollTop > 80) return
+    void loadOlderMessages()
+  }
 
   const resizeComposerTextarea = React.useCallback(() => {
     const el = textareaRef.current
@@ -444,10 +493,10 @@ export default function ChatPage() {
 
     const loadMessages = async () => {
       try {
-        const res = await fetch("/api/chat/messages", {
+        const res = await fetch(`/api/chat/messages?limit=${CHAT_PAGE_SIZE}`, {
           credentials: "include",
           headers: {
-            ...(token ? { ...(token ? { Authorization: `Bearer ${token}` } : {}) } : {}),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
         })
         const data = await res.json().catch(() => [])
@@ -458,6 +507,7 @@ export default function ChatPage() {
         }
 
         const mapped = data.map(mapApiMessage).filter(Boolean) as ChatMessage[]
+        setHasMoreHistory(data.length === CHAT_PAGE_SIZE)
         setMessages(mapped.length > 0 ? mapped : [createIntroMessage(lang)])
       } catch {
         if (active) {
@@ -1532,9 +1582,20 @@ export default function ChatPage() {
 
       <div
         ref={listRef}
+        onScroll={handleListScroll}
         className={cn("flex-1 overflow-y-auto px-4 py-6", pageBg)}
       >
         <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col gap-4 overflow-visible">
+        {loadingHistory && (
+          <div className="flex justify-center py-2">
+            <Loader2 size={16} className="animate-spin text-[var(--muted)]" />
+          </div>
+        )}
+        {!hasMoreHistory && messages.length > 0 && (
+          <p className="py-1 text-center text-[0.6875rem] font-medium text-[var(--muted)]">
+            {lang === "EN" ? "Beginning of conversation" : "Permulaan perbualan"}
+          </p>
+        )}
         {messages.map((msg, index) => {
           const isUser = msg.role === "user"
           // WhatsApp-style grouping: only label the first bot message in a run, so
@@ -1570,7 +1631,7 @@ export default function ChatPage() {
                         alt={msg.fileName || "attachment"}
                         className="h-auto w-fit max-w-full overflow-hidden rounded-xl"
                         imgClassName="max-h-72 w-auto max-w-full rounded-xl object-contain"
-                        loading="eager"
+                        loading="lazy"
                       />
                     </button>
                   )}
@@ -1617,7 +1678,7 @@ export default function ChatPage() {
                         alt={msg.fileName || "attachment"}
                         className="h-auto w-fit max-w-full overflow-hidden rounded-xl"
                         imgClassName="max-h-72 w-auto max-w-full rounded-xl object-contain"
-                        loading="eager"
+                        loading="lazy"
                       />
                     </button>
                   )}

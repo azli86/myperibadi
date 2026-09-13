@@ -13042,6 +13042,8 @@ async def send_web_chat_message(
 @app.get("/chat/messages", response_model=List[schemas.ChatMessageResponse])
 async def get_web_chat_messages(
     request: Request,
+    limit: int | None = Query(default=None, ge=1, le=200),
+    before_id: int | None = Query(default=None, ge=1),
     current_user: models.User = Depends(get_current_user),
     db: AsyncSession = Depends(database.get_db),
 ):
@@ -13050,6 +13052,8 @@ async def get_web_chat_messages(
         current_user=current_user,
         db=db,
         serialize_chat_message=_serialize_chat_message,
+        limit=limit,
+        before_id=before_id,
     )
 
 @app.get("/removed_business/inbox/threads", response_model=list[schemas.RemovedBusinessInboxThreadResponse])
