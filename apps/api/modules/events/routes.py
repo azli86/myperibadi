@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import database
 import models
 from modules.events import queries, service
-from modules.events.schemas import EventCreate, EventUpdate
+from modules.events.schemas import EventCreate, EventTransactionToggle, EventUpdate
 
 
 def create_events_router(*, get_current_user: Callable[..., Any]) -> APIRouter:
@@ -22,8 +22,8 @@ def create_events_router(*, get_current_user: Callable[..., Any]) -> APIRouter:
         db: AsyncSession = Depends(database.get_db),
         current_user: models.User = Depends(get_current_user),
     ):
-        rows = await queries.list_events(db, user_id=current_user.id, search=search)
-        return [service.serialize_event(r) for r in rows]
+        rows = await service.list_events_with_spend(db, user_id=current_user.id, search=search)
+        return rows
 
     @router.post("")
     async def create_event(
@@ -41,7 +41,40 @@ def create_events_router(*, get_current_user: Callable[..., Any]) -> APIRouter:
         current_user: models.User = Depends(get_current_user),
     ):
         row = await queries.get_event_or_404(db, event_id=event_id, user_id=current_user.id)
-        return service.serialize_event(row)
+        totals = await queries.event_spend_totals(db, events=[row])
+        counts = await queries.event_transaction_counts(db, events=[row])
+        return service.serialize_event(
+            row,
+            spent=totals.get(int(row.id), 0.0),
+            transaction_count=counts.get(int(row.id), 0),
+        )
+
+    @router.get("/{event_id}/transactions")
+    async def list_event_transactions(
+        event_id: int,
+        db: AsyncSession = Depends(database.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        return await service.list_event_transactions(
+            db, current_user=current_user, event_id=event_id
+        )
+
+    @router.post("/{event_id}/transactions/{transaction_id}")
+    async def toggle_event_transaction(
+        event_id: int,
+        transaction_id: int,
+        payload: EventTransactionToggle,
+        db: AsyncSession = Depends(database.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        await service.toggle_event_transaction(
+            db,
+            current_user=current_user,
+            event_id=event_id,
+            transaction_id=transaction_id,
+            included=payload.included,
+        )
+        return {"ok": True}
 
     @router.patch("/{event_id}")
     async def update_event(

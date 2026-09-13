@@ -1313,6 +1313,27 @@ class Event(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class EventTransactionExclusion(Base):
+    """A transaction the user explicitly detached from an event.
+
+    Event membership is derived at read time (date window + optional wallet), not
+    stored per transaction, so editing an event's dates is instantly reflected and
+    every transaction-creation path is covered without touching each of them.
+    This table only records the exceptions the user opts out of.
+    """
+
+    __tablename__ = "event_transaction_exclusions"
+    __table_args__ = (
+        Index("ix_event_excl_event_txn", "event_id", "transaction_id", unique=True),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    event_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("events.id", ondelete="CASCADE"), nullable=False, index=True)
+    transaction_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("transactions.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class SplitBill(Base):
     __tablename__ = "split_bills"
 

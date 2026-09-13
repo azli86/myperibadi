@@ -35,7 +35,11 @@ import {
   MobilePageHeader,
 } from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
-import { MoneyAmount } from "@/components/ui/MoneyAmount"
+import { MoneyAmount, formatMoneyValue, formatCurrencyLabel } from "@/components/ui/MoneyAmount"
+
+/** "RM1,234.00" — compact inline label for balances. */
+const moneyLabel = (value: number, currency?: string | null) =>
+  `${formatCurrencyLabel(currency)}${formatMoneyValue(value)}`
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 import CurrencySelect from "@/components/ui/CurrencySelect"
 import { CATEGORY_ICON_OPTIONS, CategoryIconGlyph } from "@/lib/category-icons"
@@ -55,8 +59,23 @@ type EventItem = {
   status: string
   has_image: boolean
   image_url?: string | null
+  /** Derived server-side from the date window (+ wallet), not stored. */
+  spent?: number
+  transaction_count?: number
   created_at: string
   updated_at: string
+}
+
+type EventTransaction = {
+  id: number
+  reference_id?: string | null
+  type: string
+  txn_date?: string | null
+  vendor_or_source: string
+  amount: number
+  currency: string
+  wallet_id?: number | null
+  wallet_name?: string | null
 }
 
 type WalletItem = {
@@ -107,6 +126,13 @@ function daysUntil(value?: string | null): number | null {
   return Math.round((end.getTime() - t.getTime()) / 86400000)
 }
 
+/** Fraction of the event budget used, for the progress bar. */
+function spendRatio(ev: { budget?: number | null; spent?: number }): number {
+  const budget = Number(ev.budget || 0)
+  if (budget <= 0) return 0
+  return Math.max(0, Number(ev.spent || 0) / budget)
+}
+
 export default function EventPage() {
   const params = useParams()
   const sessionId = (params?.sessionId as string) || ""
@@ -128,6 +154,10 @@ export default function EventPage() {
   const [walletOpen, setWalletOpen] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [filterTab, setFilterTab] = useState<FilterTab>("all")
+  const [txnEvent, setTxnEvent] = useState<EventItem | null>(null)
+  const [txnList, setTxnList] = useState<EventTransaction[]>([])
+  const [txnLoading, setTxnLoading] = useState(false)
+  const [txnBusyId, setTxnBusyId] = useState<number | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const showDataSkeleton = useDelayedSkeleton(loading && !hasLoaded)
 
@@ -275,8 +305,76 @@ export default function EventPage() {
     }
   }
 
-  const handleDeleteEvent = useCallback(
+  const loadEventTransactions = useCallback(
+    async (ev: EventItem) => {
+      setTxnLoading(true)
+      try {
+        const token = getAccessToken()
+        const res = await fetch(`/api/events/${ev.id}/transactions`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          cache: "no-store",
+        })
+        if (!res.ok) throw new Error(tr("Gagal muat transaksi.", "Failed to load transactions."))
+        const data = await res.json()
+        setTxnList(Array.isArray(data) ? data : [])
+      } catch (err) {
+        setTxnList([])
+        showAlert(
+          tr("Gagal muat", "Load failed"),
+          err instanceof Error ? err.message : tr("Gagal muat transaksi.", "Failed to load transactions."),
+          "error"
+        )
+      } finally {
+        setTxnLoading(false)
+      }
+    },
+    [tr, showAlert]
+  )
+
+  const openEventTransactions = useCallback(
     (ev: EventItem) => {
+      setTxnEvent(ev)
+      setTxnList([])
+      void loadEventTransactions(ev)
+    },
+    [loadEventTransactions]
+  )
+
+  // Detach or re-attach one transaction, then refresh so the card total and the
+  // list can never disagree with the server.
+  const handleToggleEventTransaction = useCallback(
+    async (txnId: number, included: boolean) => {
+      if (!txnEvent) return
+      setTxnBusyId(txnId)
+      try {
+        const token = getAccessToken()
+        const res = await fetch(`/api/events/${txnEvent.id}/transactions/${txnId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ included }),
+        })
+        if (!res.ok) {
+          const payload = (await res.json().catch(() => null)) as { detail?: string } | null
+          throw new Error(payload?.detail || tr("Gagal kemas kini.", "Failed to update."))
+        }
+        await Promise.all([loadEventTransactions(txnEvent), loadEvents()])
+      } catch (err) {
+        showAlert(
+          tr("Gagal kemas kini", "Update failed"),
+          err instanceof Error ? err.message : tr("Gagal kemas kini transaksi.", "Failed to update transaction."),
+          "error"
+        )
+      } finally {
+        setTxnBusyId(null)
+      }
+    },
+    [txnEvent, loadEventTransactions, loadEvents, tr, showAlert]
+  )
+
+  const handleDeleteEvent = useCallback(    (ev: EventItem) => {
       showConfirm(tr("Padam acara?", "Delete event?"), tr(`Padam ${ev.name}?`, `Delete ${ev.name}?`), async () => {
         setSaving(true)
         try {
@@ -469,7 +567,12 @@ export default function EventPage() {
                     <WalletIcon size={10} />
                     {walletName(ev.wallet_id)}
                   </span>
-                ) : null}
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[0.6rem] font-bold text-[var(--muted)]">
+                    <WalletIcon size={10} />
+                    {tr("Semua Wallet", "All Wallets")}
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={(e) => {
@@ -482,6 +585,53 @@ export default function EventPage() {
                   <Trash2 size={15} />
                 </button>
               </div>
+            </div>
+
+            {/* Spending derived from the date window: always in sync with edits. */}
+            <div className="mt-3 border-t border-[var(--border)]/60 pt-2.5">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  openEventTransactions(ev)
+                }}
+                className="flex w-full items-center justify-between gap-2 rounded-lg text-left transition hover:opacity-80 active:scale-[0.99]"
+              >
+                <span className="text-[0.625rem] font-bold text-[var(--muted)] uppercase tracking-wider">
+                  {tr("Transaksi", "Transactions")}
+                </span>
+                <span className="flex items-baseline gap-1">
+                  <MoneyAmount value={Number(ev.spent || 0)} currency={ev.currency} size="sm" />
+                  <span className="text-[0.6875rem] font-bold text-[var(--muted)]">
+                    / {ev.transaction_count || 0} {tr("rekod", "records")}
+                  </span>
+                  <ChevronRight size={13} className="text-[var(--muted)]" />
+                </span>
+              </button>
+              {ev.budget != null && Number(ev.budget) > 0 ? (
+                <>
+                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-tint)]">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-[width]",
+                        spendRatio(ev) >= 1 ? "bg-[var(--expense)]" : spendRatio(ev) >= 0.8 ? "bg-amber-500" : "bg-[var(--income)]"
+                      )}
+                      style={{ width: `${Math.min(100, spendRatio(ev) * 100)}%` }}
+                    />
+                  </div>
+                  <p className="mt-1 text-[0.6875rem] font-semibold text-[var(--muted)]">
+                    {Number(ev.budget) - Number(ev.spent || 0) >= 0
+                      ? tr(
+                          `Baki ${moneyLabel(Number(ev.budget) - Number(ev.spent || 0), ev.currency)}`,
+                          `${moneyLabel(Number(ev.budget) - Number(ev.spent || 0), ev.currency)} left`
+                        )
+                      : tr(
+                          `Lebih ${moneyLabel(Number(ev.spent || 0) - Number(ev.budget), ev.currency)}`,
+                          `Over by ${moneyLabel(Number(ev.spent || 0) - Number(ev.budget), ev.currency)}`
+                        )}
+                  </p>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
@@ -822,7 +972,7 @@ export default function EventPage() {
                             ) : (
                               <span className="flex items-center gap-2 text-[var(--muted)]">
                                 <WalletIcon size={14} />
-                                <span>{tr("Pilih wallet (opsyenal)", "Select wallet (optional)")}</span>
+                                <span>{tr("Klik untuk pilih wallet", "Tap to pick a wallet")}</span>
                               </span>
                             )}
                             <ChevronDown size={15} className={cn("shrink-0 text-[var(--muted)] transition-transform", walletOpen && "rotate-180")} />
@@ -840,9 +990,15 @@ export default function EventPage() {
                                   !form.wallet_id ? "bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold" : "text-[var(--muted)] hover:bg-[var(--surface-tint)]"
                                 )}
                               >
-                                <span>{tr("Tiada wallet dikaitkan", "No wallet linked")}</span>
+                                <span>{tr("Semua Wallet", "All Wallets")}</span>
                                 {!form.wallet_id && <Check size={14} className="text-emerald-500" />}
                               </button>
+                              <p className="px-3 pb-1 text-[0.625rem] font-medium text-[var(--muted)]">
+                                {tr(
+                                  "Semua Wallet = kira semua transaksi dalam tarikh acara.",
+                                  "All Wallets = count every transaction in the event dates."
+                                )}
+                              </p>
                               {wallets.map((w) => {
                                 const selected = form.wallet_id === String(w.id)
                                 return (
@@ -915,6 +1071,105 @@ export default function EventPage() {
               </div>
             </div>,
             document.body,
+          )
+        : null}
+
+      {txnEvent && mounted
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[70] flex items-end justify-center bg-black/45 backdrop-blur-[2px] md:items-center"
+              onClick={() => setTxnEvent(null)}
+            >
+              <div
+                className="flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-3xl border border-[var(--border)] bg-[var(--card)] shadow-2xl md:max-w-lg md:rounded-3xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <AppSheetHeader
+                  title={tr("Transaksi Acara", "Event Transactions")}
+                  subtitle={txnEvent.name}
+                  onClose={() => setTxnEvent(null)}
+                />
+
+                <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-2.5">
+                  <span className="text-[0.625rem] font-bold text-[var(--muted)] uppercase tracking-wider">
+                    {txnEvent.budget != null ? tr("Terpakai / Bajet", "Spent / Budget") : tr("Jumlah terpakai", "Total spent")}
+                  </span>
+                  <span className="flex items-baseline gap-1">
+                    <MoneyAmount value={Number(txnEvent.spent || 0)} currency={txnEvent.currency} size="sm" />
+                    {txnEvent.budget != null ? (
+                      <span className="text-[0.6875rem] font-bold text-[var(--muted)]">
+                        / {moneyLabel(Number(txnEvent.budget), txnEvent.currency)}
+                      </span>
+                    ) : null}
+                  </span>
+                </div>
+
+                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+                  {txnLoading ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 size={18} className="animate-spin text-[var(--muted)]" />
+                    </div>
+                  ) : txnList.length === 0 ? (
+                    <p className="py-8 text-center text-xs font-medium text-[var(--muted)]">
+                      {txnEvent.start_date && txnEvent.end_date
+                        ? tr(
+                            "Tiada transaksi dalam tempoh acara ini.",
+                            "No transactions in this event's date range."
+                          )
+                        : tr("Tetapkan tarikh mula dan tamat dahulu.", "Set the start and end dates first.")}
+                    </p>
+                  ) : (
+                    <ul className="flex flex-col divide-y divide-[var(--border)]/60">
+                      {txnList.map((txn) => {
+                        const isIncome = txn.type === "income"
+                        return (
+                          <li key={txn.id} className="flex items-center gap-3 py-2.5">
+                            <div className="flex min-w-0 flex-1 flex-col">
+                              <p className="truncate text-xs font-bold text-[var(--text)]">{txn.vendor_or_source}</p>
+                              <p className="truncate text-[0.6875rem] font-medium text-[var(--muted)]">
+                                {formatDateShort(txn.txn_date)}
+                                {txn.wallet_name ? ` · ${txn.wallet_name}` : ""}
+                              </p>
+                            </div>
+                            <span
+                              className={cn(
+                                "shrink-0 text-xs font-black tabular-nums",
+                                isIncome ? "text-[var(--income)]" : "text-[var(--text)]"
+                              )}
+                            >
+                              {isIncome ? "+" : "−"}
+                              {moneyLabel(txn.amount, txn.currency)}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={txnBusyId === txn.id}
+                              onClick={() => void handleToggleEventTransaction(txn.id, false)}
+                              className="shrink-0 rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-rose-500/10 hover:text-rose-500 active:scale-95 disabled:opacity-40"
+                              aria-label={tr("Keluarkan dari acara", "Remove from event")}
+                              title={tr("Keluarkan dari acara", "Remove from event")}
+                            >
+                              {txnBusyId === txn.id ? (
+                                <Loader2 size={14} className="animate-spin" />
+                              ) : (
+                                <X size={14} />
+                              )}
+                            </button>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </div>
+
+                <p className="border-t border-[var(--border)] px-4 py-3 text-[0.6875rem] font-medium text-[var(--muted)]">
+                  {tr(
+                    "Transaksi dalam tempoh tarikh acara dimasukkan secara automatik. Tekan X untuk keluarkan yang tidak berkaitan.",
+                    "Transactions within the event's dates are included automatically. Press X to remove unrelated ones."
+                  )}
+                </p>
+              </div>
+            </div>,
+            document.body
           )
         : null}
 

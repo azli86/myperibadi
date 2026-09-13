@@ -49,7 +49,7 @@ def compute_event_status(row: models.Event, *, today: Optional[date] = None) -> 
     return "upcoming"
 
 
-def serialize_event(row: models.Event) -> dict:
+def serialize_event(row: models.Event, *, spent: float = 0.0, transaction_count: int = 0) -> dict:
     return {
         "id": int(row.id),
         "name": row.name,
@@ -63,9 +63,67 @@ def serialize_event(row: models.Event) -> dict:
         "status": compute_event_status(row),
         "has_image": bool(row.image_object_key),
         "image_url": storage_service.public_cdn_url(row.image_object_key),
+        "spent": float(spent or 0),
+        "transaction_count": int(transaction_count or 0),
         "created_at": row.created_at,
         "updated_at": row.updated_at,
     }
+
+async def list_events_with_spend(
+    db: AsyncSession,
+    *,
+    user_id: str,
+    search: Optional[str] = None,
+) -> list[dict]:
+    """Events plus their derived spend, so the cards can show progress."""
+    rows = await queries.list_events(db, user_id=user_id, search=search)
+    if not rows:
+        return []
+    totals = await queries.event_spend_totals(db, events=list(rows))
+    counts = await queries.event_transaction_counts(db, events=list(rows))
+    return [
+        serialize_event(row, spent=totals.get(int(row.id), 0.0), transaction_count=counts.get(int(row.id), 0))
+        for row in rows
+    ]
+
+async def list_event_transactions(
+    db: AsyncSession,
+    *,
+    current_user: models.User,
+    event_id: int,
+) -> list[dict]:
+    event = await queries.get_event_or_404(db, event_id=event_id, user_id=current_user.id)
+    rows = await queries.list_event_transactions(db, event=event)
+    wallet_names = await queries.wallet_name_map(
+        db, wallet_ids=[int(r.wallet_id) for r in rows if r.wallet_id is not None]
+    )
+    return [
+        {
+            "id": int(row.id),
+            "reference_id": row.reference_id,
+            "type": row.type,
+            "txn_date": _fmt_date(row.txn_date),
+            "vendor_or_source": row.vendor_or_source,
+            "amount": _num(row.amount) or 0.0,
+            "currency": event.currency or "RM",
+            "wallet_id": int(row.wallet_id) if row.wallet_id else None,
+            "wallet_name": wallet_names.get(int(row.wallet_id)) if row.wallet_id else None,
+        }
+        for row in rows
+    ]
+
+async def toggle_event_transaction(
+    db: AsyncSession,
+    *,
+    current_user: models.User,
+    event_id: int,
+    transaction_id: int,
+    included: bool,
+) -> None:
+    event = await queries.get_event_or_404(db, event_id=event_id, user_id=current_user.id)
+    await queries.set_transaction_in_event(
+        db, event=event, transaction_id=transaction_id, included=included
+    )
 
 
 async def create_event(
