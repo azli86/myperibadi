@@ -2669,7 +2669,7 @@ export default function Dashboard() {
                 <p className="mt-0.5 text-xs font-semibold text-[var(--muted)]">7 {lang === "EN" ? "months" : "bulan"}</p>
                 <ChartContainer config={{ expense: { label: t.expense, color: "var(--text)" } }} className="mt-3 h-10 w-full">
                   <AreaChart accessibilityLayer data={monthlyAreaChartData} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
-                    <Area dataKey="expense" type="natural" fill="var(--color-expense)" fillOpacity={0.16} stroke="var(--color-expense)" strokeWidth={2.5} dot={false} activeDot={false} />
+                    <Area isAnimationActive={false} dataKey="expense" type="natural" fill="var(--color-expense)" fillOpacity={0.16} stroke="var(--color-expense)" strokeWidth={2.5} dot={false} activeDot={false} />
                   </AreaChart>
                 </ChartContainer>
               </button>
@@ -2682,7 +2682,7 @@ export default function Dashboard() {
                 <p className="mt-0.5 text-xs font-semibold text-[var(--muted)]">7 {lang === "EN" ? "days" : "hari"}</p>
                 <ChartContainer config={{ expense: { label: t.expense, color: "var(--muted)" } }} className="mt-3 h-10 w-full">
                   <AreaChart accessibilityLayer data={dailyAreaChartData} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
-                    <Area dataKey="expense" type="natural" fill="var(--color-expense)" fillOpacity={0.16} stroke="var(--color-expense)" strokeWidth={2.5} dot={false} activeDot={false} />
+                    <Area isAnimationActive={false} dataKey="expense" type="natural" fill="var(--color-expense)" fillOpacity={0.16} stroke="var(--color-expense)" strokeWidth={2.5} dot={false} activeDot={false} />
                   </AreaChart>
                 </ChartContainer>
               </button>
@@ -3092,7 +3092,7 @@ export default function Dashboard() {
                     <AreaChart accessibilityLayer data={monthlyAreaChartData} margin={{ left: 0, right: 0, top: 6, bottom: 0 }}>
                       <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={6} hide />
-                      <Area dataKey="expense" type="natural" fill="var(--color-expense)" fillOpacity={0.16} stroke="var(--color-expense)" strokeWidth={2.5} dot={false} activeDot={false} />
+                      <Area isAnimationActive={false} dataKey="expense" type="natural" fill="var(--color-expense)" fillOpacity={0.16} stroke="var(--color-expense)" strokeWidth={2.5} dot={false} activeDot={false} />
                     </AreaChart>
                   </ChartContainer>
                 </button>
@@ -3107,7 +3107,7 @@ export default function Dashboard() {
                     <AreaChart accessibilityLayer data={dailyAreaChartData} margin={{ left: 0, right: 0, top: 6, bottom: 0 }}>
                       <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={6} hide />
-                      <Area dataKey="expense" type="natural" fill="var(--color-expense)" fillOpacity={0.16} stroke="var(--color-expense)" strokeWidth={2.5} dot={false} activeDot={false} />
+                      <Area isAnimationActive={false} dataKey="expense" type="natural" fill="var(--color-expense)" fillOpacity={0.16} stroke="var(--color-expense)" strokeWidth={2.5} dot={false} activeDot={false} />
                     </AreaChart>
                   </ChartContainer>
                 </button>
@@ -3126,7 +3126,7 @@ export default function Dashboard() {
                     <AreaChart accessibilityLayer data={monthlyAreaChartData} margin={{ left: 0, right: 0, top: 6, bottom: 0 }}>
                       <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={6} hide />
-                      <Area dataKey="expense" type="natural" fill="var(--color-expense)" fillOpacity={0.16} stroke="var(--color-expense)" strokeWidth={2.5} dot={false} activeDot={false} />
+                      <Area isAnimationActive={false} dataKey="expense" type="natural" fill="var(--color-expense)" fillOpacity={0.16} stroke="var(--color-expense)" strokeWidth={2.5} dot={false} activeDot={false} />
                     </AreaChart>
                   </ChartContainer>
                 </button>
@@ -3372,6 +3372,7 @@ export default function Dashboard() {
                           key="modal-monthly-full"
                           data={fullMonthlyExpenseData}
                           options={{
+                            animation: false,
                             maintainAspectRatio: false,
                             responsive: true,
                             interaction: { mode: "index", intersect: false },
@@ -3418,6 +3419,7 @@ export default function Dashboard() {
                             key="modal-daily-full"
                             data={fullDailyExpenseData}
                             options={{
+                              animation: false,
                               maintainAspectRatio: false,
                               responsive: true,
                               interaction: { mode: "index", intersect: false },

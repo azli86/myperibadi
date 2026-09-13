@@ -59,6 +59,10 @@ export function CachedVehicleImage({
           alt={alt}
           showLoader={showLoader}
           loading="lazy"
+          // The proxy is the only source now (the CDN 403s these objects), so a failed
+          // proxy fetch means the image is genuinely missing. Retrying four times just
+          // parked the widget on a spinner for ~3s.
+          maxRetries={1}
           className={naturalHeight ? "h-auto w-full" : "h-full w-full"}
           imgClassName={cn(
             naturalHeight

@@ -73,7 +73,11 @@ def serialize_vehicle(v: models.Vehicle) -> dict:
         "purchase_price": _num(v.purchase_price),
         "current_odometer": _num(v.current_odometer),
         "has_image": bool(v.image_object_key),
-        "image_url": storage_service.public_cdn_url(v.image_object_key),
+        # No image_url: the mixed CDN returns 403 for these objects (7/7 objects
+        # checked), so the client was retrying a dead URL before falling back to the
+        # authenticated proxy. Omitting it sends the client straight to the proxy,
+        # which is the path that actually works and is already blob-cached locally.
+        "image_url": None,
         "status": v.status,
         "notes": v.notes,
         "created_at": v.created_at,
