@@ -61,6 +61,8 @@ class EventTransactionResponse(BaseModel):
     currency: str = "RM"
     wallet_id: Optional[int] = None
     wallet_name: Optional[str] = None
+    # Whether this transaction counts towards the event budget.
+    included: bool = True
 
 class EventTransactionToggle(BaseModel):
     included: bool

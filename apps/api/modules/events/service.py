@@ -92,24 +92,30 @@ async def list_event_transactions(
     current_user: models.User,
     event_id: int,
 ) -> list[dict]:
+    """Every transaction in the event's date window.
+
+    Unticking never removes a row from this list, it only clears `included`, so a
+    mistap stays recoverable.
+    """
     event = await queries.get_event_or_404(db, event_id=event_id, user_id=current_user.id)
-    rows = await queries.list_event_transactions(db, event=event)
+    rows = await queries.list_event_window_transactions(db, event=event)
     wallet_names = await queries.wallet_name_map(
-        db, wallet_ids=[int(r.wallet_id) for r in rows if r.wallet_id is not None]
+        db, wallet_ids=[int(t.wallet_id) for t, _ in rows if t.wallet_id is not None]
     )
     return [
         {
-            "id": int(row.id),
-            "reference_id": row.reference_id,
-            "type": row.type,
-            "txn_date": _fmt_date(row.txn_date),
-            "vendor_or_source": row.vendor_or_source,
-            "amount": _num(row.amount) or 0.0,
+            "id": int(txn.id),
+            "reference_id": txn.reference_id,
+            "type": txn.type,
+            "txn_date": _fmt_date(txn.txn_date),
+            "vendor_or_source": txn.vendor_or_source,
+            "amount": _num(txn.amount) or 0.0,
             "currency": event.currency or "RM",
-            "wallet_id": int(row.wallet_id) if row.wallet_id else None,
-            "wallet_name": wallet_names.get(int(row.wallet_id)) if row.wallet_id else None,
+            "wallet_id": int(txn.wallet_id) if txn.wallet_id else None,
+            "wallet_name": wallet_names.get(int(txn.wallet_id)) if txn.wallet_id else None,
+            "included": included,
         }
-        for row in rows
+        for txn, included in rows
     ]
 
 async def toggle_event_transaction(

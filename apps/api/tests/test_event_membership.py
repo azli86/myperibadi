@@ -117,12 +117,31 @@ def test_exclusion_is_checked_before_membership():
     )
 
 
+def test_window_list_keeps_excluded_rows():
+    """The event page list must never drop a row just because it was unticked.
+
+    list_event_window_transactions selects by date/wallet and reports inclusion as
+    a flag, instead of filtering excluded rows out. If this ever regresses to an
+    inner join on the exclusions table, a mistap becomes unrecoverable because the
+    row to tick back disappears.
+    """
+    import inspect
+
+    source = inspect.getsource(queries.list_event_window_transactions)
+    assert "notin_(excluded_ids)" in source, "inclusion must be a flag, not a filter"
+    assert "txn_date >= event.start_date" in source
+    assert "txn_date <= event.end_date" in source
+    # No join against the exclusions table — that is what would remove rows.
+    assert "join(" not in source, "window list must not join (and so drop) exclusions"
+
+
 def main():
     test_predicate_shape()
     test_trip_window()
     test_wallet_scope_is_optional()
     test_overlapping_events_both_claim()
     test_exclusion_is_checked_before_membership()
+    test_window_list_keeps_excluded_rows()
     print("event membership OK")
 
 

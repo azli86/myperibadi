@@ -110,21 +110,38 @@ def event_membership_condition(event: models.Event) -> Optional[object]:
         conditions.append(models.Transaction.wallet_id == event.wallet_id)
     return conditions
 
-async def list_event_transactions(
+async def list_event_window_transactions(
     db: AsyncSession,
     *,
     event: models.Event,
-) -> list[models.Transaction]:
-    conditions = event_membership_condition(event)
-    if conditions is None:
+) -> list[tuple[models.Transaction, bool]]:
+    """Every transaction inside the event's date window, with its inclusion flag.
+
+    The event page shows one list that never loses rows: unticking a transaction
+    only stops it counting towards the budget, it stays visible so it can be
+    ticked back on. Returns (transaction, included) pairs.
+    """
+    if event.start_date is None or event.end_date is None:
         return []
-    result = await db.execute(
-        select(models.Transaction).where(*conditions).order_by(
-            models.Transaction.txn_date.asc(),
-            models.Transaction.id.asc(),
-        )
+    conditions = [
+        models.Transaction.user_id == event.user_id,
+        models.Transaction.txn_date >= event.start_date,
+        models.Transaction.txn_date <= event.end_date,
+    ]
+    if event.wallet_id is not None:
+        conditions.append(models.Transaction.wallet_id == event.wallet_id)
+
+    excluded_ids = (
+        select(models.EventTransactionExclusion.transaction_id)
+        .where(models.EventTransactionExclusion.event_id == event.id)
+        .scalar_subquery()
     )
-    return list(result.scalars().all())
+    result = await db.execute(
+        select(models.Transaction, models.Transaction.id.notin_(excluded_ids))
+        .where(*conditions)
+        .order_by(models.Transaction.txn_date.asc(), models.Transaction.id.asc())
+    )
+    return [(row[0], bool(row[1])) for row in result.all()]
 
 async def event_spend_totals(
     db: AsyncSession,
