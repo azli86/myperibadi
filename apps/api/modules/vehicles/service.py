@@ -1460,6 +1460,7 @@ async def upload_vehicle_image(
         storage.upload(object_key, payload, mime_type, filename=file.filename)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Upload failed: {exc}") from exc
+    _store_thumbnail(object_key, payload)
     old_key = vehicle.image_object_key
     vehicle.image_object_key = object_key
     att = models.VehicleAttachment(
@@ -1479,6 +1480,7 @@ async def upload_vehicle_image(
     if old_key and old_key != object_key:
         try:
             storage.delete(old_key)
+            storage.delete(storage.thumbnail_key(old_key))
         except Exception:
             pass
     return vehicle
@@ -1495,6 +1497,7 @@ async def delete_vehicle_image(
     if vehicle.image_object_key:
         try:
             storage.delete(vehicle.image_object_key)
+            storage.delete(storage.thumbnail_key(vehicle.image_object_key))
         except Exception:
             pass
         vehicle.image_object_key = None
@@ -1518,18 +1521,40 @@ async def get_attachment_bytes(
     return payload, content_type or att.mime_type or "application/octet-stream", att.file_name
 
 
+def _store_thumbnail(object_key: str, payload: bytes) -> None:
+    """Best-effort sibling thumbnail. Never fails the upload."""
+    thumb = storage.make_thumbnail(payload)
+    if not thumb:
+        return
+    try:
+        storage.upload(storage.thumbnail_key(object_key), thumb, "image/jpeg")
+    except Exception:
+        pass
+
+
 async def get_vehicle_image_bytes(
     db: AsyncSession,
     *,
     current_user: models.User,
     vehicle_id: int,
+    size: str = "full",
 ) -> tuple[bytes, str, str]:
     household_id = await queries.ensure_household(db, current_user)
     vehicle = await queries.get_vehicle_or_404(db, vehicle_id=vehicle_id, household_id=household_id)
     if not vehicle.image_object_key:
         raise HTTPException(status_code=404, detail="Vehicle image not found.")
+    key = vehicle.image_object_key
+    if size == "thumb":
+        # Serve the stored thumbnail when present, otherwise fall through to the
+        # original instead of 404ing — images uploaded before thumbnails existed
+        # must still display.
+        try:
+            payload, content_type = storage.download(storage.thumbnail_key(key))
+            return payload, content_type or "image/jpeg", "vehicle-image-thumb"
+        except Exception:
+            pass
     try:
-        payload, content_type = storage.download(vehicle.image_object_key)
+        payload, content_type = storage.download(key)
     except Exception as exc:
         raise HTTPException(status_code=404, detail=f"File not found: {exc}") from exc
     return payload, content_type or "image/jpeg", "vehicle-image"

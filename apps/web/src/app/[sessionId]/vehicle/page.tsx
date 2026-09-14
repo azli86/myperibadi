@@ -619,6 +619,7 @@ export default function VehicleListPage() {
                     <div className="relative w-[42%] min-w-[7.5rem] max-w-[11rem] self-stretch bg-[var(--surface-tint)]">
                       {v.has_image ? (
                         <CachedVehicleImage
+                          size="thumb"
                           vehicleId={v.id}
                           hasImage
                           imageUrl={v.image_url}
@@ -834,6 +835,7 @@ export default function VehicleListPage() {
                     >
                       <div className="relative h-36 w-full bg-[var(--surface-tint)]">
                         <CachedVehicleImage
+                          size="thumb"
                           vehicleId={v.id}
                           hasImage={Boolean(v.has_image)}
                           imageUrl={v.image_url}

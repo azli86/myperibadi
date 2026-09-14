@@ -169,16 +169,21 @@ def create_vehicles_router(*, get_current_user: Callable[..., Any]) -> APIRouter
     @router.get("/{vehicle_id}/image")
     async def get_image(
         vehicle_id: int,
+        size: str = Query(default="full"),
         db: AsyncSession = Depends(database.get_db),
         current_user: models.User = Depends(get_current_user),
     ):
         payload, content_type, file_name = await service.get_vehicle_image_bytes(
-            db, current_user=current_user, vehicle_id=vehicle_id
+            db, current_user=current_user, vehicle_id=vehicle_id, size=size
         )
         return Response(
             content=payload,
             media_type=content_type,
-            headers={"Content-Disposition": f'inline; filename="{file_name}"'},
+            headers={
+                "Content-Disposition": f'inline; filename="{file_name}"',
+                # The blob cache revalidates by URL, so let the browser keep it.
+                "Cache-Control": "private, max-age=604800",
+            },
         )
 
     @router.delete("/{vehicle_id}/image")

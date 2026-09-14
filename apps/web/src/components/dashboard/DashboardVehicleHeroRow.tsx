@@ -311,6 +311,7 @@ export function DashboardVehicleHeroRow({
             <div className="absolute inset-0">
               {primary.has_image ? (
                 <CachedVehicleImage
+                  size="thumb"
                   vehicleId={primary.id}
                   imageUrl={primary.image_url}
                   hasImage
@@ -408,6 +409,7 @@ export function DashboardVehicleHeroRow({
                         <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface-tint)]">
                           {v.has_image ? (
                             <CachedVehicleImage
+                              size="thumb"
                               vehicleId={v.id}
                   imageUrl={v.image_url}
                               hasImage
@@ -496,6 +498,7 @@ export function DashboardVehicleHeroRow({
           <div className="relative w-[42%] min-w-[7.5rem] max-w-[11rem] self-stretch bg-[var(--surface-tint)]">
             {v.has_image ? (
               <CachedVehicleImage
+                size="thumb"
                 vehicleId={v.id}
                   imageUrl={v.image_url}
                 hasImage
@@ -604,6 +607,7 @@ export function DashboardVehicleHeroRow({
       >
         <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/10 ring-1 ring-white/15">
           <CachedVehicleImage
+            size="thumb"
             vehicleId={primary.id}
                   imageUrl={primary.image_url}
             hasImage={Boolean(primary.has_image)}

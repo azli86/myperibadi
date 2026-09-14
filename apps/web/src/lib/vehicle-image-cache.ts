@@ -33,8 +33,10 @@ type CacheRecord = {
 
 const memoryUrls = new Map<string, string>()
 
-function cacheKey(vehicleId: number, bust = 0) {
-  return `${vehicleId}:${bust || 0}`
+function cacheKey(vehicleId: number, bust = 0, size: "full" | "thumb" = "full") {
+  // The size is part of the key: a cached thumbnail must never be served as the
+  // full image, or a detail view would suddenly get a 480px blur.
+  return `${vehicleId}:${bust || 0}:${size}`
 }
 
 function readMetaIndex(): Record<string, CacheMeta> {
@@ -185,11 +187,12 @@ export async function invalidateVehicleImageCache(vehicleId: number) {
  */
 export async function loadVehicleImageUrl(
   vehicleId: number,
-  options: { bust?: number; force?: boolean; ttlMs?: number } = {}
+  options: { bust?: number; force?: boolean; ttlMs?: number; size?: "full" | "thumb" } = {}
 ): Promise<string | null> {
   if (!vehicleId || typeof window === "undefined") return null
   const bust = Number(options.bust || 0)
-  const key = cacheKey(vehicleId, bust)
+  const size = options.size || "full"
+  const key = cacheKey(vehicleId, bust, size)
   const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS
 
   if (!options.force) {
@@ -199,7 +202,7 @@ export async function loadVehicleImageUrl(
     const meta = readMetaIndex()[String(vehicleId)]
     // If cached bust matches (or no bust requested), try IDB
     if (!meta || meta.bust === bust || bust === 0) {
-      const preferredKey = meta ? cacheKey(vehicleId, meta.bust) : key
+      const preferredKey = meta ? cacheKey(vehicleId, meta.bust, size) : key
       const cached = await idbGet(preferredKey)
       if (cached?.blob && Date.now() - cached.savedAt < ttlMs) {
         // If caller asked for a newer bust, ignore stale
@@ -214,7 +217,7 @@ export async function loadVehicleImageUrl(
     }
   }
 
-  const res = await fetch(`/api/vehicles/${vehicleId}/image`, {
+  const res = await fetch(`/api/vehicles/${vehicleId}/image?size=${size}`, {
     credentials: "include",
     cache: "no-store",
     headers: authHeaders(),

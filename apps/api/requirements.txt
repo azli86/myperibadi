@@ -17,3 +17,4 @@ pywebpush==2.0.3
 stripe>=15.0.0
 
 pdfplumber==0.11.10
+pillow==12.2.0

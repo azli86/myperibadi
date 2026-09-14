@@ -19,6 +19,11 @@ type CachedVehicleImageProps = {
   fallbackIconSize?: number
   naturalHeight?: boolean
   onNaturalSize?: (size: { width: number; height: number }) => void
+  /**
+   * `"thumb"` asks the API for the pre-shrunk copy. List surfaces should use it:
+   * originals run to several MB, thumbnails to tens of KB.
+   */
+  size?: "full" | "thumb"
 }
 
 /**
@@ -36,6 +41,7 @@ export function CachedVehicleImage({
   fallbackIconSize = 26,
   naturalHeight = false,
   onNaturalSize,
+  size = "full",
 }: CachedVehicleImageProps) {
   const directUrl = (imageUrl || "").trim()
   const useDirect = Boolean(directUrl)
@@ -55,7 +61,7 @@ export function CachedVehicleImage({
       >
         <SmartImage
           src={src}
-          fallbackSrc={`/api/vehicles/${vehicleId}/image`}
+          fallbackSrc={`/api/vehicles/${vehicleId}/image?size=${size}`}
           alt={alt}
           showLoader={showLoader}
           loading="lazy"
@@ -97,6 +103,7 @@ export function CachedVehicleImage({
       fallbackIconSize={fallbackIconSize}
       naturalHeight={naturalHeight}
       onNaturalSize={onNaturalSize}
+      size={size}
     />
   )
 }
@@ -113,6 +120,7 @@ function CachedVehicleImageProxy({
   fallbackIconSize = 26,
   naturalHeight = false,
   onNaturalSize,
+  size = "full",
 }: Omit<CachedVehicleImageProps, "imageUrl">) {
   const [src, setSrc] = useState<string | null>(null)
   const [loading, setLoading] = useState(Boolean(hasImage))
@@ -137,7 +145,7 @@ function CachedVehicleImageProxy({
 
     ;(async () => {
       try {
-        const url = await loadVehicleImageUrl(vehicleId, { bust })
+        const url = await loadVehicleImageUrl(vehicleId, { bust, size })
         if (cancelled) return
         if (!url) {
           setSrc(null)
@@ -158,7 +166,7 @@ function CachedVehicleImageProxy({
     return () => {
       cancelled = true
     }
-  }, [vehicleId, hasImage, bust])
+  }, [vehicleId, hasImage, bust, size])
 
   useEffect(() => {
     const img = imgRef.current

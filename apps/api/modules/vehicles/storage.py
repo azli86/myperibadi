@@ -2,11 +2,47 @@
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
 from typing import Optional, Tuple
 from uuid import uuid4
 
 import storage_service
+
+# Longest edge of the dashboard thumbnail. The dashboard renders these at ~200 CSS
+# px, so 480 covers a 2x phone screen without shipping the multi-megabyte original.
+THUMBNAIL_MAX_EDGE = 480
+THUMBNAIL_QUALITY = 78
+
+
+def thumbnail_key(object_key: str) -> str:
+    """`vehicles/.../x.jpg` -> `vehicles/.../x.jpg.t.jpg`.
+
+    Derived from the original key rather than generated fresh, so the thumbnail
+    always maps 1:1 to its original and is cleaned up with it.
+    """
+    return f"{object_key}.t.jpg"
+
+
+def make_thumbnail(payload: bytes) -> Optional[bytes]:
+    """Shrink an image for list display. Returns None when the image is unusable.
+
+    Failures are non-fatal: the upload keeps the original and the endpoint falls
+    back to serving the full image, so a thumbnail problem never blocks a vehicle
+    from having a picture.
+    """
+    try:
+        from PIL import Image, ImageOps
+        with Image.open(io.BytesIO(payload)) as img:
+            img = ImageOps.exif_transpose(img)
+            img.thumbnail((THUMBNAIL_MAX_EDGE, THUMBNAIL_MAX_EDGE), Image.LANCZOS)
+            if img.mode not in ("RGB", "L"):
+                img = img.convert("RGB")
+            out = io.BytesIO()
+            img.save(out, format="JPEG", quality=THUMBNAIL_QUALITY, optimize=True)
+            return out.getvalue()
+    except Exception:
+        return None
 
 
 def build_vehicle_object_key(
