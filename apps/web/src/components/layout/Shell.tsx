@@ -76,6 +76,7 @@ import {
   Globe,
   Palette,
   Images,
+  Wrench,
   Car,
   Users,
   Heart,
@@ -4136,7 +4137,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       </div>
                     </section>
 
-                    {/* ── SheetCard 2: Alatan & Peribadi (Personal & Tools) ── */}
+                    {/* ── SheetCard 2: Peribadi (Personal) ── */}
                     <section className={cn("rounded-3xl border border-[var(--border)] p-4 shadow-sm", "bg-[var(--card)]")}>
                       <div className="mb-3.5 flex items-center justify-between px-0.5">
                         <div className="flex items-center gap-2">
@@ -4204,7 +4205,20 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         })}
                       </div>
 
-                      <div className="mt-3.5 grid grid-cols-4 gap-x-2 gap-y-4 border-t border-[var(--border)] pt-3.5">
+                    </section>
+
+                    {/* ── SheetCard 2b: Alatan (Tools) — shortcuts, not records ── */}
+                    <section className={cn("rounded-3xl border border-[var(--border)] p-4 shadow-sm", "bg-[var(--card)]")}>
+                      <div className="mb-3.5 flex items-center gap-2 px-0.5">
+                        <div className="flex h-5 w-5 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] text-[var(--text)]">
+                          <Wrench size={12} strokeWidth={2.2} />
+                        </div>
+                        <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                          {lang === "BM" ? "Alatan" : "Tools"}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-x-2 gap-y-4">
                         {[
                           { name: lang === "BM" ? "Galeri" : "Gallery", href: `/${sessionId}/receipts`, icon: Images },
                           { name: lang === "BM" ? "Kalkulator" : "Calculator", action: "calculator", icon: CalculatorIcon },
