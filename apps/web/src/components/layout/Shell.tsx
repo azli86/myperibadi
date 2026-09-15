@@ -4070,7 +4070,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           </span>
                         </div>
                         <span className="rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--muted)]">
-                          9 {lang === "BM" ? "modul" : "modules"}
+                          8 {lang === "BM" ? "modul" : "modules"}
                         </span>
                       </div>
 
@@ -4160,7 +4160,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           { name: lang === "BM" ? "Acara" : "Events", href: `/${sessionId}/event`, icon: CalendarDays },
                           { name: lang === "BM" ? "Kesihatan" : "Health", href: `/${sessionId}/health`, icon: Heart },
                           { name: lang === "BM" ? "Lencana" : "Badges", href: `/${sessionId}/badges`, icon: Award },
-                          { name: lang === "BM" ? "Cukai" : "Income Tax", href: `/${sessionId}/tax`, icon: Landmark },
                         ].map((item) => {
                           const isCurrent = Boolean(item.href) && pathname === item.href;
                           return (

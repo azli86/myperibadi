@@ -23,6 +23,7 @@ SHELL = (
 ).read_text(encoding="utf-8")
 
 CARD = SHELL[SHELL.index("SheetCard 2:"):SHELL.index("SheetCard 3:")]
+FINANCE = SHELL[SHELL.index("SheetCard 1:"):SHELL.index("SheetCard 2:")]
 
 
 def test_modules_lead_and_utilities_follow_a_divider():
@@ -44,10 +45,12 @@ def test_it_is_one_card_with_one_header():
     assert CARD.count('lang === "BM" ? "Peribadi"') == 1
 
 
-def test_every_module_is_first_degree_unique():
+def test_no_module_is_listed_twice():
+    """Income Tax used to sit here and on the Finance card, so it had two doors."""
     hrefs = re.findall(r'\$\{sessionId\}/([a-z0-9-]+)', CARD)
     duplicates = {h for h in hrefs if hrefs.count(h) > 1}
     assert not duplicates, f"module listed twice: {duplicates}"
+    assert "tax" not in hrefs, "Income Tax belongs to the Finance card alone"
 
 
 def test_every_target_page_exists():
@@ -65,17 +68,22 @@ def test_no_menu_entries_were_invented():
         "event",
         "health",
         "badges",
-        "tax",
     }
     actual = set(re.findall(r'\$\{sessionId\}/([a-z0-9-]+)', CARD))
     assert actual == expected, f"menu set changed: added {actual - expected}, lost {expected - actual}"
+
+
+def test_tax_survives_on_the_finance_card():
+    # Dropping the duplicate must not drop the module itself.
+    assert "/tax`" in FINANCE, "Income Tax must still be reachable from Finance"
 
 
 if __name__ == "__main__":
     test_modules_lead_and_utilities_follow_a_divider()
     test_the_utilities_do_not_navigate_when_they_are_panels()
     test_it_is_one_card_with_one_header()
-    test_every_module_is_first_degree_unique()
+    test_no_module_is_listed_twice()
     test_every_target_page_exists()
+    test_tax_survives_on_the_finance_card()
     test_no_menu_entries_were_invented()
     print("sheet personal tools OK")
