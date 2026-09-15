@@ -760,16 +760,18 @@ export default function ChatPage() {
 
         const file = normalizeReceiptFile(new File([blob], fileName, { type: contentType }))
 
-        // Auto-send: shared screenshot goes straight into the conversation.
         void fetch(`/share-target-file/${encodeURIComponent(sharedToken)}`, { method: "DELETE" })
+
+        // Show the shared screenshot in the composer and wait for the user to send it.
+        // Auto-sending used to jump straight to OCR, so the image was never seen first —
+        // and a mis-share (wrong screenshot, or a share that carried unrelated text) was
+        // already scanned before it could be cancelled.
         window.setTimeout(() => {
-          void submitMessage(undefined, sharedText, file)
+          handlePickFile(file)
+          if (sharedText && !input.trim()) {
+            setInput(sharedText)
+          }
         }, 0)
-        showAlert(
-          lang === "EN" ? "Screenshot Sent" : "Screenshot Dihantar",
-          lang === "EN" ? "Screenshot is being processed in chat." : "Screenshot sedang diproses dalam chat.",
-          "success"
-        )
       } catch {
         if (cancelled) return
         setErrorText(lang === "EN" ? "Shared screenshot could not be opened." : "Screenshot yang dikongsi tidak dapat dibuka.")
@@ -1743,7 +1745,15 @@ export default function ChatPage() {
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-3">
         {selectedFile && (
           <div className={cn("chat-composer-surface flex items-center justify-between gap-3 rounded-2xl border border-white/[0.08] px-3 py-2.5", composerBg)}>
-            <div className="min-w-0">
+            {selectedPreviewUrl && selectedFile.type.startsWith("image/") ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={selectedPreviewUrl}
+                alt={selectedFile.name}
+                className="h-12 w-12 shrink-0 rounded-xl border border-white/[0.08] object-cover"
+              />
+            ) : null}
+            <div className="min-w-0 flex-1">
               <p className={cn("truncate text-sm font-semibold", titleText)}>{selectedFile.name}</p>
               <p className={cn("text-[0.6875rem]", subtleText)}>
                 {selectedFile.type || "unknown"} · {(selectedFile.size / 1024).toFixed(1)} KB
@@ -1752,6 +1762,7 @@ export default function ChatPage() {
             <button
               type="button"
               onClick={clearSelectedFile}
+              aria-label={lang === "EN" ? "Remove attachment" : "Buang lampiran"}
               className={cn("flex h-8 w-8 items-center justify-center rounded-xl transition-colors", mobileIconTile)}
             >
               <X size={14} />
