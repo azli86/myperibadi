@@ -4070,7 +4070,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           </span>
                         </div>
                         <span className="rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--muted)]">
-                          10 {lang === "BM" ? "modul" : "modules"}
+                          9 {lang === "BM" ? "modul" : "modules"}
                         </span>
                       </div>
 
@@ -4144,18 +4144,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                             <Sparkles size={12} strokeWidth={2.2} />
                           </div>
                           <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                            {lang === "BM" ? "Alatan & Peribadi" : "Personal & Tools"}
+                            {lang === "BM" ? "Peribadi" : "Personal"}
                           </span>
                         </div>
                         <span className="rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--muted)]">
-                          10 {lang === "BM" ? "modul" : "modules"}
+                          9 {lang === "BM" ? "modul" : "modules"}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-4 gap-x-2 gap-y-4">
                         {[
-                          { name: lang === "BM" ? "Galeri" : "Gallery", href: `/${sessionId}/receipts`, icon: Images },
-                          { name: lang === "BM" ? "Kalkulator" : "Calculator", action: "calculator", icon: CalculatorIcon },
                           { name: lang === "BM" ? "Kenderaan" : "Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
                           { name: lang === "BM" ? "Barang" : "Inventory", href: `/${sessionId}/inventory`, icon: Package },
                           { name: lang === "BM" ? "Waranti" : "Warranty", href: `/${sessionId}/warranty`, icon: Shield },
@@ -4163,6 +4161,54 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           { name: lang === "BM" ? "Kesihatan" : "Health", href: `/${sessionId}/health`, icon: Heart },
                           { name: lang === "BM" ? "Lencana" : "Badges", href: `/${sessionId}/badges`, icon: Award },
                           { name: lang === "BM" ? "Cukai" : "Income Tax", href: `/${sessionId}/tax`, icon: Landmark },
+                        ].map((item) => {
+                          const isCurrent = Boolean(item.href) && pathname === item.href;
+                          return (
+                            <button
+                              key={item.name}
+                              type="button"
+                              onClick={() => {
+                                if (isCurrent) {
+                                  requestMobileMenuClose();
+                                  return;
+                                }
+                                requestMobileMenuCloseThen(() => {
+                                  router.push(item.href!);
+                                });
+                              }}
+                              className="group relative flex min-w-0 flex-col items-center gap-1.5 text-center transition-all duration-200 active:scale-90"
+                            >
+                              <div
+                                className={cn(
+                                  "relative flex h-13 w-13 items-center justify-center rounded-[18px] border shadow-2xs transition-all duration-200 group-hover:scale-105",
+                                  isCurrent
+                                    ? "border-[var(--text)] bg-[var(--text)] text-[var(--bg)] shadow-sm ring-2 ring-[var(--text)]/20"
+                                    : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] group-hover:bg-[var(--surface-tint-strong)]"
+                                )}
+                              >
+                                <item.icon
+                                  size={22}
+                                  strokeWidth={1.9}
+                                  className="shrink-0 transition-transform group-hover:scale-110"
+                                />
+                              </div>
+                              <p
+                                className={cn(
+                                  "w-full line-clamp-2 px-0.5 text-[11px] font-bold leading-tight transition-colors",
+                                  isCurrent ? "text-[var(--text)] font-black" : "text-[var(--text)]"
+                                )}
+                              >
+                                {item.name}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="mt-3.5 grid grid-cols-4 gap-x-2 gap-y-4 border-t border-[var(--border)] pt-3.5">
+                        {[
+                          { name: lang === "BM" ? "Galeri" : "Gallery", href: `/${sessionId}/receipts`, icon: Images },
+                          { name: lang === "BM" ? "Kalkulator" : "Calculator", action: "calculator", icon: CalculatorIcon },
                         ].map((item) => {
                           const isCurrent = Boolean(item.href) && pathname === item.href;
                           return (

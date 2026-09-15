@@ -1,15 +1,15 @@
-"""Pin the Personal & Tools sheet card layout.
+"""Pin the Personal sheet card layout.
 
-The card used to mix two row shapes — two wide "feature" tiles for Gallery and Calculator,
-then a plain two-column list for everything else — and it listed Tax, which the Finance card
-already owns. The result was a card that read as unsorted, plus one module reachable from two
-places.
+The card was one flat four-by-four grid holding both data modules (Vehicle, Warranty,
+Events, ...) and the two utilities (Gallery, Calculator). Gallery and Calculator do not
+belong in that list: one opens a panel rather than navigating, and neither is a record the
+person tracks, so they read as two odd entries in an otherwise uniform row.
 
-It now uses the same four-column icon grid as the Finance card, one shape for every entry.
+The card keeps one header and one grid of modules; Gallery and Calculator sit below a
+divider at the bottom, still inside the same card. Nothing was added or removed.
 
 Run: cd apps/api && venv/bin/python -m tests.test_sheet_personal_tools
 """
-
 import re
 from pathlib import Path
 
@@ -22,25 +22,41 @@ SHELL = (
     / "Shell.tsx"
 ).read_text(encoding="utf-8")
 
-START = SHELL.index("SheetCard 2:")
-# The next card's comment closes this section.
-END = SHELL.index("SheetCard 3:")
-CARD = SHELL[START:END]
+CARD = SHELL[SHELL.index("SheetCard 2:"):SHELL.index("SheetCard 3:")]
 
 
-def test_uses_the_same_four_column_grid_as_finance():
-    assert "grid grid-cols-4" in CARD, "the card must match the Finance card's grid"
-    assert "grid grid-cols-2" not in CARD, "the old mixed two-column rows must be gone"
+def test_modules_lead_and_utilities_follow_a_divider():
+    divider = CARD.index("border-t border-[var(--border)]")
+    modules, utilities = CARD[:divider], CARD[divider:]
+    assert 'name: lang === "BM" ? "Galeri"' in utilities, "Gallery belongs under the divider"
+    assert "action: \"calculator\"" in utilities, "Calculator belongs under the divider"
+    assert "Galeri" not in modules and "Kalkulator" not in modules
 
 
-def test_the_wide_feature_tiles_are_gone():
-    # The old shape: a wide tile with a 10x10 icon box and a subtitle line under the name.
-    assert "h-10 w-10" not in CARD, "Gallery/Calculator wide tiles should be grid entries now"
-    assert "h-13 w-13" in CARD, "entries should use the shared icon tile size"
+def test_the_utilities_do_not_navigate_when_they_are_panels():
+    utilities = CARD[CARD.index("border-t border-[var(--border)]"):]
+    assert 'setShowCalculator(true)' in utilities
+    assert "requestMobileMenuClose()" in utilities, "the sheet has to close behind the panel"
+
+
+def test_it_is_one_card_with_one_header():
+    assert CARD.count("<section") == 1, "the card must not be split into a second section"
+    assert CARD.count('lang === "BM" ? "Peribadi"') == 1
+
+
+def test_every_module_is_first_degree_unique():
+    hrefs = re.findall(r'\$\{sessionId\}/([a-z0-9-]+)', CARD)
+    duplicates = {h for h in hrefs if hrefs.count(h) > 1}
+    assert not duplicates, f"module listed twice: {duplicates}"
+
+
+def test_every_target_page_exists():
+    root = Path(__file__).resolve().parents[2] / "web" / "src" / "app" / "[sessionId]"
+    missing = [h for h in re.findall(r'\$\{sessionId\}/([a-z0-9-]+)', CARD) if not (root / h).exists()]
+    assert not missing, f"card links to pages that do not exist: {missing}"
 
 
 def test_no_menu_entries_were_invented():
-    # Only the pages the card already linked to before the redesign may appear.
     expected = {
         "receipts",
         "vehicle",
@@ -55,21 +71,11 @@ def test_no_menu_entries_were_invented():
     assert actual == expected, f"menu set changed: added {actual - expected}, lost {expected - actual}"
 
 
-def test_every_target_page_exists():
-    root = Path(__file__).resolve().parents[2] / "web" / "src" / "app" / "[sessionId]"
-    hrefs = re.findall(r'\$\{sessionId\}/([a-z0-9-]+)', CARD)
-    assert hrefs, "expected route entries in the card"
-    missing = [h for h in hrefs if not (root / h).exists()]
-    assert not missing, f"card links to pages that do not exist: {missing}"
-def test_the_calculator_still_opens_instead_of_navigating():
-    assert 'action: "calculator"' in CARD
-    assert 'setShowCalculator(true)' in CARD
-
-
 if __name__ == "__main__":
-    test_uses_the_same_four_column_grid_as_finance()
-    test_the_wide_feature_tiles_are_gone()
-    test_no_menu_entries_were_invented()
+    test_modules_lead_and_utilities_follow_a_divider()
+    test_the_utilities_do_not_navigate_when_they_are_panels()
+    test_it_is_one_card_with_one_header()
+    test_every_module_is_first_degree_unique()
     test_every_target_page_exists()
-    test_the_calculator_still_opens_instead_of_navigating()
+    test_no_menu_entries_were_invented()
     print("sheet personal tools OK")
