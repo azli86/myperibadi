@@ -487,7 +487,7 @@ export default function TransactionsPage() {
  const [selectedWallet, setSelectedWallet] = useState("all")
  const [startDate, setStartDate] = useState("")
  const [endDate, setEndDate] = useState("")
- const [showDateFilterPopup, setShowDateFilterPopup] = useState(false)
+ const [showCalendar, setShowCalendar] = useState(false)
  const [filtersExpanded, setFiltersExpanded] = useState(false)
  const filtersSheetSwipe = useSwipeDownToClose(() => setFiltersExpanded(false))
  const [draftStartDate, setDraftStartDate] = useState("")
@@ -881,12 +881,16 @@ const currentCycleKeyStr = useMemo(
  }, [filteredTxns, hasActiveSearch])
 
  const openDateFilterPopup = () => {
+ if (showCalendar) {
+ setShowCalendar(false)
+ return
+ }
  setDraftStartDate(startDate)
  setDraftEndDate(endDate)
  const baseDateKey = startDate || endDate || `${selectedMonth || ""}-01`
  const baseDate = baseDateKey ? parseDateKey(baseDateKey) : null
  setCalendarViewMonth(startOfMonth(baseDate || new Date()))
- setShowDateFilterPopup(true)
+ setShowCalendar(true)
  }
 
  const applyDateFilter = () => {
@@ -899,7 +903,7 @@ const currentCycleKeyStr = useMemo(
  }
  setStartDate(nextStart)
  setEndDate(nextEnd)
- setShowDateFilterPopup(false)
+ setShowCalendar(false)
  }
 
  const clearDateFilter = () => {
@@ -907,7 +911,6 @@ const currentCycleKeyStr = useMemo(
  setDraftEndDate("")
  setStartDate("")
  setEndDate("")
- setShowDateFilterPopup(false)
  }
 
  const handleCalendarDaySelect = (dateKey: string) => {
@@ -1504,26 +1507,136 @@ const currentCycleKeyStr = useMemo(
  />
  </div>
 
- <div className="mt-3 flex items-center justify-between gap-2">
+  {/* Date range lives inside this sheet. It used to open a second popup, which people
+      did not notice had appeared, so the range they picked was never seen. */}
+ <div className="mt-3">
  <button
  type="button"
  aria-label={lang === "EN" ? "Date filters" : "Penapis tarikh"}
+ aria-expanded={showCalendar}
  onClick={openDateFilterPopup}
- className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] text-xs font-bold text-[var(--muted)] transition"
+ className={cn(
+ "flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border text-xs font-bold transition",
+ showCalendar || hasDateRangeFilter
+ ? "border-[var(--text)]/25 bg-[var(--surface-tint-strong)] text-[var(--text)]"
+ : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]"
+ )}
  >
  <SlidersHorizontal size={15} />
- {lang === "EN" ? "Date Range" : "Julat Tarikh"}
+ {hasDateRangeFilter
+ ? `${startDate || "—"} ${lang === "EN" ? "to" : "hingga"} ${endDate || "—"}`
+ : lang === "EN" ? "Date Range" : "Julat Tarikh"}
+ {showCalendar ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
  </button>
+ {showCalendar && (
+ <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--surface)]/80 p-3">
+ <div className="flex items-center justify-between gap-2">
+ <p className="text-sm font-bold text-[var(--text)]">
+ {lang === "EN" ? "Calendar Filter" : "Penapis Kalendar"}
+ </p>
+ <div className="flex items-center gap-1">
+ <button
+ type="button"
+ aria-label={lang === "EN" ? "Previous month" : "Bulan lepas"}
+ onClick={() => setCalendarViewMonth((prev) => addMonths(prev, -1))}
+ className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] transition hover:text-[var(--text)]"
+ >
+ <ChevronLeft size={14} />
+ </button>
+ <button
+ type="button"
+ aria-label={lang === "EN" ? "Next month" : "Bulan depan"}
+ onClick={() => setCalendarViewMonth((prev) => addMonths(prev, 1))}
+ className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] transition hover:text-[var(--text)]"
+ >
+ <ChevronRight size={14} />
+ </button>
+ </div>
+ </div>
+
+ <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--surface)]/80 p-2">
+ <p className="px-1 text-center text-xs font-semibold text-[var(--muted)]">
+ {calendarMonthLabel}
+ </p>
+ <div className="mt-2 grid grid-cols-7 gap-1">
+ {WEEKDAY_LABELS.map((weekday) => (
+ <div
+ key={weekday}
+ className="flex h-7 items-center justify-center text-[0.625rem] font-semibold uppercase tracking-wide text-[var(--muted)]"
+ >
+ {weekday}
+ </div>
+ ))}
+ {calendarCells.map((cell) => {
+ if (!cell.dateKey) {
+ return <div key={cell.key} className="h-9 rounded-lg" />
+ }
+
+ const isStart = Boolean(draftStartDate) && cell.dateKey === draftStartDate
+ const isEnd = Boolean(draftEndDate) && cell.dateKey === draftEndDate
+ const isInRange =
+ Boolean(draftStartDate && draftEndDate) &&
+ cell.dateKey > draftStartDate &&
+ cell.dateKey < draftEndDate
+
+ return (
+ <button
+ key={cell.key}
+ type="button"
+ onClick={() => handleCalendarDaySelect(cell.dateKey as string)}
+ className={cn(
+ "h-9 rounded-lg text-[0.75rem] font-semibold transition",
+ isStart || isEnd
+ ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
+ : isInRange
+ ? "bg-[var(--text)]/12 text-[var(--text)]"
+ : "text-[var(--text)] hover:bg-[var(--text)]/8"
+ )}
+ >
+ {cell.dayLabel}
+ </button>
+ )
+ })}
+ </div>
+ </div>
+
+ <p className="mt-3 text-[0.6875rem] font-medium text-[var(--muted)]">
+ {draftStartDate || draftEndDate
+ ? `${draftStartDate || "—"} ${lang === "EN" ? "to" : "hingga"} ${draftEndDate || "—"}`
+ : lang === "EN"
+ ? "Tap start date, then end date."
+ : "Tekan tarikh mula, kemudian tarikh akhir."}
+ </p>
+
+ <div className="mt-4 grid grid-cols-2 gap-2">
+ <button
+ type="button"
+ onClick={clearDateFilter}
+ className="h-10 rounded-xl border border-[var(--border)] bg-[var(--card)] text-xs font-semibold text-[var(--muted)]"
+ >
+ {lang === "EN" ? "Clear" : "Kosongkan"}
+ </button>
+ <button
+ type="button"
+ onClick={applyDateFilter}
+ className="h-10 rounded-xl bg-[var(--text)] text-xs font-bold text-[var(--bg)]"
+ >
+ {lang === "EN" ? "Apply" : "Guna"}
+ </button>
+ </div>
+ </div>
+ )}
+ </div>
+
  <button
  type="button"
  onClick={() => {
  setFiltersExpanded(false)
  }}
- className="h-10 flex-1 rounded-xl bg-[var(--text)] text-xs font-bold text-[var(--bg)]"
+ className="mt-3 h-10 w-full rounded-xl bg-[var(--text)] text-xs font-bold text-[var(--bg)]"
  >
  {lang === "EN" ? "Done" : "Siap"}
  </button>
- </div>
  </div>
  </div>
  </div>
@@ -1583,7 +1696,7 @@ const currentCycleKeyStr = useMemo(
  aria-label={lang === "EN" ? "Date filters" : "Penapis tarikh"}
  className={cn(
  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-[var(--card)] text-[var(--muted)] transition-all",
- showDateFilterPopup || hasDateRangeFilter
+ showCalendar || hasDateRangeFilter
  ? "border-[var(--text)]/25 text-[var(--text)]"
  : "border-[var(--border)]"
  )}
@@ -1713,21 +1826,8 @@ const currentCycleKeyStr = useMemo(
  ]}
  />
  </div>
- </>
- )}
-
- </div>
-
- 
- {showDateFilterPopup && (
- <div
-   className="fixed inset-0 z-50 bg-transparent"
- onClick={() => setShowDateFilterPopup(false)}
- >
- <div
-   className="mx-auto mt-[calc(env(safe-area-inset-top,0px)+5.9rem)] w-[min(94vw,380px)] rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-2xl"
- onClick={(e) => e.stopPropagation()}
- >
+ {showCalendar && (
+ <div className="mx-auto w-full max-w-2xl rounded-xl border border-[var(--border)] bg-[var(--surface)]/80 p-3 md:max-w-none">
  <div className="flex items-center justify-between gap-2">
  <p className="text-sm font-bold text-[var(--text)]">
  {lang === "EN" ? "Calendar Filter" : "Penapis Kalendar"}
@@ -1823,8 +1923,13 @@ const currentCycleKeyStr = useMemo(
  </button>
  </div>
  </div>
- </div>
  )}
+ </>
+ )}
+
+ </div>
+
+ 
  
 
   {/* Desktop Summary — unified strip (matches mobile, uses global card radius) */}
