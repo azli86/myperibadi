@@ -4057,8 +4057,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
               {/* ── Main Sheet Content: Grouped Cards ── */}
               <div className="px-4 pb-12 space-y-3.5 pt-1">
-                {/* ── Nav list: one row per destination, no card ── */}
-                <div className="space-y-0.5">
+                {/* ── Nav drawer: app-drawer grid, no card, no headings ── */}
+                <div className="grid grid-cols-4 gap-x-1 gap-y-3.5">
                   {[
                     { name: t.budget, href: `/${sessionId}/budget`, icon: Wallet, badge: "" },
                     { name: t.walletSettings, href: `/${sessionId}/wallet-settings`, icon: CreditCard, badge: "" },
@@ -4098,35 +4098,35 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                             router.push(item.href!);
                           });
                         }}
-                        className={cn(
-                          "group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-all duration-200 active:scale-[0.98]",
-                          isCurrent ? "bg-[var(--surface-tint-strong)]" : "hover:bg-[var(--surface-tint)]"
-                        )}
+                        className="group relative flex min-w-0 flex-col items-center gap-1.5 text-center transition-all duration-200 active:scale-90"
                       >
-                        <span
+                        <div
                           className={cn(
-                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors",
+                            "relative flex h-13 w-13 items-center justify-center rounded-[18px] border shadow-2xs transition-all duration-200 group-hover:scale-105",
                             isCurrent
-                              ? "border-[var(--text)] bg-[var(--text)] text-[var(--bg)]"
+                              ? "border-[var(--text)] bg-[var(--text)] text-[var(--bg)] shadow-sm ring-2 ring-[var(--text)]/20"
                               : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] group-hover:bg-[var(--surface-tint-strong)]"
                           )}
                         >
-                          <item.icon size={17} strokeWidth={1.9} />
-                        </span>
-                        <span
+                          <item.icon
+                            size={22}
+                            strokeWidth={1.9}
+                            className="shrink-0 transition-transform group-hover:scale-110"
+                          />
+                          {item.badge && !isCurrent && (
+                            <span className="absolute -top-1 -right-1 flex h-4 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--text)] px-1 text-[8px] font-black text-[var(--bg)] shadow-xs">
+                              {item.badge}
+                            </span>
+                          )}
+                        </div>
+                        <p
                           className={cn(
-                            "min-w-0 flex-1 truncate text-sm leading-tight",
-                            isCurrent ? "font-black text-[var(--text)]" : "font-semibold text-[var(--text)]"
+                            "w-full line-clamp-2 px-0.5 text-[11px] font-bold leading-tight transition-colors",
+                            isCurrent ? "text-[var(--text)] font-black" : "text-[var(--text)]"
                           )}
                         >
                           {item.name}
-                        </span>
-                        {item.badge && (
-                          <span className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[9px] font-black uppercase text-[var(--text)]">
-                            {item.badge}
-                          </span>
-                        )}
-                        <ChevronRight size={15} className="shrink-0 text-[var(--muted)]" />
+                        </p>
                       </button>
                     );
                   })}

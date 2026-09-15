@@ -1,12 +1,12 @@
-"""Pin the mobile sheet nav list.
+"""Pin the mobile sheet nav drawer.
 
-The destinations went through several shapes: two cards of icon tiles with headings and
-module counts, then one merged tile grid, then back to a card. Tiles put every destination in
-a grid you had to read across, which is the wrong shape for a list of names — the labels are
-different lengths and the eye has no column to follow.
+The destinations have been through tiles-with-headings, one merged tile grid, a plain row
+list, and now an app-drawer grid. The row list was readable but flat — one entry per line for
+eighteen entries is a lot of scrolling for a menu you open to jump somewhere.
 
-It is now a plain vertical list: one row per destination, icon left, name, chevron right. No
-card around it, no grid. The Maps, Connector and Support cards below are untouched.
+It is a four-column drawer again, but with no card around it and no sub-headings: icons and
+names only, which is what the original Finance card got right. The Maps, Connector and
+Support cards below are untouched.
 
 Run: cd apps/api && venv/bin/python -m tests.test_sheet_personal_tools
 """
@@ -22,22 +22,32 @@ SHELL = (
     / "Shell.tsx"
 ).read_text(encoding="utf-8")
 
-LIST = SHELL[SHELL.index("Nav list: one row per destination") : SHELL.index("SheetCard 3:")]
-TAIL = SHELL[SHELL.index("SheetCard 3:") : SHELL.index("SheetCard 6:") if "SheetCard 6:" in SHELL else len(SHELL)]
+DRAWER = SHELL[
+    SHELL.index("Nav drawer: app-drawer grid") : SHELL.index("SheetCard 3:")
+]
+TAIL = SHELL[SHELL.index("SheetCard 3:") :]
 
 
 def hrefs(card: str) -> list[str]:
     return re.findall(r'\$\{sessionId\}/([a-z0-9-]+)', card)
 
 
-def test_it_is_a_list_not_a_grid():
-    assert "grid grid-cols" not in LIST, "the nav must not be a grid"
-    assert "flex w-full items-center" in LIST, "rows should be full-width flex rows"
+def test_it_is_a_four_column_drawer():
+    assert "grid grid-cols-4" in DRAWER, "the drawer is a four-column grid"
+    assert "h-13 w-13" in DRAWER, "entries use the shared icon tile size"
+    assert "flex-col items-center" in DRAWER, "icon above the label, as in a drawer"
 
 
 def test_it_is_not_wrapped_in_a_card():
-    assert "<section" not in LIST, "the list must not sit inside a card section"
-    assert "rounded-3xl border border-[var(--border)] p-4" not in LIST
+    assert "<section" not in DRAWER, "the drawer must not sit inside a card section"
+    assert "rounded-3xl border border-[var(--border)] p-4" not in DRAWER
+
+
+def test_there_are_no_headings_or_counts():
+    assert "uppercase tracking-" not in DRAWER
+    assert 'lang === "BM" ? "Peribadi"' not in DRAWER
+    assert 'lang === "BM" ? "Alatan"' not in DRAWER
+    assert "modul" not in DRAWER and '"modules"' not in DRAWER
 
 
 def test_the_other_cards_are_untouched():
@@ -68,34 +78,35 @@ def test_every_previous_destination_survives_once():
         "badges",
         "receipts",
     }
-    actual = set(hrefs(LIST))
+    actual = set(hrefs(DRAWER))
     assert actual == expected, f"lost {expected - actual}, invented {actual - expected}"
-    found = hrefs(LIST)
+    found = hrefs(DRAWER)
     assert all(found.count(h) == 1 for h in found), "a target is listed twice"
 
 
 def test_the_calculator_still_opens_a_panel():
-    assert 'action: "calculator"' in LIST
-    assert "setShowCalculator(true)" in LIST
-    assert "requestMobileMenuClose()" in LIST, "the sheet has to close behind the panel"
+    assert 'action: "calculator"' in DRAWER
+    assert "setShowCalculator(true)" in DRAWER
+    assert "requestMobileMenuClose()" in DRAWER, "the sheet has to close behind the panel"
 
 
 def test_the_ai_badge_is_kept():
-    assert "item.badge" in LIST, "the AI tag on Reconcile must survive"
+    assert "item.badge" in DRAWER, "the AI tag on Reconcile must survive"
 
 
 def test_every_target_page_exists():
     root = Path(__file__).resolve().parents[2] / "web" / "src" / "app" / "[sessionId]"
-    missing = [h for h in hrefs(LIST) if not (root / h).exists()]
+    missing = [h for h in hrefs(DRAWER) if not (root / h).exists()]
     assert not missing, f"links to pages that do not exist: {missing}"
 
 
 if __name__ == "__main__":
-    test_it_is_a_list_not_a_grid()
+    test_it_is_a_four_column_drawer()
     test_it_is_not_wrapped_in_a_card()
+    test_there_are_no_headings_or_counts()
     test_the_other_cards_are_untouched()
     test_every_previous_destination_survives_once()
     test_the_calculator_still_opens_a_panel()
     test_the_ai_badge_is_kept()
     test_every_target_page_exists()
-    print("sheet nav list OK")
+    print("sheet nav drawer OK")
