@@ -762,16 +762,16 @@ export default function ChatPage() {
 
         void fetch(`/share-target-file/${encodeURIComponent(sharedToken)}`, { method: "DELETE" })
 
-        // Show the shared screenshot in the composer and wait for the user to send it.
-        // Auto-sending used to jump straight to OCR, so the image was never seen first —
-        // and a mis-share (wrong screenshot, or a share that carried unrelated text) was
-        // already scanned before it could be cancelled.
+        // Auto-send: the screenshot goes straight into the conversation as a bubble
+        // with its thumbnail, and OCR runs from there.
         window.setTimeout(() => {
-          handlePickFile(file)
-          if (sharedText && !input.trim()) {
-            setInput(sharedText)
-          }
+          void submitMessage(undefined, sharedText, file)
         }, 0)
+        showAlert(
+          lang === "EN" ? "Screenshot Sent" : "Screenshot Dihantar",
+          lang === "EN" ? "Screenshot is being processed in chat." : "Screenshot sedang diproses dalam chat.",
+          "success"
+        )
       } catch {
         if (cancelled) return
         setErrorText(lang === "EN" ? "Shared screenshot could not be opened." : "Screenshot yang dikongsi tidak dapat dibuka.")
@@ -917,6 +917,8 @@ export default function ChatPage() {
 
       setInput("")
       setSelectedFile(null)
+      // The sent bubble keeps its own object URL, so this one is no longer referenced.
+      if (selectedPreviewUrl) URL.revokeObjectURL(selectedPreviewUrl)
       setSelectedPreviewUrl(null)
       if (cameraInputRef.current) {
         cameraInputRef.current.value = ""

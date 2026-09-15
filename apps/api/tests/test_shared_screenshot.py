@@ -1,16 +1,13 @@
-"""Shared-screenshot lands in the composer, not straight into OCR.
+"""Shared-screenshot auto-send, and the bubble that shows it.
 
-Two things used to go wrong when a screenshot arrived from the Android/PWA share
-sheet:
+A screenshot from the Android/PWA share sheet is sent straight into the
+conversation (the user asked for that — staging it in the composer was worse).
+What must be true is that the image is visible in the chat bubble as it goes out;
+the composer preview only ever showed a file name, which is why the image looked
+like it never appeared at all.
 
-1. It was auto-sent (`submitMessage`), and the server runs OCR as soon as the
-   image arrives. The user never got to look at the image first — and a mis-share
-   was already scanned before it could be cancelled.
-2. Even when it was staged instead of sent, the composer only showed the file
-   name and size, so there was no image on screen at all.
-
-These checks read the chat page source. They are structural on purpose: the two
-behaviours live in JSX and in an effect, and neither is reachable from a unit test
+These checks read the chat page source. They are structural on purpose: the
+behaviour lives in JSX and in an effect, and neither is reachable from a unit test
 without mounting the whole page.
 """
 
@@ -34,57 +31,67 @@ def _source() -> str:
 def _shared_image_effect(source: str) -> str:
     """The block that handles ``sharedToken`` for image shares."""
     start = source.index("const attachSharedImage = async () => {")
-    # The effect closes at the first `}, [sharedToken, lang])` after the block.
     end = source.index("}, [sharedToken, lang])", start)
     return source[start:end]
 
 
-def test_shared_image_is_staged_in_the_composer():
+def test_shared_image_is_sent_immediately():
     source = _source()
     block = _shared_image_effect(source)
-    assert "handlePickFile(file)" in block, (
-        "a shared screenshot must land in the composer so the user sees it first"
+    assert re.search(r"submitMessage\([^)]*\bfile\b", block), (
+        "a shared screenshot should be sent straight into the conversation"
     )
 
 
-def test_shared_image_is_not_auto_sent():
+def test_send_does_not_go_through_the_composer():
+    """Staging in the composer means an extra tap before anything happens."""
     source = _source()
     block = _shared_image_effect(source)
-    assert not re.search(r"submitMessage\([^)]*\bfile\b", block), (
-        "the shared image is auto-sent, so OCR runs before the user can look at it "
-        "or cancel a mis-share"
+    assert "handlePickFile(file)" not in block, (
+        "the shared screenshot is staged in the composer instead of being sent"
     )
 
 
-def test_shared_text_does_not_overwrite_what_the_user_typed():
+def test_shared_text_travels_with_the_image():
     source = _source()
     block = _shared_image_effect(source)
-    assert "!input.trim()" in block, (
-        "shared text would clobber text already in the composer"
+    assert re.search(r"submitMessage\(undefined, sharedText, file\)", block), (
+        "text that came along with the share must travel with the image"
     )
 
 
-def test_composer_renders_an_image_thumbnail():
-    """Showing only the file name means a shared screenshot is invisible."""
+def test_user_bubble_renders_the_image():
+    """The bubble must paint the picture, not just the label.
+
+    An outbound image message renders through SmartImage from `msg.previewUrl`, and
+    submitMessage sets that from a freshly created object URL when no composer
+    preview exists (which is exactly the share case).
+    """
     source = _source()
-    assert "selectedPreviewUrl" in source, "the preview URL is never read"
+    assert re.search(r"src=\{msg\.previewUrl\}", source), (
+        "the sent image is not rendered in the chat bubble"
+    )
+    assert "registerObjectUrl(URL.createObjectURL(activeFile))" in source, (
+        "submitMessage must mint a preview URL when there is no composer preview, "
+        "or a shared image ships with no bubble thumbnail"
+    )
+
+
+def test_composer_still_previews_a_picked_image():
+    """Picking from gallery/camera still stages in the composer, so keep the thumbnail."""
+    source = _source()
     assert re.search(r"src=\{selectedPreviewUrl\}", source), (
-        "the composer does not render the pending image, so it is never shown before sending"
+        "the composer no longer previews a manually picked image"
     )
-
-
-def test_preview_object_url_is_revoked():
-    """Object URLs leak the whole blob until revoked."""
-    source = _source()
     assert "URL.revokeObjectURL(selectedPreviewUrl)" in source, (
         "clearing the attachment must revoke the preview object URL"
     )
 
 
 if __name__ == "__main__":
-    test_shared_image_is_staged_in_the_composer()
-    test_shared_image_is_not_auto_sent()
-    test_shared_text_does_not_overwrite_what_the_user_typed()
-    test_composer_renders_an_image_thumbnail()
-    test_preview_object_url_is_revoked()
+    test_shared_image_is_sent_immediately()
+    test_send_does_not_go_through_the_composer()
+    test_shared_text_travels_with_the_image()
+    test_user_bubble_renders_the_image()
+    test_composer_still_previews_a_picked_image()
     print("shared screenshot OK")
