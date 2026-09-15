@@ -606,6 +606,23 @@ export default function PlacesPage() {
     }
   }, [])
 
+  // Leaflet caches the container size when the map is built, so a container that is
+  // still 0-height or mid-layout at that point leaves the map painting only part of
+  // its tiles. Re-measure whenever the host actually changes size.
+  useEffect(() => {
+    const host = mapHostRef.current
+    if (!host || typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver(() => {
+      try {
+        mapRef.current?.invalidateSize({ animate: false })
+      } catch {
+        /* not ready yet */
+      }
+    })
+    observer.observe(host)
+    return () => observer.disconnect()
+  }, [])
+
   const savePlace = async () => {
     if (!draftPin || !formTitle.trim() || !formCategory.trim() || saving) return
     try {

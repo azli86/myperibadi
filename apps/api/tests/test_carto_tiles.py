@@ -84,12 +84,28 @@ def test_style_slugs_are_valid_carto_styles():
 
 
 def test_no_page_still_hardcodes_openstreetmap_tiles():
-    """OSM's own tile server is not licensed for app traffic; only use it as a
-    documented fallback, never as a page's basemap."""
     for page in MAP_PAGES + NON_CARTO_MAP_PAGES:
         source = _read(page)
         assert "tile.openstreetmap.org" not in source, (
             f"{page} points at OpenStreetMap's tile server"
+        )
+
+
+def test_every_map_page_remeasures_after_layout():
+    """Leaflet must re-measure, or it paints only part of the map.
+
+    L.map() caches the container size at construction. When the container is still
+    0-height or mid-layout at that moment, Leaflet keeps a viewport narrower than
+    the element and tiles only cover that strip — the map renders half blank and
+    never recovers on its own. Every map page needs a re-measure.
+    """
+    for page in MAP_PAGES:
+        source = _read(page)
+        assert "invalidateSize" in source, (
+            f"{page} never re-measures the map, so it can render half blank"
+        )
+        assert "ResizeObserver" in source, (
+            f"{page} does not observe container size changes"
         )
 
 
@@ -100,4 +116,5 @@ if __name__ == "__main__":
     test_attribution_is_kept()
     test_style_slugs_are_valid_carto_styles()
     test_no_page_still_hardcodes_openstreetmap_tiles()
+    test_every_map_page_remeasures_after_layout()
     print("carto tiles OK")

@@ -275,6 +275,18 @@ export default function MapPage() {
         tileLayerThemeRef.current = resolvedTheme
       }
 
+      // The container is often still 0-height (or mid-layout) when L.map() runs, so
+      // Leaflet caches a viewport narrower than the element and only paints tiles
+      // for that strip — the classic half-map, half-blank symptom. The ResizeObserver
+      // effect below is what actually clears it; measure once here for the common case.
+      requestAnimationFrame(() => {
+        try {
+          map.invalidateSize({ animate: false })
+        } catch {
+          /* map was torn down between frames */
+        }
+      })
+
       markersRef.current.forEach((entry) => entry.marker.remove())
       markersRef.current.clear()
 
@@ -353,6 +365,20 @@ export default function MapPage() {
       map.off("click", handleMapClick)
     }
   }, [isMobileViewport])
+
+  useEffect(() => {
+    const host = mapHostRef.current
+    if (!host || typeof ResizeObserver === "undefined") return
+    const observer = new ResizeObserver(() => {
+      try {
+        mapRef.current?.invalidateSize({ animate: false })
+      } catch {
+        /* not ready yet */
+      }
+    })
+    observer.observe(host)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const markerStore = markersRef.current
