@@ -11,9 +11,19 @@ rejecting a photo the model cannot read instead of raising a conversion error.
 
 import asyncio
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+_receipt_ocr_path = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "receipt_ocr_service.py"
+)
+
+
+def _source() -> str:
+    with open(_receipt_ocr_path, encoding="utf-8") as fh:
+        return fh.read()
 
 os.environ.setdefault("OCR_LOCAL_API_KEY", "test-key")
 os.environ.setdefault("OCR_LOCAL_BASE_URL", "http://127.0.0.1:59998/v1")
@@ -85,6 +95,30 @@ def test_missing_or_bad_date_is_rejected():
         assert parsed is None, f"{raw!r} should not parse"
 
 
+def test_token_budget_leaves_room_for_reasoning():
+    """The vision model reasons before it answers.
+
+    At 250 tokens the thinking consumed the whole allowance on roughly three scans in
+    five, `content` came back empty, and the scan was reported as an unreadable receipt.
+    The JSON payload is about 100 tokens, so anything near that is a silent failure.
+    """
+    source = _source()
+    match = re.search(r'"max_tokens":\s*(\d+)', source)
+    assert match, "max_tokens is no longer set explicitly"
+    budget = int(match.group(1))
+    assert budget >= 800, (
+        f"max_tokens={budget} leaves too little room for a reasoning model to answer"
+    )
+
+
+def test_empty_content_is_logged_with_the_finish_reason():
+    """Empty content must be diagnosable rather than looking like a bad photo."""
+    source = _source()
+    assert "finish_reason={choice.get('finish_reason')}" in source, (
+        "an empty completion is no longer reported with its finish reason"
+    )
+
+
 if __name__ == "__main__":
     test_local_is_offered_before_cloud()
     test_ocr_still_works_with_no_local_provider_configured()
@@ -92,4 +126,6 @@ if __name__ == "__main__":
     test_plain_json_still_parses()
     test_null_amount_is_rejected_as_unreadable()
     test_missing_or_bad_date_is_rejected()
+    test_token_budget_leaves_room_for_reasoning()
+    test_empty_content_is_logged_with_the_finish_reason()
     print("receipt ocr providers OK")

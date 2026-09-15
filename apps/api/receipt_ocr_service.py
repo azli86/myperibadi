@@ -186,7 +186,11 @@ async def extract_receipt(payload: bytes, mime_type: str, language: str, categor
     )
     body = {
         "temperature": 0,
-        "max_tokens": 250,
+        # A reasoning model spends part of this budget on its own thinking before it writes
+        # the JSON. At 250 the thinking frequently consumed the whole allowance last, which
+        # left `content` empty and made roughly three in five scans look like a failed read.
+        # The JSON itself is about 100 tokens, so the rest is headroom for reasoning.
+        "max_tokens": 1200,
         "messages": [{"role": "user", "content": [
             {"type": "text", "text": prompt},
             {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{base64.b64encode(payload).decode()}"}},
@@ -234,7 +238,17 @@ async def extract_receipt(payload: bytes, mime_type: str, language: str, categor
         snippet = response.text[:600].replace("\n", " ")
         print(f"[receipt-ocr] ERROR status={response.status_code} body={snippet}", flush=True)
         raise RuntimeError(f"Vision model HTTP {response.status_code}")
-    content = _http_json(response)["choices"][0]["message"]["content"]
+    body_json = _http_json(response)
+    choice = body_json["choices"][0]
+    content = choice["message"].get("content") or ""
+    if not content.strip():
+        # A reasoning model can spend its whole budget thinking and never write the answer.
+        # Log the finish reason so this is diagnosable instead of looking like a bad photo.
+        print(
+            f"[receipt-ocr] provider={used_provider} returned no content "
+            f"finish_reason={choice.get('finish_reason')}",
+            flush=True,
+        )
     # Some models wrap the object in a fenced block and add prose after it. Salvage the
     # first JSON object rather than discarding a scan that actually succeeded.
     data = _json_object(content)
