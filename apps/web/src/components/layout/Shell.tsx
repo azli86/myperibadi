@@ -4137,8 +4137,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     </section>
 
                     {/* ── SheetCard 2: Alatan & Peribadi (Personal & Tools) ── */}
-                    <section className={cn("rounded-3xl border border-[var(--border)] p-3.5 shadow-sm", "bg-[var(--card)]")}>
-                      <div className="mb-3 flex items-center justify-between px-1">
+                    <section className={cn("rounded-3xl border border-[var(--border)] p-4 shadow-sm", "bg-[var(--card)]")}>
+                      <div className="mb-3.5 flex items-center justify-between px-0.5">
                         <div className="flex items-center gap-2">
                           <div className="flex h-5 w-5 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] text-[var(--text)]">
                             <Sparkles size={12} strokeWidth={2.2} />
@@ -4148,63 +4148,69 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           </span>
                         </div>
                         <span className="rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--muted)]">
-                          8 {lang === "BM" ? "modul" : "modules"}
+                          10 {lang === "BM" ? "modul" : "modules"}
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2.5">
-                        <button
-                          type="button"
-                          onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/receipts`))}
-                          className="group flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3 text-left text-[var(--text)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] active:scale-[0.97]"
-                        >
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint-strong)] text-[var(--text)] transition-transform group-hover:scale-105">
-                            <Images size={20} strokeWidth={2} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <span className="block truncate text-xs font-bold leading-tight">Gallery</span>
-                            <span className="block truncate text-[10px] text-[var(--muted)]">{lang === "BM" ? "Resit & media" : "Receipts"}</span>
-                          </div>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => { requestMobileMenuClose(); setShowCalculator(true); }}
-                          className="group flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3 text-left text-[var(--text)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] active:scale-[0.97]"
-                        >
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint-strong)] text-[var(--text)] transition-transform group-hover:scale-105">
-                            <CalculatorIcon size={20} strokeWidth={2} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <span className="block truncate text-xs font-bold leading-tight">Calculator</span>
-                            <span className="block truncate text-[10px] text-[var(--muted)]">{lang === "BM" ? "Kira pantas" : "Quick calc"}</span>
-                          </div>
-                        </button>
-
+                      <div className="grid grid-cols-4 gap-x-2 gap-y-4">
                         {[
-                          { name: lang === "BM" ? "Kenderaan" : "My Vehicle", subtitle: lang === "BM" ? "Minyak & servis" : "Fuel & log", href: `/${sessionId}/vehicle`, icon: Car },
-                          { name: lang === "BM" ? "Waranti" : "My Warranty", subtitle: lang === "BM" ? "Peranti & tamat" : "Expiry alert", href: `/${sessionId}/warranty`, icon: Shield },
-                          { name: lang === "BM" ? "Barang Saya" : "Inventory", subtitle: lang === "BM" ? "Jejak barang" : "Item boxes", href: `/${sessionId}/inventory`, icon: Package },
-                          { name: lang === "BM" ? "Cukai" : "Income Tax", subtitle: lang === "BM" ? "Cukai tahunan" : "Annual tax", href: `/${sessionId}/tax`, icon: Landmark },
-                          { name: lang === "BM" ? "Acara Saya" : "My Events", subtitle: lang === "BM" ? "Bajet majlis" : "Event budget", href: `/${sessionId}/event`, icon: CalendarDays },
-                          { name: lang === "BM" ? "Kesihatan" : "Health", subtitle: lang === "BM" ? "Monitor & ubat" : "Monitor & meds", href: `/${sessionId}/health`, icon: Heart },
-                          { name: lang === "BM" ? "Lencana" : "Badges", subtitle: lang === "BM" ? "Status & level" : "Achievements", href: `/${sessionId}/badges`, icon: Award },
-                        ].map((item) => (
-                          <button
-                            key={item.href}
-                            type="button"
-                            onClick={() => requestMobileMenuCloseThen(() => router.push(item.href))}
-                            className="group flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3 text-left text-[var(--text)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] active:scale-[0.97]"
-                          >
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint-strong)] text-[var(--text)] transition-transform group-hover:scale-105">
-                              <item.icon size={20} strokeWidth={2} />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <span className="block truncate text-xs font-bold leading-tight">{item.name}</span>
-                              <span className="block truncate text-[10px] text-[var(--muted)]">{item.subtitle}</span>
-                            </div>
-                          </button>
-                        ))}
+                          { name: lang === "BM" ? "Galeri" : "Gallery", href: `/${sessionId}/receipts`, icon: Images },
+                          { name: lang === "BM" ? "Kalkulator" : "Calculator", action: "calculator", icon: CalculatorIcon },
+                          { name: lang === "BM" ? "Kenderaan" : "Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
+                          { name: lang === "BM" ? "Barang" : "Inventory", href: `/${sessionId}/inventory`, icon: Package },
+                          { name: lang === "BM" ? "Waranti" : "Warranty", href: `/${sessionId}/warranty`, icon: Shield },
+                          { name: lang === "BM" ? "Acara" : "Events", href: `/${sessionId}/event`, icon: CalendarDays },
+                          { name: lang === "BM" ? "Kesihatan" : "Health", href: `/${sessionId}/health`, icon: Heart },
+                          { name: lang === "BM" ? "Lencana" : "Badges", href: `/${sessionId}/badges`, icon: Award },
+                          { name: lang === "BM" ? "Rumah" : "Households", href: `/${sessionId}/households`, icon: Home },
+                          { name: lang === "BM" ? "Tentang" : "About", href: `/${sessionId}/about`, icon: Info },
+                        ].map((item) => {
+                          const isCurrent = Boolean(item.href) && pathname === item.href;
+                          return (
+                            <button
+                              key={item.name}
+                              type="button"
+                              onClick={() => {
+                                if (item.action === "calculator") {
+                                  requestMobileMenuClose();
+                                  setShowCalculator(true);
+                                  return;
+                                }
+                                if (isCurrent) {
+                                  requestMobileMenuClose();
+                                  return;
+                                }
+                                requestMobileMenuCloseThen(() => {
+                                  router.push(item.href!);
+                                });
+                              }}
+                              className="group relative flex min-w-0 flex-col items-center gap-1.5 text-center transition-all duration-200 active:scale-90"
+                            >
+                              <div
+                                className={cn(
+                                  "relative flex h-13 w-13 items-center justify-center rounded-[18px] border shadow-2xs transition-all duration-200 group-hover:scale-105",
+                                  isCurrent
+                                    ? "border-[var(--text)] bg-[var(--text)] text-[var(--bg)] shadow-sm ring-2 ring-[var(--text)]/20"
+                                    : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] group-hover:bg-[var(--surface-tint-strong)]"
+                                )}
+                              >
+                                <item.icon
+                                  size={22}
+                                  strokeWidth={1.9}
+                                  className="shrink-0 transition-transform group-hover:scale-110"
+                                />
+                              </div>
+                              <p
+                                className={cn(
+                                  "w-full line-clamp-2 px-0.5 text-[11px] font-bold leading-tight transition-colors",
+                                  isCurrent ? "text-[var(--text)] font-black" : "text-[var(--text)]"
+                                )}
+                              >
+                                {item.name}
+                              </p>
+                            </button>
+                          );
+                        })}
                       </div>
                     </section>
 
