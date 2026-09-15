@@ -43,7 +43,6 @@ import {
   Wallet,
   FileSpreadsheet,
   Landmark,
-  Sparkles,
   Search,
   Menu,
   X,
@@ -76,7 +75,6 @@ import {
   Globe,
   Palette,
   Images,
-  Wrench,
   Car,
   Users,
   Heart,
@@ -4059,218 +4057,82 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
               {/* ── Main Sheet Content: Grouped Cards ── */}
               <div className="px-4 pb-12 space-y-3.5 pt-1">
-                {/* ── SheetCard 1: Kewangan & Bajet (Finance & Accounts) ── */}
+                {/* ── Nav grid: every destination in one list, no sub-headings ── */}
                 <section className={cn("rounded-3xl border border-[var(--border)] p-4 shadow-sm", "bg-[var(--card)]")}>
-                      <div className="mb-3.5 flex items-center justify-between px-0.5">
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-5 w-5 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] text-[var(--text)]">
-                            <Wallet size={12} strokeWidth={2.2} />
+                  <div className="grid grid-cols-4 gap-x-2 gap-y-4">
+                    {[
+                      { name: t.budget, href: `/${sessionId}/budget`, icon: Wallet, badge: "" },
+                      { name: t.walletSettings, href: `/${sessionId}/wallet-settings`, icon: CreditCard, badge: "" },
+                      { name: lang === "BM" ? "Rekonsiliasi" : "Reconcile", href: `/${sessionId}/bank-reconciliation`, icon: FileSpreadsheet, badge: "AI" },
+                      { name: lang === "BM" ? "Cukai" : "Tax", href: `/${sessionId}/tax`, icon: Landmark, badge: "" },
+                      { name: t.categories, href: `/${sessionId}/categories`, icon: Grid2X2, badge: "" },
+                      { name: "Subscription", href: `/${sessionId}/subscription`, icon: CreditCard, badge: "" },
+                      { name: "Loan", href: `/${sessionId}/loan`, icon: Landmark, badge: "" },
+                      { name: "BNPL", href: `/${sessionId}/bnpl`, icon: CreditCard, badge: "" },
+                      { name: "Split Bill", href: `/${sessionId}/split-bills`, icon: Users, badge: "" },
+                      { name: t.debt, href: `/${sessionId}/debt`, icon: HandCoins, badge: "" },
+                      { name: lang === "BM" ? "Kenderaan" : "Vehicle", href: `/${sessionId}/vehicle`, icon: Car, badge: "" },
+                      { name: lang === "BM" ? "Barang" : "Inventory", href: `/${sessionId}/inventory`, icon: Package, badge: "" },
+                      { name: lang === "BM" ? "Waranti" : "Warranty", href: `/${sessionId}/warranty`, icon: Shield, badge: "" },
+                      { name: lang === "BM" ? "Acara" : "Events", href: `/${sessionId}/event`, icon: CalendarDays, badge: "" },
+                      { name: lang === "BM" ? "Kesihatan" : "Health", href: `/${sessionId}/health`, icon: Heart, badge: "" },
+                      { name: lang === "BM" ? "Lencana" : "Badges", href: `/${sessionId}/badges`, icon: Award, badge: "" },
+                      { name: lang === "BM" ? "Galeri" : "Gallery", href: `/${sessionId}/receipts`, icon: Images, badge: "" },
+                      { name: lang === "BM" ? "Kalkulator" : "Calculator", action: "calculator", icon: CalculatorIcon, badge: "" },
+                    ].map((item) => {
+                      const isCurrent = Boolean(item.href) && pathname === item.href;
+                      return (
+                        <button
+                          key={item.name}
+                          type="button"
+                          onClick={() => {
+                            if (item.action === "calculator") {
+                              requestMobileMenuClose();
+                              setShowCalculator(true);
+                              return;
+                            }
+                            if (isCurrent) {
+                              requestMobileMenuClose();
+                              return;
+                            }
+                            requestMobileMenuCloseThen(() => {
+                              router.push(item.href!);
+                            });
+                          }}
+                          className="group relative flex min-w-0 flex-col items-center gap-1.5 text-center transition-all duration-200 active:scale-90"
+                        >
+                          <div
+                            className={cn(
+                              "relative flex h-13 w-13 items-center justify-center rounded-[18px] border shadow-2xs transition-all duration-200 group-hover:scale-105",
+                              isCurrent
+                                ? "border-[var(--text)] bg-[var(--text)] text-[var(--bg)] shadow-sm ring-2 ring-[var(--text)]/20"
+                                : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] group-hover:bg-[var(--surface-tint-strong)]"
+                            )}
+                          >
+                            <item.icon
+                              size={22}
+                              strokeWidth={1.9}
+                              className="shrink-0 transition-transform group-hover:scale-110"
+                            />
+                            {item.badge && !isCurrent && (
+                              <span className="absolute -top-1 -right-1 flex h-4 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--text)] px-1 text-[8px] font-black text-[var(--bg)] shadow-xs">
+                                {item.badge}
+                              </span>
+                            )}
                           </div>
-                          <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                            {lang === "BM" ? "Kewangan & Bajet" : "Finance & Budget"}
-                          </span>
-                        </div>
-                        <span className="rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--muted)]">
-                          8 {lang === "BM" ? "modul" : "modules"}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-4 gap-x-2 gap-y-4">
-                        {[
-                          { name: t.budget, href: `/${sessionId}/budget`, icon: Wallet, badge: "" },
-                          { name: t.walletSettings, href: `/${sessionId}/wallet-settings`, icon: CreditCard, badge: "" },
-                          { name: lang === "BM" ? "Rekonsiliasi" : "Reconcile", href: `/${sessionId}/bank-reconciliation`, icon: FileSpreadsheet, badge: "AI" },
-                          { name: lang === "BM" ? "Cukai" : "Tax", href: `/${sessionId}/tax`, icon: Landmark, badge: "" },
-                          { name: t.categories, href: `/${sessionId}/categories`, icon: Grid2X2, badge: "" },
-                          { name: "Subscription", href: `/${sessionId}/subscription`, icon: CreditCard, badge: "" },
-                          { name: "Loan", href: `/${sessionId}/loan`, icon: Landmark, badge: "" },
-                          { name: "BNPL", href: `/${sessionId}/bnpl`, icon: CreditCard, badge: "" },
-                          { name: "Split Bill", href: `/${sessionId}/split-bills`, icon: Users, badge: "" },
-                          { name: t.debt, href: `/${sessionId}/debt`, icon: HandCoins, badge: "" },
-                        ].map((item) => {
-                          const isCurrent = pathname === item.href;
-                          return (
-                            <button
-                              key={item.href}
-                              type="button"
-                              onClick={() => {
-                                if (isCurrent) {
-                                  requestMobileMenuClose();
-                                  return;
-                                }
-                                requestMobileMenuCloseThen(() => {
-                                  router.push(item.href);
-                                });
-                              }}
-                              className="group relative flex min-w-0 flex-col items-center gap-1.5 text-center transition-all duration-200 active:scale-90"
-                            >
-                              <div
-                                className={cn(
-                                  "relative flex h-13 w-13 items-center justify-center rounded-[18px] border shadow-2xs transition-all duration-200 group-hover:scale-105",
-                                  isCurrent
-                                    ? "border-[var(--text)] bg-[var(--text)] text-[var(--bg)] shadow-sm ring-2 ring-[var(--text)]/20"
-                                    : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] group-hover:bg-[var(--surface-tint-strong)]"
-                                )}
-                              >
-                                <item.icon
-                                  size={22}
-                                  strokeWidth={1.9}
-                                  className="shrink-0 transition-transform group-hover:scale-110"
-                                />
-                                {item.badge && !isCurrent && (
-                                  <span className="absolute -top-1 -right-1 flex h-4 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--text)] px-1 text-[8px] font-black text-[var(--bg)] shadow-xs">
-                                    {item.badge}
-                                  </span>
-                                )}
-                              </div>
-                              <p
-                                className={cn(
-                                  "w-full line-clamp-2 px-0.5 text-[11px] font-bold leading-tight transition-colors",
-                                  isCurrent ? "text-[var(--text)] font-black" : "text-[var(--text)]"
-                                )}
-                              >
-                                {item.name}
-                              </p>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </section>
-
-                    {/* ── SheetCard 2: Peribadi (Personal) ── */}
-                    <section className={cn("rounded-3xl border border-[var(--border)] p-4 shadow-sm", "bg-[var(--card)]")}>
-                      <div className="mb-3.5 flex items-center justify-between px-0.5">
-                        <div className="flex items-center gap-2">
-                          <div className="flex h-5 w-5 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] text-[var(--text)]">
-                            <Sparkles size={12} strokeWidth={2.2} />
-                          </div>
-                          <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                            {lang === "BM" ? "Peribadi" : "Personal"}
-                          </span>
-                        </div>
-                        <span className="rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--muted)]">
-                          9 {lang === "BM" ? "modul" : "modules"}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-4 gap-x-2 gap-y-4">
-                        {[
-                          { name: lang === "BM" ? "Kenderaan" : "Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
-                          { name: lang === "BM" ? "Barang" : "Inventory", href: `/${sessionId}/inventory`, icon: Package },
-                          { name: lang === "BM" ? "Waranti" : "Warranty", href: `/${sessionId}/warranty`, icon: Shield },
-                          { name: lang === "BM" ? "Acara" : "Events", href: `/${sessionId}/event`, icon: CalendarDays },
-                          { name: lang === "BM" ? "Kesihatan" : "Health", href: `/${sessionId}/health`, icon: Heart },
-                          { name: lang === "BM" ? "Lencana" : "Badges", href: `/${sessionId}/badges`, icon: Award },
-                        ].map((item) => {
-                          const isCurrent = Boolean(item.href) && pathname === item.href;
-                          return (
-                            <button
-                              key={item.name}
-                              type="button"
-                              onClick={() => {
-                                if (isCurrent) {
-                                  requestMobileMenuClose();
-                                  return;
-                                }
-                                requestMobileMenuCloseThen(() => {
-                                  router.push(item.href!);
-                                });
-                              }}
-                              className="group relative flex min-w-0 flex-col items-center gap-1.5 text-center transition-all duration-200 active:scale-90"
-                            >
-                              <div
-                                className={cn(
-                                  "relative flex h-13 w-13 items-center justify-center rounded-[18px] border shadow-2xs transition-all duration-200 group-hover:scale-105",
-                                  isCurrent
-                                    ? "border-[var(--text)] bg-[var(--text)] text-[var(--bg)] shadow-sm ring-2 ring-[var(--text)]/20"
-                                    : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] group-hover:bg-[var(--surface-tint-strong)]"
-                                )}
-                              >
-                                <item.icon
-                                  size={22}
-                                  strokeWidth={1.9}
-                                  className="shrink-0 transition-transform group-hover:scale-110"
-                                />
-                              </div>
-                              <p
-                                className={cn(
-                                  "w-full line-clamp-2 px-0.5 text-[11px] font-bold leading-tight transition-colors",
-                                  isCurrent ? "text-[var(--text)] font-black" : "text-[var(--text)]"
-                                )}
-                              >
-                                {item.name}
-                              </p>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                    </section>
-
-                    {/* ── SheetCard 2b: Alatan (Tools) — shortcuts, not records ── */}
-                    <section className={cn("rounded-3xl border border-[var(--border)] p-4 shadow-sm", "bg-[var(--card)]")}>
-                      <div className="mb-3.5 flex items-center gap-2 px-0.5">
-                        <div className="flex h-5 w-5 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] text-[var(--text)]">
-                          <Wrench size={12} strokeWidth={2.2} />
-                        </div>
-                        <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                          {lang === "BM" ? "Alatan" : "Tools"}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-4 gap-x-2 gap-y-4">
-                        {[
-                          { name: lang === "BM" ? "Galeri" : "Gallery", href: `/${sessionId}/receipts`, icon: Images },
-                          { name: lang === "BM" ? "Kalkulator" : "Calculator", action: "calculator", icon: CalculatorIcon },
-                        ].map((item) => {
-                          const isCurrent = Boolean(item.href) && pathname === item.href;
-                          return (
-                            <button
-                              key={item.name}
-                              type="button"
-                              onClick={() => {
-                                if (item.action === "calculator") {
-                                  requestMobileMenuClose();
-                                  setShowCalculator(true);
-                                  return;
-                                }
-                                if (isCurrent) {
-                                  requestMobileMenuClose();
-                                  return;
-                                }
-                                requestMobileMenuCloseThen(() => {
-                                  router.push(item.href!);
-                                });
-                              }}
-                              className="group relative flex min-w-0 flex-col items-center gap-1.5 text-center transition-all duration-200 active:scale-90"
-                            >
-                              <div
-                                className={cn(
-                                  "relative flex h-13 w-13 items-center justify-center rounded-[18px] border shadow-2xs transition-all duration-200 group-hover:scale-105",
-                                  isCurrent
-                                    ? "border-[var(--text)] bg-[var(--text)] text-[var(--bg)] shadow-sm ring-2 ring-[var(--text)]/20"
-                                    : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] group-hover:bg-[var(--surface-tint-strong)]"
-                                )}
-                              >
-                                <item.icon
-                                  size={22}
-                                  strokeWidth={1.9}
-                                  className="shrink-0 transition-transform group-hover:scale-110"
-                                />
-                              </div>
-                              <p
-                                className={cn(
-                                  "w-full line-clamp-2 px-0.5 text-[11px] font-bold leading-tight transition-colors",
-                                  isCurrent ? "text-[var(--text)] font-black" : "text-[var(--text)]"
-                                )}
-                              >
-                                {item.name}
-                              </p>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </section>
+                          <p
+                            className={cn(
+                              "w-full line-clamp-2 px-0.5 text-[11px] font-bold leading-tight transition-colors",
+                              isCurrent ? "text-[var(--text)] font-black" : "text-[var(--text)]"
+                            )}
+                          >
+                            {item.name}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
 
                     {/* ── SheetCard 3: Peta & Lokasi (Maps & Places) ── */}
                     <section className={cn("rounded-3xl border border-[var(--border)] p-3.5 shadow-sm", "bg-[var(--card)]")}>
