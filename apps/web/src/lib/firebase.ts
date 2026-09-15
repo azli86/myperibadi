@@ -92,13 +92,11 @@ export async function requestFcmToken(): Promise<string | null> {
       return null
     }
 
-    console.log("[FCM] Requesting token...")
     const swReg = await navigator.serviceWorker.getRegistration()
     const token = await getToken(msg, {
       serviceWorkerRegistration: swReg || undefined,
     })
 
-    console.log("[FCM] Token obtained:", token ? `${token.slice(0, 30)}...` : "null")
     return token
   } catch (err: any) {
     console.error("[FCM] getToken error:", err?.message || err)

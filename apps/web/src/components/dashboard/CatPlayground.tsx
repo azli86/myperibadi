@@ -492,7 +492,7 @@ async function apiPutPet(pet: PetState): Promise<void> {
       body: JSON.stringify({ pet }),
     })
     if (!res.ok) {
-      console.log("[cat-pet] PUT failed", res.status, await res.text())
+      console.warn("[cat-pet] PUT failed", res.status, await res.text())
     }
   } catch {
     /* offline ok */

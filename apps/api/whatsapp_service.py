@@ -4152,7 +4152,6 @@ async def _process_whatsapp_message_impl(
             if normalized_typed.startswith("subx ") or normalized_typed.startswith("loanx "):
                 ocr_amount = extract_amount(str(pending_selection.get("original_text") or ""))
                 ocr_date, _cleaned, _inv = extract_explicit_txn_date(str(pending_selection.get("original_text") or ""))
-                print(f"[WA][debug] pending loanx/subx branch: typed={normalized_typed!r} ocr_amount={ocr_amount!r} ocr_date={ocr_date!r}")
                 if ocr_amount and ocr_amount > 0:
                     _clear_pending_category_selection(user_id, source_channel)
                     wallet_name = ""
