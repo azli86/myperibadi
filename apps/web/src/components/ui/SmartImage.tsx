@@ -86,15 +86,31 @@ export function SmartImage({
     [],
   )
 
-  // If browser already has the image decoded (blob/cache), onLoad may never fire.
+  // `onLoad` does not fire when the browser serves the image from cache, so `loaded` would
+  // stay false and the picture would sit at opacity-0 behind the spinner forever. Probe for
+  // a decoded image on the next frames, and stop hiding the picture once the probe gives up
+  // so a genuinely slow image can never stay invisible.
   useEffect(() => {
-    const img = imgRef.current
-    if (!img || failed || !hasSrc) return
-    if (img.complete && img.naturalWidth > 0) {
-      setLoaded(true)
-      onLoadRef.current?.()
+    if (failed || !hasSrc) return
+    let attempts = 0
+    let raf = 0
+    const check = () => {
+      const img = imgRef.current
+      if (img && img.complete && img.naturalWidth > 0) {
+        setLoaded(true)
+        onLoadRef.current?.()
+        return
+      }
+      if (attempts++ > 20) {
+        setLoaded(true)
+        onLoadRef.current?.()
+        return
+      }
+      raf = requestAnimationFrame(check)
     }
-  }, [primary, fallback, attempt, usingFallback, failed, hasSrc])
+    raf = requestAnimationFrame(check)
+    return () => cancelAnimationFrame(raf)
+  }, [primary, attempt, usingFallback, failed, hasSrc])
 
   if (!hasSrc || failed) {
     return (
