@@ -39,10 +39,20 @@ def test_the_wide_feature_tiles_are_gone():
     assert "h-13 w-13" in CARD, "entries should use the shared icon tile size"
 
 
-def test_tax_lives_in_one_card_only():
-    whole_menu = SHELL[SHELL.index("SheetCard 1:"):SHELL.index("SheetCard 3:")]
-    tax_entries = whole_menu.count("/tax`")
-    assert tax_entries == 1, f"Tax should appear once, found {tax_entries}"
+def test_no_menu_entries_were_invented():
+    # Only the pages the card already linked to before the redesign may appear.
+    expected = {
+        "receipts",
+        "vehicle",
+        "inventory",
+        "warranty",
+        "event",
+        "health",
+        "badges",
+        "tax",
+    }
+    actual = set(re.findall(r'\$\{sessionId\}/([a-z0-9-]+)', CARD))
+    assert actual == expected, f"menu set changed: added {actual - expected}, lost {expected - actual}"
 
 
 def test_every_target_page_exists():
@@ -51,8 +61,6 @@ def test_every_target_page_exists():
     assert hrefs, "expected route entries in the card"
     missing = [h for h in hrefs if not (root / h).exists()]
     assert not missing, f"card links to pages that do not exist: {missing}"
-
-
 def test_the_calculator_still_opens_instead_of_navigating():
     assert 'action: "calculator"' in CARD
     assert 'setShowCalculator(true)' in CARD
@@ -61,7 +69,7 @@ def test_the_calculator_still_opens_instead_of_navigating():
 if __name__ == "__main__":
     test_uses_the_same_four_column_grid_as_finance()
     test_the_wide_feature_tiles_are_gone()
-    test_tax_lives_in_one_card_only()
+    test_no_menu_entries_were_invented()
     test_every_target_page_exists()
     test_the_calculator_still_opens_instead_of_navigating()
     print("sheet personal tools OK")

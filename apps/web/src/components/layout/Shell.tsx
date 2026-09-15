@@ -4162,8 +4162,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           { name: lang === "BM" ? "Acara" : "Events", href: `/${sessionId}/event`, icon: CalendarDays },
                           { name: lang === "BM" ? "Kesihatan" : "Health", href: `/${sessionId}/health`, icon: Heart },
                           { name: lang === "BM" ? "Lencana" : "Badges", href: `/${sessionId}/badges`, icon: Award },
-                          { name: lang === "BM" ? "Rumah" : "Households", href: `/${sessionId}/households`, icon: Home },
-                          { name: lang === "BM" ? "Tentang" : "About", href: `/${sessionId}/about`, icon: Info },
+                          { name: lang === "BM" ? "Cukai" : "Income Tax", href: `/${sessionId}/tax`, icon: Landmark },
                         ].map((item) => {
                           const isCurrent = Boolean(item.href) && pathname === item.href;
                           return (
