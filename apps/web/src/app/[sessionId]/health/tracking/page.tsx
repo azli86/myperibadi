@@ -41,7 +41,6 @@ import "leaflet/dist/leaflet.css"
 const MAPS_STREET_URL = "https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
 const MAPS_HYBRID_URL = "https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
 const MAPS_TERRAIN_URL = "https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}"
-const OSM_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
 
 interface LatLngPoint {
   lat: number

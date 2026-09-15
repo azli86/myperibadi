@@ -14,6 +14,7 @@ import {
   Sparkles,
   TrendingUp,
 } from "lucide-react"
+import { CARTO_ATTRIBUTION, cartoTileUrl } from "@/lib/map-tiles"
 import { cn } from "@/lib/utils"
 import { getAccessToken } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
@@ -354,14 +355,12 @@ export default function MapAnalysisPage() {
 
       if (!tileLayerRef.current || tileThemeRef.current !== resolvedTheme) {
         tileLayerRef.current?.remove()
-        tileLayerRef.current = L.tileLayer(
-          `https://{s}.basemaps.cartocdn.com/${isLight ? "light_all" : "dark_all"}/{z}/{x}/{y}{r}.png`,
-          {
-            maxZoom: 19,
-            subdomains: "abcd",
-            className: isLight ? "map-tile-light" : "map-tile-dark-grey",
-          },
-        )
+        tileLayerRef.current = L.tileLayer(cartoTileUrl(isLight ? "light" : "dark"), {
+          maxZoom: 19,
+          attribution: CARTO_ATTRIBUTION,
+          subdomains: "abcd",
+          className: isLight ? "map-tile-light" : "map-tile-dark-grey",
+        })
         tileLayerRef.current.addTo(map)
         tileThemeRef.current = resolvedTheme
       }

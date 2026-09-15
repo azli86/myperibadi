@@ -21,6 +21,7 @@ import { useLang } from "@/lib/lang"
 import { getAccessToken } from "@/lib/auth-session"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 import { useTheme } from "@/components/theme/ThemeProvider"
+import { CARTO_ATTRIBUTION, cartoTileUrl } from "@/lib/map-tiles"
 import { cn } from "@/lib/utils"
 
 type PlacePoint = {
@@ -482,16 +483,12 @@ export default function PlacesPage() {
 
       if (!tileLayerRef.current || tileLayerThemeRef.current !== resolvedTheme) {
         if (tileLayerRef.current) tileLayerRef.current.remove()
-        tileLayerRef.current = L.tileLayer(
-          `https://{s}.basemaps.cartocdn.com/${isLight ? "light_all" : "dark_all"}/{z}/{x}/{y}{r}.png`,
-          {
-            maxZoom: 19,
-            attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            subdomains: "abcd",
-            className: isLight ? "map-tile-light" : "map-tile-dark-grey",
-          },
-        )
+        tileLayerRef.current = L.tileLayer(cartoTileUrl(isLight ? "light" : "dark"), {
+          maxZoom: 19,
+          attribution: CARTO_ATTRIBUTION,
+          subdomains: "abcd",
+          className: isLight ? "map-tile-light" : "map-tile-dark-grey",
+        })
         tileLayerRef.current.addTo(map)
         tileLayerThemeRef.current = resolvedTheme
       }
