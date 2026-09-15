@@ -74,6 +74,39 @@ def _normalize_time(raw: str) -> str:
     return f"{hour:02d}:{minute:02d}"
 
 
+def _http_json(response: httpx.Response) -> dict:
+    """Decode a completion body, tolerating a trailing SSE sentinel.
+
+    The LAN gateway appends a literal `data: [DONE]` line after the JSON object for the
+    same requests where the public API returns bare JSON, so `response.json()` raises on
+    a scan that actually succeeded. Trim anything after the first complete object.
+    """
+    try:
+        return response.json()
+    except ValueError:
+        depth = 0
+        in_string = False
+        escaped = False
+        for index, char in enumerate(response.text):
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                continue
+            if char == '"':
+                in_string = True
+            elif char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    return json.loads(response.text[: index + 1])
+        raise
+
+
 def _json_object(text: str) -> dict:
     cleaned = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
     match = re.search(r"\{.*\}", cleaned, flags=re.S)
@@ -91,16 +124,43 @@ def _json_object(text: str) -> dict:
         return parsed
 
 
+async def _ocr_providers() -> list[dict[str, str]]:
+    """Vision providers, in the order they should be tried.
+
+    OCR used to go straight out to the public OpenAI API, which means every photo of a
+    receipt took a round trip over the internet. The identical model is served on the
+    office LAN at ILMU_BASE_URL, which is materially faster for a multi-megabyte phone
+    photo and, on the samples measured, more accurate too.
+
+    Local is tried first. A cloud provider is kept behind it so that losing the LAN box
+    degrades OCR to slow rather than to broken — the receipt path is how transactions get
+    created, so it must not have a single point of failure.
+    """
+    providers: list[dict[str, str]] = []
+
+    local_key = (os.getenv("OCR_LOCAL_API_KEY") or os.getenv("ILMU_API_KEY") or "").strip()
+    local_base = (os.getenv("OCR_LOCAL_BASE_URL") or os.getenv("ILMU_BASE_URL") or "").strip().rstrip("/")
+    local_model = (os.getenv("OCR_LOCAL_MODEL") or "").strip()
+    if local_key and local_base and local_model:
+        providers.append({"name": "local", "api_key": local_key, "base_url": local_base, "model": local_model})
+
+    cloud_key = (os.getenv("OCR_OPENAI_API_KEY") or "").strip()
+    cloud_base = (os.getenv("OCR_OPENAI_BASE_URL") or "https://api.openai.com/v1").strip().rstrip("/")
+    cloud_model = (os.getenv("OCR_OPENAI_MODEL") or "gpt-4.1-mini").strip()
+    if cloud_key:
+        providers.append({"name": "cloud", "api_key": cloud_key, "base_url": cloud_base, "model": cloud_model})
+
+    if not providers:
+        raise RuntimeError("Receipt OCR is not configured")
+    return providers
+
+
 async def extract_receipt(payload: bytes, mime_type: str, language: str, category_names: list[str] | None = None) -> ReceiptDraft:
     config = llm_service.get_llm_config()
-    api_key = (os.getenv("OCR_OPENAI_API_KEY") or "").strip()
-    base_url = (os.getenv("OCR_OPENAI_BASE_URL") or "https://api.openai.com/v1").strip().rstrip("/")
-    model = (os.getenv("OCR_OPENAI_MODEL") or "gpt-4.1-mini").strip()
-    if not api_key:
-        raise RuntimeError("Receipt OCR is not configured")
+    providers = await _ocr_providers()
     allowed = {"image/jpeg", "image/png", "image/webp"}
     if mime_type == "application/pdf":
-        payload, mime_type = await asyncio.to_thread(_pdf_to_png, payload)
+        payload, mime_type = await asyncio.to_thread(_pdf_to_png)
     if mime_type not in allowed or not payload or len(payload) > 10 * 1024 * 1024:
         raise ValueError("Unsupported receipt image")
 
@@ -125,7 +185,6 @@ async def extract_receipt(payload: bytes, mime_type: str, language: str, categor
         f"CATEGORY OPTIONS: {category_options}. Today is {date.today().isoformat()}. User language is {language}."
     )
     body = {
-        "model": model,
         "temperature": 0,
         "max_tokens": 250,
         "messages": [{"role": "user", "content": [
@@ -133,23 +192,60 @@ async def extract_receipt(payload: bytes, mime_type: str, language: str, categor
             {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{base64.b64encode(payload).decode()}"}},
         ]}],
     }
-    print(f"[receipt-ocr] request model={model} bytes={len(payload)}", flush=True)
-    for attempt in range(4):
-        async with httpx.AsyncClient(timeout=max(config.timeout_seconds, 30)) as client:
-            response = await client.post(f"{base_url}/chat/completions", headers={"Authorization": f"Bearer {api_key}"}, json=body)
-        if response.status_code in {429, 500, 502, 503, 504} and attempt < 3:
-            await asyncio.sleep(2 ** attempt)
-            continue
+    response = None
+    model = providers[-1]["model"]
+    used_provider = providers[-1]["name"]
+    for index, provider in enumerate(providers):
+        model = provider["model"]
+        used_provider = provider["name"]
+        attempt_body = {**body, "model": model}
+        print(f"[receipt-ocr] request provider={provider['name']} model={model} bytes={len(payload)}", flush=True)
+        failed = False
+        attempt_response = None
+        for attempt in range(4):
+            try:
+                async with httpx.AsyncClient(timeout=max(config.timeout_seconds, 30)) as client:
+                    attempt_response = await client.post(
+                        f"{provider['base_url']}/chat/completions",
+                        headers={"Authorization": f"Bearer {provider['api_key']}"},
+                        json=attempt_body,
+                    )
+            except Exception as exc:
+                # A LAN box that is switched off is the expected failure here, so a transport
+                # error falls through to the next provider rather than aborting the scan.
+                print(f"[receipt-ocr] provider={provider['name']} transport error {type(exc).__name__}: {exc}", flush=True)
+                failed = True
+                break
+            if attempt_response.status_code in {429, 500, 502, 503, 504} and attempt < 3:
+                await asyncio.sleep(2 ** attempt)
+                continue
+            break
+        response = attempt_response
+        if failed or response is None or response.status_code != 200:
+            if index + 1 < len(providers):
+                status = "transport error" if failed or response is None else response.status_code
+                print(f"[receipt-ocr] provider={provider['name']} unusable ({status}); falling back", flush=True)
+                continue
+            if response is None:
+                raise RuntimeError("Vision model unreachable")
         break
-    print(f"[receipt-ocr] response status={response.status_code}", flush=True)
+    print(f"[receipt-ocr] response provider={used_provider} status={response.status_code}", flush=True)
     if response.status_code != 200:
         snippet = response.text[:600].replace("\n", " ")
         print(f"[receipt-ocr] ERROR status={response.status_code} body={snippet}", flush=True)
         raise RuntimeError(f"Vision model HTTP {response.status_code}")
-    content = response.json()["choices"][0]["message"]["content"]
+    content = _http_json(response)["choices"][0]["message"]["content"]
+    # Some models wrap the object in a fenced block and add prose after it. Salvage the
+    # first JSON object rather than discarding a scan that actually succeeded.
     data = _json_object(content)
     description = str(data.get("description") or "").strip()
-    amount = Decimal(str(data.get("amount")))
+    # A model that cannot read the photo answers with nulls rather than failing. Coerce
+    # those to None so the validation below rejects it as "unreadable" instead of raising
+    # a conversion error that hides what actually happened.
+    try:
+        amount = Decimal(str(data.get("amount")))
+    except Exception:
+        amount = None
     amount_label = str(data.get("amount_label") or "").strip().lower()
     amount_evidence = str(data.get("amount_evidence") or "").strip().lower()
     trusted_labels = ("grand total", "total", "jumlah", "amount due", "net total", "total sales", "charged", "paid")
@@ -160,11 +256,15 @@ async def extract_receipt(payload: bytes, mime_type: str, language: str, categor
         except Exception:
             pass
     has_total_label = any(label in f"{amount_label} {amount_evidence}" for label in trusted_labels)
-    if not has_total_label or amount not in evidence_amounts:
+    if amount is None or not has_total_label or amount not in evidence_amounts:
         # Preserve OCR extraction for user review; never silently substitute another number.
         amount = max(evidence_amounts) if has_total_label and evidence_amounts else amount
-    txn_date = date.fromisoformat(str(data.get("date")))
-    if not description or len(description) > 190 or amount <= 0 or amount > Decimal("9999999999") or data.get("type") not in {"expense", "income"}:
+    try:
+        txn_date = date.fromisoformat(str(data.get("date")))
+    except Exception:
+        txn_date = None
+    invalid_amount = amount is None or amount <= 0 or amount > Decimal("9999999999")
+    if not description or len(description) > 190 or invalid_amount or txn_date is None or data.get("type") not in {"expense", "income"}:
         raise ValueError("Incomplete receipt details")
     category_hint = " ".join(str(data.get("category_hint") or "").split())[:120]
     txn_time = _normalize_time(str(data.get("time") or ""))
