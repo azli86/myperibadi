@@ -924,8 +924,11 @@ export default function ChatPage() {
 
       setInput("")
       setSelectedFile(null)
-      // The sent bubble keeps its own object URL, so this one is no longer referenced.
-      if (selectedPreviewUrl) URL.revokeObjectURL(selectedPreviewUrl)
+      // Do NOT revoke selectedPreviewUrl here. When the picture came from the composer
+      // it is the very URL the optimistic bubble renders from (localPreviewUrl is
+      // selectedPreviewUrl || a fresh object URL), so revoking it on send would blank
+      // the thumbnail the user is waiting to see. It is released with the other object
+      // URLs on unmount.
       setSelectedPreviewUrl(null)
       if (cameraInputRef.current) {
         cameraInputRef.current.value = ""
@@ -938,11 +941,6 @@ export default function ChatPage() {
       // tick as the optimistic image bubble meant the bot's reply could land before the
       // user had actually seen their own screenshot, which reads as "did it even send?".
       // The delay is a paint floor so the thumbnail is on screen first, not a fake wait.
-      if (activeFile) {
-        await new Promise((resolve) => setTimeout(resolve, ATTACHMENT_PAINT_FLOOR_MS))
-      }
-      setIsTyping(true)
-
       const postChatMessage = async (body: FormData) => {
         const res = await fetch("/api/chat/message", {
           credentials: "include",
@@ -956,7 +954,19 @@ export default function ChatPage() {
         return { res, data }
       }
 
-      let { res, data } = await postChatMessage(formData)
+      // A picture starts uploading now. Waiting out the paint floor first would leave the
+      // request sitting idle for the whole floor, so a slow OCR is delayed twice over.
+      const sendStartedAt = Date.now()
+      const inflight = postChatMessage(formData)
+
+      if (activeFile) {
+        // The floor still gates the typing indicator and the reply below, so the user sees
+        // their own screenshot before the bot answers; the upload just overlaps it.
+        await new Promise((resolve) => setTimeout(resolve, ATTACHMENT_PAINT_FLOOR_MS))
+      }
+      setIsTyping(true)
+
+      let { res, data } = await inflight
 
       // Bubble attach (TXN + photo only): never retry as text-only — that is not a new expense
       // and would hide the real attach failure. Only retry text-only for "makan 12" style sends.
@@ -1028,8 +1038,8 @@ export default function ChatPage() {
       // given its paint floor above, so the remainder is what is left to reach the end of
       // it. Without this a fast reply replaces the image almost instantly.
       const minDelay = activeFile ? ATTACHMENT_PAINT_FLOOR_MS : 0
-      
-      const elapsed = Date.now() - now
+
+      const elapsed = Date.now() - sendStartedAt
       if (elapsed < minDelay) {
         await new Promise((resolve) => setTimeout(resolve, minDelay - elapsed))
       }
