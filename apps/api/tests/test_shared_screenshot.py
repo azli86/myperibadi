@@ -1,10 +1,8 @@
-"""Shared-screenshot auto-send, and the bubble that shows it.
+"""Shared-screenshot ordering: the picture is on screen before the bot replies.
 
-A screenshot from the Android/PWA share sheet is sent straight into the
-conversation (the user asked for that — staging it in the composer was worse).
-What must be true is that the image is visible in the chat bubble as it goes out;
-the composer preview only ever showed a file name, which is why the image looked
-like it never appeared at all.
+Users were confused about whether their screenshot had sent at all, because the
+bot's reply could land while the thumbnail was still being painted. Auto-send is
+correct; the ordering was not.
 
 These checks read the chat page source. They are structural on purpose: the
 behaviour lives in JSX and in an effect, and neither is reachable from a unit test
@@ -88,10 +86,44 @@ def test_composer_still_previews_a_picked_image():
     )
 
 
+def test_picture_is_visible_before_the_bot_replies():
+    """The reply must not race the thumbnail onto the screen.
+
+    Two things have to hold: the typing indicator is held back until the image has
+    had a paint floor, and the reply itself waits out the same floor. Either one
+    alone still lets a fast connection swap the picture out from under the user.
+    """
+    source = _source()
+    assert "ATTACHMENT_PAINT_FLOOR_MS" in source, "no paint floor is defined"
+
+    # The typing indicator is gated on the attachment.
+    assert re.search(
+        r"if \(activeFile\) \{\s*await new Promise\(\(resolve\) => setTimeout\(resolve, ATTACHMENT_PAINT_FLOOR_MS\)\)\s*\}\s*setIsTyping\(true\)",
+        source,
+    ), "the typing indicator can appear before the image has painted"
+
+    # ...and the reply waits out the same floor.
+    assert "const minDelay = activeFile ? ATTACHMENT_PAINT_FLOOR_MS : 0" in source, (
+        "the bot reply no longer waits, so it can replace the picture instantly"
+    )
+
+
+def test_paint_floor_is_short():
+    """A paint floor that is too long is just lag the user has to sit through."""
+    source = _source()
+    match = re.search(r"ATTACHMENT_PAINT_FLOOR_MS = (\d+)", source)
+    assert match, "ATTACHMENT_PAINT_FLOOR_MS is not a plain number"
+    assert 300 <= int(match.group(1)) <= 1500, (
+        f"a {match.group(1)}ms floor is either imperceptible or feels like lag"
+    )
+
+
 if __name__ == "__main__":
     test_shared_image_is_sent_immediately()
     test_send_does_not_go_through_the_composer()
     test_shared_text_travels_with_the_image()
     test_user_bubble_renders_the_image()
     test_composer_still_previews_a_picked_image()
+    test_picture_is_visible_before_the_bot_replies()
+    test_paint_floor_is_short()
     print("shared screenshot OK")

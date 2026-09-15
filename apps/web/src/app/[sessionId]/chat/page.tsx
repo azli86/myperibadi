@@ -174,6 +174,13 @@ const COMMAND_ITEMS: CommandItem[] = [
 const QUICK_COMMANDS = ["summary", "list", "checkwallet", "budget summary", "lang bm", "lang en"]
 const HERE_LOCATION_PATTERN = /(^|\s)@here\b/i
 const SUPPORTED_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]
+
+/**
+ * How long an outgoing picture is left on screen before the bot starts "typing".
+ * Without it the reply can beat the thumbnail to the screen on a fast connection,
+ * and the user is left unsure whether their screenshot was actually sent.
+ */
+const ATTACHMENT_PAINT_FLOOR_MS = 900
 const IMAGE_PICKER_ACCEPT = SUPPORTED_IMAGE_MIME_TYPES.join(",")
 const SUPPORTED_IMAGE_EXTENSION = /\.(jpe?g|png|webp)$/i
 
@@ -927,7 +934,13 @@ export default function ChatPage() {
         galleryInputRef.current.value = ""
       }
 
-      // Show typing indicator immediately
+      // Show typing indicator immediately — but not for a picture. Firing it in the same
+      // tick as the optimistic image bubble meant the bot's reply could land before the
+      // user had actually seen their own screenshot, which reads as "did it even send?".
+      // The delay is a paint floor so the thumbnail is on screen first, not a fake wait.
+      if (activeFile) {
+        await new Promise((resolve) => setTimeout(resolve, ATTACHMENT_PAINT_FLOOR_MS))
+      }
       setIsTyping(true)
 
       const postChatMessage = async (body: FormData) => {
@@ -1011,11 +1024,10 @@ export default function ChatPage() {
         return
       }
 
-      // Artificial delay for natural feel
-      // USER REQUEST: Skip delay for transactions and attachments, longer for normal chat
-      const isTransaction = replyText?.trim().startsWith("*Done!") || replyText?.trim().includes("TXN")
-      void isTransaction
-      const minDelay = 0
+      // Delay is measured from the start of the send, and the picture has already been
+      // given its paint floor above, so the remainder is what is left to reach the end of
+      // it. Without this a fast reply replaces the image almost instantly.
+      const minDelay = activeFile ? ATTACHMENT_PAINT_FLOOR_MS : 0
       
       const elapsed = Date.now() - now
       if (elapsed < minDelay) {
