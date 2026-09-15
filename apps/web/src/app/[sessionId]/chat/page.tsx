@@ -175,12 +175,6 @@ const QUICK_COMMANDS = ["summary", "list", "checkwallet", "budget summary", "lan
 const HERE_LOCATION_PATTERN = /(^|\s)@here\b/i
 const SUPPORTED_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]
 
-/**
- * How long an outgoing picture is left on screen before the bot starts "typing".
- * Without it the reply can beat the thumbnail to the screen on a fast connection,
- * and the user is left unsure whether their screenshot was actually sent.
- */
-const ATTACHMENT_PAINT_FLOOR_MS = 900
 const IMAGE_PICKER_ACCEPT = SUPPORTED_IMAGE_MIME_TYPES.join(",")
 const SUPPORTED_IMAGE_EXTENSION = /\.(jpe?g|png|webp)$/i
 
@@ -956,14 +950,11 @@ export default function ChatPage() {
 
       // A picture starts uploading now. Waiting out the paint floor first would leave the
       // request sitting idle for the whole floor, so a slow OCR is delayed twice over.
-      const sendStartedAt = Date.now()
       const inflight = postChatMessage(formData)
 
-      if (activeFile) {
-        // The floor still gates the typing indicator and the reply below, so the user sees
-        // their own screenshot before the bot answers; the upload just overlaps it.
-        await new Promise((resolve) => setTimeout(resolve, ATTACHMENT_PAINT_FLOOR_MS))
-      }
+      // The picture is already on screen: the optimistic bubble renders it, and the upload
+      // is in flight. Nothing is gained by holding the typing indicator back, so the three
+      // dots appear as soon as the request is genuinely outstanding.
       setIsTyping(true)
 
       let { res, data } = await inflight
@@ -1034,15 +1025,9 @@ export default function ChatPage() {
         return
       }
 
-      // Delay is measured from the start of the send, and the picture has already been
-      // given its paint floor above, so the remainder is what is left to reach the end of
-      // it. Without this a fast reply replaces the image almost instantly.
-      const minDelay = activeFile ? ATTACHMENT_PAINT_FLOOR_MS : 0
-
-      const elapsed = Date.now() - sendStartedAt
-      if (elapsed < minDelay) {
-        await new Promise((resolve) => setTimeout(resolve, minDelay - elapsed))
-      }
+      // The typing indicator is driven by the request, not by a clock. The picture already
+      // has its paint floor above, so holding the indicator open afterwards only makes the
+      // bot look slower than it is. Stop as soon as the reply is here.
       setIsTyping(false)
 
       setMessages((prev) => {

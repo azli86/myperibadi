@@ -1,4 +1,4 @@
-"""The picture is on screen immediately, and the scan overlaps it.
+"""The picture is on screen immediately, and the typing dots report the real request.
 
 Two separate things used to make a screenshot feel slow:
 
@@ -8,8 +8,10 @@ Two separate things used to make a screenshot feel slow:
 2. The upload did not start until the 900ms paint floor had fully elapsed, so a slow
    OCR was delayed twice over.
 
-The floor itself is kept: it still gates the typing indicator and the reply, so the
-user sees their own image before the bot answers.
+The floor itself is now gone too. It held the typing indicator open for a fixed 900ms
+regardless of how long the request actually took, which made a fast reply look slow. The
+three dots now track the request: they appear while it is outstanding and stop when the
+reply lands.
 """
 
 import os
@@ -39,26 +41,37 @@ def test_send_does_not_revoke_the_thumbnail_it_is_showing():
     )
 
 
-def test_upload_starts_before_the_paint_floor_finishes():
-    """A picture must not sit idle for the floor before the request even leaves."""
+def test_upload_starts_before_any_pause():
+    """A picture must not sit idle before the request leaves."""
     source = _source()
     assert "const inflight = postChatMessage(formData)" in source, (
-        "the request is not started before the floor"
+        "the request is not started before the typing indicator"
     )
-    # The floor await must come after the request is kicked off.
-    assert source.index("const inflight = postChatMessage(formData)") < source.index(
-        "await new Promise((resolve) => setTimeout(resolve, ATTACHMENT_PAINT_FLOOR_MS))"
-    ), "the paint floor runs before the upload starts, serialising them"
 
 
-def test_the_reply_is_still_held_back_for_the_picture():
-    """Sending fast and replying instantly is what confused users in the first place."""
+def test_typing_indicator_tracks_the_request_not_a_timer():
+    """A fixed floor made a fast reply look slow, which is what the user reported."""
     source = _source()
-    assert "const minDelay = activeFile ? ATTACHMENT_PAINT_FLOOR_MS : 0" in source, (
-        "the bot reply no longer waits, so it can replace the picture instantly"
+    assert "ATTACHMENT_PAINT_FLOOR_MS" not in source, (
+        "the fixed paint floor is back; the indicator no longer follows the request"
     )
-    assert "const elapsed = Date.now() - sendStartedAt" in source, (
-        "the delay must be measured from when the send started, not from before it"
+    # It must be raised before the response is awaited and cleared once it arrives.
+    assert source.index("setIsTyping(true)") < source.index("await inflight"), (
+        "the indicator is not shown while the request is outstanding"
+    )
+    assert source.index("await inflight") < source.index("setIsTyping(false)"), (
+        "the indicator is not cleared once the reply is in"
+    )
+
+
+def test_the_reply_arrives_without_an_artificial_delay():
+    """Holding the reply back for a fixed time is what made the bot feel slow."""
+    source = _source()
+    assert "const minDelay = activeFile ? ATTACHMENT_PAINT_FLOOR_MS : 0" not in source, (
+        "the bot reply is being delayed on a timer again"
+    )
+    assert "const elapsed = Date.now() - sendStartedAt" not in source, (
+        "the removed delay is still being measured"
     )
 
 
@@ -72,7 +85,8 @@ def test_thumbnail_is_released_eventually():
 
 if __name__ == "__main__":
     test_send_does_not_revoke_the_thumbnail_it_is_showing()
-    test_upload_starts_before_the_paint_floor_finishes()
-    test_the_reply_is_still_held_back_for_the_picture()
+    test_upload_starts_before_any_pause()
+    test_typing_indicator_tracks_the_request_not_a_timer()
+    test_the_reply_arrives_without_an_artificial_delay()
     test_thumbnail_is_released_eventually()
     print("chat image timing OK")
