@@ -30,7 +30,7 @@ TOP = SHELL[
 def test_the_avatar_sits_inside_the_card():
     assert not re.search(r"absolute\s+-right", TOP), "the avatar must not hang off the edge"
     assert "UserAvatar" in TOP
-    assert re.search(r"UserAvatar[^>]*size=\{60\}", TOP, re.S), "avatar is 60px"
+    assert re.search(r"UserAvatar[^>]*size=\{64\}", TOP, re.S), "avatar is 64px"
 
 
 def test_the_name_comes_after_the_avatar():
@@ -38,7 +38,7 @@ def test_the_name_comes_after_the_avatar():
 
 
 def test_the_name_is_large():
-    assert "text-xl font-black" in TOP, "the name uses the space the card has"
+    assert "text-2xl font-black" in TOP, "the name uses the space the card has"
 
 
 def test_the_name_is_the_trigger_and_there_is_no_pill():
