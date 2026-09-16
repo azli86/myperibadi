@@ -4057,9 +4057,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
               {/* ── Main Sheet Content: Grouped Cards ── */}
               <div className="px-4 pb-12 space-y-3.5 pt-1">
-                {/* ── Nav card: three groups of destinations, divided, no headings ── */}
-                <section className={cn("rounded-3xl border border-[var(--border)] p-4 shadow-sm", "bg-[var(--card)]")}>
-                  {([
+                {/* ── Nav cards: one card per group, no headings ── */}
+                {([
                     [
                       { name: t.budget, href: `/${sessionId}/budget`, icon: Wallet },
                       { name: t.walletSettings, href: `/${sessionId}/wallet-settings`, icon: CreditCard },
@@ -4084,14 +4083,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       { name: lang === "BM" ? "Galeri" : "Gallery", href: `/${sessionId}/receipts`, icon: Images },
                       { name: lang === "BM" ? "Kalkulator" : "Calculator", action: "calculator", icon: CalculatorIcon },
                     ],
-                  ] as { name: string; href?: string; icon: typeof Wallet; badge?: string; action?: string }[][]).map((group, groupIndex) => (
-                    <div
-                      key={groupIndex}
-                      className={cn(
-                        "grid grid-cols-4 gap-x-1 gap-y-3.5",
-                        groupIndex > 0 && "mt-3.5 border-t border-[var(--border)] pt-3.5"
-                      )}
-                    >
+                ] as { name: string; href?: string; icon: typeof Wallet; badge?: string; action?: string }[][]).map((group, groupIndex) => (
+                  <section
+                    key={groupIndex}
+                    className={cn("rounded-3xl border border-[var(--border)] p-4 shadow-sm", "bg-[var(--card)]")}
+                  >
+                    <div className="grid grid-cols-4 gap-x-1 gap-y-3.5">
                       {group.map((item) => {
                         const isCurrent = Boolean(item.href) && pathname === item.href;
                         return (
@@ -4145,8 +4142,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         );
                       })}
                     </div>
-                  ))}
-                </section>
+                  </section>
+                ))}
 
                     {/* ── SheetCard 3: Peta & Lokasi (Maps & Places) ── */}
                     <section className={cn("rounded-3xl border border-[var(--border)] p-3.5 shadow-sm", "bg-[var(--card)]")}>

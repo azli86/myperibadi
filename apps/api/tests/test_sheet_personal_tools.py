@@ -1,11 +1,12 @@
-"""Pin the mobile sheet nav card.
+"""Pin the mobile sheet nav cards.
 
 The destinations have been through tiles-with-headings, one merged tile grid, a plain row
-list, an app drawer with no card, and are now one card holding three divided groups.
+list, a cardless app drawer, one card holding three divided groups, and are now three cards.
 
-The groups are the split the headings used to describe, but with dividers instead of heading
-rows: a card, a hairline, a card. The dividers keep the grouping without the labels and module
-counts that made the earlier version look cluttered.
+The grouping is the split the old headings described: money, personal, tools. It is drawn as
+separate cards rather than dividers inside one card, which is what the layout wanted all
+along — a divider reads as a section break inside a card, a card boundary reads as "these are
+a different kind of thing". No heading rows and no module counts come back with them.
 
 Run: cd apps/api && venv/bin/python -m tests.test_sheet_personal_tools
 """
@@ -21,7 +22,9 @@ SHELL = (
     / "Shell.tsx"
 ).read_text(encoding="utf-8")
 
-CARD = SHELL[SHELL.index("Nav card: three groups of destinations") : SHELL.index("SheetCard 3:")]
+BLOCK = SHELL[
+    SHELL.index("Nav cards: one card per group") : SHELL.index("SheetCard 3:")
+]
 TAIL = SHELL[SHELL.index("SheetCard 3:") :]
 
 FINANCE = {"budget", "wallet-settings", "bank-reconciliation", "tax", "categories",
@@ -34,34 +37,35 @@ def hrefs(text: str) -> list[str]:
     return re.findall(r'\$\{sessionId\}/([a-z0-9-]+)', text)
 
 
-def test_it_is_a_card_again():
-    assert CARD.count("<section") == 1, "the nav must sit in one card"
-    assert "rounded-3xl border border-[var(--border)]" in CARD
+def test_it_maps_three_cards():
+    assert ".map((group, groupIndex) => (" in BLOCK, "one card per group, via map"
+    assert BLOCK.count("<section") == 1, "the section is written once and repeated by the map"
+    assert "key={groupIndex}" in BLOCK
 
 
-def test_three_groups_are_divided():
-    assert CARD.count("groupIndex > 0") == 1, "one divider rule for every group after the first"
-    assert "border-t border-[var(--border)]" in CARD
-    # Three grid containers, one per group.
-    assert CARD.count("grid grid-cols-4") == 1, "the grid class is written once and reused"
+def test_each_card_holds_a_grid():
+    assert BLOCK.count("grid grid-cols-4") == 1
+    assert "rounded-3xl border border-[var(--border)]" in BLOCK
+
+
+def test_the_groups_are_separated_by_cards_not_dividers():
+    assert "border-t border-[var(--border)]" not in BLOCK, "no divider between groups"
 
 
 def test_the_groups_hold_the_right_destinations():
-    groups = CARD.split('{ name:')
-    # The groups appear in order; slice the card by its divider-free grid containers.
-    finance = hrefs(CARD.split("Kenderaan")[0])
-    personal = hrefs(CARD.split("Kenderaan")[1].split("Galeri")[0])
-    tools = hrefs(CARD.split("Galeri")[1])
+    finance = hrefs(BLOCK.split("Kenderaan")[0])
+    personal = hrefs(BLOCK.split("Kenderaan")[1].split("Galeri")[0])
+    tools = hrefs(BLOCK.split("Galeri")[1])
     assert set(finance) == FINANCE, f"finance group is {set(finance)}"
     assert set(personal) == PERSONAL, f"personal group is {set(personal)}"
     assert set(tools) == TOOLS, f"tools group is {set(tools)}"
 
 
 def test_there_are_still_no_headings_or_counts():
-    assert "uppercase tracking-" not in CARD
-    assert 'lang === "BM" ? "Peribadi"' not in CARD
-    assert 'lang === "BM" ? "Alatan"' not in CARD
-    assert "modul" not in CARD and '"modules"' not in CARD
+    assert "uppercase tracking-" not in BLOCK
+    assert 'lang === "BM" ? "Peribadi"' not in BLOCK
+    assert 'lang === "BM" ? "Alatan"' not in BLOCK
+    assert "modul" not in BLOCK and '"modules"' not in BLOCK
 
 
 def test_the_other_cards_are_untouched():
@@ -73,30 +77,32 @@ def test_the_other_cards_are_untouched():
 
 
 def test_no_destination_is_listed_twice():
-    found = hrefs(CARD)
+    found = hrefs(BLOCK)
     duplicates = {h for h in found if found.count(h) > 1}
     assert not duplicates, f"listed twice: {duplicates}"
+    assert len(found) == 17, f"expected 17 destinations, found {len(found)}"
 
 
 def test_the_calculator_still_opens_a_panel():
-    assert 'action: "calculator"' in CARD
-    assert "setShowCalculator(true)" in CARD
-    assert "requestMobileMenuClose()" in CARD, "the sheet has to close behind the panel"
+    assert 'action: "calculator"' in BLOCK
+    assert "setShowCalculator(true)" in BLOCK
+    assert "requestMobileMenuClose()" in BLOCK, "the sheet has to close behind the panel"
 
 
 def test_the_ai_badge_is_kept():
-    assert 'badge: "AI"' in CARD, "the AI tag on Reconcile must survive"
+    assert 'badge: "AI"' in BLOCK, "the AI tag on Reconcile must survive"
 
 
 def test_every_target_page_exists():
     root = Path(__file__).resolve().parents[2] / "web" / "src" / "app" / "[sessionId]"
-    missing = [h for h in hrefs(CARD) if not (root / h).exists()]
+    missing = [h for h in hrefs(BLOCK) if not (root / h).exists()]
     assert not missing, f"links to pages that do not exist: {missing}"
 
 
 if __name__ == "__main__":
-    test_it_is_a_card_again()
-    test_three_groups_are_divided()
+    test_it_maps_three_cards()
+    test_each_card_holds_a_grid()
+    test_the_groups_are_separated_by_cards_not_dividers()
     test_the_groups_hold_the_right_destinations()
     test_there_are_still_no_headings_or_counts()
     test_the_other_cards_are_untouched()
@@ -104,4 +110,4 @@ if __name__ == "__main__":
     test_the_calculator_still_opens_a_panel()
     test_the_ai_badge_is_kept()
     test_every_target_page_exists()
-    print("sheet nav card OK")
+    print("sheet nav cards OK")
