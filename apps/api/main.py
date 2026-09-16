@@ -1451,6 +1451,29 @@ async def start_expired_token_cleanup_task():
                 print(f"[token-cleanup] Error: {e}")
     asyncio.create_task(_token_cleanup_loop())
 
+    # Support tickets die after a week of silence, so they do not pile up in the
+    # admin queue forever. Tickets #3 and #4 sat "in_progress" for 22 days.
+    async def _stale_ticket_loop():
+        while True:
+            await asyncio.sleep(6 * 3600)
+            try:
+                async with database.SessionLocal() as db:
+                    cutoff = datetime.utcnow() - timedelta(days=7)
+                    res = await db.execute(
+                        update(models.SupportTicket)
+                        .where(
+                            models.SupportTicket.status.in_(("new", "in_progress")),
+                            models.SupportTicket.updated_at < cutoff,
+                        )
+                        .values(status="closed", updated_at=datetime.utcnow())
+                    )
+                    if res.rowcount:
+                        print(f"[ticket] auto-closed {res.rowcount} stale ticket(s)")
+                    await db.commit()
+            except Exception as e:
+                print(f"[ticket] stale sweep error: {e}")
+    asyncio.create_task(_stale_ticket_loop())
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -14206,6 +14229,58 @@ async def my_support_tickets(
         .order_by(models.SupportTicket.created_at.desc())
     )
     return result.scalars().all()
+
+@app.get("/support/tickets/unread")
+async def unread_support_tickets(
+    current_user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(database.get_db),
+):
+    """Tickets whose latest reply is from an admin the user has not seen yet.
+
+    Drives the dashboard popup. Everything derives from the existing tables: a
+    ticket is unread when it has an admin reply newer than user_read_at (or
+    newer than the ticket itself when it has never been read).
+    """
+    last_admin = (
+        select(
+            models.SupportTicketReply.ticket_id.label("ticket_id"),
+            func.max(models.SupportTicketReply.created_at).label("last_admin_at"),
+        )
+        .where(models.SupportTicketReply.sender == "admin")
+        .group_by(models.SupportTicketReply.ticket_id)
+        .subquery()
+    )
+    seen = func.coalesce(models.SupportTicket.user_read_at, models.SupportTicket.created_at)
+    rows = await db.execute(
+        select(models.SupportTicket.id, models.SupportTicket.title, models.SupportTicket.status,
+               last_admin.c.last_admin_at)
+        .join(last_admin, last_admin.c.ticket_id == models.SupportTicket.id)
+        .where(
+            models.SupportTicket.user_id == current_user.id,
+            models.SupportTicket.status != "closed",
+            last_admin.c.last_admin_at > seen,
+        )
+        .order_by(last_admin.c.last_admin_at.desc())
+        .limit(5)
+    )
+    return [
+        {"id": r[0], "title": r[1], "status": r[2], "last_admin_at": r[3]}
+        for r in rows.all()
+    ]
+
+@app.post("/support/tickets/{ticket_id}/read")
+async def mark_support_ticket_read(
+    ticket_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: AsyncSession = Depends(database.get_db),
+):
+    """Silence the dashboard popup for this ticket until an admin replies again."""
+    t = await db.get(models.SupportTicket, ticket_id)
+    if not t or t.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Tiket tidak dijumpai")
+    t.user_read_at = datetime.utcnow()
+    await db.commit()
+    return {"ok": True}
 
 @app.get("/support/tickets/{ticket_id}/replies", response_model=List[schemas.SupportTicketReplyResponse])
 async def my_support_ticket_replies(

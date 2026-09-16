@@ -453,7 +453,53 @@ export default function Dashboard() {
   const [dashboardFocusedCardIndex, setDashboardFocusedCardIndex] = useState<number | null>(null)
   const walletAutoScrollRef = useRef<HTMLDivElement | null>(null)
   const walletScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const { showAlert, alertModal } = usePageAlert(lang)
+  const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
+
+  // Tell the user an admin answered their ticket. Shown once: opening it marks
+  // the ticket read, so it stays quiet until the next admin reply.
+  useEffect(() => {
+    const token = getAccessToken()
+    let cancelled = false
+    void (async () => {
+      try {
+        const r = await fetch("/api/support/tickets/unread", {
+          credentials: "include",
+          headers: { ...(token && !isCookieAuthSentinel(token) ? { Authorization: `Bearer ${token}` } : {}) },
+          cache: "no-store",
+        })
+        if (!r.ok) return
+        const list = (await r.json()) as { id: number; title: string }[]
+        if (cancelled || !list.length) return
+        const first = list[0]
+        const more = list.length > 1 ? (lang === "EN" ? ` (+${list.length - 1} more)` : ` (+${list.length - 1} lagi)`) : ""
+        showConfirm(
+          lang === "EN" ? "Reply from support" : "Balasan daripada sokongan",
+          lang === "EN"
+            ? `Ticket #${first.id} "${first.title}" has a reply.${more}`
+            : `Tiket #${first.id} "${first.title}" ada balasan.${more}`,
+          () => {
+            void Promise.all(
+              list.map((t) =>
+                fetch(`/api/support/tickets/${t.id}/read`, {
+                  method: "POST",
+                  credentials: "include",
+                  headers: { ...(token && !isCookieAuthSentinel(token) ? { Authorization: `Bearer ${token}` } : {}) },
+                }).catch(() => {})
+              )
+            )
+          },
+          "info",
+        )
+      } catch {
+        // A failed popup must never break the dashboard.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // Run once per dashboard mount; showAlert identities are not stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const { requestClose: requestDashboardAddClose } = useOverlayBackClose({ id: "dashboard-add", isOpen: showAddModal, onClose: () => setShowAddModal(false) })
   const { requestClose: requestWalletDeckClose } = useOverlayBackClose({ id: "dashboard-wallets", isOpen: showMobileWalletDeck, onClose: () => setShowMobileWalletDeck(false) })
   const { requestClose: requestChartClose } = useOverlayBackClose({ id: "dashboard-chart", isOpen: showChartModal, onClose: () => setShowChartModal(false) })

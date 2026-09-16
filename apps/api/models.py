@@ -1505,6 +1505,7 @@ class SupportTicket(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    user_read_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
 
 class SupportTicketReply(Base):
