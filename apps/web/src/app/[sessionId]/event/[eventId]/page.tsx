@@ -285,7 +285,7 @@ export default function EventDetailPage() {
         />
       </div>
 
-      <div className="mx-auto w-full space-y-4 px-4 pb-24 pt-2 md:max-w-6xl md:px-6 md:pb-16 lg:max-w-7xl">
+      <div className="mx-auto w-full space-y-4 px-1 pb-24 pt-0 md:max-w-6xl md:space-y-4 md:px-6 md:pb-16 lg:max-w-7xl">
         <div className="md:hidden">
           <MobilePageHeader title={event.name} fallbackHref={`/${sessionId}/event`} backPreferHistory alignLeft />
         </div>
