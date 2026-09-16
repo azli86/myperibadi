@@ -481,6 +481,17 @@ export default function EventPage() {
               />
             </div>
           )}
+
+          {/* Status overlay on the media, top-left. The pill says how close the
+              trip is, so it belongs on the photo, not in the text column. */}
+          <span
+            className={cn(
+              "absolute left-2 top-2 rounded-full border px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider backdrop-blur-md",
+              statusClass
+            )}
+          >
+            {statusLabel}
+          </span>
         </div>
 
         {/* Right info */}
@@ -496,10 +507,6 @@ export default function EventPage() {
                 </p>
               </div>
             </div>
-
-            <span className={cn("mt-1.5 inline-block rounded-full border px-2 py-0.5 text-[0.6rem] uppercase tracking-wider", statusClass)}>
-              {statusLabel}
-            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-x-3 gap-y-2">
