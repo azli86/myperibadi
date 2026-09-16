@@ -4091,7 +4091,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     key={groupIndex}
                     className={cn("rounded-3xl border border-[var(--border)] p-4 shadow-sm", "bg-[var(--card)]")}
                   >
-                    <div className="grid grid-cols-4 gap-x-1 gap-y-3.5">
+                    <div className="grid grid-cols-4 gap-x-2 gap-y-4">
                       {group.map((item) => {
                         const isCurrent = Boolean(item.href) && pathname === item.href;
                         return (
@@ -4116,14 +4116,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           >
                             <div
                               className={cn(
-                                "relative flex h-13 w-13 items-center justify-center rounded-[18px] border shadow-2xs transition-all duration-200 group-hover:scale-105",
+                                "relative flex h-14 w-14 items-center justify-center rounded-2xl border shadow-2xs transition-all duration-200 group-hover:scale-105",
                                 isCurrent
                                   ? "border-[var(--text)] bg-[var(--text)] text-[var(--bg)] shadow-sm ring-2 ring-[var(--text)]/20"
                                   : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] group-hover:bg-[var(--surface-tint-strong)]"
                               )}
                             >
                               <item.icon
-                                size={22}
+                                size={26}
                                 strokeWidth={1.9}
                                 className="shrink-0 transition-transform group-hover:scale-110"
                               />
