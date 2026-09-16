@@ -30,7 +30,7 @@ TOP = SHELL[
 def test_the_avatar_sits_inside_the_card():
     assert not re.search(r"absolute\s+-right", TOP), "the avatar must not hang off the edge"
     assert "UserAvatar" in TOP
-    assert re.search(r"UserAvatar[^>]*size=\{64\}", TOP, re.S), "avatar is 64px"
+    assert re.search(r"UserAvatar[^>]*size=\{56\}", TOP, re.S), "avatar is 56px"
 
 
 def test_the_name_comes_after_the_avatar():

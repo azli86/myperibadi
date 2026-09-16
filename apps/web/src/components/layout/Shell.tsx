@@ -3919,7 +3919,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 <div className="w-full rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/60 p-3.5">
                   <div className="flex items-center gap-3">
                     <div className="shrink-0">
-                      <UserAvatar name={displayName || activeEmail} size={64} src={avatarSrc} />
+                      <UserAvatar name={displayName || activeEmail} size={56} src={avatarSrc} />
                     </div>
 
                     <div className="min-w-0 flex-1">
@@ -3927,9 +3927,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         type="button"
                         onClick={() => setShowMobileSheetAccountSwitcher(true)}
                         aria-haspopup="dialog"
-                        className="flex max-w-full items-center gap-1.5 text-left transition active:opacity-70"
+                        className="flex min-w-0 flex-1 items-center gap-1.5 text-left transition active:opacity-70"
                       >
-                        <h3 className="truncate text-2xl font-black tracking-tight text-[var(--text)]">
+                        <h3 className="min-w-0 flex-1 truncate text-2xl font-black leading-tight tracking-tight text-[var(--text)]">
                           {displayName}
                         </h3>
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
