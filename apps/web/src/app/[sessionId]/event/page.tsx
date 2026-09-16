@@ -365,6 +365,7 @@ export default function EventPage() {
   // Analytics & Stats
   const stats = useMemo(() => {
     let totalBudget = 0
+    let totalSpent = 0
     let activeCount = 0
     let endedCount = 0
     let nextUpcoming: { name: string; days: number } | null = null
@@ -377,6 +378,7 @@ export default function EventPage() {
       } else {
         activeCount++
         totalBudget += Number(ev.budget || 0)
+        totalSpent += Number(ev.spent || 0)
         if (days != null && days >= 0) {
           if (!nextUpcoming || days < nextUpcoming.days) {
             nextUpcoming = { name: ev.name, days }
@@ -385,7 +387,9 @@ export default function EventPage() {
       }
     }
 
-    return { totalBudget, activeCount, endedCount, nextUpcoming }
+    const netRemaining = totalBudget - totalSpent
+
+    return { totalBudget, totalSpent, netRemaining, activeCount, endedCount, nextUpcoming }
   }, [events])
 
   const sortedEvents = useMemo(() => {
@@ -410,13 +414,11 @@ export default function EventPage() {
 
   const renderEventCard = (ev: EventItem, compact = false) => {
     const days = daysUntil(ev.end_date)
-    const tone = ev.status === "ended" || (days != null && days < 0)
-      ? "ended"
-      : days === 0
-        ? "today"
-        : days != null && days <= 7
-          ? "soon"
-          : "upcoming"
+    const isEnded = ev.status === "ended" || (days != null && days < 0)
+    const isToday = days === 0
+    const isSoon = days != null && days > 0 && days <= 7
+
+    const tone = isEnded ? "ended" : isToday ? "today" : isSoon ? "soon" : "upcoming"
 
     const statusLabel =
       tone === "ended"
@@ -429,12 +431,18 @@ export default function EventPage() {
 
     const statusClass =
       tone === "ended"
-        ? "bg-[var(--muted)]/15 text-[var(--muted)] border-[var(--border)]"
+        ? "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]"
         : tone === "today"
-          ? "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"
+          ? "bg-cyan-500/15 text-cyan-500 border-cyan-500/30 font-bold"
           : tone === "soon"
-            ? "bg-amber-500/15 text-amber-500 border-amber-500/30"
-            : "bg-cyan-500/15 text-cyan-500 border-cyan-500/30"
+            ? "bg-amber-500/15 text-amber-500 border-amber-500/30 font-bold"
+            : "bg-emerald-500/15 text-emerald-500 border-emerald-500/30 font-bold"
+
+    const budgetNum = Number(ev.budget || 0)
+    const spentNum = Number(ev.spent || 0)
+    const hasBudget = ev.budget != null && budgetNum > 0
+    const remainingNum = budgetNum - spentNum
+    const ratio = spendRatio(ev)
 
     return (
       <div
@@ -449,155 +457,219 @@ export default function EventPage() {
           }
         }}
         className={cn(
-          "group relative w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-left shadow-[var(--shadow-card)] transition hover:border-[var(--border-strong)] hover:shadow-md active:scale-[0.99]",
-          compact && "md:p-4.5"
+          "event-card event-card-interactive group flex flex-col justify-between p-4.5 text-left transition",
+          compact && "p-4"
         )}
       >
-        <div className="flex items-start gap-3.5 md:gap-4">
-          <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--icon-fg)] shadow-xs">
-            {ev.has_image && ev.image_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={ev.image_url} alt={ev.name} className="h-full w-full object-cover" />
-            ) : (
-              <CategoryIconGlyph iconName={ev.icon_name} categoryName={ev.name} kind="expense" size={24} />
-            )}
+        <div>
+          {/* Card Header: Icon/Image + Name + Status + Quick Actions */}
+          <div className="flex items-start gap-3.5">
+            <div className="relative flex h-13 w-13 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--icon-fg)] shadow-xs transition-transform group-hover:scale-105">
+              {ev.has_image && ev.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={ev.image_url} alt={ev.name} className="h-full w-full object-cover" />
+              ) : (
+                <CategoryIconGlyph iconName={ev.icon_name} categoryName={ev.name} kind="expense" size={24} />
+              )}
+            </div>
+
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-base font-black tracking-tight text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+                  {ev.name}
+                </p>
+                <span className={cn("shrink-0 rounded-full border px-2.5 py-0.5 text-[0.625rem] uppercase tracking-wider", statusClass)}>
+                  {statusLabel}
+                </span>
+              </div>
+
+              {/* Date & duration */}
+              <div className="mt-1 flex items-center gap-1.5 text-xs text-[var(--muted)]">
+                <Calendar size={12} className="shrink-0 text-[var(--muted)]" />
+                <span className="truncate">
+                  {ev.start_date ? formatDateShort(ev.start_date) : "—"} → {ev.end_date ? formatDateShort(ev.end_date) : tr("Tiada tarikh tamat", "No end date")}
+                </span>
+              </div>
+            </div>
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col">
-            <div className="flex items-center justify-between gap-2">
-              <p className="truncate text-base font-black tracking-tight text-[var(--text)]">{ev.name}</p>
-              <span className={cn("shrink-0 rounded-full border px-2.5 py-0.5 text-[0.625rem] font-black uppercase tracking-wider", statusClass)}>
-                {statusLabel}
-              </span>
-            </div>
+          {/* Wallet & Tags row */}
+          <div className="mt-3.5 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-0.5 text-[0.625rem] font-bold text-[var(--muted)]">
+              <WalletIcon size={11} className="text-[var(--muted)]" />
+              <span>{walletName(ev.wallet_id) || tr("Semua Wallet", "All Wallets")}</span>
+            </span>
 
-            <div className="mt-1 flex items-center gap-1.5 text-xs text-[var(--muted)]">
-              <Calendar size={12} className="shrink-0" />
-              <span className="truncate">
-                {ev.start_date ? formatDateShort(ev.start_date) : "—"} → {ev.end_date ? formatDateShort(ev.end_date) : tr("Tiada tarikh tamat", "No end date")}
+            {ev.notes ? (
+              <span className="truncate text-[0.6875rem] text-[var(--muted)]/80 italic max-w-[180px]">
+                &ldquo;{ev.notes}&rdquo;
               </span>
-            </div>
+            ) : null}
+          </div>
 
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)]/60 pt-2.5">
-              <div className="flex items-center gap-2">
-                {ev.budget != null ? (
-                  <div className="flex items-center gap-1 text-xs font-black text-[var(--text)]">
-                    <span className="text-[0.625rem] font-bold text-[var(--muted)] uppercase">{tr("Bajet", "Budget")}:</span>
-                    <MoneyAmount value={Number(ev.budget || 0)} currency={ev.currency} size="sm" />
-                  </div>
-                ) : (
-                  <span className="text-[0.6875rem] font-medium text-[var(--muted)]">{tr("Tiada had bajet", "No budget limit")}</span>
-                )}
+          {/* Financial summary & Progress */}
+          <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-3">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="block text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                  {tr("Dibelanjakan", "Spent")}
+                </span>
+                <span className="font-black text-[var(--text)]">
+                  <MoneyAmount value={spentNum} currency={ev.currency} size="sm" />
+                </span>
               </div>
 
-              <div className="flex items-center gap-2">
-                {walletName(ev.wallet_id) ? (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[0.6rem] font-bold text-[var(--muted)]">
-                    <WalletIcon size={10} />
-                    {walletName(ev.wallet_id)}
+              <div className="text-right">
+                <span className="block text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+                  {hasBudget ? tr("Peruntukan Bajet", "Budget") : tr("Had Bajet", "Budget Limit")}
+                </span>
+                {hasBudget ? (
+                  <span className="font-black text-[var(--text)]">
+                    <MoneyAmount value={budgetNum} currency={ev.currency} size="sm" />
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[0.6rem] font-bold text-[var(--muted)]">
-                    <WalletIcon size={10} />
-                    {tr("Semua Wallet", "All Wallets")}
+                  <span className="text-[0.6875rem] font-medium text-[var(--muted)]">
+                    {tr("Tiada had", "No limit")}
                   </span>
                 )}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    openEditSheet(ev)
-                  }}
-                  className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] active:scale-95"
-                  aria-label={tr("Edit", "Edit")}
-                >
-                  <Pencil size={15} />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDeleteEvent(ev)
-                  }}
-                  className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-rose-500/10 hover:text-rose-500 active:scale-95"
-                  aria-label={tr("Padam", "Delete")}
-                >
-                  <Trash2 size={15} />
-                </button>
               </div>
             </div>
 
-            {/* Spending derived from the date window: always in sync with edits. */}
-            <div className="mt-3 border-t border-[var(--border)]/60 pt-2.5">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  router.push(`/${sessionId}/event/${ev.id}`)
-                }}
-                className="flex w-full items-center justify-between gap-2 rounded-lg text-left transition hover:opacity-80 active:scale-[0.99]"
-              >
-                <span className="text-[0.625rem] font-bold text-[var(--muted)] uppercase tracking-wider">
-                  {tr("Transaksi", "Transactions")}
-                </span>
-                <span className="flex items-baseline gap-1">
-                  <MoneyAmount value={Number(ev.spent || 0)} currency={ev.currency} size="sm" />
-                  <span className="text-[0.6875rem] font-bold text-[var(--muted)]">
-                    / {ev.transaction_count || 0} {tr("rekod", "records")}
+            {hasBudget && (
+              <div className="mt-2.5">
+                <div className="event-progress-track">
+                  <div
+                    className={cn(
+                      "event-progress-fill",
+                      ratio >= 1
+                        ? "bg-[var(--expense)]"
+                        : ratio >= 0.8
+                          ? "bg-amber-500"
+                          : "bg-[var(--income)]"
+                    )}
+                    style={{ width: `${Math.min(100, ratio * 100)}%` }}
+                  />
+                </div>
+                <div className="mt-1.5 flex items-center justify-between text-[0.6875rem]">
+                  <span className="font-semibold text-[var(--muted)]">
+                    {Math.round(ratio * 100)}% {tr("digunakan", "used")}
                   </span>
-                  <ChevronRight size={13} className="text-[var(--muted)]" />
-                </span>
-              </button>
-              {ev.budget != null && Number(ev.budget) > 0 ? (
-                <>
-                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-tint)]">
-                    <div
-                      className={cn(
-                        "h-full rounded-full transition-[width]",
-                        spendRatio(ev) >= 1 ? "bg-[var(--expense)]" : spendRatio(ev) >= 0.8 ? "bg-amber-500" : "bg-[var(--income)]"
-                      )}
-                      style={{ width: `${Math.min(100, spendRatio(ev) * 100)}%` }}
-                    />
-                  </div>
-                  <p className="mt-1 text-[0.6875rem] font-semibold text-[var(--muted)]">
-                    {Number(ev.budget) - Number(ev.spent || 0) >= 0
-                      ? tr(
-                          `Baki ${moneyLabel(Number(ev.budget) - Number(ev.spent || 0), ev.currency)}`,
-                          `${moneyLabel(Number(ev.budget) - Number(ev.spent || 0), ev.currency)} left`
-                        )
-                      : tr(
-                          `Lebih ${moneyLabel(Number(ev.spent || 0) - Number(ev.budget), ev.currency)}`,
-                          `Over by ${moneyLabel(Number(ev.spent || 0) - Number(ev.budget), ev.currency)}`
-                        )}
-                  </p>
-                </>
-              ) : null}
-            </div>
+                  <span className={cn("font-bold", remainingNum >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                    {remainingNum >= 0
+                      ? tr(`Baki ${moneyLabel(remainingNum, ev.currency)}`, `${moneyLabel(remainingNum, ev.currency)} left`)
+                      : tr(`Lebih ${moneyLabel(Math.abs(remainingNum), ev.currency)}`, `Over by ${moneyLabel(Math.abs(remainingNum), ev.currency)}`)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Card Footer: Transactions link & Action Buttons */}
+        <div className="mt-3.5 flex items-center justify-between border-t border-[var(--border)]/60 pt-2.5 text-xs">
+          <div className="flex items-center gap-1 font-bold text-[var(--muted)] group-hover:text-[var(--text)] transition-colors">
+            <span>{ev.transaction_count || 0} {tr("transaksi", "transactions")}</span>
+            <ChevronRight size={13} className="text-[var(--muted)] group-hover:translate-x-0.5 transition-transform" />
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                openEditSheet(ev)
+              }}
+              className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-1 text-[0.6875rem] font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95 shadow-xs"
+              aria-label={tr("Edit", "Edit")}
+            >
+              <Pencil size={12} />
+              <span>{tr("Edit", "Edit")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleDeleteEvent(ev)
+              }}
+              className="inline-flex items-center gap-1 rounded-lg border border-rose-500/20 bg-rose-500/10 px-2.5 py-1 text-[0.6875rem] font-bold text-rose-500 transition hover:bg-rose-500/20 active:scale-95 shadow-xs"
+              aria-label={tr("Padam", "Delete")}
+            >
+              <Trash2 size={12} />
+              <span>{tr("Padam", "Delete")}</span>
+            </button>
           </div>
         </div>
       </div>
     )
   }
 
-  // Hero Card Component (matches loan hero card design)
+  // Hero Card Component (matches TxnSummaryCard design)
   const renderHeroStats = (isDesktop = false) => (
-    <div className={cn("event-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] text-center text-white", isDesktop ? "p-6" : "p-5")}>
+    <div className={cn("relative overflow-hidden rounded-2xl bg-[#1a1a1a] text-[#f5f5f5]", isDesktop ? "p-6 md:p-8" : "p-6")}>
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-      <div className={cn("relative flex flex-col items-center justify-center", isDesktop ? "min-h-28" : "min-h-24")}>
-        <p className={cn("font-bold uppercase tracking-[0.14em] text-[#a3a3a3]", isDesktop ? "text-[0.7rem]" : "text-[0.625rem]")}>
-          {tr("Jumlah Peruntukan Bajet Acara", "Total Event Budget")}
-        </p>
-        <div className="mt-2 text-[#ffffff]">
+      <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
+      <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
+
+      <div className="relative flex flex-col items-center text-center">
+        {/* Category icon */}
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-[#e5e5e5]">
+          <PartyPopper size={24} />
+        </div>
+
+        {/* Title — big */}
+        <h2 className="mt-3 max-w-full break-words text-lg font-black leading-tight text-[#f5f5f5] md:text-xl">
+          {tr("Peruntukan Bajet Acara", "Event Budget Allocation")}
+        </h2>
+
+        {/* Amount — big */}
+        <div className="mt-3 leading-none tabular-nums tracking-tight text-5xl font-black text-white md:text-6xl">
           {showDataSkeleton ? (
-            <AmountSkeleton className={cn("bg-white/10", isDesktop ? "h-10 w-40" : "h-7 w-32")} />
+            <AmountSkeleton className="mx-auto h-12 w-48 bg-white/10" />
           ) : (
-            <MoneyAmount
-              value={Number(stats.totalBudget || 0)}
-              size={isDesktop ? "heroLg" : "hero"}
-              className="text-[#ffffff]"
-              currencyClassName="text-[#ffffff] opacity-55"
-            />
+            <p className="leading-none tabular-nums tracking-tight text-5xl font-black text-white md:text-6xl">
+              <span className="event-hero-currency text-white font-extrabold opacity-100 text-3xl md:text-4xl mr-1.5 inline-block">RM</span>
+              <span>{formatMoneyValue(Number(stats.totalBudget || 0))}</span>
+            </p>
           )}
+        </div>
+
+        {/* Subtitle / ID */}
+        <p className="mt-3 text-xs font-bold text-[#8c8c8c]">
+          {stats.activeCount} {tr("acara aktif", "active events")} · {stats.endedCount} {tr("tamat", "ended")}
+        </p>
+
+        {/* Time / upcoming — small */}
+        <p className="mt-1 text-[0.625rem] font-semibold text-[#6b6b6b]">
+          {stats.nextUpcoming
+            ? `${tr("Acara terdekat:", "Next upcoming:")} ${stats.nextUpcoming.name} (${stats.nextUpcoming.days === 0 ? tr("Hari ini", "Today") : `${stats.nextUpcoming.days}d`})`
+            : tr("Tiada acara terdekat", "No upcoming events")}
+        </p>
+
+        {/* Status badge */}
+        <span className="mt-3 shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] text-emerald-400">
+          {stats.netRemaining >= 0
+            ? `${tr("Baki Keseluruhan", "Total Remaining")}: RM ${formatMoneyValue(stats.netRemaining)}`
+            : `${tr("Lebihan Keseluruhan", "Total Over")}: RM ${formatMoneyValue(Math.abs(stats.netRemaining))}`}
+        </span>
+
+        {/* Mini breakdown metrics */}
+        <div className="mt-5 grid grid-cols-2 gap-4 w-full max-w-sm border-t border-white/10 pt-4 text-center">
+          <div>
+            <span className="block text-[0.625rem] font-bold uppercase tracking-wider text-[#8c8c8c]">
+              {tr("Dibelanjakan", "Total Spent")}
+            </span>
+            <span className="mt-0.5 block text-sm font-black text-white">
+              <span className="text-white mr-1 font-bold">RM</span>{formatMoneyValue(stats.totalSpent)}
+            </span>
+          </div>
+          <div>
+            <span className="block text-[0.625rem] font-bold uppercase tracking-wider text-[#8c8c8c]">
+              {stats.netRemaining >= 0 ? tr("Baki Bajet", "Remaining") : tr("Lebihan", "Over Budget")}
+            </span>
+            <span className={cn("mt-0.5 block text-sm font-black", stats.netRemaining >= 0 ? "text-emerald-400" : "text-rose-400")}>
+              <span className="mr-0.5 font-bold">RM</span>{formatMoneyValue(Math.abs(stats.netRemaining))}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -637,49 +709,52 @@ export default function EventPage() {
   )
 
   return (
-    <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
+    <div className="relative min-h-[calc(100vh-4rem)] max-w-full text-[var(--text)]">
       {/* ─── Mobile ─── */}
-      <div className="space-y-4 md:hidden">
+      <div className="sticky top-0 z-50 bg-[var(--page-bg)] pb-2 pt-1 md:hidden">
         <MobilePageHeader
           title={tr("Acara & Majlis", "Events")}
           fallbackHref={`/${sessionId}`}
+          backPreferHistory
           action={
             <MobileIconButton onClick={openCreateSheet} label={tr("Tambah Acara", "Add Event")}>
               <Plus strokeWidth={2.5} />
             </MobileIconButton>
           }
         />
+      </div>
 
-        <section className="px-1 space-y-4">
-          {renderHeroStats()}
-          {renderFilterTabs()}
+      <div className="px-1 pb-24 space-y-4 md:hidden">
+        {renderHeroStats()}
+        {renderFilterTabs()}
 
-          <div className="space-y-3">
-            {showDataSkeleton ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-28 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
-              ))
-            ) : filteredEvents.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 text-center">
-                <PartyPopper size={36} className="mx-auto text-[var(--muted)]/40" />
-                <p className="mt-3 text-sm font-bold text-[var(--text)]">{tr("Tiada rekod acara", "No events found")}</p>
-                <p className="mt-1 text-xs text-[var(--muted)]">
-                  {tr("Rancang bajet percutian, majlis hari jadi atau kenduri dengan mudah.", "Plan vacation budgets, parties, or trips effortlessly.")}
-                </p>
-                <button
-                  type="button"
-                  onClick={openCreateSheet}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-black text-white shadow-sm transition active:scale-95"
-                >
-                  <Plus size={15} />
-                  <span>{tr("Buat Acara Baru", "Create Event")}</span>
-                </button>
+        <div className="space-y-3">
+          {showDataSkeleton ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-36 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
+            ))
+          ) : filteredEvents.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/20 p-8 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--muted)]">
+                <PartyPopper size={28} />
               </div>
-            ) : (
-              filteredEvents.map((ev) => renderEventCard(ev, false))
-            )}
-          </div>
-        </section>
+              <p className="mt-3.5 text-sm font-bold text-[var(--text)]">{tr("Tiada rekod acara", "No events found")}</p>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                {tr("Rancang bajet percutian, majlis hari jadi atau kenduri dengan mudah.", "Plan vacation budgets, parties, or trips effortlessly.")}
+              </p>
+              <button
+                type="button"
+                onClick={openCreateSheet}
+                className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-black text-[var(--btn-primary-text)] shadow-xs transition active:scale-95"
+              >
+                <Plus size={15} />
+                <span>{tr("Buat Acara Baru", "Create Event")}</span>
+              </button>
+            </div>
+          ) : (
+            filteredEvents.map((ev) => renderEventCard(ev, false))
+          )}
+        </div>
       </div>
 
       {/* ─── Desktop ─── */}
@@ -687,6 +762,7 @@ export default function EventPage() {
         <DesktopPageHeader
           title={tr("Papan Acara & Perancangan", "Events Board")}
           homeHref={`/${sessionId}`}
+          backPreferHistory
           actions={
             <DesktopPageAction onClick={openCreateSheet}>
               <Plus strokeWidth={2.5} />
@@ -695,26 +771,28 @@ export default function EventPage() {
           }
         />
 
-        <DesktopPageBody className="space-y-6">
+        <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl space-y-6">
           {renderHeroStats(true)}
           {renderFilterTabs()}
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {showDataSkeleton ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-32 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
+                <div key={i} className="h-44 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
               ))
             ) : filteredEvents.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/70 px-6 py-14 text-center">
-                <PartyPopper size={44} className="text-[var(--muted)]/30" />
-                <p className="mt-3 text-base font-bold text-[var(--text)]">{tr("Tiada rekod acara", "No events found")}</p>
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--muted)]">
+                  <PartyPopper size={32} />
+                </div>
+                <p className="mt-3.5 text-base font-bold text-[var(--text)]">{tr("Tiada rekod acara", "No events found")}</p>
                 <p className="mt-1 max-w-sm text-xs text-[var(--muted)]">
                   {tr("Rancang bajet percutian, majlis hari jadi atau kenduri dengan mudah.", "Plan vacation budgets, parties, or trips effortlessly.")}
                 </p>
                 <button
                   type="button"
                   onClick={openCreateSheet}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2.5 text-xs font-black text-white shadow-sm transition active:scale-95"
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2.5 text-xs font-black text-[var(--btn-primary-text)] shadow-xs transition active:scale-95"
                 >
                   <Plus size={15} />
                   <span>{tr("Buat Acara Baru", "Create Event")}</span>

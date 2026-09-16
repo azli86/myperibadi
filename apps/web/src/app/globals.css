@@ -3233,3 +3233,143 @@ html[data-theme="light"] [class~="border-gray-300"] {
 @media (prefers-reduced-motion: reduce) {
   .voice-rec-ping { animation: none; opacity: 0; }
 }
+
+/* ── Event Management & Event Detail Modern Design System ── */
+.event-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  background-color: #1a1a1a;
+  color: #f5f5f5;
+}
+
+.event-hero,
+.event-hero p,
+.event-hero span,
+.event-hero button,
+.event-hero svg,
+.event-hero h1,
+.event-hero h2,
+html[data-theme="light"] .event-hero,
+html[data-theme="light"] .event-hero p,
+html[data-theme="light"] .event-hero span,
+html[data-theme="light"] .event-hero svg,
+html[data-theme="light"] .event-hero button,
+html[data-theme="light"] .event-hero h1,
+html[data-theme="light"] .event-hero h2,
+html[data-theme="light"] .portal-personal-shell .event-hero,
+html[data-theme="light"] .portal-personal-shell .event-hero p,
+html[data-theme="light"] .portal-personal-shell .event-hero span,
+html[data-theme="light"] .portal-personal-shell .event-hero svg,
+html[data-theme="light"] .portal-personal-shell .event-hero button,
+html[data-theme="light"] .portal-personal-shell .event-hero h1,
+html[data-theme="light"] .portal-personal-shell .event-hero h2,
+html[data-theme="light"] .portal-personal-shell .event-hero [class*="text-[#f5f5f5]"],
+html[data-theme="light"] .portal-personal-shell .event-hero [class*="text-white"] {
+  color: #f5f5f5 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .event-hero [class*="text-[#8c8c8c]"],
+html[data-theme="light"] .portal-personal-shell .event-hero [class*="text-[#a3a3a3]"] {
+  color: #a3a3a3 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .event-hero [class*="text-[#6b6b6b]"] {
+  color: #8c8c8c !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .event-hero [class*="text-emerald-400"] {
+  color: #34d399 !important;
+}
+
+html[data-theme="light"] .portal-personal-shell .event-hero [class*="text-rose-400"] {
+  color: #f87171 !important;
+}
+
+.event-hero-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #8c8c8c;
+}
+
+.event-hero-amount {
+  color: #ffffff;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.event-hero-currency {
+  color: #ffffff !important;
+  opacity: 1 !important;
+  font-weight: 800;
+}
+
+.event-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border: 1px solid var(--border);
+  background-color: var(--card);
+  box-shadow: var(--shadow-card);
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.event-card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.event-card-interactive {
+  cursor: pointer;
+}
+
+.event-card-interactive:active {
+  transform: scale(0.99);
+}
+
+.event-kpi-card {
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background-color: var(--surface-tint);
+  padding: 0.75rem 1rem;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.event-kpi-card:hover {
+  background-color: var(--surface-tint-strong);
+}
+
+.event-progress-track {
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 9999px;
+  background-color: var(--surface-tint-strong);
+}
+
+.event-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 350ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.event-txn-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  transition: background-color 150ms ease;
+}
+
+.event-txn-row:last-child {
+  border-bottom: none;
+}
+
+.event-txn-row:hover {
+  background-color: var(--surface-tint);
+}
+
