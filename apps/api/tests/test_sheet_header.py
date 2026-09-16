@@ -37,11 +37,16 @@ def test_the_name_comes_after_the_avatar():
     assert TOP.index("UserAvatar") < TOP.index("{displayName}"), "avatar left, name right"
 
 
-def test_the_account_menu_anchors_under_the_pill():
-    assert "top-[40px]" not in TOP, "the old fixed 40px anchor is gone"
-    assert "top-[calc(100%+0.5rem)]" in TOP, "the menu hangs below the pill"
-    # A long address must not push the menu off the screen.
-    assert "min(280px,calc(100vw-5rem))" in TOP
+def test_the_name_is_the_trigger_and_there_is_no_pill():
+    assert "setShowMobileSheetAccountSwitcher(true)" in TOP, "tapping the name opens the switcher"
+    assert "Account Switcher Pill" not in TOP, "the pill is gone"
+    assert "ChevronDown" not in TOP, "no chevron on the name"
+
+
+def test_the_switcher_is_a_bottom_sheet():
+    assert "absolute" not in TOP.split("showMobileSheetAccountSwitcher && (")[1].split("})")[0].split("w-full")[0], "no anchored dropdown"
+    assert "fixed inset-0 z-[600] flex items-end" in TOP, "sheet rises from the bottom"
+    assert "rounded-t-3xl" in TOP
 
 
 def test_the_toolbar_is_one_divided_bar():
@@ -72,7 +77,8 @@ def test_the_four_controls_still_work():
 if __name__ == "__main__":
     test_the_avatar_sits_inside_the_card()
     test_the_name_comes_after_the_avatar()
-    test_the_account_menu_anchors_under_the_pill()
+    test_the_name_is_the_trigger_and_there_is_no_pill()
+    test_the_switcher_is_a_bottom_sheet()
     test_the_toolbar_is_one_divided_bar()
     test_every_toolbar_segment_has_a_glyph_and_a_label()
     test_the_toolbar_is_no_longer_narrower_than_the_cards()

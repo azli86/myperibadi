@@ -3923,7 +3923,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowMobileSheetAccountSwitcher(true)}
+                        aria-haspopup="dialog"
+                        className="flex max-w-full items-center gap-1.5 text-left transition active:opacity-70"
+                      >
                         <h3 className="truncate text-base font-black tracking-tight text-[var(--text)]">
                           {displayName}
                         </h3>
@@ -3933,33 +3938,25 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         <span className="inline-flex shrink-0 items-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[8px] font-black uppercase text-[var(--text)]">
                           PRO
                         </span>
-                      </div>
-
-                      {/* Account Switcher Pill */}
-                      <div className="relative mt-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setShowMobileSheetAccountSwitcher((open) => !open)}
-                          aria-expanded={showMobileSheetAccountSwitcher}
-                          className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-1 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--text)] active:scale-95"
-                        >
-                          <span className="truncate">{activeEmail || (lang === "BM" ? "Akaun aktif" : "Active account")}</span>
-                          <ChevronDown
-                            size={12}
-                            className={cn(
-                              "shrink-0 transition-transform duration-200",
-                              showMobileSheetAccountSwitcher && "rotate-180"
-                            )}
-                          />
-                        </button>
+                      </button>
 
                   {showMobileSheetAccountSwitcher && (
                     <div
-                      className={cn(
-                        "absolute left-0 top-[calc(100%+0.5rem)] z-40 w-[min(280px,calc(100vw-5rem))] overflow-hidden rounded-3xl border p-2 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95",
-                        "border-[var(--border)] bg-[var(--sheet-bg)]"
-                      )}
+                      className="fixed inset-0 z-[600] flex items-end bg-black/60 backdrop-blur-xs animate-in fade-in-0 duration-200"
+                      onClick={() => setShowMobileSheetAccountSwitcher(false)}
                     >
+                      <div
+                        className={cn(
+                          "w-full rounded-t-3xl border-t p-3 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] shadow-2xl animate-in slide-in-from-bottom-4 duration-200",
+                          "border-[var(--border)] bg-[var(--sheet-bg)] text-[var(--text)]"
+                        )}
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <div className="mx-auto mb-2 h-1.5 w-12 rounded-full bg-[var(--border-strong)] opacity-60" />
+                        <h3 className="mb-1.5 px-2 text-[11px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+                          {lang === "BM" ? "Tukar akaun" : "Switch account"}
+                        </h3>
+                        <div className="space-y-1">
                       {storedAccounts.map((acct: AccountProfile) => {
                         const isActiveAccount = acct.email === activeEmail;
                         return (
@@ -3977,40 +3974,44 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                               window.location.reload();
                             }}
                             className={cn(
-                              "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-bold transition-all",
+                              "flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-all",
                               isActiveAccount
-                                ? "bg-[var(--surface-tint-strong)] text-[var(--text)]"
-                                : "text-[var(--text)] hover:bg-[var(--surface-tint)]"
+                                ? "bg-[var(--surface-tint-strong)]"
+                                : "hover:bg-[var(--surface-tint)] active:bg-[var(--surface-tint-strong)]"
                             )}
                           >
-                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--text)] text-[10px] font-black uppercase text-[var(--bg)] shadow-xs">
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--text)] text-xs font-black uppercase text-[var(--bg)] shadow-xs">
                               {(acct.name || acct.email)[0]}
                             </span>
-                            <span className="min-w-0 flex-1 truncate">{acct.name || acct.email.split("@")[0]}</span>
-                            {isActiveAccount ? <Check size={14} className="shrink-0 font-bold text-[var(--text)]" /> : null}
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-bold text-[var(--text)]">{acct.name || acct.email.split("@")[0]}</span>
+                              <span className="block truncate text-[11px] text-[var(--muted)]">{acct.email}</span>
+                            </span>
+                            {isActiveAccount ? <Check size={16} className="shrink-0 text-[var(--text)]" /> : null}
                           </button>
                         );
                       })}
+                        </div>
                       <button
                         type="button"
                         onClick={() => { setShowMobileSheetAccountSwitcher(false); setShowMobileMenu(false); setShowAddAccountModal(true); }}
-                        className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/50 px-2.5 py-2 text-xs font-black text-[var(--muted)] transition-colors hover:text-[var(--text)]"
+                        className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/50 px-3 py-2.5 text-xs font-black text-[var(--muted)] transition-colors hover:text-[var(--text)]"
                       >
-                        <UserPlus size={13} />
+                        <UserPlus size={14} />
                         {lang === "BM" ? "Tambah akaun" : "Add account"}
                       </button>
                       <button
                         type="button"
                         onClick={() => { setShowMobileSheetAccountSwitcher(false); setShowMobileMenu(false); void handleLogout(); }}
-                        className="mt-1.5 flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-2 text-xs font-black text-[var(--text)] transition-all hover:bg-[var(--surface-tint-strong)] active:scale-95"
+                        className="mt-1.5 flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2.5 text-xs font-black text-[var(--text)] transition-all hover:bg-[var(--surface-tint-strong)] active:scale-95"
                       >
-                        <LogOut size={13} strokeWidth={2.5} />
+                        <LogOut size={14} strokeWidth={2.5} />
                         {lang === "BM" ? "Log keluar" : "Logout"}
                       </button>
+                      </div>
                     </div>
                   )}
                 </div>
-                    </div>
                   </div>
                 </div>
 
