@@ -473,9 +473,10 @@ export default function EventPage() {
           </p>
         </div>
 
-        <div className="flex">
-        {/* Left media — flush with the card edge, same split as the vehicle card. */}
-        <div className="relative w-[42%] min-w-[7.5rem] max-w-[11rem] self-stretch bg-[var(--surface-tint-strong)]">
+        <div className="flex gap-3 p-2.5 pt-3">
+        {/* Left media — square, inset from the card edge so it reads as art, not
+            as a bleeding edge of the card itself. */}
+        <div className="relative aspect-square w-[42%] min-w-[6.5rem] max-w-[9rem] shrink-0 self-start overflow-hidden rounded-xl bg-[var(--surface-tint-strong)]">
           {ev.has_image && ev.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -507,7 +508,7 @@ export default function EventPage() {
         </div>
 
         {/* Right info */}
-        <div className="flex min-w-0 flex-1 flex-col justify-between gap-2.5 p-3 pb-9 pl-2.5">
+        <div className="flex min-w-0 flex-1 flex-col justify-between gap-2.5 pb-9 pl-0.5">
           <div className="min-w-0">
             <div className="grid grid-cols-2 gap-x-3 gap-y-2">
             <div className="min-w-0">
