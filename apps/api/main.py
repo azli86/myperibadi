@@ -565,7 +565,8 @@ TELEGRAM_ADMIN_CHAT_ID = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "").strip()
 TELEGRAM_ACCESS_LOG_ALERTS = os.getenv("TELEGRAM_ACCESS_LOG_ALERTS", "true").strip().lower() in {"1", "true", "yes", "on"}
 TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip()
 TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@") or None
-TELEGRAM_PAIR_CODE_TTL_MINUTES = int(os.getenv("TELEGRAM_PAIR_CODE_TTL_MINUTES", "5"))
+TELEGRAM_PAIR_CODE_TTL_MINUTES = int(os.getenv("TELEGRAM_PAIR_CODE_TTL_MINUTES", "30"))
+APP_BASE_URL = os.getenv("APP_BASE_URL", "https://app.myperibadi.com")
 TELEGRAM_PAIR_CODE_MAX_ATTEMPTS = max(1, int(os.getenv("TELEGRAM_PAIR_CODE_MAX_ATTEMPTS", "5")))
 TELEGRAM_PENDING_MEDIA_TTL_SECONDS = max(60, int(os.getenv("TELEGRAM_PENDING_MEDIA_TTL_SECONDS", "600")))
 TELEGRAM_PENDING_MEDIA: dict[str, dict[str, Any]] = {}
@@ -12727,6 +12728,34 @@ def _build_telegram_numeric_choice_keyboard(reply_text: str | None, *, is_bm: bo
         build_telegram_choice_keyboard=_build_telegram_choice_keyboard,
     )
 
+# Pairing guidance: the portal is the only place a code can be minted, so /start must
+# hand the user a direct link instead of telling them to go find it themselves.
+def _build_telegram_pairing_prompt() -> str:
+    portal_url = f"{APP_BASE_URL.rstrip('/')}/connector"
+    return (
+        "Untuk sambung akaun MyPeribadi:\n"
+        "1. Buka portal: " + portal_url + "\n"
+        "2. Pergi ke Connector > Telegram, tekan butang jana kod.\n"
+        "3. Salin kod (contoh BD-7K2P9) dan hantar semula di sini.\n\n"
+        "Kod sah selama " + str(TELEGRAM_PAIR_CODE_TTL_MINUTES) + " minit.\n\n"
+        "To link your MyPeribadi account:\n"
+        "1. Open the portal: " + portal_url + "\n"
+        "2. Go to Connector > Telegram and tap generate code.\n"
+        "3. Copy the code (e.g. BD-7K2P9) and send it back here."
+    )
+
+def _build_telegram_pair_code_rejected_text(text: str) -> str:
+    stripped = (text or "").strip()
+    # Echo what we received: users routinely send the whole message, not just the code.
+    received = f" Kodi diterima: {stripped[:24]}" if stripped else ""
+    return (
+        "Kod tidak sah atau telah tamat tempoh." + received + "\n"
+        "Jana kod baru di Connector > Telegram, kemudian hantar kod itu sahaja.\n\n"
+        "Invalid or expired code."
+        + (f" Received: {stripped[:24]}" if stripped else "")
+        + "\nGenerate a new code in Connector > Telegram and send only the code."
+    )
+
 
 async def _get_telegram_wallets_for_user(db: AsyncSession, user_id: str) -> list[models.Wallet]:
     return await _module_get_telegram_wallets_for_user_route(
@@ -12963,6 +12992,8 @@ async def _handle_telegram_webhook_payload(
         _pop_telegram_pending_media=_pop_telegram_pending_media,
         _delete_telegram_message=_delete_telegram_message,
         _build_telegram_numeric_choice_keyboard=_build_telegram_numeric_choice_keyboard,
+        _build_telegram_pairing_prompt=_build_telegram_pairing_prompt,
+        _build_telegram_pair_code_rejected_text=_build_telegram_pair_code_rejected_text,
     )
 
 

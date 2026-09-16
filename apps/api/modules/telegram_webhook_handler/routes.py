@@ -49,6 +49,8 @@ async def handle_telegram_webhook_payload_route(
     _pop_telegram_pending_media: Callable[..., Any],
     _delete_telegram_message: Callable[..., Any],
     _build_telegram_numeric_choice_keyboard: Callable[..., Any],
+    _build_telegram_pairing_prompt: Callable[..., str],
+    _build_telegram_pair_code_rejected_text: Callable[..., str],
 ):
     if payload.callback_query:
         return await _handle_telegram_callback_query(payload.callback_query, db)
@@ -149,7 +151,7 @@ async def handle_telegram_webhook_payload_route(
         if text.lower() in {"/start", "/help", "help"}:
             await _send_telegram_message(
                 chat_id,
-                "Hantar pairing code dari portal untuk sambung akaun. Contoh: BD-7K2P9\n\nSend your pairing code from the portal to link your account.",
+                _build_telegram_pairing_prompt(),
             )
             return {"ok": True}
 
@@ -171,7 +173,7 @@ async def handle_telegram_webhook_payload_route(
         else:
             await _send_telegram_message(
                 chat_id,
-                "Kod tidak sah atau telah tamat tempoh. Jana kod baru dari portal.\n\nInvalid or expired code. Generate a new code from the portal.",
+                _build_telegram_pair_code_rejected_text(text),
             )
         return {"ok": True}
 
