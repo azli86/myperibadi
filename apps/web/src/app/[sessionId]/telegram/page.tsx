@@ -262,8 +262,8 @@ export default function TelegramPage() {
               {!isConnected ? (
                 <p className="text-[11px] font-medium text-[var(--muted)]">
                   {isBM
-                    ? "Tekan Sambung di header untuk jana kod, kemudian hantar kod itu ke bot."
-                    : "Press Connect in the header to generate a code, then send it to the bot."}
+                    ? "Jana kod di kad Kod sambungan di bawah, kemudian hantar kod itu ke bot."
+                    : "Generate a code in the Pairing code card below, then send it to the bot."}
                 </p>
               ) : null}
             </div>
@@ -295,12 +295,24 @@ export default function TelegramPage() {
 
             <button
               type="button"
-              onClick={copyCode}
-              disabled={!pairCode?.code}
-              className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 text-sm font-bold text-[var(--text)] transition active:scale-[0.99] disabled:opacity-50"
+              onClick={() => void (pairCode?.code ? copyCode() : requestPairCode())}
+              disabled={working || loading}
+              className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--btn-primary-bg)] px-4 text-sm font-bold text-[var(--btn-primary-text)] transition active:scale-[0.99] disabled:opacity-50"
             >
-              <Copy size={16} />
-              {isBM ? "Salin kod" : "Copy code"}
+              {working ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : pairCode?.code ? (
+                <Copy size={16} />
+              ) : (
+                <Link2 size={16} />
+              )}
+              {pairCode?.code
+                ? isBM
+                  ? "Salin kod"
+                  : "Copy code"
+                : isBM
+                  ? "Jana kod"
+                  : "Generate code"}
             </button>
           </section>
         </div>

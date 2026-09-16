@@ -51,10 +51,27 @@ def test_no_blank_code_fallback_left_unexplained():
     assert "Belum jana kod" in PAGE, "placeholder needs an explicit explanation"
 
 
+def test_code_card_offers_generate_before_a_code_exists():
+    # The only trigger used to be a 36px unlabelled icon in the header. Users
+    # tapped the lone visible button ("Copy code"), found it disabled, and
+    # reported "dia kekal kosong".
+    assert 'onClick={() => void (pairCode?.code ? copyCode() : requestPairCode())}' in PAGE, \
+        "the in-card button must generate a code while none exists"
+    assert '"Jana kod"' in PAGE and '"Generate code"' in PAGE
+    assert 'disabled={!pairCode?.code}' not in PAGE, \
+        "a disabled button with no path forward is what stranded the user"
+
+
+def test_instructions_point_at_the_card_not_the_header():
+    assert "Tekan Sambung di header" not in PAGE
+
+
 if __name__ == "__main__":
     test_page_imports_the_sentinel_guard()
     test_bearer_header_is_skipped_for_cookie_auth()
     test_sentinel_guard_matches_the_rest_of_the_app()
     test_fresh_code_is_scrolled_into_view()
     test_no_blank_code_fallback_left_unexplained()
+    test_code_card_offers_generate_before_a_code_exists()
+    test_instructions_point_at_the_card_not_the_header()
     print("telegram cookie auth OK")
