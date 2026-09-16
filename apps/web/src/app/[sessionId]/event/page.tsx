@@ -441,7 +441,10 @@ export default function EventPage() {
     const budgetNum = Number(ev.budget || 0)
     const spentNum = Number(ev.spent || 0)
     const hasBudget = ev.budget != null && budgetNum > 0
-    const remainingNum = budgetNum - spentNum
+    // Without a budget there is nothing to be under or over, so neither the
+    // remaining nor the ratio may be derived from a 0 budget. Doing that made
+    // remaining = -spent and painted a no-budget trip as overspent.
+    const remainingNum = hasBudget ? budgetNum - spentNum : 0
     const ratio = spendRatio(ev)
 
     return (
@@ -462,63 +465,18 @@ export default function EventPage() {
         )}
       >
         <div>
-          {/* Card Header: Icon/Image + Name + Status + Quick Actions */}
-          <div className="flex items-start gap-3.5">
-            <div className="relative flex h-13 w-13 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--icon-fg)] shadow-xs transition-transform group-hover:scale-105">
-              {ev.has_image && ev.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={ev.image_url} alt={ev.name} className="h-full w-full object-cover" />
-              ) : (
-                <CategoryIconGlyph iconName={ev.icon_name} categoryName={ev.name} kind="expense" size={24} />
-              )}
-            </div>
-
-            <div className="flex min-w-0 flex-1 flex-col">
-              <div className="flex items-center justify-between gap-2">
-                <p className="truncate text-base font-black tracking-tight text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
-                  {ev.name}
-                </p>
-                <span className={cn("shrink-0 rounded-full border px-2.5 py-0.5 text-[0.625rem] uppercase tracking-wider", statusClass)}>
-                  {statusLabel}
-                </span>
-              </div>
-
-              {/* Date & duration */}
-              <div className="mt-1 flex items-center gap-1.5 text-xs text-[var(--muted)]">
-                <Calendar size={12} className="shrink-0 text-[var(--muted)]" />
-                <span className="truncate">
-                  {ev.start_date ? formatDateShort(ev.start_date) : "—"} → {ev.end_date ? formatDateShort(ev.end_date) : tr("Tiada tarikh tamat", "No end date")}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Hero: what this trip has actually cost. The number the card exists for,
-              so it leads at full size instead of sitting in a 2-column grid. */}
-          <div className="mt-3.5">
+          {/* Hero: what this trip has actually cost. Leads the card, above the
+              icon and name, because the amount is why the card exists. */}
+          <div>
             <span className="block text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
               {tr("Dibelanjakan", "Spent")}
             </span>
             <p className="mt-1 leading-none">
-              <MoneyAmount value={spentNum} currency={ev.currency} size="hero" />
+              <MoneyAmount value={spentNum} currency={ev.currency} size="heroLg" />
             </p>
           </div>
 
-          {/* Wallet & Tags row */}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-0.5 text-[0.625rem] font-bold text-[var(--muted)]">
-              <WalletIcon size={11} className="text-[var(--muted)]" />
-              <span>{walletName(ev.wallet_id) || tr("Semua Wallet", "All Wallets")}</span>
-            </span>
-
-            {ev.notes ? (
-              <span className="truncate text-[0.6875rem] text-[var(--muted)]/80 italic max-w-[180px]">
-                &ldquo;{ev.notes}&rdquo;
-              </span>
-            ) : null}
-          </div>
-
-          {/* Budget context: only when a limit exists. Spent already owns the top. */}
+          {/* Budget context sits directly under the amount it qualifies. */}
           {hasBudget ? (
             <div className="mt-3">
               <div className="flex items-baseline justify-between text-[0.6875rem]">
@@ -559,6 +517,51 @@ export default function EventPage() {
               {tr("Tiada had bajet", "No budget limit")}
             </div>
           )}
+
+          {/* Card Header: Icon/Image + Name + Status */}
+          <div className="mt-4 flex items-start gap-3.5 border-t border-[var(--border)]/60 pt-3.5">
+            <div className="relative flex h-13 w-13 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--icon-fg)] shadow-xs transition-transform group-hover:scale-105">
+              {ev.has_image && ev.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={ev.image_url} alt={ev.name} className="h-full w-full object-cover" />
+              ) : (
+                <CategoryIconGlyph iconName={ev.icon_name} categoryName={ev.name} kind="expense" size={24} />
+              )}
+            </div>
+
+            <div className="flex min-w-0 flex-1 flex-col">
+              <div className="flex items-center justify-between gap-2">
+                <p className="truncate text-base font-black tracking-tight text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
+                  {ev.name}
+                </p>
+                <span className={cn("shrink-0 rounded-full border px-2.5 py-0.5 text-[0.625rem] uppercase tracking-wider", statusClass)}>
+                  {statusLabel}
+                </span>
+              </div>
+
+              {/* Date & duration */}
+              <div className="mt-1 flex items-center gap-1.5 text-xs text-[var(--muted)]">
+                <Calendar size={12} className="shrink-0 text-[var(--muted)]" />
+                <span className="truncate">
+                  {ev.start_date ? formatDateShort(ev.start_date) : "—"} → {ev.end_date ? formatDateShort(ev.end_date) : tr("Tiada tarikh tamat", "No end date")}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Wallet & Tags row */}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-0.5 text-[0.625rem] font-bold text-[var(--muted)]">
+              <WalletIcon size={11} className="text-[var(--muted)]" />
+              <span>{walletName(ev.wallet_id) || tr("Semua Wallet", "All Wallets")}</span>
+            </span>
+
+            {ev.notes ? (
+              <span className="truncate text-[0.6875rem] text-[var(--muted)]/80 italic max-w-[180px]">
+                &ldquo;{ev.notes}&rdquo;
+              </span>
+            ) : null}
+          </div>
         </div>
 
         {/* Card Footer: Transactions link & Action Buttons */}
