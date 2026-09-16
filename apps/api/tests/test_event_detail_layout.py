@@ -19,30 +19,37 @@ PAGE = (
     Path(__file__).resolve().parents[2] / "web" / "src" / "app" / "[sessionId]" / "event" / "[eventId]" / "page.tsx"
 ).read_text(encoding="utf-8")
 
-CSS = (Path(__file__).resolve().parents[2] / "web" / "src" / "app" / "globals.css").read_text(encoding="utf-8")
+HERO = (
+    Path(__file__).resolve().parents[2] / "web" / "src" / "app" / "[sessionId]" / "event" / "[eventId]" / "EventHeroCard.tsx"
+).read_text(encoding="utf-8")
+
+SUMMARY = (
+    Path(__file__).resolve().parents[2] / "web" / "src" / "app" / "[sessionId]" / "event" / "[eventId]" / "EventSummaryCard.tsx"
+).read_text(encoding="utf-8")
 
 # 1. Currency survives the redesign.
 assert "formatCurrencyLabel(currency)" in PAGE, "hero amount must go through formatCurrencyLabel"
 assert "moneyLabel(txn.amount, txn.currency)" in PAGE, "row amount must go through moneyLabel"
+assert "spentLabel={moneyLabel(stats.spent, currency)}" in PAGE, "hero amount must be formatted by the page"
 assert "currency" in PAGE, "currency must stay wired to the event"
 
 # 2. No-budget events do not announce an overspend.
-assert "event.budget != null && Number(event.budget) > 0" in PAGE, "budget block needs a positive-budget guard"
-spent_index = PAGE.index("Perbelanjaan Perjalanan")
-budget_index = PAGE.index("Daripada bajet")
-assert spent_index < budget_index, "spent leads, budget follows"
+assert "budget > 0" in SUMMARY, "summary card needs a positive-budget guard"
+assert "Tiada had bajet ditetapkan" in SUMMARY, "missing budget needs its own copy, not an empty bar"
 
 # 3. Grouping.
 assert "groups.map((group)" in PAGE, "transactions must render grouped"
 assert "{group.label}" in PAGE, "each group must keep its label"
-assert "Math.min(100, stats.ratio * 100)" in PAGE, "progress fill must clamp at 100%"
+assert "Math.min(100, ratio * 100)" in SUMMARY, "progress fill must clamp at 100%"
 
 # 4. No budget exists => a plain line, never a bar reading 0%.
-assert "Tiada had bajet" in PAGE, "missing budget needs its own copy, not an empty bar"
+assert "formatCurrencyLabel(currency)" in SUMMARY, "summary amounts must keep the currency label"
 
-# 5. The summary slab reads its colours from tokens so both themes work.
-assert "var(--summary-bg)" in PAGE, "summary slab must use the theme token"
-assert "--summary-bg" in CSS, "token must be defined"
-assert CSS.count("--summary-bg") >= 2, "token must exist in both themes"
+# 6. Hero follows the vehicle-detail pattern: rounded card, not a full-bleed image.
+assert "h-48 w-full sm:h-56 md:h-64" in HERO, "hero height must match the vehicle pattern"
+assert "rounded-2xl border border-[var(--border)]" in HERO, "hero must be a rounded card"
+
+# 5. No leftover hardcoded slab colours — everything reads from the theme.
+assert "#1a1a1a" not in PAGE, "page must not hardcode slab colours"
 
 print("event detail layout OK")
