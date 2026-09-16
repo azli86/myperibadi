@@ -49,6 +49,9 @@ type EventTransaction = {
   currency: string
   wallet_id?: number | null
   wallet_name?: string | null
+  category_id?: number | null
+  category_name?: string | null
+  category_icon?: string | null
   included: boolean
 }
 
@@ -190,25 +193,33 @@ export default function EventDetailPage() {
 
   const currency = event?.currency || "RM"
 
-  // Chronological grouping reads like a trip journal and needs no category data,
-  // which the transactions endpoint does not return.
+  // Grouped by category: a trip budget is only useful if you can see what the
+  // money went on. Uncategorised rows fall into their own group rather than
+  // being hidden or merged into a real one.
   const groups = useMemo(() => {
-    const byMonth = new Map<string, typeof transactions>()
+    const byCategory = new Map<string, { label: string; icon: string | null; items: typeof transactions }>()
     for (const t of transactions) {
-      const key = t.txn_date ? t.txn_date.slice(0, 7) : ""
-      const bucket = byMonth.get(key)
-      if (bucket) bucket.push(t)
-      else byMonth.set(key, [t])
+      const key = t.category_name || ""
+      const bucket = byCategory.get(key)
+      if (bucket) bucket.items.push(t)
+      else
+        byCategory.set(key, {
+          label: t.category_name || tr("Tanpa Kategori", "Uncategorised"),
+          icon: t.category_icon || null,
+          items: [t],
+        })
     }
-    return [...byMonth.entries()]
-      .sort((a, b) => (a[0] < b[0] ? 1 : -1))
-      .map(([key, items]) => ({
+    // Biggest spend first — the whole point of grouping is to surface where the
+    // money actually went. Uncategorised sinks to the bottom regardless.
+    return [...byCategory.entries()]
+      .map(([key, group]) => ({
         key,
-        label: key
-          ? new Date(`${key}-01T00:00:00`).toLocaleDateString("en-MY", { month: "long", year: "numeric" })
-          : tr("Tiada tarikh", "No date"),
-        items,
+        ...group,
+        total: group.items
+          .filter((t) => t.included && t.type === "expense")
+          .reduce((sum, t) => sum + t.amount, 0),
       }))
+      .sort((a, b) => (a.key === "" ? 1 : b.key === "" ? -1 : b.total - a.total))
   }, [transactions, tr])
 
   // Sparkline over the running spend, oldest first. Scaled to the window shown,
@@ -360,15 +371,21 @@ export default function EventDetailPage() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {groups.map((group) => (
                     <div key={group.key || "none"}>
                       <div className="flex items-center justify-between px-1">
-                        <h3 className="text-[0.65rem] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
-                          {group.label}
+                        <h3 className="flex min-w-0 items-center gap-1.5 text-[0.65rem] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+                          <CategoryIconGlyph
+                            iconName={group.icon}
+                            categoryName={group.label}
+                            kind="expense"
+                            size={13}
+                          />
+                          <span className="truncate">{group.label}</span>
                         </h3>
-                        <span className="text-[0.65rem] font-bold text-[var(--muted)]">
-                          {group.items.length}
+                        <span className="shrink-0 text-[0.65rem] font-black tabular-nums text-[var(--muted)]">
+                          {moneyLabel(group.total, currency)}
                         </span>
                       </div>
 

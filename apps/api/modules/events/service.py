@@ -102,21 +102,30 @@ async def list_event_transactions(
     wallet_names = await queries.wallet_name_map(
         db, wallet_ids=[int(t.wallet_id) for t, _ in rows if t.wallet_id is not None]
     )
-    return [
-        {
-            "id": int(txn.id),
-            "reference_id": txn.reference_id,
-            "type": txn.type,
-            "txn_date": _fmt_date(txn.txn_date),
-            "vendor_or_source": txn.vendor_or_source,
-            "amount": _num(txn.amount) or 0.0,
-            "currency": event.currency or "RM",
-            "wallet_id": int(txn.wallet_id) if txn.wallet_id else None,
-            "wallet_name": wallet_names.get(int(txn.wallet_id)) if txn.wallet_id else None,
-            "included": included,
-        }
-        for txn, included in rows
-    ]
+    categories = await queries.category_name_map(
+        db, category_ids=[int(t.category_id) for t, _ in rows if t.category_id is not None]
+    )
+    result: list[dict] = []
+    for txn, included in rows:
+        category = categories.get(int(txn.category_id)) if txn.category_id else None
+        result.append(
+            {
+                "id": int(txn.id),
+                "reference_id": txn.reference_id,
+                "type": txn.type,
+                "txn_date": _fmt_date(txn.txn_date),
+                "vendor_or_source": txn.vendor_or_source,
+                "amount": _num(txn.amount) or 0.0,
+                "currency": event.currency or "RM",
+                "wallet_id": int(txn.wallet_id) if txn.wallet_id else None,
+                "wallet_name": wallet_names.get(int(txn.wallet_id)) if txn.wallet_id else None,
+                "category_id": int(txn.category_id) if txn.category_id else None,
+                "category_name": category[0] if category else None,
+                "category_icon": category[1] if category else None,
+                "included": included,
+            }
+        )
+    return result
 
 async def toggle_event_transaction(
     db: AsyncSession,

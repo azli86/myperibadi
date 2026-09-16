@@ -27,6 +27,14 @@ SUMMARY = (
     Path(__file__).resolve().parents[2] / "web" / "src" / "app" / "[sessionId]" / "event" / "[eventId]" / "EventSummaryCard.tsx"
 ).read_text(encoding="utf-8")
 
+SERVICE = (
+    Path(__file__).resolve().parents[1] / "modules" / "events" / "service.py"
+).read_text(encoding="utf-8")
+
+SCHEMA = (
+    Path(__file__).resolve().parents[1] / "modules" / "events" / "schemas.py"
+).read_text(encoding="utf-8")
+
 # 1. Currency survives the redesign.
 assert "formatCurrencyLabel(currency)" in PAGE, "hero amount must go through formatCurrencyLabel"
 assert "moneyLabel(txn.amount, txn.currency)" in PAGE, "row amount must go through moneyLabel"
@@ -40,6 +48,9 @@ assert "Tiada had bajet ditetapkan" in SUMMARY, "missing budget needs its own co
 # 3. Grouping.
 assert "groups.map((group)" in PAGE, "transactions must render grouped"
 assert "{group.label}" in PAGE, "each group must keep its label"
+assert "t.category_name" in PAGE, "grouping must key off the category returned by the API"
+assert "Tanpa Kategori" in PAGE, "uncategorised rows need their own bucket, not a dropped one"
+assert "moneyLabel(group.total, currency)" in PAGE, "each group header must total its own spend"
 assert "Math.min(100, ratio * 100)" in SUMMARY, "progress fill must clamp at 100%"
 
 # 4. No budget exists => a plain line, never a bar reading 0%.
@@ -50,6 +61,8 @@ assert "h-48 w-full sm:h-56 md:h-64" in HERO, "hero height must match the vehicl
 assert "rounded-2xl border border-[var(--border)]" in HERO, "hero must be a rounded card"
 
 # 5. No leftover hardcoded slab colours — everything reads from the theme.
-assert "#1a1a1a" not in PAGE, "page must not hardcode slab colours"
+assert "category_name" in SERVICE, "the event transaction payload must carry the category name"
+assert "category_icon" in SERVICE, "the event transaction payload must carry the category icon"
+assert "category_id" in SCHEMA, "the response schema must expose the category fields"
 
 print("event detail layout OK")

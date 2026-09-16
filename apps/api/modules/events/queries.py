@@ -143,6 +143,26 @@ async def list_event_window_transactions(
     )
     return [(row[0], bool(row[1])) for row in result.all()]
 
+async def category_name_map(
+    db: AsyncSession,
+    *,
+    category_ids: list[int],
+) -> dict[int, tuple[str, Optional[str], Optional[str]]]:
+    """id -> (name, icon_name, kind). One extra query beats widening the event
+    transaction join, which runs on every page load."""
+    unique = {int(cid) for cid in category_ids if cid is not None}
+    if not unique:
+        return {}
+    result = await db.execute(
+        select(models.Category.id, models.Category.name, models.Category.icon_name, models.Category.kind).where(
+            models.Category.id.in_(unique)
+        )
+    )
+    return {
+        int(row[0]): (row[1], row[2], row[3])
+        for row in result.all()
+    }
+
 async def event_spend_totals(
     db: AsyncSession,
     *,

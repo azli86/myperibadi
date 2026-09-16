@@ -61,6 +61,9 @@ class EventTransactionResponse(BaseModel):
     currency: str = "RM"
     wallet_id: Optional[int] = None
     wallet_name: Optional[str] = None
+    category_id: Optional[int] = None
+    category_name: Optional[str] = None
+    category_icon: Optional[str] = None
     # Whether this transaction counts towards the event budget.
     included: bool = True
 
