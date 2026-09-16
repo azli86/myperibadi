@@ -3927,15 +3927,15 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         type="button"
                         onClick={() => setShowMobileSheetAccountSwitcher(true)}
                         aria-haspopup="dialog"
-                        className="flex min-w-0 flex-1 items-center gap-1.5 text-left transition active:opacity-70"
+                        className="flex min-w-0 flex-1 items-start gap-1.5 text-left transition active:opacity-70"
                       >
-                        <h3 className="min-w-0 flex-1 truncate text-2xl font-black leading-tight tracking-tight text-[var(--text)]">
+                        <h3 className="min-w-0 flex-1 self-center text-[clamp(17px,6.5vw,24px)] font-black leading-[1.1] tracking-tight text-[var(--text)] [overflow-wrap:anywhere]">
                           {displayName}
                         </h3>
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
                           <Check size={13} strokeWidth={4} />
                         </span>
-                        <span className="inline-flex shrink-0 items-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[10px] font-black uppercase text-[var(--text)]">
+                        <span className="mt-0.5 inline-flex shrink-0 items-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[10px] font-black uppercase text-[var(--text)]">
                           PRO
                         </span>
                       </button>

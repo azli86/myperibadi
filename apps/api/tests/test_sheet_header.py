@@ -38,7 +38,12 @@ def test_the_name_comes_after_the_avatar():
 
 
 def test_the_name_is_large():
-    assert "text-2xl font-black" in TOP, "the name uses the space the card has"
+    # The name shrinks with the screen and wraps instead of being cut off, so a long
+    # Malaysian name still reads in full.
+    assert "clamp(17px,6.5vw,24px)" in TOP, "the name scales with the screen"
+    assert "overflow-wrap:anywhere" in TOP, "an unbroken long name can still wrap"
+    header = TOP[TOP.index("{displayName}") - 400 : TOP.index("{displayName}")]
+    assert "truncate" not in header, "the name is not cut off"
 
 
 def test_the_name_is_the_trigger_and_there_is_no_pill():
