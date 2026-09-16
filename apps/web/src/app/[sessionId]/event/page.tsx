@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   CalendarClock,
   ChevronDown,
-  ChevronRight,
   Clock,
   Coins,
   Compass,
@@ -496,9 +495,6 @@ export default function EventPage() {
                   {ev.start_date ? formatDateShort(ev.start_date) : "—"} → {ev.end_date ? formatDateShort(ev.end_date) : tr("Tiada tarikh tamat", "No end date")}
                 </p>
               </div>
-              <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--surface-tint)] text-[var(--muted)] transition group-active:bg-[var(--surface-tint-strong)] group-active:text-[var(--text)]">
-                <ChevronRight size={14} />
-              </span>
             </div>
 
             <span className={cn("mt-1.5 inline-block rounded-full border px-2 py-0.5 text-[0.6rem] uppercase tracking-wider", statusClass)}>
