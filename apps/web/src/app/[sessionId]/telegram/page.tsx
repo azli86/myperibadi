@@ -140,7 +140,29 @@ export default function TelegramPage() {
   }
 
   const botUsername = pairCode?.bot_username || status?.bot_username || "budgetdigitalportbot"
-  const botUrl = `https://t.me/${botUsername.replace(/^@/, "")}`
+  const botHandle = botUsername.replace(/^@/, "")
+  // t.me/<bot> answers with a redirect to tg://resolve?... Inside an in-app WebView
+  // there is no handler for the tg: scheme, so the tab dies with
+  // "net::ERR_UNKNOWN_URL_SCHEME". Ask for tg: directly and fall back to the web page
+  // only when the app never took over (the document keeps focus).
+  function openBot() {
+    const webUrl = `https://t.me/${botHandle}`
+    let handedOff = false
+    const markHandedOff = () => {
+      handedOff = true
+    }
+    window.addEventListener("blur", markHandedOff, { once: true })
+    document.addEventListener("visibilitychange", markHandedOff, { once: true })
+    window.location.href = `tg://resolve?domain=${encodeURIComponent(botHandle)}`
+    // Runs after the navigation attempt settles; no timer involved.
+    queueMicrotask(() => {
+      window.setTimeout(() => {
+        window.removeEventListener("blur", markHandedOff)
+        document.removeEventListener("visibilitychange", markHandedOff)
+        if (!handedOff) window.open(webUrl, "_blank", "noopener,noreferrer")
+      }, 0)
+    })
+  }
   const connectedName = status?.telegram_username
     ? `@${status.telegram_username}`
     : status?.telegram_user_id || "Telegram"
@@ -250,15 +272,31 @@ export default function TelegramPage() {
             </div>
 
             <div className="mt-4 space-y-2.5">
-              <a
-                href={botUrl}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                type="button"
+                onClick={openBot}
                 className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--text)] px-4 text-sm font-bold text-[var(--bg)] transition active:scale-[0.99]"
               >
                 <ExternalLink size={16} />
                 {isBM ? "Buka bot Telegram" : "Open Telegram bot"}
-              </a>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard.writeText(botHandle)
+                  showAlert(
+                    isBM ? "Disalin" : "Copied",
+                    isBM
+                      ? `Cari @${botHandle} dalam Telegram.`
+                      : `Search @${botHandle} in Telegram.`,
+                    "success",
+                  )
+                }}
+                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 text-sm font-bold text-[var(--text)] transition active:scale-[0.99]"
+              >
+                <Copy size={16} />
+                {isBM ? "Salin nama bot" : "Copy bot name"}
+              </button>
               {!isConnected ? (
                 <p className="text-[11px] font-medium text-[var(--muted)]">
                   {isBM

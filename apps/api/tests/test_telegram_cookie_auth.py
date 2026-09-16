@@ -66,6 +66,24 @@ def test_instructions_point_at_the_card_not_the_header():
     assert "Tekan Sambung di header" not in PAGE
 
 
+def test_open_bot_avoids_the_t_me_scheme_redirect():
+    # t.me/<bot> redirects to tg://resolve?... and an in-app WebView has no handler
+    # for tg:, so the tab dies with "net::ERR_UNKNOWN_URL_SCHEME".
+    assert 'href={botUrl}' not in PAGE, "a plain t.me link is what triggers the redirect"
+    assert "const botUrl" not in PAGE, "dead variable once the anchor is gone"
+    assert '`tg://resolve?domain=${encodeURIComponent(botHandle)}`' in PAGE
+    assert 'window.open(webUrl, "_blank", "noopener,noreferrer")' in PAGE, \
+        "web Telegram is the fallback when the app does not take over"
+    # Handoff is detected from events, never from an artificial delay.
+    assert 'window.addEventListener("blur", markHandedOff' in PAGE
+    assert 'document.addEventListener("visibilitychange", markHandedOff' in PAGE
+
+
+def test_bot_name_can_be_copied_as_a_last_resort():
+    assert 'navigator.clipboard.writeText(botHandle)' in PAGE
+    assert '"Salin nama bot"' in PAGE and '"Copy bot name"' in PAGE
+
+
 if __name__ == "__main__":
     test_page_imports_the_sentinel_guard()
     test_bearer_header_is_skipped_for_cookie_auth()
@@ -74,4 +92,6 @@ if __name__ == "__main__":
     test_no_blank_code_fallback_left_unexplained()
     test_code_card_offers_generate_before_a_code_exists()
     test_instructions_point_at_the_card_not_the_header()
+    test_open_bot_avoids_the_t_me_scheme_redirect()
+    test_bot_name_can_be_copied_as_a_last_resort()
     print("telegram cookie auth OK")
