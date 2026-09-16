@@ -20,7 +20,7 @@ import {
   MobileIconButton,
   MobilePageHeader,
 } from "@/components/layout/PageHeader"
-import { getAccessToken } from "@/lib/auth-session"
+import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
 import { usePageAlert } from "@/hooks/usePageAlert"
@@ -57,7 +57,7 @@ export default function TelegramPage() {
     const token = getAccessToken()
     if (!token) throw new Error("Missing session")
     const headers = new Headers(init.headers)
-    headers.set("Authorization", `Bearer ${token}`)
+    if (!isCookieAuthSentinel(token)) headers.set("Authorization", `Bearer ${token}`)
     if (init.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json")
     const res = await fetch(`/api${path}`, { ...init, headers, cache: "no-store" })
     if (!res.ok) throw new Error(await res.text().catch(() => "Request failed"))
@@ -91,6 +91,11 @@ export default function TelegramPage() {
           ? "Kod Telegram dijana. Hantar kod ini dekat bot."
           : "Telegram code generated. Send this code to the bot.",
       )
+      // The code card sits below the status card; on phones the button is in the
+      // header, so without this the fresh code stays off-screen and looks empty.
+      requestAnimationFrame(() => {
+        document.getElementById("telegram-pair-code")?.scrollIntoView({ behavior: "smooth", block: "center" })
+      })
     } catch {
       showAlert(
         isBM ? "Gagal" : "Failed",
@@ -265,7 +270,7 @@ export default function TelegramPage() {
           </section>
 
           {/* Pairing code */}
-          <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
+          <section id="telegram-pair-code" className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
             <p className="text-base font-black text-[var(--text)]">
               {isBM ? "Kod sambungan" : "Pairing code"}
             </p>
