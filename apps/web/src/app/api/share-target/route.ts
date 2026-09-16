@@ -26,7 +26,11 @@ function redirectShareTarget(path: string): Response {
 }
 
 function isImageFile(file: File): boolean {
-  return file.type.startsWith("image/") || /\.(jpe?g|png|webp)$/i.test(file.name || "")
+  return (
+    file.type.startsWith("image/") ||
+    file.type === "application/pdf" ||
+    /\.(jpe?g|png|webp|pdf)$/i.test(file.name || "")
+  )
 }
 
 async function cleanupOldShares() {
@@ -89,7 +93,7 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
-    metadata.fileName = file.name || "shared-screenshot.png"
+    metadata.fileName = file.name || (file.type === "application/pdf" ? "shared-receipt.pdf" : "shared-screenshot.png")
     metadata.mimeType = file.type || "image/png"
     metadata.sizeBytes = file.size
     await writeFile(join(dir, "file"), buffer)

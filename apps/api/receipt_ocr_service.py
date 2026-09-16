@@ -155,12 +155,27 @@ async def _ocr_providers() -> list[dict[str, str]]:
     return providers
 
 
+def _normalize_receipt_mime(payload: bytes, mime_type: str) -> str:
+    """Trust the bytes over the header.
+
+    Bots send `application/octet-stream` for documents and `application/pdf; charset=binary`
+    for some clients, so an exact string compare dropped every PDF before it could be
+    rendered. The magic bytes decide.
+    """
+    base = (mime_type or "").split(";")[0].strip().lower()
+    if payload.startswith(b"%PDF-") or base in {"application/pdf", "application/x-pdf"}:
+        return "application/pdf"
+    if base == "image/jpg":
+        return "image/jpeg"
+    return base
+
 async def extract_receipt(payload: bytes, mime_type: str, language: str, category_names: list[str] | None = None) -> ReceiptDraft:
     config = llm_service.get_llm_config()
     providers = await _ocr_providers()
     allowed = {"image/jpeg", "image/png", "image/webp"}
+    mime_type = _normalize_receipt_mime(payload, mime_type)
     if mime_type == "application/pdf":
-        payload, mime_type = await asyncio.to_thread(_pdf_to_png)
+        payload, mime_type = await asyncio.to_thread(_pdf_to_png, payload)
     if mime_type not in allowed or not payload or len(payload) > 10 * 1024 * 1024:
         raise ValueError("Unsupported receipt image")
 

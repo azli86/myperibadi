@@ -32,8 +32,8 @@ async def create_chat_receipt_upload_route(
     except storage_service.StorageValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    if mime_type not in {"image/jpeg", "image/png", "image/webp"}:
-        raise HTTPException(status_code=400, detail="Only JPG, PNG, and WEBP receipt photos are allowed.")
+    if mime_type not in {"image/jpeg", "image/png", "image/webp", "application/pdf"}:
+        raise HTTPException(status_code=400, detail="Only PDF, JPG, PNG, and WEBP receipts are allowed.")
 
     object_key = storage_service.build_direct_receipt_object_key(current_user.id, payload.file_name, extension)
 
@@ -107,8 +107,8 @@ async def send_web_chat_message_route(
 
         try:
             expected_mime, _ = storage_service.validate_receipt_metadata(direct_upload_file_name, direct_upload_mime_type)
-            if expected_mime not in {"image/jpeg", "image/png", "image/webp"}:
-                raise storage_service.StorageValidationError("Only JPG, PNG, and WEBP receipt photos are allowed.")
+            if expected_mime not in {"image/jpeg", "image/png", "image/webp", "application/pdf"}:
+                raise storage_service.StorageValidationError("Only PDF, JPG, PNG, and WEBP receipts are allowed.")
             media_size_bytes, media_mime_type = await asyncio.to_thread(
                 storage_service.validate_uploaded_receipt_object,
                 direct_upload_key,

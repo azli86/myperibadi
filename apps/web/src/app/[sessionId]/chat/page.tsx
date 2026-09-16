@@ -173,10 +173,10 @@ const COMMAND_ITEMS: CommandItem[] = [
 
 const QUICK_COMMANDS = ["summary", "list", "checkwallet", "budget summary", "lang bm", "lang en"]
 const HERE_LOCATION_PATTERN = /(^|\s)@here\b/i
-const SUPPORTED_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"]
+const SUPPORTED_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"]
 
-const IMAGE_PICKER_ACCEPT = SUPPORTED_IMAGE_MIME_TYPES.join(",")
-const SUPPORTED_IMAGE_EXTENSION = /\.(jpe?g|png|webp)$/i
+const IMAGE_PICKER_ACCEPT = `${SUPPORTED_IMAGE_MIME_TYPES.join(",")},.pdf`
+const SUPPORTED_IMAGE_EXTENSION = /\.(jpe?g|png|webp|pdf)$/i
 
 
 function decodeSharedHeaderValue(value: string | null): string {
@@ -202,6 +202,7 @@ function getSupportedImageContentType(file: File): string | null {
   if (extension === "jpg" || extension === "jpeg") return "image/jpeg"
   if (extension === "png") return "image/png"
   if (extension === "webp") return "image/webp"
+  if (extension === "pdf") return "application/pdf"
   return null
 }
 
@@ -242,7 +243,7 @@ function textLooksLikeNewExpense(value: string): boolean {
 async function uploadReceiptDirectToR2(file: File, token: string | null): Promise<DirectReceiptUpload> {
   const contentType = getSupportedImageContentType(file)
   if (!contentType) {
-    throw new Error("Unsupported receipt image type.")
+    throw new Error("Unsupported receipt file type.")
   }
 
   const presignRes = await fetch("/api/chat/uploads/presign", {
@@ -678,7 +679,7 @@ export default function ChatPage() {
     if (!isSupportedImageFile(file)) {
       const message = file.type.startsWith("video/")
         ? (lang === "EN" ? "Video upload is not supported. Choose a receipt photo only." : "Video tidak disokong. Pilih gambar resit sahaja.")
-        : (lang === "EN" ? "Only JPG, PNG, and WEBP receipt photos are supported." : "Hanya gambar resit JPG, PNG, dan WEBP disokong.")
+        : (lang === "EN" ? "Only PDF, JPG, PNG, and WEBP receipts are supported." : "Hanya resit PDF, JPG, PNG, dan WEBP disokong.")
       setErrorText(message)
       showAlert(
         lang === "EN" ? "Unsupported File" : "Fail Tidak Disokong",
@@ -901,7 +902,7 @@ export default function ChatPage() {
         if (!contentType && !isSupportedImageFile(activeFile)) {
           throw new Error(
             lang === "EN"
-              ? "Unsupported receipt image type. Use JPG, PNG, or WebP."
+              ? "Unsupported receipt file type. Use PDF, JPG, PNG, or WebP."
               : "Jenis imej resit tidak disokong. Guna JPG, PNG, atau WebP."
           )
         }
