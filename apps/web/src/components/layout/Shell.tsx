@@ -3919,7 +3919,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 <div className="w-full rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/60 p-3.5">
                   <div className="flex items-center gap-3">
                     <div className="shrink-0">
-                      <UserAvatar name={displayName || activeEmail} size={56} src={avatarSrc} />
+                      <UserAvatar name={displayName || activeEmail} size={60} src={avatarSrc} />
                     </div>
 
                     <div className="min-w-0 flex-1">
@@ -3929,13 +3929,13 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         aria-haspopup="dialog"
                         className="flex max-w-full items-center gap-1.5 text-left transition active:opacity-70"
                       >
-                        <h3 className="truncate text-base font-black tracking-tight text-[var(--text)]">
+                        <h3 className="truncate text-xl font-black tracking-tight text-[var(--text)]">
                           {displayName}
                         </h3>
-                        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
-                          <Check size={11} strokeWidth={4} />
+                        <span className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+                          <Check size={12} strokeWidth={4} />
                         </span>
-                        <span className="inline-flex shrink-0 items-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[8px] font-black uppercase text-[var(--text)]">
+                        <span className="inline-flex shrink-0 items-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[9px] font-black uppercase text-[var(--text)]">
                           PRO
                         </span>
                       </button>

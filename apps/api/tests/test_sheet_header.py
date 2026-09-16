@@ -30,11 +30,15 @@ TOP = SHELL[
 def test_the_avatar_sits_inside_the_card():
     assert not re.search(r"absolute\s+-right", TOP), "the avatar must not hang off the edge"
     assert "UserAvatar" in TOP
-    assert re.search(r"UserAvatar[^>]*size=\{56\}", TOP, re.S), "avatar is 56px"
+    assert re.search(r"UserAvatar[^>]*size=\{60\}", TOP, re.S), "avatar is 60px"
 
 
 def test_the_name_comes_after_the_avatar():
     assert TOP.index("UserAvatar") < TOP.index("{displayName}"), "avatar left, name right"
+
+
+def test_the_name_is_large():
+    assert "text-xl font-black" in TOP, "the name uses the space the card has"
 
 
 def test_the_name_is_the_trigger_and_there_is_no_pill():
@@ -77,6 +81,7 @@ def test_the_four_controls_still_work():
 if __name__ == "__main__":
     test_the_avatar_sits_inside_the_card()
     test_the_name_comes_after_the_avatar()
+    test_the_name_is_large()
     test_the_name_is_the_trigger_and_there_is_no_pill()
     test_the_switcher_is_a_bottom_sheet()
     test_the_toolbar_is_one_divided_bar()
