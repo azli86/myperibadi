@@ -23,8 +23,18 @@ PAGE = (
     Path(__file__).resolve().parents[2] / "web" / "src" / "app" / "[sessionId]" / "event" / "page.tsx"
 ).read_text(encoding="utf-8")
 
-CARD = PAGE[PAGE.index('className="group relative flex w-full overflow-hidden'):]
+CARD = PAGE[PAGE.index('className="group relative grid w-full grid-cols-1 overflow-hidden'):]
 CARD = CARD[: CARD.index("Hero Card Component")]
+
+
+def test_name_and_dates_sit_in_a_full_width_strip():
+    strip = PAGE[PAGE.index("Title strip"):]
+    strip = strip[: strip.index("Left media")]
+    assert "flex flex-col items-center" in strip, "the title strip is centred"
+    assert "{ev.name}" in strip and "formatDateShort(ev.start_date)" in strip, \
+        "name and dates both live in the strip, not the details column"
+    assert "text-[0.95rem] font-black" not in CARD[CARD.index("Left media"):], \
+        "the details column must not repeat the title"
 
 
 def test_remaining_is_zero_without_a_budget():
@@ -64,6 +74,7 @@ if __name__ == "__main__":
     test_remaining_is_zero_without_a_budget()
     test_ratio_helper_already_guards_a_missing_budget()
     test_media_leads_on_the_left()
+    test_name_and_dates_sit_in_a_full_width_strip()
     test_all_four_metrics_are_present()
     test_progress_bar_is_gated_on_a_budget()
     test_no_budget_shows_the_dash_not_a_zero()

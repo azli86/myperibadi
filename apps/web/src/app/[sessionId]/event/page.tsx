@@ -460,8 +460,20 @@ export default function EventPage() {
             router.push(`/${sessionId}/event/${ev.id}`)
           }
         }}
-        className="group relative flex w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] text-left shadow-[var(--shadow-soft)] transition active:scale-[0.99]"
+        className="group relative grid w-full grid-cols-1 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] text-left shadow-[var(--shadow-soft)] transition active:scale-[0.99]"
       >
+        {/* Title strip — name and dates span the card so neither has to fight the
+            media column for width. */}
+        <div className="flex flex-col items-center gap-0.5 border-b border-[var(--border)]/60 px-3.5 py-2 text-center">
+          <p className="w-full truncate text-[0.95rem] font-black leading-tight tracking-tight text-[var(--text)]">
+            {ev.name}
+          </p>
+          <p className="w-full truncate text-[11px] font-semibold text-[var(--muted)]">
+            {ev.start_date ? formatDateShort(ev.start_date) : "—"}{" → "}{ev.end_date ? formatDateShort(ev.end_date) : tr("Tiada tarikh tamat", "No end date")}
+          </p>
+        </div>
+
+        <div className="flex">
         {/* Left media — flush with the card edge, same split as the vehicle card. */}
         <div className="relative w-[42%] min-w-[7.5rem] max-w-[11rem] self-stretch bg-[var(--surface-tint-strong)]">
           {ev.has_image && ev.image_url ? (
@@ -495,21 +507,9 @@ export default function EventPage() {
         </div>
 
         {/* Right info */}
-        <div className="flex min-w-0 flex-1 flex-col justify-between gap-2.5 p-3 pl-2.5">
+        <div className="flex min-w-0 flex-1 flex-col justify-between gap-2.5 p-3 pb-9 pl-2.5">
           <div className="min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate text-[0.95rem] font-black leading-tight tracking-tight text-[var(--text)]">
-                  {ev.name}
-                </p>
-                <p className="mt-0.5 truncate text-[11px] font-semibold text-[var(--muted)]">
-                  {ev.start_date ? formatDateShort(ev.start_date) : "—"} → {ev.end_date ? formatDateShort(ev.end_date) : tr("Tiada tarikh tamat", "No end date")}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
             <div className="min-w-0">
               <p className="flex items-center gap-1 text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
                 <WalletIcon size={10} className="text-[var(--accent2)]" />
@@ -580,9 +580,11 @@ export default function EventPage() {
             </p>
           )}
         </div>
+        </div>
+        </div>
 
         {/* Edit / delete stay reachable without opening the event. */}
-        <div className="absolute bottom-2 right-2 flex items-center gap-1">
+        <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1">
           <button
             type="button"
             onClick={(e) => {
