@@ -493,8 +493,19 @@ export default function EventPage() {
             </div>
           </div>
 
+          {/* Hero: what this trip has actually cost. The number the card exists for,
+              so it leads at full size instead of sitting in a 2-column grid. */}
+          <div className="mt-3.5">
+            <span className="block text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
+              {tr("Dibelanjakan", "Spent")}
+            </span>
+            <p className="mt-1 leading-none">
+              <MoneyAmount value={spentNum} currency={ev.currency} size="hero" />
+            </p>
+          </div>
+
           {/* Wallet & Tags row */}
-          <div className="mt-3.5 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-0.5 text-[0.625rem] font-bold text-[var(--muted)]">
               <WalletIcon size={11} className="text-[var(--muted)]" />
               <span>{walletName(ev.wallet_id) || tr("Semua Wallet", "All Wallets")}</span>
@@ -507,62 +518,47 @@ export default function EventPage() {
             ) : null}
           </div>
 
-          {/* Financial summary & Progress */}
-          <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-3">
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>
-                <span className="block text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                  {tr("Dibelanjakan", "Spent")}
+          {/* Budget context: only when a limit exists. Spent already owns the top. */}
+          {hasBudget ? (
+            <div className="mt-3">
+              <div className="flex items-baseline justify-between text-[0.6875rem]">
+                <span className="font-bold uppercase tracking-wider text-[var(--muted)]">
+                  {tr("Daripada bajet", "Of budget")}
                 </span>
-                <span className="font-black text-[var(--text)]">
-                  <MoneyAmount value={spentNum} currency={ev.currency} size="sm" />
+                <span className="font-bold text-[var(--text)]">
+                  <MoneyAmount value={budgetNum} currency={ev.currency} size="sm" />
                 </span>
               </div>
 
-              <div className="text-right">
-                <span className="block text-[0.625rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                  {hasBudget ? tr("Peruntukan Bajet", "Budget") : tr("Had Bajet", "Budget Limit")}
+              <div className="event-progress-track mt-1.5">
+                <div
+                  className={cn(
+                    "event-progress-fill",
+                    ratio >= 1
+                      ? "bg-[var(--expense)]"
+                      : ratio >= 0.8
+                        ? "bg-amber-500"
+                        : "bg-[var(--income)]"
+                  )}
+                  style={{ width: `${Math.min(100, ratio * 100)}%` }}
+                />
+              </div>
+              <div className="mt-1.5 flex items-center justify-between text-[0.6875rem]">
+                <span className="font-semibold text-[var(--muted)]">
+                  {Math.round(ratio * 100)}% {tr("digunakan", "used")}
                 </span>
-                {hasBudget ? (
-                  <span className="font-black text-[var(--text)]">
-                    <MoneyAmount value={budgetNum} currency={ev.currency} size="sm" />
-                  </span>
-                ) : (
-                  <span className="text-[0.6875rem] font-medium text-[var(--muted)]">
-                    {tr("Tiada had", "No limit")}
-                  </span>
-                )}
+                <span className={cn("font-bold", remainingNum >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                  {remainingNum >= 0
+                    ? tr(`Baki ${moneyLabel(remainingNum, ev.currency)}`, `${moneyLabel(remainingNum, ev.currency)} left`)
+                    : tr(`Lebih ${moneyLabel(Math.abs(remainingNum), ev.currency)}`, `Over by ${moneyLabel(Math.abs(remainingNum), ev.currency)}`)}
+                </span>
               </div>
             </div>
-
-            {hasBudget && (
-              <div className="mt-2.5">
-                <div className="event-progress-track">
-                  <div
-                    className={cn(
-                      "event-progress-fill",
-                      ratio >= 1
-                        ? "bg-[var(--expense)]"
-                        : ratio >= 0.8
-                          ? "bg-amber-500"
-                          : "bg-[var(--income)]"
-                    )}
-                    style={{ width: `${Math.min(100, ratio * 100)}%` }}
-                  />
-                </div>
-                <div className="mt-1.5 flex items-center justify-between text-[0.6875rem]">
-                  <span className="font-semibold text-[var(--muted)]">
-                    {Math.round(ratio * 100)}% {tr("digunakan", "used")}
-                  </span>
-                  <span className={cn("font-bold", remainingNum >= 0 ? "text-emerald-500" : "text-rose-500")}>
-                    {remainingNum >= 0
-                      ? tr(`Baki ${moneyLabel(remainingNum, ev.currency)}`, `${moneyLabel(remainingNum, ev.currency)} left`)
-                      : tr(`Lebih ${moneyLabel(Math.abs(remainingNum), ev.currency)}`, `Over by ${moneyLabel(Math.abs(remainingNum), ev.currency)}`)}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
+          ) : (
+            <div className="mt-3 text-[0.6875rem] font-semibold text-[var(--muted)]">
+              {tr("Tiada had bajet", "No budget limit")}
+            </div>
+          )}
         </div>
 
         {/* Card Footer: Transactions link & Action Buttons */}
