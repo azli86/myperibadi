@@ -3914,47 +3914,49 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 </button>
               </div>
 
-              {/* ── Profile Card: avatar besar overlay kiri, nama kanan ── */}
+              {/* ── Profile Card: avatar left, name and account right ── */}
               <div className="px-4 pt-1 pb-3">
-                <div className="relative w-full max-w-[340px] rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/60 py-3 pl-4 pr-20">
-                  <div className="absolute -right-4 top-1/2 -translate-y-1/2 shrink-0">
-                    <UserAvatar name={displayName || activeEmail} size={80} src={avatarSrc} />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="text-base font-black tracking-tight text-[var(--text)] truncate max-w-[170px]">
-                        {displayName}
-                      </h3>
-                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
-                        <Check size={11} strokeWidth={4} />
-                      </span>
-                      <span className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[8px] font-black uppercase text-[var(--text)]">
-                        PRO
-                      </span>
+                <div className="w-full rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/60 p-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="shrink-0">
+                      <UserAvatar name={displayName || activeEmail} size={56} src={avatarSrc} />
                     </div>
 
-                {/* Account Switcher Pill */}
-                <div className="relative mt-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowMobileSheetAccountSwitcher((open) => !open)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-1 text-xs font-semibold text-[var(--muted)] hover:text-[var(--text)] transition active:scale-95"
-                  >
-                    <span className="truncate max-w-[200px]">{activeEmail || (lang === "BM" ? "Akaun aktif" : "Active account")}</span>
-                    <ChevronDown
-                      size={12}
-                      className={cn(
-                        "transition-transform duration-200 shrink-0",
-                        showMobileSheetAccountSwitcher && "rotate-180"
-                      )}
-                    />
-                  </button>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="truncate text-base font-black tracking-tight text-[var(--text)]">
+                          {displayName}
+                        </h3>
+                        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+                          <Check size={11} strokeWidth={4} />
+                        </span>
+                        <span className="inline-flex shrink-0 items-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[8px] font-black uppercase text-[var(--text)]">
+                          PRO
+                        </span>
+                      </div>
+
+                      {/* Account Switcher Pill */}
+                      <div className="relative mt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setShowMobileSheetAccountSwitcher((open) => !open)}
+                          aria-expanded={showMobileSheetAccountSwitcher}
+                          className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-1 text-xs font-semibold text-[var(--muted)] transition hover:text-[var(--text)] active:scale-95"
+                        >
+                          <span className="truncate">{activeEmail || (lang === "BM" ? "Akaun aktif" : "Active account")}</span>
+                          <ChevronDown
+                            size={12}
+                            className={cn(
+                              "shrink-0 transition-transform duration-200",
+                              showMobileSheetAccountSwitcher && "rotate-180"
+                            )}
+                          />
+                        </button>
 
                   {showMobileSheetAccountSwitcher && (
                     <div
                       className={cn(
-                        "absolute left-0 top-[40px] z-40 w-[280px] overflow-hidden rounded-3xl border p-2 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95",
+                        "absolute left-0 top-[calc(100%+0.5rem)] z-40 w-[min(280px,calc(100vw-5rem))] overflow-hidden rounded-3xl border p-2 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95",
                         "border-[var(--border)] bg-[var(--sheet-bg)]"
                       )}
                     >
@@ -4008,27 +4010,28 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     </div>
                   )}
                 </div>
+                    </div>
                   </div>
                 </div>
 
                 {/* ── Quick Controls Toolbar: Lang, Theme, WhatsNew, Settings ── */}
-                <div className="mt-3.5 grid w-full max-w-[340px] grid-cols-4 gap-2">
+                <div className="mt-3.5 flex w-full items-stretch overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] shadow-2xs">
                   {/* Language */}
                   <button
                     type="button"
                     onClick={() => setLang(lang === "EN" ? "BM" : "EN")}
-                    className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] py-2 text-center text-[var(--text)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] active:scale-95"
+                    className="flex flex-1 flex-col items-center justify-center gap-1 border-r border-[var(--border)] py-2.5 text-center text-[var(--text)] transition-colors hover:bg-[var(--surface-tint-strong)] active:bg-[var(--surface-tint-strong)]"
                   >
-                    <Globe size={16} className="text-[var(--text)]" />
+                    <Globe size={18} className="text-[var(--text)]" />
                     <span className="text-[10px] font-black uppercase">{lang}</span>
                   </button>
 
                   {/* Theme Mode */}
-                  <div className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] py-1.5 text-center text-[var(--text)] shadow-2xs">
+                  <div className="flex flex-1 flex-col items-center justify-center gap-1 border-r border-[var(--border)] py-2.5 text-center text-[var(--text)]">
                     <ThemeToggle
                       compact
                       inverted={!isLight}
-                      className="h-5 w-5 bg-transparent border-0 shadow-none p-0"
+                      className="h-[18px] w-[18px] bg-transparent border-0 shadow-none p-0"
                     />
                     <span className="text-[10px] font-bold text-[var(--muted)]">{lang === "BM" ? "Tema" : "Theme"}</span>
                   </div>
@@ -4037,19 +4040,19 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   <button
                     type="button"
                     onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/whatsnew`))}
-                    className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] py-2 text-center text-[var(--text)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] active:scale-95"
+                    className="flex flex-1 flex-col items-center justify-center gap-1 border-r border-[var(--border)] py-2.5 text-center text-[var(--text)] transition-colors hover:bg-[var(--surface-tint-strong)] active:bg-[var(--surface-tint-strong)]"
                   >
-                    <ScrollText size={16} className="text-[var(--text)]" />
-                    <span className="text-[10px] font-bold truncate max-w-full px-1">WhatsNew</span>
+                    <ScrollText size={18} className="text-[var(--text)]" />
+                    <span className="truncate px-1 text-[10px] font-bold">WhatsNew</span>
                   </button>
 
                   {/* Settings */}
                   <button
                     type="button"
                     onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/settings`))}
-                    className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] py-2 text-center text-[var(--text)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] active:scale-95"
+                    className="flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-center text-[var(--text)] transition-colors hover:bg-[var(--surface-tint-strong)] active:bg-[var(--surface-tint-strong)]"
                   >
-                    <Settings size={16} className="text-[var(--text)]" />
+                    <Settings size={18} className="text-[var(--text)]" />
                     <span className="text-[10px] font-bold">{lang === "BM" ? "Tetapan" : "Settings"}</span>
                   </button>
                 </div>
