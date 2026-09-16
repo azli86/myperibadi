@@ -30,7 +30,7 @@ TAIL = SHELL[SHELL.index("SheetCard 3:") :]
 FINANCE = {"budget", "wallet-settings", "bank-reconciliation", "tax", "categories",
            "subscription", "loan", "bnpl", "split-bills", "debt"}
 PERSONAL = {"vehicle", "inventory", "warranty", "event", "health", "badges"}
-TOOLS = {"receipts"}
+TOOLS = {"receipts", "bot-command", "request", "connector"}
 
 
 def hrefs(text: str) -> list[str]:
@@ -68,19 +68,24 @@ def test_there_are_still_no_headings_or_counts():
     assert "modul" not in BLOCK and '"modules"' not in BLOCK
 
 
-def test_the_other_cards_are_untouched():
-    # Maps and Support are sections; Connector is a standalone button.
-    for card in ("SheetCard 3:", "SheetCard 4:", "SheetCard 5:"):
-        assert card in TAIL, f"{card} disappeared"
-    assert TAIL.count("<section") == 2
-    assert "Connector Hub" in TAIL
+def test_only_the_maps_card_remains_below_the_nav():
+    assert "SheetCard 3:" in TAIL, "the Maps card is still there"
+    # Count real cards, not comments: each rendered card is a <section> or a big <button>.
+    assert TAIL.count("<section") == 1, f"only Maps should be a section below the nav, found {TAIL.count('<section')}"
+
+
+def test_the_tools_that_moved_out_are_gone_from_the_sheet():
+    # Bot Command, Request & Ticket and Connector live in the tools card now, not here.
+    assert "Connector Hub" not in SHELL, "the standalone Connector card must be gone"
+    # The desktop sidebar also links Connector; only the sheet must list it once.
+    assert BLOCK.count("${sessionId}/connector") == 1, "Connector is listed once in the sheet"
 
 
 def test_no_destination_is_listed_twice():
     found = hrefs(BLOCK)
     duplicates = {h for h in found if found.count(h) > 1}
     assert not duplicates, f"listed twice: {duplicates}"
-    assert len(found) == 17, f"expected 17 destinations, found {len(found)}"
+    assert len(found) == 20, f"expected 20 destinations, found {len(found)}"
 
 
 def test_the_calculator_still_opens_a_panel():
@@ -105,7 +110,8 @@ if __name__ == "__main__":
     test_the_groups_are_separated_by_cards_not_dividers()
     test_the_groups_hold_the_right_destinations()
     test_there_are_still_no_headings_or_counts()
-    test_the_other_cards_are_untouched()
+    test_only_the_maps_card_remains_below_the_nav()
+    test_the_tools_that_moved_out_are_gone_from_the_sheet()
     test_no_destination_is_listed_twice()
     test_the_calculator_still_opens_a_panel()
     test_the_ai_badge_is_kept()

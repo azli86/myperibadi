@@ -4082,6 +4082,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     [
                       { name: lang === "BM" ? "Galeri" : "Gallery", href: `/${sessionId}/receipts`, icon: Images },
                       { name: lang === "BM" ? "Kalkulator" : "Calculator", action: "calculator", icon: CalculatorIcon },
+                      { name: lang === "BM" ? "Command Bot" : "Bot Command", href: `/${sessionId}/bot-command`, icon: Bot },
+                      { name: lang === "BM" ? "Request & Tiket" : "Request & Ticket", href: `/${sessionId}/request`, icon: Send },
+                      { name: "Connector", href: `/${sessionId}/connector`, icon: Bot },
                     ],
                 ] as { name: string; href?: string; icon: typeof Wallet; badge?: string; action?: string }[][]).map((group, groupIndex) => (
                   <section
@@ -4174,53 +4177,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       </div>
                     </section>
 
-                    {/* ── SheetCard 4: Connector & Bot Hub ── */}
-                    <button
-                      type="button"
-                      onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/connector`))}
-                      className={cn(
-                        "group flex w-full items-center justify-between rounded-3xl border border-[var(--border)] p-3.5 text-left shadow-sm transition-all hover:bg-[var(--surface-tint)] active:scale-[0.98]",
-                        "bg-[var(--card)] text-[var(--text)]"
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint-strong)] text-[var(--text)] transition-transform group-hover:scale-105">
-                          <Bot size={22} strokeWidth={2} />
-                        </span>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="block text-xs font-black tracking-tight">Connector Hub</span>
-                            <span className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-2 py-0.5 text-[9px] font-black uppercase text-[var(--text)]">
-                              Active
-                            </span>
-                          </div>
-                          <span className="mt-0.5 block text-[11px] font-medium text-[var(--muted)]">WhatsApp & Telegram Bot sync</span>
-                        </div>
-                      </div>
-                      <ChevronRight size={16} className="text-[var(--muted)] transition-transform group-hover:translate-x-0.5" />
-                    </button>
-
-                    {/* ── SheetCard 5: Bantuan & Bot (Bot & Support) ── */}
-                    <section className={cn("rounded-3xl border border-[var(--border)] p-3.5 shadow-sm", "bg-[var(--card)]")}>
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { name: lang === "BM" ? "Command Bot" : "Bot Command", href: `/${sessionId}/bot-command`, icon: Bot },
-                          { name: lang === "BM" ? "Request & Tiket" : "Request & Ticket", href: `/${sessionId}/request`, icon: Send },
-                        ].map((item) => (
-                          <button
-                            key={item.href}
-                            type="button"
-                            onClick={() => requestMobileMenuCloseThen(() => router.push(item.href))}
-                            className="group flex items-center gap-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2.5 text-left text-[var(--text)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] active:scale-[0.98]"
-                          >
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint-strong)] text-[var(--text)] transition-transform group-hover:scale-105">
-                              <item.icon size={16} strokeWidth={1.9} />
-                            </span>
-                            <span className="truncate text-xs font-bold leading-tight">{item.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </section>
               </div>
             </aside>
           </div>
