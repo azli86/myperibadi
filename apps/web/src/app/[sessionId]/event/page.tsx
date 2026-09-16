@@ -463,7 +463,7 @@ export default function EventPage() {
         className="group relative flex w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] text-left shadow-[var(--shadow-soft)] transition active:scale-[0.99]"
       >
         {/* Left media — flush with the card edge, same split as the vehicle card. */}
-        <div className="relative w-[42%] min-w-[7.5rem] max-w-[11rem] self-stretch bg-[var(--surface-tint)]">
+        <div className="relative w-[42%] min-w-[7.5rem] max-w-[11rem] self-stretch bg-[var(--surface-tint-strong)]">
           {ev.has_image && ev.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -472,7 +472,7 @@ export default function EventPage() {
               className="absolute inset-0 h-full w-full object-cover object-center transition duration-500 group-active:scale-[1.03]"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[var(--accent-bg)] via-[var(--surface-tint)] to-[var(--card)]">
+            <div className="absolute inset-0 flex items-center justify-center bg-[var(--surface-tint-strong)]">
               <CategoryIconGlyph
                 iconName={ev.icon_name}
                 categoryName={ev.name}

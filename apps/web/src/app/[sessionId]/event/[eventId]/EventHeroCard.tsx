@@ -50,7 +50,7 @@ export function EventHeroCard({
               className="h-full w-full object-cover object-center"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-[var(--surface-tint)]">
+            <div className="flex h-full w-full items-center justify-center bg-[var(--surface-tint-strong)]">
               <CategoryIconGlyph
                 iconName={event.icon_name}
                 categoryName={event.name}
