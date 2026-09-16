@@ -1,6 +1,6 @@
-"""The trip card leads with what the trip cost, and never invents an overspend.
+"""The trip card follows the vehicle card split, and never invents an overspend.
 
-Two regressions are pinned here.
+Three regressions are pinned here.
 
 1. The card derived `remainingNum = budgetNum - spentNum` after coercing a null
    budget to 0. A trip with no budget therefore had remaining = -spent, and any
@@ -8,8 +8,12 @@ Two regressions are pinned here.
    a limit. No budget now yields 0, matching the detail page's `budget > 0`
    guard.
 
-2. Spent is the first thing in the card. It previously sat in a tinted sub-box
-   in the lower half, half-width, next to the budget figure.
+2. Media leads on the left, flush with the card edge, with the metrics on the
+   right — the same split the vehicle list uses. A full-width image or a
+   stacked layout breaks that pairing.
+
+3. The progress bar only renders when a budget exists. A 0% bar on a trip with
+   no limit reads as an error.
 
 Run: cd apps/api && venv/bin/python -m tests.test_event_trip_card
 """
@@ -18,6 +22,9 @@ from pathlib import Path
 PAGE = (
     Path(__file__).resolve().parents[2] / "web" / "src" / "app" / "[sessionId]" / "event" / "page.tsx"
 ).read_text(encoding="utf-8")
+
+CARD = PAGE[PAGE.index('className="group relative flex w-full overflow-hidden'):]
+CARD = CARD[: CARD.index("Hero Card Component")]
 
 
 def test_remaining_is_zero_without_a_budget():
@@ -30,35 +37,34 @@ def test_ratio_helper_already_guards_a_missing_budget():
     assert "if (budget <= 0) return 0" in PAGE
 
 
-def test_spent_is_the_first_block_in_the_card():
-    card = PAGE[PAGE.index("event-card event-card-interactive"):]
-    card = card[: card.index("Card Footer")]
-    assert card.index('tr("Dibelanjakan", "Spent")') < card.index("CategoryIconGlyph"), \
-        "spent leads at the top, above the icon and name"
-    assert card.index('tr("Dibelanjakan", "Spent")') < card.index("event-progress-track"), \
-        "the amount comes before the bar that qualifies it"
+def test_media_leads_on_the_left():
+    assert "w-[42%]" in CARD, "media column must match the vehicle card split"
+    assert CARD.index("w-[42%]") < CARD.index('tr("Dibelanjakan", "Spent")'), \
+        "media sits left of the details"
 
 
-def test_overspend_only_appears_when_a_budget_exists():
-    card = PAGE[PAGE.index("Budget context sits directly under"):]
-    card = card[: card.index("Card Header: Icon/Image")]
-    # The over/under line is inside the hasBudget branch, so the no-budget path
-    # cannot reach it; the fallback is an explicit "no limit" note.
-    assert card.index("{hasBudget ? (") < card.index("Over by"), \
-        "the over-budget text must not be reachable without a budget"
-    assert 'tr("Tiada had bajet", "No budget limit")' in card
+def test_all_four_metrics_are_present():
+    for label in ("Dibelanjakan", "Bajet", "Baki", "Transaksi"):
+        assert label in CARD, f"missing metric: {label}"
 
 
-def test_no_two_column_grid_left_on_the_card():
-    card = PAGE[PAGE.index("event-card event-card-interactive"):]
-    card = card[: card.index("Card Footer")]
-    assert "grid grid-cols-2" not in card, "the summary grid is what buried the amount"
+def test_progress_bar_is_gated_on_a_budget():
+    assert "{hasBudget ? (" in CARD, "the bar must sit behind the budget guard"
+    bar = CARD.index("event-progress-track")
+    guard = CARD.index("{hasBudget ? (")
+    assert guard < bar, "the bar must not render without a budget"
+
+
+def test_no_budget_shows_the_dash_not_a_zero():
+    assert '{hasBudget ? moneyLabel(remainingNum, ev.currency) : "—"}' in CARD, \
+        "a budget-less trip must show a dash, never a computed remainder"
 
 
 if __name__ == "__main__":
     test_remaining_is_zero_without_a_budget()
     test_ratio_helper_already_guards_a_missing_budget()
-    test_spent_is_the_first_block_in_the_card()
-    test_overspend_only_appears_when_a_budget_exists()
-    test_no_two_column_grid_left_on_the_card()
+    test_media_leads_on_the_left()
+    test_all_four_metrics_are_present()
+    test_progress_bar_is_gated_on_a_budget()
+    test_no_budget_shows_the_dash_not_a_zero()
     print("event trip card OK")
