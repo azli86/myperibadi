@@ -4057,80 +4057,96 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
               {/* ── Main Sheet Content: Grouped Cards ── */}
               <div className="px-4 pb-12 space-y-3.5 pt-1">
-                {/* ── Nav drawer: app-drawer grid, no card, no headings ── */}
-                <div className="grid grid-cols-4 gap-x-1 gap-y-3.5">
-                  {[
-                    { name: t.budget, href: `/${sessionId}/budget`, icon: Wallet, badge: "" },
-                    { name: t.walletSettings, href: `/${sessionId}/wallet-settings`, icon: CreditCard, badge: "" },
-                    { name: lang === "BM" ? "Rekonsiliasi" : "Reconcile", href: `/${sessionId}/bank-reconciliation`, icon: FileSpreadsheet, badge: "AI" },
-                    { name: lang === "BM" ? "Cukai" : "Tax", href: `/${sessionId}/tax`, icon: Landmark, badge: "" },
-                    { name: t.categories, href: `/${sessionId}/categories`, icon: Grid2X2, badge: "" },
-                    { name: "Subscription", href: `/${sessionId}/subscription`, icon: CreditCard, badge: "" },
-                    { name: "Loan", href: `/${sessionId}/loan`, icon: Landmark, badge: "" },
-                    { name: "BNPL", href: `/${sessionId}/bnpl`, icon: CreditCard, badge: "" },
-                    { name: "Split Bill", href: `/${sessionId}/split-bills`, icon: Users, badge: "" },
-                    { name: t.debt, href: `/${sessionId}/debt`, icon: HandCoins, badge: "" },
-                    { name: lang === "BM" ? "Kenderaan" : "Vehicle", href: `/${sessionId}/vehicle`, icon: Car, badge: "" },
-                    { name: lang === "BM" ? "Barang" : "Inventory", href: `/${sessionId}/inventory`, icon: Package, badge: "" },
-                    { name: lang === "BM" ? "Waranti" : "Warranty", href: `/${sessionId}/warranty`, icon: Shield, badge: "" },
-                    { name: lang === "BM" ? "Acara" : "Events", href: `/${sessionId}/event`, icon: CalendarDays, badge: "" },
-                    { name: lang === "BM" ? "Kesihatan" : "Health", href: `/${sessionId}/health`, icon: Heart, badge: "" },
-                    { name: lang === "BM" ? "Lencana" : "Badges", href: `/${sessionId}/badges`, icon: Award, badge: "" },
-                    { name: lang === "BM" ? "Galeri" : "Gallery", href: `/${sessionId}/receipts`, icon: Images, badge: "" },
-                    { name: lang === "BM" ? "Kalkulator" : "Calculator", action: "calculator", icon: CalculatorIcon, badge: "" },
-                  ].map((item) => {
-                    const isCurrent = Boolean(item.href) && pathname === item.href;
-                    return (
-                      <button
-                        key={item.name}
-                        type="button"
-                        onClick={() => {
-                          if (item.action === "calculator") {
-                            requestMobileMenuClose();
-                            setShowCalculator(true);
-                            return;
-                          }
-                          if (isCurrent) {
-                            requestMobileMenuClose();
-                            return;
-                          }
-                          requestMobileMenuCloseThen(() => {
-                            router.push(item.href!);
-                          });
-                        }}
-                        className="group relative flex min-w-0 flex-col items-center gap-1.5 text-center transition-all duration-200 active:scale-90"
-                      >
-                        <div
-                          className={cn(
-                            "relative flex h-13 w-13 items-center justify-center rounded-[18px] border shadow-2xs transition-all duration-200 group-hover:scale-105",
-                            isCurrent
-                              ? "border-[var(--text)] bg-[var(--text)] text-[var(--bg)] shadow-sm ring-2 ring-[var(--text)]/20"
-                              : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] group-hover:bg-[var(--surface-tint-strong)]"
-                          )}
-                        >
-                          <item.icon
-                            size={22}
-                            strokeWidth={1.9}
-                            className="shrink-0 transition-transform group-hover:scale-110"
-                          />
-                          {item.badge && !isCurrent && (
-                            <span className="absolute -top-1 -right-1 flex h-4 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--text)] px-1 text-[8px] font-black text-[var(--bg)] shadow-xs">
-                              {item.badge}
-                            </span>
-                          )}
-                        </div>
-                        <p
-                          className={cn(
-                            "w-full line-clamp-2 px-0.5 text-[11px] font-bold leading-tight transition-colors",
-                            isCurrent ? "text-[var(--text)] font-black" : "text-[var(--text)]"
-                          )}
-                        >
-                          {item.name}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
+                {/* ── Nav card: three groups of destinations, divided, no headings ── */}
+                <section className={cn("rounded-3xl border border-[var(--border)] p-4 shadow-sm", "bg-[var(--card)]")}>
+                  {([
+                    [
+                      { name: t.budget, href: `/${sessionId}/budget`, icon: Wallet },
+                      { name: t.walletSettings, href: `/${sessionId}/wallet-settings`, icon: CreditCard },
+                      { name: lang === "BM" ? "Rekonsiliasi" : "Reconcile", href: `/${sessionId}/bank-reconciliation`, icon: FileSpreadsheet, badge: "AI" },
+                      { name: lang === "BM" ? "Cukai" : "Tax", href: `/${sessionId}/tax`, icon: Landmark },
+                      { name: t.categories, href: `/${sessionId}/categories`, icon: Grid2X2 },
+                      { name: "Subscription", href: `/${sessionId}/subscription`, icon: CreditCard },
+                      { name: "Loan", href: `/${sessionId}/loan`, icon: Landmark },
+                      { name: "BNPL", href: `/${sessionId}/bnpl`, icon: CreditCard },
+                      { name: "Split Bill", href: `/${sessionId}/split-bills`, icon: Users },
+                      { name: t.debt, href: `/${sessionId}/debt`, icon: HandCoins },
+                    ],
+                    [
+                      { name: lang === "BM" ? "Kenderaan" : "Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
+                      { name: lang === "BM" ? "Barang" : "Inventory", href: `/${sessionId}/inventory`, icon: Package },
+                      { name: lang === "BM" ? "Waranti" : "Warranty", href: `/${sessionId}/warranty`, icon: Shield },
+                      { name: lang === "BM" ? "Acara" : "Events", href: `/${sessionId}/event`, icon: CalendarDays },
+                      { name: lang === "BM" ? "Kesihatan" : "Health", href: `/${sessionId}/health`, icon: Heart },
+                      { name: lang === "BM" ? "Lencana" : "Badges", href: `/${sessionId}/badges`, icon: Award },
+                    ],
+                    [
+                      { name: lang === "BM" ? "Galeri" : "Gallery", href: `/${sessionId}/receipts`, icon: Images },
+                      { name: lang === "BM" ? "Kalkulator" : "Calculator", action: "calculator", icon: CalculatorIcon },
+                    ],
+                  ] as { name: string; href?: string; icon: typeof Wallet; badge?: string; action?: string }[][]).map((group, groupIndex) => (
+                    <div
+                      key={groupIndex}
+                      className={cn(
+                        "grid grid-cols-4 gap-x-1 gap-y-3.5",
+                        groupIndex > 0 && "mt-3.5 border-t border-[var(--border)] pt-3.5"
+                      )}
+                    >
+                      {group.map((item) => {
+                        const isCurrent = Boolean(item.href) && pathname === item.href;
+                        return (
+                          <button
+                            key={item.name}
+                            type="button"
+                            onClick={() => {
+                              if (item.action === "calculator") {
+                                requestMobileMenuClose();
+                                setShowCalculator(true);
+                                return;
+                              }
+                              if (isCurrent) {
+                                requestMobileMenuClose();
+                                return;
+                              }
+                              requestMobileMenuCloseThen(() => {
+                                router.push(item.href!);
+                              });
+                            }}
+                            className="group relative flex min-w-0 flex-col items-center gap-1.5 text-center transition-all duration-200 active:scale-90"
+                          >
+                            <div
+                              className={cn(
+                                "relative flex h-13 w-13 items-center justify-center rounded-[18px] border shadow-2xs transition-all duration-200 group-hover:scale-105",
+                                isCurrent
+                                  ? "border-[var(--text)] bg-[var(--text)] text-[var(--bg)] shadow-sm ring-2 ring-[var(--text)]/20"
+                                  : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] group-hover:bg-[var(--surface-tint-strong)]"
+                              )}
+                            >
+                              <item.icon
+                                size={22}
+                                strokeWidth={1.9}
+                                className="shrink-0 transition-transform group-hover:scale-110"
+                              />
+                              {item.badge && !isCurrent && (
+                                <span className="absolute -top-1 -right-1 flex h-4 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--text)] px-1 text-[8px] font-black text-[var(--bg)] shadow-xs">
+                                  {item.badge}
+                                </span>
+                              )}
+                            </div>
+                            <p
+                              className={cn(
+                                "w-full line-clamp-2 px-0.5 text-[11px] font-bold leading-tight transition-colors",
+                                isCurrent ? "text-[var(--text)] font-black" : "text-[var(--text)]"
+                              )}
+                            >
+                              {item.name}
+                            </p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </section>
 
                     {/* ── SheetCard 3: Peta & Lokasi (Maps & Places) ── */}
                     <section className={cn("rounded-3xl border border-[var(--border)] p-3.5 shadow-sm", "bg-[var(--card)]")}>
