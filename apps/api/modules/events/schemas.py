@@ -64,6 +64,7 @@ class EventTransactionResponse(BaseModel):
     category_id: Optional[int] = None
     category_name: Optional[str] = None
     category_icon: Optional[str] = None
+    notes: Optional[str] = None
     # Whether this transaction counts towards the event budget.
     included: bool = True
 

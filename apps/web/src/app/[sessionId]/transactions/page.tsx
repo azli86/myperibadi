@@ -20,6 +20,7 @@ import {
  X,
  Trash2,
  AlertTriangle,
+ StickyNote,
  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -2432,6 +2433,12 @@ const currentCycleKeyStr = useMemo(
  {splitWalletTaggedDescription(tx.vendor_or_source || "", tx.wallet_name).title || tx.vendor_or_source || langT.noDescription}
  </p>
  <p className="mt-0.5 truncate text-[0.625rem] text-[var(--muted)]">{formattedDateTime}</p>
+ {tx.notes ? (
+ <p className="mt-0.5 flex items-center gap-1 text-[0.625rem] text-[var(--muted)]">
+ <StickyNote size={10} className="shrink-0" />
+ <span className="truncate">{tx.notes}</span>
+ </p>
+ ) : null}
  </div>
  </div>
 

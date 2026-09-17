@@ -17,6 +17,7 @@ import {
   DesktopPageHeader,
   MobilePageHeader,
 } from "@/components/layout/PageHeader"
+import { StickyNote } from "lucide-react"
 import { EventHeroCard } from "./EventHeroCard"
 import { EventSummaryCard } from "./EventSummaryCard"
 import { MoneyAmount, formatCurrencyLabel, formatMoneyValue } from "@/components/ui/MoneyAmount"
@@ -52,6 +53,7 @@ type EventTransaction = {
   category_id?: number | null
   category_name?: string | null
   category_icon?: string | null
+  notes?: string | null
   included: boolean
 }
 
@@ -440,6 +442,12 @@ export default function EventDetailPage() {
                                       <span className="inline-flex items-center gap-1">
                                         <WalletIcon size={10} />
                                         {txn.wallet_name}
+                                      </span>
+                                    ) : null}
+                                    {txn.notes ? (
+                                      <span className="inline-flex min-w-0 items-center gap-1">
+                                        <StickyNote size={10} />
+                                        <span className="truncate">{txn.notes}</span>
                                       </span>
                                     ) : null}
                                   </div>

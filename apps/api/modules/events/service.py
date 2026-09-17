@@ -122,6 +122,7 @@ async def list_event_transactions(
                 "category_id": int(txn.category_id) if txn.category_id else None,
                 "category_name": category[0] if category else None,
                 "category_icon": category[1] if category else None,
+                "notes": txn.notes or None,
                 "included": included,
             }
         )
