@@ -64,5 +64,25 @@ assert "rounded-2xl border border-[var(--border)]" in HERO, "hero must be a roun
 assert "category_name" in SERVICE, "the event transaction payload must carry the category name"
 assert "category_icon" in SERVICE, "the event transaction payload must carry the category icon"
 assert "category_id" in SCHEMA, "the response schema must expose the category fields"
+assert "notes" in SCHEMA, "the response schema must expose transaction notes"
 
 print("event detail layout OK")
+
+def test_transaction_notes_render_on_both_rows():
+    """Notes were invisible until the detail page, so a row with a receipt
+    reference looked identical to one with nothing."""
+    from pathlib import Path
+
+    txn_page = (
+        Path(__file__).resolve().parents[2] / "web" / "src" / "app"
+        / "[sessionId]" / "transactions" / "page.tsx"
+    ).read_text(encoding="utf-8")
+    # The list has two row renderers; the first pass only patched one, and the
+    # one the page actually shipped was the other. Both must render it.
+    assert txn_page.count("{tx.notes ? (") == 2, "both row renderers show the note"
+    assert txn_page.count("<StickyNote size={10}") == 2, "each rendered note gets an icon"
+    assert "{txn.notes ? (" in PAGE, "the event row renders the note too"
+
+
+
+test_transaction_notes_render_on_both_rows()
