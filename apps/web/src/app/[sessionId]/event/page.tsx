@@ -721,7 +721,7 @@ export default function EventPage() {
   return (
     <div className="relative min-h-[calc(100vh-4rem)] max-w-full text-[var(--text)]">
       {/* ─── Mobile ─── */}
-      <div className="sticky top-0 z-50 bg-[var(--page-bg)] pb-2 pt-1 md:hidden">
+      <div className="md:hidden">
         <MobilePageHeader
           title={tr("Acara & Majlis", "Events")}
           fallbackHref={`/${sessionId}`}

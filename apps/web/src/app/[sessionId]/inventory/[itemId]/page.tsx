@@ -318,7 +318,7 @@ export default function InventoryItemDetailPage() {
   return (
     <>
       {/* ── MOBILE HEADER (MATCHING TRANSACTIONS DETAILS PAGE) ── */}
-      <div className="sticky top-0 z-50 bg-[var(--page-bg)] pb-2 pt-1 md:hidden">
+      <div className="md:hidden">
         <MobilePageHeader
           title={itemDetailTitle}
           fallbackHref={`/${sessionId}/inventory`}

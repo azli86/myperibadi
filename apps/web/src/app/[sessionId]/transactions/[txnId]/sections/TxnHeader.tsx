@@ -25,7 +25,7 @@ export default function TxnHeader({
 
   return (
     <>
-      <div className="sticky top-0 z-50 bg-[var(--page-bg)] pb-2 pt-1 md:hidden">
+      <div className="md:hidden">
         <MobilePageHeader
           title={title}
           fallbackHref={`/${sessionId}/transactions`}

@@ -42,8 +42,23 @@ def test_the_header_pads_for_the_inset_itself():
         "the header must own the inset now that it paints above the strip, or its title sits under the clock"
 
 
+def test_no_sticky_wrapper_traps_the_fixed_header():
+    """A positioned ancestor makes a `fixed` child resolve against it, not the
+    viewport. Six screens wrapped the header in `sticky top-0`, so on iOS the
+    header parked at the top of the flow and the safe-area strip hid it whole."""
+    import subprocess
+
+    app = Path(__file__).resolve().parents[2] / "web" / "src" / "app"
+    hits = subprocess.run(
+        ["grep", "-rl", "sticky top-0 z-50", str(app)],
+        capture_output=True, text=True,
+    ).stdout.split()
+    assert hits == [], f"a positioned ancestor will trap the fixed header: {hits}"
+
+
 if __name__ == "__main__":
     test_the_shell_still_owns_a_safe_area_strip()
     test_the_header_outranks_that_strip()
     test_the_header_pads_for_the_inset_itself()
+    test_no_sticky_wrapper_traps_the_fixed_header()
     print("mobile header safe area OK")

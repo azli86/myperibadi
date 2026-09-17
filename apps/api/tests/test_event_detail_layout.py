@@ -81,7 +81,7 @@ def test_transaction_notes_render_on_both_rows():
     # not under the category on the left.
     assert txn_page.count("{tx.notes ? (") == 2, "both row renderers show the note"
     assert txn_page.count("<StickyNote size={10}") == 2, "each rendered note gets an icon"
-    note_at = txn_page.index("justify-end gap-1 truncate")
+    note_at = txn_page.index("justify-end gap-1")
     assert txn_page.index("{walletText}") < note_at, "the note follows the wallet line"
     assert "{txn.notes ? (" in PAGE, "the event row renders the note too"
 
