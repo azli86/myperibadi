@@ -456,9 +456,9 @@ function SwipeableTransactionItem({
               {walletText}
             </span>
             {tx.notes ? (
-              <span className="mt-0.5 flex items-center justify-end gap-1 truncate text-[0.625rem] font-medium text-[var(--muted)]">
-                <StickyNote size={10} className="shrink-0" />
-                <span className="truncate">{tx.notes}</span>
+              <span className="mt-0.5 flex items-start justify-end gap-1 text-[0.625rem] font-medium text-[var(--muted)]">
+                <StickyNote size={10} className="mt-0.5 shrink-0" />
+                <span className="line-clamp-2 break-words text-right">{tx.notes}</span>
               </span>
             ) : null}
           </div>
