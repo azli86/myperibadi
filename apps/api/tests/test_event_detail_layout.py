@@ -81,10 +81,12 @@ def test_transaction_notes_render_on_both_rows():
     # not under the category on the left.
     assert txn_page.count("{tx.notes ? (") == 2, "both row renderers show the note"
     assert txn_page.count("<StickyNote size={10}") == 2, "each rendered note gets an icon"
-    note_at = txn_page.index("justify-end gap-1")
-    assert txn_page.index("{walletText}") < note_at, "the note follows the wallet line"
-    assert "max-w-[9.5rem]" in txn_page, \
-        "an unbounded note widens the right column until it swallows the amount"
+    # The note sits under the description on the left, and both the note's
+    # wrapper and its text node need min-w-0 so a long word cannot widen the
+    # left column into the amount.
+    assert txn_page.index("{tx.notes ? (") < txn_page.index("{walletText}"), \
+        "the note belongs on the left, above the wallet line"
+    assert txn_page.count("min-w-0 break-words") == 1, "the note text must be allowed to shrink"
     assert "{txn.notes ? (" in PAGE, "the event row renders the note too"
 
 
