@@ -1596,11 +1596,11 @@ export default function TransactionDetailPage() {
         disabled={receiptDownloading}
         variant="solid"
         aria-label={lang === "BM" ? "Muat turun resit" : "Download receipt"}
-        className="sm:px-2.5"
+        className="w-8 justify-center px-0"
       >
         {receiptDownloading ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
       </DesktopPageAction>
-      <DesktopPageAction onClick={() => setShowEditModal(true)} aria-label={langT.editTransaction} className="sm:px-2.5">
+      <DesktopPageAction onClick={() => setShowEditModal(true)} aria-label={langT.editTransaction} className="w-8 justify-center px-0">
         <Edit3 size={16} />
       </DesktopPageAction>
       <DesktopPageAction
