@@ -439,12 +439,6 @@ function SwipeableTransactionItem({
                 })()}
               </span>
             </div>
-            {tx.notes ? (
-              <p className="mt-0.5 flex items-center gap-1 truncate text-[0.625rem] text-[var(--muted)]">
-                <StickyNote size={10} className="shrink-0" />
-                <span className="truncate">{tx.notes}</span>
-              </p>
-            ) : null}
           </div>
 
           <div
@@ -461,6 +455,12 @@ function SwipeableTransactionItem({
             <span className="mt-0.5 block truncate text-[0.625rem] font-medium text-[var(--muted)]">
               {walletText}
             </span>
+            {tx.notes ? (
+              <span className="mt-0.5 flex items-center justify-end gap-1 truncate text-[0.625rem] font-medium text-[var(--muted)]">
+                <StickyNote size={10} className="shrink-0" />
+                <span className="truncate">{tx.notes}</span>
+              </span>
+            ) : null}
           </div>
         </button>
       </div>

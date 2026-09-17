@@ -77,10 +77,12 @@ def test_transaction_notes_render_on_both_rows():
         Path(__file__).resolve().parents[2] / "web" / "src" / "app"
         / "[sessionId]" / "transactions" / "page.tsx"
     ).read_text(encoding="utf-8")
-    # The list has two row renderers; the first pass only patched one, and the
-    # one the page actually shipped was the other. Both must render it.
+    # Both row renderers show it, and it sits under the wallet on the right,
+    # not under the category on the left.
     assert txn_page.count("{tx.notes ? (") == 2, "both row renderers show the note"
     assert txn_page.count("<StickyNote size={10}") == 2, "each rendered note gets an icon"
+    note_at = txn_page.index("justify-end gap-1 truncate")
+    assert txn_page.index("{walletText}") < note_at, "the note follows the wallet line"
     assert "{txn.notes ? (" in PAGE, "the event row renders the note too"
 
 
