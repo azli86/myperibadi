@@ -83,6 +83,8 @@ def test_transaction_notes_render_on_both_rows():
     assert txn_page.count("<StickyNote size={10}") == 2, "each rendered note gets an icon"
     note_at = txn_page.index("justify-end gap-1")
     assert txn_page.index("{walletText}") < note_at, "the note follows the wallet line"
+    assert "max-w-[9.5rem]" in txn_page, \
+        "an unbounded note widens the right column until it swallows the amount"
     assert "{txn.notes ? (" in PAGE, "the event row renders the note too"
 
 
