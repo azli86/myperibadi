@@ -43,7 +43,11 @@ export function MobilePageHeader({
       <div
         ref={headerRef}
         className={cn(
-          "fixed inset-x-0 top-0 z-40 bg-[var(--page-bg)] px-4 py-3",
+          // Above the shell's safe-area strip (z-110): that strip is an opaque
+          // --bg bar as tall as the iOS inset, and at z-40 it painted over this
+          // header — which is why the action vanished on notched iPhones but
+          // survived on Android, where the inset reports 0.
+          "fixed inset-x-0 top-0 z-[120] bg-[var(--page-bg)] px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px))]",
           className,
         )}
       >
