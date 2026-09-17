@@ -3736,10 +3736,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     prefetch
                     onClick={(event) => handleBottomNavLinkClick(event, chatItem.href)}
                     className={cn(
-                      "absolute left-1/2 top-1/2 z-10 flex h-14 w-[54px] -translate-x-1/2 -translate-y-1/2 items-center justify-center select-none touch-none text-[var(--bottom-nav-text)] transition-all duration-250 active:scale-95",
-                      isChatActive
-                        ? "text-[var(--bottom-nav-active-detail)]"
-                        : "text-[var(--bottom-nav-text)]",
+                      // The sparkle paints its own gradient, so text colour no
+                      // longer applies here — only the press feedback does.
+                      "absolute left-1/2 top-1/2 z-10 flex h-14 w-[54px] -translate-x-1/2 -translate-y-1/2 items-center justify-center select-none touch-none transition-all duration-250 active:scale-95",
+                      isChatActive ? "opacity-100" : "opacity-90",
                     )}
                   >
                     <ChatNavIcon active={isChatActive} size={54} />
