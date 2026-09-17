@@ -86,6 +86,8 @@ def test_transaction_notes_render_on_both_rows():
     # left column into the amount.
     assert txn_page.index("{tx.notes ? (") < txn_page.index("{walletText}"), \
         "the note belongs on the left, above the wallet line"
+    assert txn_page.index("{tx.notes ? (") < txn_page.index("text-[0.5625rem]"), \
+        "the note reads above the time, so the timestamp closes the row"
     assert txn_page.count("min-w-0 break-words") == 1, "the note text must be allowed to shrink"
     assert "{txn.notes ? (" in PAGE, "the event row renders the note too"
 

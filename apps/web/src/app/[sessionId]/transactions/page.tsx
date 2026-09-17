@@ -415,7 +415,13 @@ function SwipeableTransactionItem({
             <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
               {splitWalletTaggedDescription(tx.vendor_or_source || "", tx.wallet_name).title || tx.vendor_or_source || langT.noDescription}
             </p>
-            <div className="mt-1">
+            {tx.notes ? (
+              <div className="mt-1 flex items-start gap-1 text-[0.625rem] font-medium text-[var(--muted)]">
+                <StickyNote size={10} className="mt-0.5 shrink-0" />
+                <span className="line-clamp-2 min-w-0 break-words">{tx.notes}</span>
+              </div>
+            ) : null}
+            <div className="mt-0.5">
               <span className={cn("text-[0.5625rem] font-medium", isLight ? "text-slate-500" : "text-[var(--muted)]/60")}>
                 {(() => {
                   try {
@@ -439,12 +445,6 @@ function SwipeableTransactionItem({
                 })()}
               </span>
             </div>
-            {tx.notes ? (
-              <div className="mt-0.5 flex items-start gap-1 text-[0.625rem] font-medium text-[var(--muted)]">
-                <StickyNote size={10} className="mt-0.5 shrink-0" />
-                <span className="line-clamp-2 min-w-0 break-words">{tx.notes}</span>
-              </div>
-            ) : null}
           </div>
 
           <div
