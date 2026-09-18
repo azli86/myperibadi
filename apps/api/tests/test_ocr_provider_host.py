@@ -1,8 +1,10 @@
 """The local OCR provider must point at an address that answers.
 
-This broke silently: ILMU_BASE_URL carried a stale third octet (192.168.1.100
-instead of 192.168.100.100). Uploads still returned 200 from the API while the
-provider call hung and failed, so nothing in the HTTP layer said "wrong host".
+This broke silently: ILMU_BASE_URL carried a stale third octet, pointing at a
+host on a subnet the database does not use. Uploads still returned 200 from the
+API while the provider call hung and failed, so nothing in the HTTP layer said
+"wrong host" — only the OCR draft never arrived.
+
 The address is now asserted against the one the database uses, which is known
 good because the whole API would be down otherwise.
 
