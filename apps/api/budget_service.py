@@ -378,18 +378,11 @@ async def find_expense_category_by_name(
     if len(exact_matches) > 1:
         return None, [c.name for c in exact_matches]
 
-    partial_matches = [
-        c for c in categories
-        if target in normalize_lookup_value(c.name) or normalize_lookup_value(c.name) in target
-    ]
-    if len(partial_matches) == 1:
-        return partial_matches[0], []
-    if partial_matches:
-        return None, [c.name for c in partial_matches[:10]]
-
-    # Categories are usually reached by the keyword the household already set up
-    # ("FnB" is hit by "makan", "Health" by "clinic"). Without this layer a
-    # budget command could not use any keyword the transaction bot accepts.
+    # The household's own keywords decide the category before any fuzzy name
+    # matching runs. Categories are normally reached this way ("FnB" is hit by
+    # "makan", "Health" by "clinic"), and letting the substring pass go first
+    # meant a two-letter input like "min" claimed "Makanan & Minuman" even
+    # though no keyword said so.
     keyword_rows = (await db.execute(
         select(models.CategoryKeyword, models.Category)
         .join(models.Category, models.CategoryKeyword.category_id == models.Category.id)
@@ -405,9 +398,9 @@ async def find_expense_category_by_name(
         keyword_value = normalize_lookup_value(keyword_row.keyword or "")
         if not keyword_value:
             continue
-        # Equality or prefix only. A bidirectional substring test let short
-        # keywords swallow unrelated input ("air" matched the "airselangor"
-        # keyword for Utilities), which is worse than asking the user again.
+        # Equality or a leading phrase only. A bidirectional substring test let
+        # short keywords swallow unrelated input ("air" matched the
+        # "airselangor" keyword for Utilities).
         if keyword_value == target or target.startswith(keyword_value + " "):
             if category not in keyword_matches:
                 keyword_matches.append(category)
@@ -415,5 +408,21 @@ async def find_expense_category_by_name(
         return keyword_matches[0], []
     if keyword_matches:
         return None, [c.name for c in keyword_matches[:10]]
+
+    # Last resort, and never a substitute for a real keyword: "makanan" still
+    # finds "Makanan & Minuman" when the household never defined a keyword.
+    # Short targets are refused here because a three letter string sits inside
+    # half the category names ("min" matched "Makanan & Minuman") and guessing
+    # the wrong budget is worse than asking again.
+    if len(target) < 4:
+        return None, [c.name for c in categories[:10]]
+    partial_matches = [
+        c for c in categories
+        if target in normalize_lookup_value(c.name) or normalize_lookup_value(c.name) in target
+    ]
+    if len(partial_matches) == 1:
+        return partial_matches[0], []
+    if partial_matches:
+        return None, [c.name for c in partial_matches[:10]]
 
     return None, [c.name for c in categories[:10]]

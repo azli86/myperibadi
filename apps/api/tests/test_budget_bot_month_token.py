@@ -94,3 +94,27 @@ def test_keyword_match_is_not_a_bidirectional_substring():
     assert "keyword_value == target or target.startswith(keyword_value + \" \")" in body
     assert "target in keyword_value" not in body
     assert "keyword_value in target" not in body
+
+
+def test_keyword_precedes_partial_name():
+    """Keywords are checked before any fuzzy name match.
+
+    The substring pass used to run first, so "min" resolved to
+    "Makanan & Minuman" purely because the string sits inside the name.
+    """
+    source = (API / "budget_service.py").read_text(encoding="utf-8")
+    start = source.index("async def find_expense_category_by_name(")
+    rest = source[start + 10 :]
+    end = rest.index("\nasync def ") if "\nasync def " in rest else len(rest)
+    body = source[start : start + 10 + end]
+    assert body.index("keyword_matches") < body.index("partial_matches")
+
+
+def test_short_name_fragment_is_refused():
+    """A target shorter than four characters never falls through to substring."""
+    source = (API / "budget_service.py").read_text(encoding="utf-8")
+    start = source.index("async def find_expense_category_by_name(")
+    rest = source[start + 10 :]
+    end = rest.index("\nasync def ") if "\nasync def " in rest else len(rest)
+    body = source[start : start + 10 + end]
+    assert "if len(target) < 4:" in body
