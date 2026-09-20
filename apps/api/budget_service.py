@@ -403,7 +403,12 @@ async def find_expense_category_by_name(
     keyword_matches = []
     for keyword_row, category in keyword_rows:
         keyword_value = normalize_lookup_value(keyword_row.keyword or "")
-        if keyword_value and (keyword_value == target or keyword_value in target or target in keyword_value):
+        if not keyword_value:
+            continue
+        # Equality or prefix only. A bidirectional substring test let short
+        # keywords swallow unrelated input ("air" matched the "airselangor"
+        # keyword for Utilities), which is worse than asking the user again.
+        if keyword_value == target or target.startswith(keyword_value + " "):
             if category not in keyword_matches:
                 keyword_matches.append(category)
     if len(keyword_matches) == 1:

@@ -77,3 +77,20 @@ def test_category_lookup_uses_household_keywords():
     assert "is_active == True" in body
     # exact name match still takes priority over the keyword layer
     assert body.index("exact_matches") < body.index("models.CategoryKeyword")
+
+
+def test_keyword_match_is_not_a_bidirectional_substring():
+    """A short keyword must not swallow unrelated input.
+
+    The first keyword layer used `keyword in target or target in keyword`,
+    so "air" resolved to Utilities through its "airselangor" keyword. Only an
+    exact keyword, or one followed by a space, may match now.
+    """
+    source = (API / "budget_service.py").read_text(encoding="utf-8")
+    start = source.index("async def find_expense_category_by_name(")
+    rest = source[start + 10 :]
+    end = rest.index("\nasync def ") if "\nasync def " in rest else len(rest)
+    body = source[start : start + 10 + end]
+    assert "keyword_value == target or target.startswith(keyword_value + \" \")" in body
+    assert "target in keyword_value" not in body
+    assert "keyword_value in target" not in body
