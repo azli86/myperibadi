@@ -10,6 +10,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronRight,
+  Copy,
   LayoutGrid,
   List,
   Loader2,
@@ -104,6 +105,12 @@ export default function BudgetPage() {
     [cycleMode, salaryDates, cycleStartDay, currentMonthKey]
   )
   const [items, setItems] = useState<BudgetItem[]>([])
+  const previousMonthKey = useMemo(() => {
+    const [y, m] = monthKey.split("-").map(Number)
+    if (!Number.isFinite(y) || !Number.isFinite(m)) return ""
+    const d = new Date(y, m - 2, 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+  }, [monthKey])
   const [summary, setSummary] = useState<BudgetSummary>({
     month_key: currentCycleMonthKey,
     total_budget: 0,
@@ -123,6 +130,7 @@ export default function BudgetPage() {
   const [loading, setLoading] = useState(true)
   const showDataSkeleton = useDelayedSkeleton(loading)
   const [saving, setSaving] = useState(false)
+  const [copying, setCopying] = useState(false)
   const [error, setError] = useState("")
   const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
 
@@ -289,8 +297,7 @@ export default function BudgetPage() {
     }
   }
 
-  const handleResetBudget = () => {
-    if (!activeModalItem?.id) return
+  const handleResetBudget = () => {    if (!activeModalItem?.id) return
     showConfirm(
       tr("Reset Bajet?", "Reset Budget?"),
       tr("Adakah anda pasti mahu reset bajet ini?", "Are you sure you want to reset this budget?"),
@@ -465,6 +472,72 @@ export default function BudgetPage() {
       icon: "border-emerald-500/20 bg-[var(--btn-primary-bg)]/10 text-emerald-500",
     }
   }
+
+  const copyFromPreviousMonth = async () => {
+    if (!previousMonthKey) return
+    setCopying(true)
+    try {
+      const token = getAccessToken()
+      const res = await fetch("/api/budgets/copy", {
+        credentials: "include",
+        method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ from_month: previousMonthKey, to_month: monthKey }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.detail || tr("Gagal salin bajet.", "Failed to copy budget."))
+      }
+      await loadData()
+      const copied = Number(data?.copied || 0)
+      const skipped = Number(data?.skipped || 0)
+      if (copied === 0 && skipped === 0) {
+        showAlert(
+          tr("Tiada Bajet", "Nothing to Copy"),
+          tr(
+            `Bulan ${previousMonthKey} tiada bajet untuk disalin.`,
+            `No budgets found in ${previousMonthKey} to copy.`,
+          ),
+          "info",
+        )
+      } else {
+        showAlert(
+          tr("Berjaya Disalin", "Copied"),
+          skipped > 0
+            ? tr(
+                `${copied} bajet disalin. ${skipped} kategori sudah ada bajet dan tidak diubah.`,
+                `${copied} budgets copied. ${skipped} categories already had a budget and were left alone.`,
+              )
+            : tr(`${copied} bajet disalin.`, `${copied} budgets copied.`),
+          "success",
+        )
+      }
+    } catch (err: unknown) {
+      showAlert(
+        tr("Salin Gagal", "Copy Failed"),
+        getErrorMessage(err, tr("Gagal salin bajet.", "Failed to copy budget.")),
+        "error",
+      )
+    } finally {
+      setCopying(false)
+    }
+  }
+
+
+  const copyBudgetButton = counts.unset > 0 && previousMonthKey && (
+    <button
+      type="button"
+      onClick={copyFromPreviousMonth}
+      disabled={copying}
+      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 text-[0.55rem] font-black uppercase tracking-[0.1em] text-[var(--muted)] transition active:scale-[0.97] disabled:opacity-50"
+    >
+      <Copy size={13} strokeWidth={2.5} />
+      {copying ? tr("Menyalin", "Copying") : tr("Salin bulan lepas", "Copy last month")}
+    </button>
+  )
 
   const filterToggle = (
     <div className="inline-flex max-w-full overflow-x-auto rounded-full border border-[var(--border)] bg-[var(--surface-tint)]/40 p-0.5">
@@ -930,9 +1003,12 @@ export default function BudgetPage() {
 
         <section className="px-1">{heroBlock(false)}</section>
 
-        <div className="flex items-center justify-between gap-2 px-1">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
           {filterToggle}
-          {viewToggle}
+          <div className="flex shrink-0 items-center gap-2">
+            {copyBudgetButton}
+            {viewToggle}
+          </div>
         </div>
 
         <section className="px-1">
@@ -973,7 +1049,10 @@ export default function BudgetPage() {
 
         <div className="flex flex-wrap items-center justify-end gap-2">
           {filterToggle}
-          {viewToggle}
+          <div className="flex shrink-0 items-center gap-2">
+            {copyBudgetButton}
+            {viewToggle}
+          </div>
         </div>
 
         {showDataSkeleton ? (

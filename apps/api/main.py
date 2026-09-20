@@ -127,6 +127,7 @@ from modules.budgets import (
     update_budget_route as _module_update_budget_route,
     delete_budget_route as _module_delete_budget_route,
     get_budget_summary_route as _module_get_budget_summary_route,
+    copy_budgets_route as _module_copy_budgets_route,
 )
 from modules.debtors import (
     get_debtors_route as _module_get_debtors_route,
@@ -724,14 +725,6 @@ def _default_notice_banner_settings() -> dict[str, Any]:
             "title_en": "",
             "message_en": "",
         },
-        "removed_business": {
-            "enabled": False,
-            "type": "info",
-            "title_bm": "",
-            "message_bm": "",
-            "title_en": "",
-            "message_en": "",
-        },
     }
 
 def _normalize_notice_banner_item(raw: dict[str, Any] | None) -> dict[str, Any]:
@@ -779,12 +772,12 @@ async def _get_notice_banner_settings(db: AsyncSession) -> dict[str, Any]:
             continue
         if not isinstance(saved, dict):
             continue
-        for scope in ("personal", "removed_business"):
+        for scope in ("personal",):
             if isinstance(saved.get(scope), dict):
                 data[scope] = _normalize_notice_banner_item(saved[scope])
         # Only the newest row's values are authoritative; older rows ignored.
         break
-    for scope in ("personal", "removed_business"):
+    for scope in ("personal",):
         data[scope] = _normalize_notice_banner_item(data[scope])
     return data
 
@@ -11094,6 +11087,19 @@ async def get_budget_summary(
 ):
     return await _module_get_budget_summary_route(
         month=month,
+        db=db,
+        current_user=current_user,
+        ensure_current_user_household=_ensure_current_user_household,
+    )
+
+@app.post("/budgets/copy", response_model=schemas.BudgetCopyResponse)
+async def copy_budgets(
+    copy_in: schemas.BudgetCopyRequest,
+    db: AsyncSession = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return await _module_copy_budgets_route(
+        copy_in=copy_in,
         db=db,
         current_user=current_user,
         ensure_current_user_household=_ensure_current_user_household,

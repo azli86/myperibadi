@@ -206,3 +206,80 @@ async def get_budget_summary_route(
         explicit_bounds=explicit_bounds,
     )
     return summary
+
+async def copy_budgets_route(
+    *,
+    copy_in: schemas.BudgetCopyRequest,
+    db: AsyncSession,
+    current_user: models.User,
+    ensure_current_user_household: Callable[..., Awaitable[int]],
+) -> dict:
+    """Carry a month's budgets into another month.
+
+    Budgets are stored per (household, category, month_key), so every new month
+    starts blank. This copies the source month's rows forward. Existing rows in
+    the target month are left alone unless overwrite=True, so a second run
+    cannot silently wipe amounts the user already adjusted.
+    """
+    try:
+        from_month = budget_service.normalize_month_key(copy_in.from_month)
+        to_month = budget_service.normalize_month_key(copy_in.to_month)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    if from_month == to_month:
+        raise HTTPException(status_code=400, detail="Source and target month are the same.")
+
+    household_id = await ensure_current_user_household(db, current_user)
+
+    source_result = await db.execute(
+        select(models.CategoryBudget).where(
+            models.CategoryBudget.household_id == household_id,
+            models.CategoryBudget.month_key == from_month,
+        )
+    )
+    source_rows = list(source_result.scalars().all())
+    if not source_rows:
+        return {
+            "from_month": from_month,
+            "to_month": to_month,
+            "copied": 0,
+            "skipped": 0,
+            "updated": 0,
+        }
+
+    target_result = await db.execute(
+        select(models.CategoryBudget).where(
+            models.CategoryBudget.household_id == household_id,
+            models.CategoryBudget.month_key == to_month,
+        )
+    )
+    target_by_category = {row.category_id: row for row in target_result.scalars().all()}
+
+    copied = skipped = updated = 0
+    for row in source_rows:
+        existing = target_by_category.get(row.category_id)
+        if existing is None:
+            db.add(
+                models.CategoryBudget(
+                    household_id=household_id,
+                    category_id=row.category_id,
+                    month_key=to_month,
+                    budget_amount=row.budget_amount,
+                )
+            )
+            copied += 1
+        elif copy_in.overwrite:
+            existing.budget_amount = row.budget_amount
+            updated += 1
+        else:
+            skipped += 1
+
+    await db.commit()
+    return {
+        "from_month": from_month,
+        "to_month": to_month,
+        "copied": copied,
+        "skipped": skipped,
+        "updated": updated,
+    }

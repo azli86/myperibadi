@@ -1,6 +1,7 @@
 """Budgets module public API."""
 
 from .routes import (
+    copy_budgets_route,
     create_budget_route,
     delete_budget_route,
     get_budget_summary_route,
@@ -14,4 +15,5 @@ __all__ = [
     "update_budget_route",
     "delete_budget_route",
     "get_budget_summary_route",
+    "copy_budgets_route",
 ]

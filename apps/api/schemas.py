@@ -297,7 +297,6 @@ class NoticeBannerItem(BaseModel):
 
 class NoticeBannerSettings(BaseModel):
     personal: NoticeBannerItem = Field(default_factory=NoticeBannerItem)
-    removed_business: NoticeBannerItem = Field(default_factory=NoticeBannerItem)
 
 class TransactionItemCreate(BaseModel):
     name: str = Field(min_length=1, max_length=190)
@@ -487,6 +486,11 @@ class BudgetUpdate(BaseModel):
     month_key: Optional[str] = None  # YYYY-MM
     budget_amount: Optional[float] = None
 
+class BudgetCopyRequest(BaseModel):
+    from_month: str
+    to_month: str
+    overwrite: bool = False
+
 
 class BudgetItemResponse(BaseModel):
     id: Optional[int] = None
@@ -516,6 +520,12 @@ class BudgetSummaryResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class BudgetCopyResponse(BaseModel):
+    from_month: str
+    to_month: str
+    copied: int
+    skipped: int
+    updated: int
 
 class DebtEventCreate(BaseModel):
     debtor_id: Optional[int] = None
