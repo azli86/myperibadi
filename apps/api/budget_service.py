@@ -10,6 +10,8 @@ from time_utils import current_business_date, cycle_bounds, clamp_day, current_c
 
 MONTH_KEY_PATTERN = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
 MONTH_TOKEN_PATTERN = re.compile(r"@(\d{4}-\d{2})\b")
+# Any other '@word' is a malformed month marker, not part of a category name.
+MONTH_TOKEN_LOOSE_PATTERN = re.compile(r"@\S+")
 
 MONTHLY_SALARY_CODE = models.MONTHLY_SALARY_CATEGORY_CODE
 
@@ -156,6 +158,10 @@ def extract_month_token(text: str) -> tuple[Optional[str], str, bool]:
     raw = (text or "").strip()
     match = MONTH_TOKEN_PATTERN.search(raw)
     if not match:
+        # An '@' that is not a valid YYYY-MM token is a mistake the user should
+        # hear about, not silently swallowed into the category name.
+        if MONTH_TOKEN_LOOSE_PATTERN.search(raw):
+            return None, raw, True
         return None, raw, False
     month_key = match.group(1)
     if not MONTH_KEY_PATTERN.fullmatch(month_key):
@@ -192,7 +198,11 @@ def budget_status(progress_percent: float, budget_amount: float) -> str:
 
 
 def normalize_lookup_value(value: str) -> str:
-    return " ".join((value or "").strip().lower().split())
+    # Ampersands are dropped on the bot side by normalize_message_text, so a
+    # category named "Food & Drinks" has to compare equal to "food drinks".
+    # Treat '&' as noise on both sides rather than losing the row.
+    cleaned = (value or "").replace("&", " ")
+    return " ".join(cleaned.strip().lower().split())
 
 
 async def get_usage_map(

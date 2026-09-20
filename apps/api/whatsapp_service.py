@@ -1981,19 +1981,24 @@ async def _process_budget_command(
             else "Command budget dimatikan sementara waktu."
         )
 
-    normalized = normalize_message_text(text)
-    parts = normalized.strip().split(maxsplit=1)
-    command_body = parts[1].strip() if len(parts) > 1 else ""
-    if not command_body:
-        return _budget_help_message(language)
-
-    month_token, command_body, invalid_month_token = budget_service.extract_month_token(command_body)
+    # The month token must be pulled out before normalize_message_text runs: it
+    # strips '@' and '&', so "@2026-11" arrived as "2026-11" and the month was
+    # silently ignored, while a category like "Food & Drinks" lost its '&'.
+    raw_body = text.strip().split(maxsplit=1)[1].strip() if len(text.strip().split(maxsplit=1)) > 1 else ""
+    month_token, raw_body, invalid_month_token = budget_service.extract_month_token(raw_body)
     if invalid_month_token:
         return (
             "Format bulan tidak sah. Guna `@YYYY-MM`, contoh `@2026-04`."
             if language != "EN"
             else "Invalid month format. Use `@YYYY-MM`, e.g. `@2026-04`."
         )
+
+    # Normalize the body after the month token is gone, so "budget list @2026-11"
+    # reaches the dispatch below as "list" instead of "list 2026-11".
+    command_body = normalize_message_text(raw_body).strip()
+    if not command_body:
+        return _budget_help_message(language)
+
     user_row = (await db.execute(select(models.User.cycle_start_day).where(models.User.id == user_id))).scalar_one_or_none()
     start_day = int(user_row or 1)
     month_key = month_token or budget_service.normalize_month_key(None, start_day)
