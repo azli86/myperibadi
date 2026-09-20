@@ -66,3 +66,14 @@ def test_budget_command_normalizes_after_month_removal():
     assert "raw_body = text.strip().split(maxsplit=1)[1]" in body
     assert "budget_service.extract_month_token(raw_body)" in body
     assert "command_body = normalize_message_text(raw_body).strip()" in body
+
+
+def test_category_lookup_uses_household_keywords():
+    """A budget command must accept the same keywords the transaction bot does."""
+    source = (API / "budget_service.py").read_text(encoding="utf-8")
+    start = source.index("async def find_expense_category_by_name(")
+    body = source[start : source.index("\nasync def ", start + 10)] if "\nasync def " in source[start + 10 :] else source[start:]
+    assert "models.CategoryKeyword" in body, "keyword layer missing"
+    assert "is_active == True" in body
+    # exact name match still takes priority over the keyword layer
+    assert body.index("exact_matches") < body.index("models.CategoryKeyword")

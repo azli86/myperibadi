@@ -387,4 +387,28 @@ async def find_expense_category_by_name(
     if partial_matches:
         return None, [c.name for c in partial_matches[:10]]
 
+    # Categories are usually reached by the keyword the household already set up
+    # ("FnB" is hit by "makan", "Health" by "clinic"). Without this layer a
+    # budget command could not use any keyword the transaction bot accepts.
+    keyword_rows = (await db.execute(
+        select(models.CategoryKeyword, models.Category)
+        .join(models.Category, models.CategoryKeyword.category_id == models.Category.id)
+        .where(
+            models.CategoryKeyword.is_active == True,
+            models.Category.household_id == household_id,
+            models.Category.kind == "expense",
+            models.Category.is_internal == False,
+        )
+    )).all()
+    keyword_matches = []
+    for keyword_row, category in keyword_rows:
+        keyword_value = normalize_lookup_value(keyword_row.keyword or "")
+        if keyword_value and (keyword_value == target or keyword_value in target or target in keyword_value):
+            if category not in keyword_matches:
+                keyword_matches.append(category)
+    if len(keyword_matches) == 1:
+        return keyword_matches[0], []
+    if keyword_matches:
+        return None, [c.name for c in keyword_matches[:10]]
+
     return None, [c.name for c in categories[:10]]
