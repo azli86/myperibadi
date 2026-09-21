@@ -171,12 +171,16 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
     ctx.drawImage(img, cx - sz / 2, cy - sz / 2, sz, sz, 0, 0, cv.width, cv.height)
   }, [crop, cropDims, boxC, cropT])
 
-  const afterChange = (url: string | null, okTitle: string, okMsg: string) => {
+  const afterChange = async (url: string | null, okTitle: string, okMsg: string) => {
     // Persist the avatar locally so it never reloads from the CDN on page opens.
     // Only written here (on explicit user update / removal) — that is the single
     // point where the cached image is allowed to change.
+    //
+    // Await the write before announcing the change: listeners read the cache
+    // synchronously, so an in-flight fetch would leave them showing the old
+    // image with no follow-up event to correct it.
     if (url) {
-      void cacheAvatarFromUrl(url)
+      await cacheAvatarFromUrl(url)
     } else {
       writeAvatarCache(null)
     }
@@ -224,7 +228,7 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
         throw new Error(apiErr?.detail || "Upload failed")
       }
       const data = await res.json()
-      afterChange(data.avatar_url, tr("Berjaya", "Success"), tr("Gambar profil telah dikemaskini.", "Profile picture updated."))
+      void afterChange(data.avatar_url, tr("Berjaya", "Success"), tr("Gambar profil telah dikemaskini.", "Profile picture updated."))
     } catch (err) {
       const msg = err instanceof Error ? err.message : tr("Gagal memuat naik gambar.", "Upload failed.")
       notify(tr("Muat Naik Gagal", "Upload Failed"), msg, "error")
@@ -247,7 +251,7 @@ export default function AvatarPickerSheet({ open, hasAvatar, onClose, onChanged,
         throw new Error(apiErr?.detail || "Delete failed")
       }
       const data = await res.json()
-      afterChange(data.avatar_url ?? null, tr("Gambar Dipadam", "Avatar Removed"), tr("Gambar profil telah dibuang.", "Profile picture removed."))
+      void afterChange(data.avatar_url ?? null, tr("Gambar Dipadam", "Avatar Removed"), tr("Gambar profil telah dibuang.", "Profile picture removed."))
     } catch (err) {
       const msg = err instanceof Error ? err.message : tr("Gagal membuang gambar.", "Failed to remove picture.")
       notify(tr("Ralat", "Error"), msg, "error")

@@ -79,8 +79,17 @@ export function useAvatar(remoteUrl?: string | null): string | null {
       }
     }
     sync()
-    window.addEventListener("avatar-updated", sync)
-    return () => window.removeEventListener("avatar-updated", sync)
+
+    // The cache write can fail (offline, proxy error). Re-assert the remote URL
+    // on the update event so the avatar still changes instead of showing the
+    // stale cached image with no path back.
+    const onUpdated = () => {
+      const cached = readAvatarCache()
+      if (cached) setSrc(cached)
+      else setSrc(remoteUrl ?? null)
+    }
+    window.addEventListener("avatar-updated", onUpdated)
+    return () => window.removeEventListener("avatar-updated", onUpdated)
   }, [remoteUrl])
 
   return src
