@@ -270,11 +270,6 @@ const WALLET_CARD_ACCENTS = [
   { key: "violet", color: "#7c3aed", from: "#8b5cf6", to: "#5b21b6", text: "#f5f3ff" },
 ]
 
-// The desktop deck overlaps each card over the previous one: 320px wide, pulled
-// back 190px, so consecutive cards advance 130px. The track slides by this step
-// per focused card.
-const WALLET_DECK_STEP = 130
-
 function getDashboardWalletAccent(wallet: Pick<DashboardWallet, "id" | "card_color"> | null) {
   if (wallet?.card_color) {
     const selectedAccent = WALLET_CARD_ACCENTS.find((accent) => accent.key === wallet.card_color)
@@ -459,6 +454,19 @@ export default function Dashboard() {
   const walletAutoScrollRef = useRef<HTMLDivElement | null>(null)
   const walletScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
+
+  // Keep the hovered card inside the scroll row, and only nudge as far as needed.
+  // `inline: "nearest"` scrolls the minimum amount, so the pointer stays over the
+  // card it chose instead of the whole deck sliding away from the cursor.
+  useEffect(() => {
+    if (dashboardFocusedCardIndex === null) return
+    const row = walletAutoScrollRef.current
+    if (!row) return
+    const card = row.querySelector<HTMLElement>(
+      `[data-wallet-card="${dashboardFocusedCardIndex}"]`,
+    )
+    card?.scrollIntoView({ block: "nearest", inline: "nearest" })
+  }, [dashboardFocusedCardIndex])
 
   // Tell the user an admin answered their ticket. Shown once: opening it marks
   // the ticket read, so it stays quiet until the next admin reply.
@@ -1936,6 +1944,7 @@ export default function Dashboard() {
         </div>
       ) : heroWallets.length > 0 ? (
         <div
+          ref={walletAutoScrollRef}
           onMouseLeave={() => setDashboardFocusedCardIndex(null)}
           className="flex items-center justify-center overflow-x-auto pt-6 pb-8 px-4 custom-scrollbar [justify-content:safe_center]"
         >
@@ -1944,17 +1953,7 @@ export default function Dashboard() {
               reachable instead of being clipped. Plain mx-auto on an inner
               track centred the deck by its own box, which parked the first
               card mid-row and pushed every later card off the right edge. */}
-          <div
-            className="flex w-max items-center"
-            style={{
-              // Each card overlaps the previous by 190px of its 320px width, so
-              // consecutive cards advance 130px. Sliding the whole track by the
-              // focused card's offset walks the deck leftwards as the pointer
-              // moves right, keeping the highlighted card in view.
-              transform: `translateX(${-WALLET_DECK_STEP * (dashboardFocusedCardIndex ?? 0)}px)`,
-              transition: "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
-            }}
-          >
+          <div className="flex w-max items-center">
           {heroWallets.map((wallet, index) => {
             const accent = getDashboardWalletAccent(wallet)
             const walletName = wallet.label || wallet.name || (lang === "BM" ? "Dompet" : "Wallet")
@@ -1991,6 +1990,7 @@ export default function Dashboard() {
             return (
               <Link
                 key={`${wallet.id || index}-desktop-wallet-card`}
+                data-wallet-card={index}
                 href={`/${sessionId}/wallet-settings`}
                 onMouseEnter={() => setDashboardFocusedCardIndex(index)}
                 style={{
