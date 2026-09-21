@@ -499,6 +499,8 @@ export default function LoanPage() {
         <section className="px-1">
           <div className="loan-detail-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] p-5 text-center text-white">
             <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
+      <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
+      <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
             <div className="relative flex min-h-24 flex-col items-center justify-center">
               <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">{tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}</p>
               <div className="mt-2 text-[#ffffff]">
@@ -554,6 +556,8 @@ export default function LoanPage() {
         <DesktopPageBody className="space-y-5">
         <div className="loan-detail-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] p-6 text-center text-[#ffffff]">
           <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
+      <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
+      <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
           <div className="relative flex min-h-28 flex-col items-center justify-center">
             <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">{tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}</p>
             <div className="mt-2 text-[#ffffff]">

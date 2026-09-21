@@ -580,6 +580,8 @@ export default function InventoryPage() {
   const renderHeroStats = (isDesktop = false) => (
     <div className={cn("inventory-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] text-center text-white", isDesktop ? "p-6 mb-5" : "p-5")}>
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
+      <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
+      <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
       <div className={cn("relative flex flex-col items-center justify-center", isDesktop ? "min-h-28" : "min-h-24")}>
         <p className={cn("font-bold uppercase tracking-[0.14em] text-[#a3a3a3]", isDesktop ? "text-[0.7rem]" : "text-[0.625rem]")}>
           {tr("Jumlah Inventori Barang", "Total Inventory Items")}
@@ -687,7 +689,7 @@ export default function InventoryPage() {
                 onClick={() => setActiveTab("locations")}
                 className="flex flex-1 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 transition active:scale-[0.98]"
               >
-                <MapPin className="h-4 w-4 shrink-0 text-emerald-500" />
+                <MapPin className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-500" />
                 <div className="min-w-0 flex-1 text-left">
                   <span className="block text-sm font-black text-[var(--text)]">{locations.length}</span>
                   <span className="block truncate text-[9px] font-semibold text-[var(--muted)]">{tr("Lokasi", "Locations")}</span>
@@ -698,7 +700,7 @@ export default function InventoryPage() {
                 onClick={() => setActiveTab("locations")}
                 className="flex flex-1 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 transition active:scale-[0.98]"
               >
-                <Boxes className="h-4 w-4 shrink-0 text-sky-400" />
+                <Boxes className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-400" />
                 <div className="min-w-0 flex-1 text-left">
                   <span className="block text-sm font-black text-[var(--text)]">{totalBoxesCount}</span>
                   <span className="block truncate text-[9px] font-semibold text-[var(--muted)]">{tr("Bekas", "Boxes")}</span>
@@ -1703,9 +1705,9 @@ function LocationItemsSheet({
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--card)] shadow-sm">
                 {container ? (
-                  <Boxes className="h-5 w-5 text-sky-400" />
+                  <Boxes className="h-5 w-5 text-sky-700 dark:text-sky-400" />
                 ) : (
-                  <MapPin className="h-5 w-5 text-emerald-400" />
+                  <MapPin className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
                 )}
               </div>
               <div>
@@ -1811,7 +1813,7 @@ function LocationItemsSheet({
                         </span>
                         {item.container_name && !container && (
                           <span className="inline-flex items-center gap-1 rounded bg-[var(--surface-tint)] px-1.5 py-0.5">
-                            <Boxes className="h-2.5 w-2.5 text-sky-400" />
+                            <Boxes className="h-2.5 w-2.5 text-sky-700 dark:text-sky-400" />
                             <span>{item.container_name}</span>
                           </span>
                         )}
@@ -2026,7 +2028,7 @@ function ItemForm({
                       setImageFile(null)
                       setImagePreview(item?.has_image ? `/api/inventory/items/${item.id}/image` : null)
                     }}
-                    className="text-xs font-medium text-rose-400 hover:underline"
+                    className="text-xs font-medium text-rose-700 dark:text-rose-400 hover:underline"
                   >
                     {tr("Padam", "Remove")}
                   </button>
@@ -2407,7 +2409,7 @@ function LocationModal({
                     setSaving(false)
                   }
                 }}
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 py-2.5 text-xs font-bold text-rose-500 transition hover:bg-rose-500/20 active:scale-95 disabled:opacity-50"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 py-2.5 text-xs font-bold text-rose-700 dark:text-rose-500 transition hover:bg-rose-500/20 active:scale-95 disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" />
                 <span>{tr("Padam Lokasi Ini", "Delete This Location")}</span>
@@ -2570,7 +2572,7 @@ function ContainerModal({
                     setSaving(false)
                   }
                 }}
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 py-2.5 text-xs font-bold text-rose-500 transition hover:bg-rose-500/20 active:scale-95 disabled:opacity-50"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 py-2.5 text-xs font-bold text-rose-700 dark:text-rose-500 transition hover:bg-rose-500/20 active:scale-95 disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" />
                 <span>{tr("Padam Bekas / Kotak Ini", "Delete This Box / Container")}</span>
