@@ -542,27 +542,63 @@ export default function BnplPage() {
   const catName = (id: string) =>
     categories.find((c) => String(c.id) === id)?.name || tr("Pilih kategori", "Select category")
 
-  // Hero Card Component (matches loan hero card design)
+  // Hero Card Component (debt layout: total left, metrics right)
   const renderHeroStats = (isDesktop = false) => (
-    <div className={cn("bnpl-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] text-center text-white", isDesktop ? "p-6" : "p-5")}>
+    <div className={cn("bnpl-hero relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] text-[#f5f5f5]", isDesktop ? "p-6" : "p-5")}>
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
       <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
       <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
-      <div className={cn("relative flex flex-col items-center justify-center", isDesktop ? "min-h-28" : "min-h-24")}>
-        <p className={cn("font-bold uppercase tracking-[0.14em] text-[#a3a3a3]", isDesktop ? "text-[0.7rem]" : "text-[0.625rem]")}>
-          {tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}
-        </p>
-        <div className="mt-2 text-[#ffffff]">
-          {showSkeleton ? (
-            <AmountSkeleton className={cn("bg-white/10", isDesktop ? "h-10 w-40" : "h-7 w-32")} />
-          ) : (
-            <MoneyAmount
-              value={Number(stats.monthlyTotal || 0)}
-              size={isDesktop ? "heroLg" : "hero"}
-              className="text-[#ffffff]"
-              currencyClassName="text-[#ffffff] opacity-55"
-            />
-          )}
+
+      <div className={cn("relative", isDesktop && "flex items-center gap-5")}>
+        <div className={cn(isDesktop && "min-w-[10rem] shrink-0")}>
+          <p className={cn(
+            "font-bold uppercase tracking-[0.14em] text-[#a3a3a3]",
+            isDesktop ? "text-[0.7rem]" : "text-[0.625rem]",
+          )}>
+            {tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}
+          </p>
+          <div className="mt-2 text-[#ffffff]">
+            {showSkeleton ? (
+              <div className={cn("animate-pulse rounded bg-white/10", isDesktop ? "h-10 w-40" : "h-7 w-32")} />
+            ) : (
+              <MoneyAmount
+                value={Number(stats.monthlyTotal || 0)}
+                size={isDesktop ? "heroLg" : "hero"}
+                className="text-[#ffffff]"
+                currencyClassName="text-[#ffffff] opacity-55"
+              />
+            )}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.625rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3] md:text-[0.6875rem]">
+            <span>{tr("Aktif", "Active")}: {active.length}</span>
+            <span>{tr("Selesai", "Settled")}: {settled.length}</span>
+          </div>
+        </div>
+
+        <div className={cn(
+          "grid grid-cols-3",
+          isDesktop ? "min-w-0 flex-1 gap-3" : "mt-5 gap-2.5",
+        )}>
+          {[
+            { label: tr("Semua", "All"), value: items.length },
+            { label: tr("Aktif", "Active"), value: active.length },
+            { label: tr("Selesai", "Settled"), value: settled.length },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className={cn("bg-white/[0.06]", isDesktop ? "rounded-2xl p-4" : "rounded-[1.15rem] p-3")}
+            >
+              <p className={cn(
+                "font-bold uppercase tracking-[0.1em] text-[#a3a3a3]",
+                isDesktop ? "text-[0.6rem] tracking-[0.12em]" : "text-[0.5rem]",
+              )}>
+                {item.label}
+              </p>
+              <p className={cn("font-semibold tabular-nums tracking-tight text-[#e5e5e5]", isDesktop ? "mt-3 text-xl" : "mt-2 text-sm")}>
+                {item.value}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

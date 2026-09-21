@@ -613,73 +613,69 @@ export default function EventPage() {
     )
   }
 
-  // Hero Card Component (matches TxnSummaryCard design)
+  // Hero Card Component (debt layout: total left, metrics right)
   const renderHeroStats = (isDesktop = false) => (
-    <div className={cn("relative overflow-hidden rounded-2xl bg-[#1a1a1a] text-[#f5f5f5]", isDesktop ? "p-6 md:p-8" : "p-6")}>
+    <div className={cn("relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] text-[#f5f5f5]", isDesktop ? "p-6 md:p-8" : "p-6")}>
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
       <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
       <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
 
-      <div className="relative flex flex-col items-center text-center">
-        {/* Category icon */}
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-[#e5e5e5]">
-          <PartyPopper size={24} />
-        </div>
-
-        {/* Title — big */}
-        <h2 className="mt-3 max-w-full break-words text-lg font-black leading-tight text-[#f5f5f5] md:text-xl">
-          {tr("Peruntukan Bajet Acara", "Event Budget Allocation")}
-        </h2>
-
-        {/* Amount — big */}
-        <div className="mt-3 leading-none tabular-nums tracking-tight text-5xl font-black text-white md:text-6xl">
-          {showDataSkeleton ? (
-            <AmountSkeleton className="mx-auto h-12 w-48 bg-white/10" />
-          ) : (
-            <p className="leading-none tabular-nums tracking-tight text-5xl font-black text-white md:text-6xl">
-              <span className="event-hero-currency text-white font-extrabold opacity-100 text-3xl md:text-4xl mr-1.5 inline-block">RM</span>
-              <span>{formatMoneyValue(Number(stats.totalBudget || 0))}</span>
+      <div className={cn("relative", isDesktop && "flex items-center gap-5")}>
+        <div className={cn(isDesktop && "min-w-[12rem] shrink-0")}>
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 text-[#e5e5e5]">
+              <PartyPopper size={16} />
+            </span>
+            <p className={cn(
+              "font-bold uppercase tracking-[0.14em] text-[#a3a3a3]",
+              isDesktop ? "text-[0.7rem]" : "text-[0.625rem]",
+            )}>
+              {tr("Peruntukan Bajet Acara", "Event Budget Allocation")}
             </p>
-          )}
+          </div>
+
+          <div className="mt-2 leading-none tabular-nums tracking-tight text-4xl font-black text-white md:text-5xl">
+            {showDataSkeleton ? (
+              <div className={cn("animate-pulse rounded bg-white/10", isDesktop ? "h-10 w-40" : "h-8 w-32")} />
+            ) : (
+              <p className="leading-none tabular-nums tracking-tight text-4xl font-black text-white md:text-5xl">
+                <span className="event-hero-currency text-white font-extrabold opacity-100 text-2xl md:text-3xl mr-1.5 inline-block">RM</span>
+                <span>{formatMoneyValue(Number(stats.totalBudget || 0))}</span>
+              </p>
+            )}
+          </div>
+
+          <p className="mt-1.5 text-[0.625rem] font-semibold text-[#8c8c8c]">
+            {stats.nextUpcoming
+              ? `${tr("Acara terdekat:", "Next upcoming:")} ${stats.nextUpcoming.name} (${stats.nextUpcoming.days === 0 ? tr("Hari ini", "Today") : `${stats.nextUpcoming.days}d`})`
+              : tr("Tiada acara terdekat", "No upcoming events")}
+          </p>
         </div>
 
-        {/* Subtitle / ID */}
-        <p className="mt-3 text-xs font-bold text-[#8c8c8c]">
-          {stats.activeCount} {tr("acara aktif", "active events")} · {stats.endedCount} {tr("tamat", "ended")}
-        </p>
-
-        {/* Time / upcoming — small */}
-        <p className="mt-1 text-[0.625rem] font-semibold text-[#6b6b6b]">
-          {stats.nextUpcoming
-            ? `${tr("Acara terdekat:", "Next upcoming:")} ${stats.nextUpcoming.name} (${stats.nextUpcoming.days === 0 ? tr("Hari ini", "Today") : `${stats.nextUpcoming.days}d`})`
-            : tr("Tiada acara terdekat", "No upcoming events")}
-        </p>
-
-        {/* Status badge */}
-        <span className="mt-3 shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] text-emerald-400">
-          {stats.netRemaining >= 0
-            ? `${tr("Baki Keseluruhan", "Total Remaining")}: RM ${formatMoneyValue(stats.netRemaining)}`
-            : `${tr("Lebihan Keseluruhan", "Total Over")}: RM ${formatMoneyValue(Math.abs(stats.netRemaining))}`}
-        </span>
-
-        {/* Mini breakdown metrics */}
-        <div className="mt-5 grid grid-cols-2 gap-4 w-full max-w-sm border-t border-white/10 pt-4 text-center">
-          <div>
-            <span className="block text-[0.625rem] font-bold uppercase tracking-wider text-[#8c8c8c]">
-              {tr("Dibelanjakan", "Total Spent")}
-            </span>
-            <span className="mt-0.5 block text-sm font-black text-white">
-              <span className="text-white mr-1 font-bold">RM</span>{formatMoneyValue(stats.totalSpent)}
-            </span>
-          </div>
-          <div>
-            <span className="block text-[0.625rem] font-bold uppercase tracking-wider text-[#8c8c8c]">
-              {stats.netRemaining >= 0 ? tr("Baki Bajet", "Remaining") : tr("Lebihan", "Over Budget")}
-            </span>
-            <span className={cn("mt-0.5 block text-sm font-black", stats.netRemaining >= 0 ? "text-emerald-400" : "text-rose-400")}>
-              <span className="mr-0.5 font-bold">RM</span>{formatMoneyValue(Math.abs(stats.netRemaining))}
-            </span>
-          </div>
+        <div className={cn(
+          "grid grid-cols-3",
+          isDesktop ? "min-w-0 flex-1 gap-3" : "mt-5 gap-2.5",
+        )}>
+          {[
+            { label: tr("Dibelanjakan", "Spent"), value: `RM ${formatMoneyValue(stats.totalSpent)}`, tone: "text-[#e5e5e5]" },
+            { label: stats.netRemaining >= 0 ? tr("Baki", "Remaining") : tr("Lebihan", "Over"), value: `RM ${formatMoneyValue(Math.abs(stats.netRemaining))}`, tone: stats.netRemaining >= 0 ? "text-[#6ee7b7]" : "text-[#fdba74]" },
+            { label: tr("Acara", "Events"), value: `${stats.activeCount}/${stats.endedCount}`, tone: "text-[#e5e5e5]" },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className={cn("bg-white/[0.06]", isDesktop ? "rounded-2xl p-4" : "rounded-[1.15rem] p-3")}
+            >
+              <p className={cn(
+                "font-bold uppercase tracking-[0.1em] text-[#a3a3a3]",
+                isDesktop ? "text-[0.6rem] tracking-[0.12em]" : "text-[0.5rem]",
+              )}>
+                {item.label}
+              </p>
+              <p className={cn("font-semibold tabular-nums tracking-tight", item.tone, isDesktop ? "mt-3 text-lg" : "mt-2 text-xs")}>
+                {item.value}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

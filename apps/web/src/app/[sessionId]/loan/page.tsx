@@ -497,14 +497,32 @@ export default function LoanPage() {
         />
 
         <section className="px-1">
-          <div className="loan-detail-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] p-5 text-center text-white">
+          <div className="loan-detail-hero relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] p-5 text-[#f5f5f5]">
             <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-      <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-      <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
-            <div className="relative flex min-h-24 flex-col items-center justify-center">
+            <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
+            <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
+
+            <div className="relative">
               <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">{tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}</p>
               <div className="mt-2 text-[#ffffff]">
-                {showDataSkeleton ? <AmountSkeleton className="h-7 w-32 bg-white/10" /> : <MoneyAmount value={Number(summary.totalMonthly || 0)} size="hero" className="text-[#ffffff]" currencyClassName="text-[#ffffff] opacity-55" />}
+                {showDataSkeleton ? <div className="h-7 w-32 animate-pulse rounded bg-white/10" /> : <MoneyAmount value={Number(summary.totalMonthly || 0)} size="hero" className="text-[#ffffff]" currencyClassName="text-[#ffffff] opacity-55" />}
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.625rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">
+                <span>{tr("Aktif", "Active")}: {summary.activeCount}</span>
+                <span>{tr("Semua", "All")}: {loans.length}</span>
+              </div>
+
+              <div className="mt-5 grid grid-cols-3 gap-2.5">
+                {[
+                  { label: tr("Semua", "All"), value: loans.length },
+                  { label: tr("Aktif", "Active"), value: summary.activeCount },
+                  { label: tr("Selesai", "Settled"), value: loans.filter((l) => l.status === "settled").length },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-[1.15rem] bg-white/[0.06] p-3">
+                    <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{item.label}</p>
+                    <p className="mt-2 text-sm font-semibold tabular-nums tracking-tight text-[#e5e5e5]">{item.value}</p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -554,14 +572,34 @@ export default function LoanPage() {
         />
 
         <DesktopPageBody className="space-y-5">
-        <div className="loan-detail-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] p-6 text-center text-[#ffffff]">
+        <div className="loan-detail-hero relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] p-6 text-[#f5f5f5]">
           <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-      <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-      <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
-          <div className="relative flex min-h-28 flex-col items-center justify-center">
-            <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">{tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}</p>
-            <div className="mt-2 text-[#ffffff]">
-              {showDataSkeleton ? <AmountSkeleton className="h-10 w-40 bg-white/10" /> : <MoneyAmount value={Number(summary.totalMonthly || 0)} size="heroLg" className="text-[#ffffff]" currencyClassName="text-[#ffffff] opacity-55" />}
+          <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
+          <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
+
+          <div className="relative flex items-center gap-5">
+            <div className="min-w-[10rem] shrink-0">
+              <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">{tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}</p>
+              <div className="mt-2 text-[#ffffff]">
+                {showDataSkeleton ? <div className="h-10 w-40 animate-pulse rounded bg-white/10" /> : <MoneyAmount value={Number(summary.totalMonthly || 0)} size="heroLg" className="text-[#ffffff]" currencyClassName="text-[#ffffff] opacity-55" />}
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">
+                <span>{tr("Aktif", "Active")}: {summary.activeCount}</span>
+                <span>{tr("Semua", "All")}: {loans.length}</span>
+              </div>
+            </div>
+
+            <div className="grid min-w-0 flex-1 grid-cols-3 gap-3">
+              {[
+                { label: tr("Semua", "All"), value: loans.length },
+                { label: tr("Aktif", "Active"), value: summary.activeCount },
+                { label: tr("Selesai", "Settled"), value: loans.filter((l) => l.status === "settled").length },
+              ].map((item) => (
+                <div key={item.label} className="rounded-2xl bg-white/[0.06] p-4">
+                  <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[#a3a3a3]">{item.label}</p>
+                  <p className="mt-3 text-xl font-semibold tabular-nums tracking-tight text-[#e5e5e5]">{item.value}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>

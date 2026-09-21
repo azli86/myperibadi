@@ -482,27 +482,35 @@ export default function WarrantyListPage() {
           <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
 
           <div className="relative z-10 space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">
-                  {tr("Pengurusan Waranti", "Warranty Dashboard")}
-                </p>
-                <div className="mt-1 flex items-baseline gap-2">
-                  <span className="text-3xl font-black tracking-tight text-[#f5f5f5]">
-                    {showDataSkeleton ? "—" : boardStats.total}
-                  </span>
-                  <span className="text-xs font-semibold text-[#a3a3a3]">
-                    {tr("peranti berdaftar", "devices registered")}
-                  </span>
-                </div>
-                <p className="mt-0.5 text-[11px] text-[#a3a3a3]">
-                  {boardStats.active} {tr("aktif", "active")} · {boardStats.expiring} {tr("hampir tamat", "expiring soon")}
-                </p>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">
+                {tr("Pengurusan Waranti", "Warranty Dashboard")}
+              </p>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-3xl font-black tracking-tight text-[#f5f5f5]">
+                  {showDataSkeleton ? "—" : boardStats.total}
+                </span>
+                <span className="text-xs font-semibold text-[#a3a3a3]">
+                  {tr("peranti berdaftar", "devices registered")}
+                </span>
               </div>
+            </div>
 
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-[#f5f5f5] shadow-sm">
-                <ShieldCheck className="h-5 w-5 text-[#f5f5f5]" />
-              </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: tr("Aktif", "Active"), value: boardStats.active },
+                { label: tr("Hampir", "Soon"), value: boardStats.expiring },
+                { label: tr("Tamat", "Expired"), value: boardStats.expired },
+              ].map((item) => (
+                <div key={item.label} className="rounded-[1.15rem] bg-white/[0.06] p-3">
+                  <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">
+                    {item.label}
+                  </p>
+                  <p className="mt-2 text-sm font-semibold tabular-nums tracking-tight text-[#e5e5e5]">
+                    {showDataSkeleton ? "—" : item.value}
+                  </p>
+                </div>
+              ))}
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -688,22 +696,38 @@ export default function WarrantyListPage() {
             <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
             <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
 
-            <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">
-                  {tr("Pengurusan Waranti Peranti", "Device Warranty & Claims Management")}
-                </p>
-                <div className="mt-1.5 flex items-baseline gap-3">
-                  <span className="text-3xl font-black text-[#f5f5f5] lg:text-4xl">
-                    {showDataSkeleton ? "—" : boardStats.total}
-                  </span>
-                  <span className="text-sm font-semibold text-[#a3a3a3]">
-                    {tr("Peranti Berdaftar", "Devices Registered")} · {boardStats.active} {tr("Aktif", "Active")}
-                  </span>
+            <div className="relative z-10 space-y-4">
+              <div className="flex flex-wrap items-center gap-5">
+                <div className="min-w-[10rem] shrink-0">
+                  <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">
+                    {tr("Pengurusan Waranti Peranti", "Device Warranty & Claims Management")}
+                  </p>
+                  <div className="mt-2 flex items-baseline gap-3">
+                    <span className="text-4xl font-black text-[#f5f5f5]">
+                      {showDataSkeleton ? "—" : boardStats.total}
+                    </span>
+                    <span className="text-sm font-semibold text-[#a3a3a3]">
+                      {tr("Peranti", "Devices")}
+                    </span>
+                  </div>
                 </div>
-                <p className="mt-1 text-xs text-[#a3a3a3]">
-                  {boardStats.expiring} {tr("peranti hampir tamat tempoh", "expiring soon")} · {boardStats.expired} {tr("telah tamat waranti", "expired")}
-                </p>
+
+                <div className="grid min-w-0 flex-1 grid-cols-3 gap-3">
+                  {[
+                    { label: tr("Aktif", "Active"), value: boardStats.active },
+                    { label: tr("Hampir Tamat", "Expiring Soon"), value: boardStats.expiring },
+                    { label: tr("Tamat", "Expired"), value: boardStats.expired },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-2xl bg-white/[0.06] p-4">
+                      <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[#a3a3a3]">
+                        {item.label}
+                      </p>
+                      <p className="mt-3 text-xl font-semibold tabular-nums tracking-tight text-[#e5e5e5]">
+                        {showDataSkeleton ? "—" : item.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Status Chips */}

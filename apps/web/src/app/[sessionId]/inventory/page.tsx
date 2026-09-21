@@ -576,29 +576,65 @@ export default function InventoryPage() {
     )
   }
 
-  // Hero Card Component (matches loan hero card design)
+  // Hero Card Component (debt layout: total left, metrics right)
   const renderHeroStats = (isDesktop = false) => (
-    <div className={cn("inventory-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] text-center text-white", isDesktop ? "p-6 mb-5" : "p-5")}>
+    <div className={cn("inventory-hero relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] text-[#f5f5f5]", isDesktop ? "p-6 mb-5" : "p-5")}>
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
       <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
       <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
-      <div className={cn("relative flex flex-col items-center justify-center", isDesktop ? "min-h-28" : "min-h-24")}>
-        <p className={cn("font-bold uppercase tracking-[0.14em] text-[#a3a3a3]", isDesktop ? "text-[0.7rem]" : "text-[0.625rem]")}>
-          {tr("Jumlah Inventori Barang", "Total Inventory Items")}
-        </p>
-        <div className="mt-2 text-[#ffffff]">
-          {loading && items.length === 0 ? (
-            <div className={cn("animate-pulse rounded bg-white/10 mx-auto", isDesktop ? "h-10 w-40" : "h-7 w-32")} />
-          ) : (
-            <div className="flex items-baseline justify-center gap-1.5 font-black text-white">
-              <span className={cn("tracking-tight font-black", isDesktop ? "text-4xl" : "text-3xl")}>
+
+      <div className={cn("relative", isDesktop && "flex items-center gap-5")}>
+        <div className={cn(isDesktop && "min-w-[10rem] shrink-0")}>
+          <p className={cn(
+            "font-bold uppercase tracking-[0.14em] text-[#a3a3a3]",
+            isDesktop ? "text-[0.7rem]" : "text-[0.625rem]",
+          )}>
+            {tr("Jumlah Inventori Barang", "Total Inventory Items")}
+          </p>
+          <div className="mt-2 text-[#ffffff]">
+            {loading && items.length === 0 ? (
+              <div className={cn("animate-pulse rounded bg-white/10", isDesktop ? "h-10 w-40" : "h-7 w-32")} />
+            ) : (
+              <span className={cn("font-black tracking-tight tabular-nums", isDesktop ? "text-4xl" : "text-3xl")}>
                 {summary ? summary.total_units : items.length}
               </span>
-              <span className={cn("font-bold text-white opacity-55 uppercase tracking-wider", isDesktop ? "text-sm" : "text-xs")}>
-                {tr("unit", "units")} · {summary ? summary.total_types : items.length} {tr("jenis", "types")}
-              </span>
+            )}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.625rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3] md:text-[0.6875rem]">
+            <span>{tr("Unit", "Units")}: {summary ? summary.total_units : items.length}</span>
+            <span>{tr("Jenis", "Types")}: {summary ? summary.total_types : items.length}</span>
+          </div>
+        </div>
+
+        <div className={cn(
+          "grid grid-cols-3",
+          isDesktop ? "min-w-0 flex-1 gap-3" : "mt-5 gap-2.5",
+        )}>
+          {[
+            { label: tr("Ada", "Avail"), value: summary?.available ?? 0, icon: <Boxes size={isDesktop ? 16 : 12} className="text-[#b3b3b3]" /> },
+            { label: tr("Pinjam", "Loaned"), value: summary?.loaned ?? 0, icon: <ExternalLink size={isDesktop ? 16 : 12} className="text-[#b3b3b3]" /> },
+            { label: tr("Rosak", "Damaged"), value: summary?.damaged ?? 0, icon: <Trash2 size={isDesktop ? 16 : 12} className="text-[#fdba74]" /> },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className={cn("bg-white/[0.06]", isDesktop ? "rounded-2xl p-4" : "rounded-[1.15rem] p-3")}
+            >
+              <div className={cn("flex items-center", isDesktop ? "gap-2" : "gap-1.5")}>
+                {item.icon}
+                <p className={cn(
+                  "font-bold uppercase tracking-[0.1em] text-[#a3a3a3]",
+                  isDesktop ? "text-[0.6rem] tracking-[0.12em]" : "text-[0.5rem]",
+                )}>
+                  {item.label}
+                </p>
+              </div>
+              <p className={cn("font-semibold tabular-nums tracking-tight text-[#e5e5e5]", isDesktop ? "mt-3 text-xl" : "mt-2 text-sm")}>
+                {loading && items.length === 0
+                  ? <span className={cn("block animate-pulse rounded bg-white/10", isDesktop ? "h-6 w-12" : "h-4 w-10")} />
+                  : item.value}
+              </p>
             </div>
-          )}
+          ))}
         </div>
       </div>
     </div>
