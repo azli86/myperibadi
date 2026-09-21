@@ -32,7 +32,23 @@ assert write_at < event_at, "the cache write must finish before avatar-updated f
 #    avatar removal or a failed cache fetch does not strand the old image.
 assert "else setSrc(remoteUrl ?? null)" in CACHE, "an empty cache must fall back to the remote URL"
 
-# 3. Both call sites stay explicit about the now-async helper.
+# 3. A changed remote URL outranks the cache, so a stale data URL cannot pin
+#    the old face after an upload.
+assert "const remoteChanged = seenRemoteRef.current !== remoteUrl" in CACHE, (
+    "a changed remote URL must take precedence over the cache"
+)
+
+# 4. An in-flight GET that started before an invalidation must not write its
+#    stale body over the fresh cache when it resolves.
+API_CACHE = (
+    Path(__file__).resolve().parents[2] / "web" / "src" / "lib" / "api-cache.ts"
+).read_text(encoding="utf-8")
+assert "invalidatedAt.set(key, Date.now())" in API_CACHE, "invalidation must record a timestamp"
+assert "if (!invalidated || invalidated < startedAt)" in API_CACHE, (
+    "a response that predates the invalidation must not be cached"
+)
+
+# 5. Both call sites stay explicit about the now-async helper.
 assert SHEET.count("void afterChange(") == 2, "both upload and removal must call the async helper"
 
 print("avatar cache write order OK")

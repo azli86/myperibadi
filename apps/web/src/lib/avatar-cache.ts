@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 // Client-side avatar cache: the R2 avatar image is fetched once into a data URL
 // then served from localStorage forever after, so the avatar image never reloads
@@ -61,25 +61,39 @@ export function useAvatar(remoteUrl?: string | null): string | null {
   // <img>) and cause React hydration mismatch (#418). The cache is applied in
   // the effect after hydration.
   const [src, setSrc] = useState<string | null>(null)
+  // Tracks whether the cache has been consulted for this remote URL. The cache
+  // exists to skip the first network load, not to overrule a URL we already
+  // know changed: once remoteUrl differs, it wins and the cache is refreshed.
+  const seenRemoteRef = useRef<string | null | undefined>(undefined)
 
   useEffect(() => {
-    const sync = () => {
-      const cached = readAvatarCache()
-      if (cached) {
-        setSrc(cached)
-        return
-      }
-      if (remoteUrl) {
-        setSrc(remoteUrl)
-        void cacheAvatarFromUrl(remoteUrl).then((s) => {
-          if (s) setSrc(s)
-        })
-      } else {
-        setSrc(null)
-      }
-    }
-    sync()
+    const remoteChanged = seenRemoteRef.current !== remoteUrl
+    seenRemoteRef.current = remoteUrl
 
+    if (remoteUrl && remoteChanged) {
+      setSrc(remoteUrl)
+      void cacheAvatarFromUrl(remoteUrl).then((s) => {
+        if (s) setSrc(s)
+      })
+      return
+    }
+
+    const cached = readAvatarCache()
+    if (cached) {
+      setSrc(cached)
+      return
+    }
+    if (remoteUrl) {
+      setSrc(remoteUrl)
+      void cacheAvatarFromUrl(remoteUrl).then((s) => {
+        if (s) setSrc(s)
+      })
+    } else {
+      setSrc(null)
+    }
+  }, [remoteUrl])
+
+  useEffect(() => {
     // The cache write can fail (offline, proxy error). Re-assert the remote URL
     // on the update event so the avatar still changes instead of showing the
     // stale cached image with no path back.

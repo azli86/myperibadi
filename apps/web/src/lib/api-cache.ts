@@ -13,6 +13,14 @@ const CACHE_PREFIX = "budget-by-digitalport:api:v1"
 const DEFAULT_CACHE_TTL_MS = 5 * 60 * 1000
 const inflight = new Map<string, Promise<unknown>>()
 
+// A request started before an invalidation must not write its now-stale body
+// over the fresh cache when it lands. Uploading an avatar invalidates
+// /api/users/me and refetches it, but the in-flight GET from before the upload
+// resolved later and restored the old avatar_url, so the sidebar snapped back
+// to the previous picture. Stamp each invalidation and drop any response that
+// began before it.
+const invalidatedAt = new Map<string, number>()
+
 function getStorage(): Storage | null {
   if (typeof window === "undefined") return null
   try {
@@ -72,9 +80,11 @@ export function writeApiCache<T>(url: string, token: string | null | undefined, 
 
 export function invalidateApiCache(url: string, token: string | null | undefined) {
   const storage = getStorage()
+  const key = cacheKey(url, token)
+  invalidatedAt.set(key, Date.now())
   if (!storage) return
   try {
-    storage.removeItem(cacheKey(url, token))
+    storage.removeItem(key)
   } catch {
     // Best-effort.
   }
@@ -101,6 +111,7 @@ export async function fetchApiJson<T>(url: string, token: string | null | undefi
   const existing = inflight.get(key)
   if (existing) return existing as Promise<T>
 
+  const startedAt = Date.now()
   const request = fetch(url, {
     cache: "no-store",
     credentials: "include",
@@ -113,7 +124,12 @@ export async function fetchApiJson<T>(url: string, token: string | null | undefi
       throw new Error(`Request failed: ${res.status}`)
     }
     const data = (await res.json()) as T
-    writeApiCache(url, token, data)
+    // Skip the write if the cache was invalidated after this request started:
+    // the body predates the invalidation and would resurrect stale data.
+    const invalidated = invalidatedAt.get(key)
+    if (!invalidated || invalidated < startedAt) {
+      writeApiCache(url, token, data)
+    }
     return data
   }).finally(() => {
     inflight.delete(key)
