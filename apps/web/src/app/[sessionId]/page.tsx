@@ -455,19 +455,6 @@ export default function Dashboard() {
   const walletScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
 
-  // Keep the hovered card inside the scroll row, and only nudge as far as needed.
-  // `inline: "nearest"` scrolls the minimum amount, so the pointer stays over the
-  // card it chose instead of the whole deck sliding away from the cursor.
-  useEffect(() => {
-    if (dashboardFocusedCardIndex === null) return
-    const row = walletAutoScrollRef.current
-    if (!row) return
-    const card = row.querySelector<HTMLElement>(
-      `[data-wallet-card="${dashboardFocusedCardIndex}"]`,
-    )
-    card?.scrollIntoView({ block: "nearest", inline: "nearest" })
-  }, [dashboardFocusedCardIndex])
-
   // Tell the user an admin answered their ticket. Shown once: opening it marks
   // the ticket read, so it stays quiet until the next admin reply.
   useEffect(() => {
@@ -1944,15 +1931,13 @@ export default function Dashboard() {
         </div>
       ) : heroWallets.length > 0 ? (
         <div
-          ref={walletAutoScrollRef}
           onMouseLeave={() => setDashboardFocusedCardIndex(null)}
-          className="flex items-center justify-center overflow-x-auto pt-6 pb-8 px-4 custom-scrollbar [justify-content:safe_center]"
+          className="flex items-center overflow-x-auto pt-6 pb-8 px-4 custom-scrollbar"
         >
-          {/* `safe center` centres the deck while it fits and falls back to
-              start alignment once it overflows, so the leading card stays
-              reachable instead of being clipped. Plain mx-auto on an inner
-              track centred the deck by its own box, which parked the first
-              card mid-row and pushed every later card off the right edge. */}
+          {/* Deck sits flush left and scrolls as one row. Centring was tried and
+              never held: the row has to stay scrollable, and any centring trick
+              either clipped the leading card or slid the deck out from under the
+              pointer. Start alignment is what the row actually wants. */}
           <div className="flex w-max items-center">
           {heroWallets.map((wallet, index) => {
             const accent = getDashboardWalletAccent(wallet)
@@ -1990,7 +1975,6 @@ export default function Dashboard() {
             return (
               <Link
                 key={`${wallet.id || index}-desktop-wallet-card`}
-                data-wallet-card={index}
                 href={`/${sessionId}/wallet-settings`}
                 onMouseEnter={() => setDashboardFocusedCardIndex(index)}
                 style={{
