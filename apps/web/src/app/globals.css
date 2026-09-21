@@ -1758,6 +1758,46 @@ html[data-theme="light"] .portal-personal-shell .debt-hero button[class*="bg-[#1
   background-color: #10b981 !important;
 }
 
+/* Sidebar avatar cards: the identity panels under the left rail and at the top
+   of the mobile menu are dark-on-dark in every theme, matching the finance
+   heroes. In light mode the shell remaps --card to white, which would turn
+   these into pale cards with pale text, so pin both the surface and the two
+   text tones here rather than duplicating a dark palette through the JSX. */
+.sidebar-avatar-card,
+html[data-theme="light"] .sidebar-avatar-card,
+html[data-theme="light"] .portal-personal-shell .sidebar-avatar-card {
+  background-color: #1a1a1a !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+/* Name line: the loudest text on the card. */
+.sidebar-avatar-card [class*="text-[var(--text)]"],
+html[data-theme="light"] .sidebar-avatar-card [class*="text-[var(--text)]"],
+html[data-theme="light"] .portal-personal-shell .sidebar-avatar-card [class*="text-[var(--text)]"] {
+  color: #f5f5f5 !important;
+}
+
+/* Account line and helper text: one step back, still legible on #1a1a1a. */
+.sidebar-avatar-card [class*="text-[var(--muted)]"],
+html[data-theme="light"] .sidebar-avatar-card [class*="text-[var(--muted)]"],
+html[data-theme="light"] .portal-personal-shell .sidebar-avatar-card [class*="text-[var(--muted)]"] {
+  color: #a3a3a3 !important;
+}
+
+/* Icons inherit the surface tones rather than the light-mode icon tokens. */
+.sidebar-avatar-card svg,
+html[data-theme="light"] .sidebar-avatar-card svg,
+html[data-theme="light"] .portal-personal-shell .sidebar-avatar-card svg {
+  color: #a3a3a3 !important;
+}
+
+/* Note: do not map [class*="bg-[var(--surface-tint)]"] here. The trigger class is
+   written as hover:bg-[var(--surface-tint)], so a substring match fires on the
+   resting state too and painted the whole card a translucent white — which is
+   exactly the light card this block exists to prevent. The resting surface is
+   #1a1a1a from the rule above; hover and expanded states keep their own
+   translucent tints from the JSX. */
+
 html[data-theme="light"] .portal-personal-shell .debt-hero [class*="text-[#cbd5e1]"],
 html[data-theme="light"] .portal-personal-shell .debt-hero [class*="text-[#94a3b8]"] {
   color: #cbd5e1 !important;

@@ -3333,6 +3333,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 onClick={() => setShowLeftAccountSwitcher((prev) => !prev)}
                 className={cn(
                   "flex w-full items-center gap-2.5 rounded-2xl border px-3 py-2.5 text-left shadow-sm transition active:scale-[0.99]",
+                  "sidebar-avatar-card",
                   showLeftAccountSwitcher
                     ? "border-[var(--border-strong)] bg-[var(--surface-tint)]"
                     : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-tint)]",
@@ -3357,7 +3358,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               
                 {showLeftAccountSwitcher && (
                   <div
-                    className="absolute bottom-[calc(100%+0.5rem)] left-0 right-0 z-[120] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[0_16px_48px_rgba(0,0,0,0.18)]"
+                    className="sidebar-avatar-card absolute bottom-[calc(100%+0.5rem)] left-0 right-0 z-[120] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[0_16px_48px_rgba(0,0,0,0.18)]"
                   >
                     <div className="border-b border-[var(--border)] px-3.5 py-3">
                       <div className="flex items-center gap-2.5">
@@ -3916,7 +3917,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
               {/* ── Profile Card: avatar left, name and account right ── */}
               <div className="px-4 pt-1 pb-3">
-                <div className="w-full rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/60 p-3.5">
+                <div className="sidebar-avatar-card w-full rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/60 p-3.5">
                   <div className="flex items-center gap-3">
                     <div className="shrink-0">
                       <UserAvatar name={displayName || activeEmail} size={56} src={avatarSrc} />
