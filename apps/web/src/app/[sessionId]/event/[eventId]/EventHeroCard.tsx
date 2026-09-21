@@ -23,13 +23,11 @@ function formatShort(value?: string | null) {
 
 export function EventHeroCard({
   event,
-  spentLabel,
   statusLabel,
   statusClass,
   isBm,
 }: {
   event: EventHeroData
-  spentLabel: string
   statusLabel: string
   statusClass: string
   isBm: boolean
@@ -50,13 +48,15 @@ export function EventHeroCard({
               className="h-full w-full object-cover object-center"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-[var(--surface-tint-strong)]">
-              <CategoryIconGlyph
-                iconName={event.icon_name}
-                categoryName={event.name}
-                kind="expense"
-                size={56}
-              />
+            <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-[var(--surface-tint)]">
+              <span className="opacity-40">
+                <CategoryIconGlyph
+                  iconName={event.icon_name}
+                  categoryName={event.name}
+                  kind="expense"
+                  size={56}
+                />
+              </span>
             </div>
           )}
         </div>
@@ -65,7 +65,7 @@ export function EventHeroCard({
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-3.5 sm:p-4 md:p-5 lg:p-6">
           <span
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[0.65rem] font-bold backdrop-blur-md md:px-3 md:py-2 md:text-xs",
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[0.65rem] font-bold uppercase tracking-[0.08em] backdrop-blur-md md:px-3 md:py-2 md:text-xs",
               statusClass
             )}
           >
@@ -83,9 +83,6 @@ export function EventHeroCard({
               size={13}
             />
             {event.name}
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--card)_90%,transparent)] px-2.5 py-1 text-[0.7rem] font-black tabular-nums text-[var(--text)] shadow-sm backdrop-blur-md md:px-3.5 md:py-1.5 md:text-sm">
-            {spentLabel}
           </span>
           {range ? (
             <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[color-mix(in_srgb,var(--card)_90%,transparent)] px-2.5 py-1 text-[0.7rem] font-bold text-[var(--text)] shadow-sm backdrop-blur-md md:px-3.5 md:py-1.5 md:text-sm">

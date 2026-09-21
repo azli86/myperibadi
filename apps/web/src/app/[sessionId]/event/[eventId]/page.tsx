@@ -305,7 +305,6 @@ export default function EventDetailPage() {
 
         <EventHeroCard
           event={event}
-          spentLabel={moneyLabel(stats.spent, currency)}
           statusLabel={statusLabel}
           statusClass={statusClass}
           isBm={isBm}

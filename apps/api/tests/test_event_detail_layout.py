@@ -38,8 +38,12 @@ SCHEMA = (
 # 1. Currency survives the redesign.
 assert "formatCurrencyLabel(currency)" in PAGE, "hero amount must go through formatCurrencyLabel"
 assert "moneyLabel(txn.amount, txn.currency)" in PAGE, "row amount must go through moneyLabel"
-assert "spentLabel={moneyLabel(stats.spent, currency)}" in PAGE, "hero amount must be formatted by the page"
+assert "{money(spent)}" in SUMMARY, "the spend total lives in the summary card"
 assert "currency" in PAGE, "currency must stay wired to the event"
+# The hero shows the event's identity, like the vehicle detail page. Repeating
+# the spend total here duplicated the summary card on every screen size.
+assert "spentLabel" not in HERO, "hero must not carry the spend total"
+assert "spentLabel" not in PAGE, "page must not pass a spend total into the hero"
 
 # 2. No-budget events do not announce an overspend.
 assert "budget > 0" in SUMMARY, "summary card needs a positive-budget guard"
@@ -56,9 +60,12 @@ assert "Math.min(100, ratio * 100)" in SUMMARY, "progress fill must clamp at 100
 # 4. No budget exists => a plain line, never a bar reading 0%.
 assert "formatCurrencyLabel(currency)" in SUMMARY, "summary amounts must keep the currency label"
 
-# 6. Hero follows the vehicle-detail pattern: rounded card, not a full-bleed image.
+# 6. Hero follows the vehicle-detail pattern: rounded card, tinted fallback.
 assert "h-48 w-full sm:h-56 md:h-64" in HERO, "hero height must match the vehicle pattern"
 assert "rounded-2xl border border-[var(--border)]" in HERO, "hero must be a rounded card"
+assert "bg-[var(--surface-tint)]" in HERO, "the image fallback uses the same tint as vehicles"
+assert "opacity-40" in HERO, "the fallback icon is dimmed like the vehicle hero"
+assert "uppercase tracking-[0.08em]" in HERO, "the status pill matches the app badge style"
 
 # 5. No leftover hardcoded slab colours — everything reads from the theme.
 assert "category_name" in SERVICE, "the event transaction payload must carry the category name"
