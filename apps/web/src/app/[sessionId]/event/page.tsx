@@ -622,17 +622,12 @@ export default function EventPage() {
 
       <div className={cn("relative", isDesktop && "flex items-center gap-5")}>
         <div className={cn(isDesktop && "min-w-[12rem] shrink-0")}>
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/10 text-[#e5e5e5]">
-              <PartyPopper size={16} />
-            </span>
-            <p className={cn(
-              "font-bold uppercase tracking-[0.14em] text-[#a3a3a3]",
-              isDesktop ? "text-[0.7rem]" : "text-[0.625rem]",
-            )}>
-              {tr("Peruntukan Bajet Acara", "Event Budget Allocation")}
-            </p>
-          </div>
+          <p className={cn(
+            "font-bold uppercase tracking-[0.14em] text-[#a3a3a3]",
+            isDesktop ? "text-[0.7rem]" : "text-[0.625rem]",
+          )}>
+            {tr("Peruntukan Bajet Acara", "Event Budget Allocation")}
+          </p>
 
           <div className="mt-2 leading-none tabular-nums tracking-tight text-4xl font-black text-white md:text-5xl">
             {showDataSkeleton ? (
