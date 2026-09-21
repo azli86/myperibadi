@@ -1934,6 +1934,11 @@ export default function Dashboard() {
           onMouseLeave={() => setDashboardFocusedCardIndex(null)}
           className="flex items-center overflow-x-auto pt-6 pb-8 px-4 custom-scrollbar"
         >
+          {/* Inner track carries mx-auto so the deck sits centred while narrower
+              than the viewport, and scrolls from its start once it overflows.
+              justify-center on the scroll container would clip the first card.
+              ponytail: mx-auto alone; swap for scroll-snap if decks get long. */}
+          <div className="mx-auto flex w-max items-center">
           {heroWallets.map((wallet, index) => {
             const accent = getDashboardWalletAccent(wallet)
             const walletName = wallet.label || wallet.name || (lang === "BM" ? "Dompet" : "Wallet")
@@ -1948,13 +1953,13 @@ export default function Dashboard() {
             let scale = 1
             let zIndex = index + 1
             let opacity = 1
-            let boxShadow = "0 8px 24px rgba(0,0,0,0.22)"
+            let boxShadow = "none"
 
             if (isFocused) {
               translateY = -24
               scale = 1.03
               zIndex = 50
-              boxShadow = "0 28px 50px -12px rgba(0,0,0,0.55), 0 0 0 1.5px var(--border-strong)"
+              boxShadow = "0 0 0 1.5px var(--border-strong)"
             } else if (isBefore) {
               translateX = -18
               scale = 0.985
@@ -2054,6 +2059,7 @@ export default function Dashboard() {
               </Link>
             )
           })}
+          </div>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-2xl py-10 opacity-70 border border-dashed border-[var(--border)]">
