@@ -270,6 +270,11 @@ const WALLET_CARD_ACCENTS = [
   { key: "violet", color: "#7c3aed", from: "#8b5cf6", to: "#5b21b6", text: "#f5f3ff" },
 ]
 
+// The desktop deck overlaps each card over the previous one: 320px wide, pulled
+// back 190px, so consecutive cards advance 130px. The track slides by this step
+// per focused card.
+const WALLET_DECK_STEP = 130
+
 function getDashboardWalletAccent(wallet: Pick<DashboardWallet, "id" | "card_color"> | null) {
   if (wallet?.card_color) {
     const selectedAccent = WALLET_CARD_ACCENTS.find((accent) => accent.key === wallet.card_color)
@@ -1939,7 +1944,17 @@ export default function Dashboard() {
               reachable instead of being clipped. Plain mx-auto on an inner
               track centred the deck by its own box, which parked the first
               card mid-row and pushed every later card off the right edge. */}
-          <div className="flex w-max items-center">
+          <div
+            className="flex w-max items-center"
+            style={{
+              // Each card overlaps the previous by 190px of its 320px width, so
+              // consecutive cards advance 130px. Sliding the whole track by the
+              // focused card's offset walks the deck leftwards as the pointer
+              // moves right, keeping the highlighted card in view.
+              transform: `translateX(${-WALLET_DECK_STEP * (dashboardFocusedCardIndex ?? 0)}px)`,
+              transition: "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+          >
           {heroWallets.map((wallet, index) => {
             const accent = getDashboardWalletAccent(wallet)
             const walletName = wallet.label || wallet.name || (lang === "BM" ? "Dompet" : "Wallet")
