@@ -1932,13 +1932,14 @@ export default function Dashboard() {
       ) : heroWallets.length > 0 ? (
         <div
           onMouseLeave={() => setDashboardFocusedCardIndex(null)}
-          className="flex items-center overflow-x-auto pt-6 pb-8 px-4 custom-scrollbar"
+          className="flex items-center justify-center overflow-x-auto pt-6 pb-8 px-4 custom-scrollbar [justify-content:safe_center]"
         >
-          {/* Inner track carries mx-auto so the deck sits centred while narrower
-              than the viewport, and scrolls from its start once it overflows.
-              justify-center on the scroll container would clip the first card.
-              ponytail: mx-auto alone; swap for scroll-snap if decks get long. */}
-          <div className="mx-auto flex w-max items-center">
+          {/* `safe center` centres the deck while it fits and falls back to
+              start alignment once it overflows, so the leading card stays
+              reachable instead of being clipped. Plain mx-auto on an inner
+              track centred the deck by its own box, which parked the first
+              card mid-row and pushed every later card off the right edge. */}
+          <div className="flex w-max items-center">
           {heroWallets.map((wallet, index) => {
             const accent = getDashboardWalletAccent(wallet)
             const walletName = wallet.label || wallet.name || (lang === "BM" ? "Dompet" : "Wallet")
