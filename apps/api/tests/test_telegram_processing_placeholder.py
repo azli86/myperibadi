@@ -37,15 +37,19 @@ def check_entry_still_cleans_up_when_editing_is_impossible():
 
 def check_handler_does_not_send_media_replies_twice():
     assert "media_handled = True" in HANDLER, "handler no longer tracks the media reply"
-    assert "if reply and not media_handled:" in HANDLER, (
-        "handler would both send and return the media reply"
+    assert "if reply and not media_handled and not media_payload:" in HANDLER, (
+        "handler would both send and return a media reply"
     )
 
 
-def check_handler_returns_the_reply():
-    # Handled media is the only case the entry route may replace; every other
-    # reply is sent here, so returning it too would post it twice.
-    assert 'return {"ok": True, "reply": reply if media_handled else None}' in HANDLER, (
+def check_handler_returns_media_replies():
+    # Every media update gets an hourglass from the entry route, including one with
+    # no pending transaction, so all media replies must be handed back, not sent.
+    assert "handed_back = media_handled or bool(media_payload)" in HANDLER, (
+        "a media reply not handled by the pending branch is sent here instead of "
+        "replacing the hourglass"
+    )
+    assert 'return {"ok": True, "reply": reply if handed_back else None}' in HANDLER, (
         "handler does not hand only the media reply to the entry route"
     )
 
@@ -62,7 +66,7 @@ def main():
     check_entry_edits_the_hourglass()
     check_entry_still_cleans_up_when_editing_is_impossible()
     check_handler_does_not_send_media_replies_twice()
-    check_handler_returns_the_reply()
+    check_handler_returns_media_replies()
     check_no_second_hourglass()
     print("telegram processing placeholder OK")
 

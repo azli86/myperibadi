@@ -570,7 +570,9 @@ async def handle_telegram_webhook_payload_route(
         if media_reply:
             reply = (reply + "\n\n" + media_reply) if reply else media_reply
         media_handled = True
-    if reply and not media_handled:
+    # A media update with no pending transaction still runs here, so the reply is
+    # built but not sent: the entry route's hourglass becomes it.
+    if reply and not media_handled and not media_payload:
         lowered_reply = reply.lower()
         # OCR previews mention receipts but have not saved a transaction yet.
         is_saved_reply = "txn" in lowered_reply
@@ -592,6 +594,8 @@ async def handle_telegram_webhook_payload_route(
             linked=True,
             reply_markup=_build_telegram_numeric_choice_keyboard(reply, is_bm=is_bm),
         )
-    # Only the media branch stays silent and hands its text back: the entry route
-    # owns the hourglass for media updates and edits it into this reply.
-    return {"ok": True, "reply": reply if media_handled else None}
+    # The entry route only shows an hourglass for media updates, so a media reply
+    # belongs to it and must travel back to be edited into that hourglass. Every
+    # other reply is sent here, and returning it too would post it twice.
+    handed_back = media_handled or bool(media_payload)
+    return {"ok": True, "reply": reply if handed_back else None}
