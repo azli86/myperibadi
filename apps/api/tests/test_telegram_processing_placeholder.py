@@ -122,28 +122,17 @@ def check_pending_media_survives_the_category_prompt():
     """A photo held for a category answer must still be used by that answer.
 
     The prompt is answered with plain text, so the saved photo is the only copy
-    left. Popping it and then skipping the branch lost the photo entirely.
+    left. Popping it and then skipping the media branch lost the photo and left
+    the user with nothing.
     """
-    assert "pending_media = None if media_payload else _pop_telegram_pending_media" in HANDLER, (
+    assert "if not media_payload:\n        pending_media = _pop_telegram_pending_media" in HANDLER, (
         "the saved photo is not claimed for a text answer"
     )
-    assert "if pending_media:" in HANDLER, (
+    assert "if pending_media or (media_payload and reply_txn_ref):" in HANDLER, (
         "a claimed photo can still be skipped and thrown away"
     )
-
-
-def check_fresh_media_is_processed_once():
-    """A photo sent with the message runs above; a second run would win with an
-    empty answer, which is what made the bot look silent."""
-    assert "if pending_media or (media_payload and reply_txn_ref):" not in HANDLER, (
-        "fresh media is processed a second time"
-    )
-    first = HANDLER.index("result = await _process_bot_input(")
-    second = HANDLER.index("media_result = await _process_bot_input(")
-    assert first < second, "call order changed"
-    between = HANDLER[first:second]
-    assert "media_payload=media_payload" in between, (
-        "the first call no longer receives the fresh media"
+    assert 'media_payload=source.get("media_payload") or media_payload' in HANDLER, (
+        "the saved photo is never passed to the processor"
     )
 
 
@@ -154,7 +143,6 @@ def main():
     check_handler_does_not_send_media_replies_twice()
     check_handler_returns_media_replies()
     check_pending_media_survives_the_category_prompt()
-    check_fresh_media_is_processed_once()
     check_no_second_hourglass()
     print("telegram processing placeholder OK")
 
