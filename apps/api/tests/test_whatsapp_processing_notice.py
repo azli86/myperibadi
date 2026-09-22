@@ -22,7 +22,7 @@ SOURCE = open(WORKER, encoding="utf-8").read()
 
 
 def check_notice_is_only_the_hourglass():
-    assert 'const text = "⏳";' in SOURCE, "notice is not the bare hourglass"
+    assert 'const text = "Processing...";' in SOURCE, "notice is not the plain placeholder"
     assert "Uploading your attachment" not in SOURCE, "old notice wording survived"
 
 

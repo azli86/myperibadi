@@ -144,7 +144,7 @@ def telegram_update_has_media_route(payload: Any) -> bool:
 
 def build_telegram_processing_text_route(payload: Any) -> str:
     # Hourglass only: the wording added nothing the icon does not already say.
-    return "⏳"
+    return "Processing..."
 
 
 def build_telegram_add_preview_text_route(

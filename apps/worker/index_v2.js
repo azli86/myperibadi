@@ -489,7 +489,7 @@ function shouldSendProcessingNotice(sessionObj, noticeKey) {
 
 async function sendProcessingNotice({ userId, remoteJid, replyTargets, quotedMessage, sessionObj, isSelfChat, fromMe, hasMedia, hasQuotedMedia, noticeKey = null }) {
   if (!isSelfChat || !fromMe) return null;
-  const text = "⏳";
+  const text = "Processing...";
   const targetJid = remoteJid || (Array.isArray(replyTargets) && replyTargets.length ? replyTargets[0] : null);
   if (!targetJid) return null;
   if (!shouldSendProcessingNotice(sessionObj, noticeKey || `${targetJid}:${text}`)) return null;

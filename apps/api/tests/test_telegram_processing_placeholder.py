@@ -43,7 +43,7 @@ def check_handler_sends_the_reply_itself():
     assert "_edit_telegram_message_text" not in HANDLER, (
         "handler edits a message it does not own"
     )
-    assert "⏳" not in HANDLER, "handler writes a second hourglass"
+    assert "⏳" not in HANDLER, "handler writes a second placeholder"
 
 
 def check_handler_still_uses_a_held_photo():
@@ -109,17 +109,17 @@ def check_the_route_actually_writes_and_removes_the_hourglass():
             payload_model=_Payload,
             telegram_should_show_processing_before_handle=lambda payload: True,
             send_telegram_message=send,
-            build_telegram_processing_text=lambda payload: "⏳",
+            build_telegram_processing_text=lambda payload: "Processing...",
             session_factory=lambda: _Db(),
             handle_telegram_webhook_payload=handle,
             delete_telegram_message=delete,
         )
     )
     assert [step[0] for step in seen] == ["send", "handle", "send", "delete"], seen
-    assert seen[0][2] == "⏳", "the first message is not the hourglass"
-    assert seen[1][0] == "handle", "the work runs before the hourglass"
+    assert seen[0][2] == "Processing...", "the first message is not the placeholder"
+    assert seen[1][0] == "handle", "the work runs before the placeholder"
     assert seen[-1] == ("delete", "5864777376", 42), (
-        "the hourglass is not removed at the end"
+        "the placeholder is not removed at the end"
     )
 
 
@@ -159,13 +159,13 @@ def check_the_hourglass_is_removed_when_the_work_fails():
             payload_model=_Payload,
             telegram_should_show_processing_before_handle=lambda payload: True,
             send_telegram_message=send,
-            build_telegram_processing_text=lambda payload: "⏳",
+            build_telegram_processing_text=lambda payload: "Processing...",
             session_factory=lambda: _Db(),
             handle_telegram_webhook_payload=handle,
             delete_telegram_message=delete,
         )
     )
-    assert ("delete", 42) in seen, f"a failed run left the hourglass spinning: {seen}"
+    assert ("delete", 42) in seen, f"a failed run left the placeholder spinning: {seen}"
 
 
 def check_handler_is_wired_to_its_caller():
