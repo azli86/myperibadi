@@ -47,6 +47,7 @@ async def handle_telegram_webhook_payload_route(
     _is_category_prompt_reply: Callable[..., Any],
     _set_telegram_pending_media: Callable[..., Any],
     _pop_telegram_pending_media: Callable[..., Any],
+    _delete_telegram_message: Callable[..., Any],
     _build_telegram_numeric_choice_keyboard: Callable[..., Any],
     _build_telegram_pairing_prompt: Callable[..., str],
     _build_telegram_pair_code_rejected_text: Callable[..., str],
@@ -544,7 +545,6 @@ async def handle_telegram_webhook_payload_route(
 
     reply_txn_ref = whatsapp_service._extract_transaction_reference(reply) if reply else None
     pending_media = None
-    media_handled = False
     if reply_txn_ref and not media_payload:
         pending_media = _pop_telegram_pending_media(link.user_id, chat_id)
     if pending_media and reply_txn_ref:
@@ -569,10 +569,7 @@ async def handle_telegram_webhook_payload_route(
         media_reply = media_result.get("reply") if isinstance(media_result, dict) else None
         if media_reply:
             reply = (reply + "\n\n" + media_reply) if reply else media_reply
-        media_handled = True
-    # A media update with no pending transaction still runs here, so the reply is
-    # built but not sent: the entry route's hourglass becomes it.
-    if reply and not media_handled and not media_payload:
+    if reply:
         lowered_reply = reply.lower()
         # OCR previews mention receipts but have not saved a transaction yet.
         is_saved_reply = "txn" in lowered_reply
@@ -594,8 +591,4 @@ async def handle_telegram_webhook_payload_route(
             linked=True,
             reply_markup=_build_telegram_numeric_choice_keyboard(reply, is_bm=is_bm),
         )
-    # The entry route only shows an hourglass for media updates, so a media reply
-    # belongs to it and must travel back to be edited into that hourglass. Every
-    # other reply is sent here, and returning it too would post it twice.
-    handed_back = media_handled or bool(media_payload)
-    return {"ok": True, "reply": reply if handed_back else None}
+    return {"ok": True}

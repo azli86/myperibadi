@@ -12955,7 +12955,6 @@ async def _process_telegram_webhook_payload_background(payload_data: dict[str, A
         payload_model=TelegramWebhookPayload,
         telegram_should_show_processing_before_handle=_telegram_should_show_processing_before_handle,
         send_telegram_message=_send_telegram_message,
-        edit_telegram_message_text=_edit_telegram_message_text,
         build_telegram_processing_text=_build_telegram_processing_text,
         session_factory=database.SessionLocal,
         handle_telegram_webhook_payload=_handle_telegram_webhook_payload,

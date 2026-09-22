@@ -1,13 +1,12 @@
-"""The Telegram hourglass must be edited into the reply, never deleted.
+"""Telegram shows one hourglass, sends the reply, then removes it.
 
-Media updates are handled on a background route that owns the hourglass, so the
-edit lives there and the handler hands its text back instead of sending it. The
-handler still answers directly for everything that had no hourglass.
+The entry route owns the hourglass for media updates: it writes one, lets the
+handler do the work, and deletes it once the reply is out. The handler never
+writes a second one and never edits.
 
 Run: venv/bin/python -m tests.test_telegram_processing_placeholder
 """
 
-import asyncio
 import os
 import sys
 
@@ -20,40 +19,77 @@ ENTRY = open(entry.__file__, encoding="utf-8").read()
 HANDLER = open(handler.__file__, encoding="utf-8").read()
 
 
-class _Payload:
-    def __init__(self, **data):
-        self._data = data
-        self.message = data.get("message")
-
-    def model_dump(self):
-        return self._data
-
-
-def check_entry_edits_the_hourglass():
-    assert "edit_telegram_message_text" in ENTRY, "entry route never edits"
-    assert 'reply = (result or {}).get("reply")' in ENTRY, "entry route drops the reply"
-    assert "processing_message_id = None" in ENTRY, (
-        "entry route still deletes the message it just edited"
+def check_entry_writes_and_removes_the_hourglass():
+    assert "build_telegram_processing_text(payload)" in ENTRY, "entry sends no hourglass"
+    assert "async with session_factory() as db:" in ENTRY, "entry does not run the work"
+    after = ENTRY.index("async with session_factory() as db:")
+    tail = ENTRY[after:]
+    assert "finally:" in tail, "entry no longer cleans up"
+    assert "await delete_telegram_message(processing_chat_id, processing_message_id)" in tail, (
+        "the hourglass is never removed"
     )
 
 
-def check_the_edit_call_actually_works():
-    """Run the route against a real fake: a wrong arity must fail here, not live."""
-    edits = []
-    sends = []
-    deletes = []
+def check_entry_removes_it_even_when_sending_fails():
+    """A stuck hourglass is worse than no hourglass, so every path must clean up."""
+    assert "except Exception as exc:" in ENTRY, "entry has no error path"
+    after_except = ENTRY.index("except Exception as exc:")
+    between = ENTRY[after_except : ENTRY.index("finally:", after_except)]
+    assert "send_telegram_message(" in between, "no fallback notice on failure"
+
+
+def check_handler_sends_the_reply_itself():
+    assert "_send_telegram_message(" in HANDLER, "handler no longer sends anything"
+    assert "_edit_telegram_message_text" not in HANDLER, (
+        "handler edits a message it does not own"
+    )
+    assert "⏳" not in HANDLER, "handler writes a second hourglass"
+
+
+def check_handler_still_uses_a_held_photo():
+    """A photo held for a category prompt is the only copy left when answered."""
+    assert "pending_media = _pop_telegram_pending_media" in HANDLER, (
+        "the held photo is never claimed"
+    )
+    assert "if pending_media and reply_txn_ref:" in HANDLER, (
+        "the held photo branch changed"
+    )
+
+
+def check_only_one_call_gets_the_fresh_photo():
+    """Running the receipt twice replies with nothing the second time."""
+    first = HANDLER.index("result = await _process_bot_input(")
+    second = HANDLER.index("media_result = await _process_bot_input(")
+    assert first < second, "call order changed"
+    assert "media_payload=media_payload" in HANDLER[first:second], (
+        "the first call no longer receives the fresh photo"
+    )
+
+
+def check_the_route_actually_writes_and_removes_the_hourglass():
+    """Run the entry route against a fake transport.
+
+    String checks could not tell a working route from a broken one; this runs it
+    and records what the user would see.
+    """
+    import asyncio
+
+    seen = []
 
     async def send(chat_id, text, **kwargs):
-        sends.append(text)
-        return {"result": {"message_id": 77}}
-
-    async def edit(chat_id, message_id, text, *, reply_markup=None):
-        edits.append((chat_id, message_id, text))
-        return {"ok": True}
+        seen.append(("send", chat_id, text))
+        return {"result": {"message_id": 42}}
 
     async def delete(chat_id, message_id):
-        deletes.append(message_id)
+        seen.append(("delete", chat_id, message_id))
         return {"ok": True}
+
+    class _Payload:
+        def __init__(self, **data):
+            self.message = data.get("message")
+
+        def model_dump(self):
+            return {"message": self.message}
 
     class _Db:
         async def __aenter__(self):
@@ -63,68 +99,83 @@ def check_the_edit_call_actually_works():
             return False
 
     async def handle(payload, db):
-        return {"ok": True, "reply": "the answer"}
+        seen.append(("handle",))
+        await send("5864777376", "the answer")
+        return {"ok": True}
 
     asyncio.run(
         entry.process_telegram_webhook_payload_background_route(
-            payload_data={"message": {"chat": {"id": 5}}},
+            payload_data={"message": {"chat": {"id": 5864777376}}},
             payload_model=_Payload,
             telegram_should_show_processing_before_handle=lambda payload: True,
             send_telegram_message=send,
-            edit_telegram_message_text=edit,
             build_telegram_processing_text=lambda payload: "⏳",
             session_factory=lambda: _Db(),
             handle_telegram_webhook_payload=handle,
             delete_telegram_message=delete,
         )
     )
-    assert sends == ["⏳"], f"expected only the hourglass to be sent, got {sends}"
-    assert edits == [("5", 77, "the answer")], f"hourglass was not edited: {edits}"
-    assert deletes == [], "the edited hourglass was deleted anyway"
-
-
-def check_entry_still_cleans_up_when_editing_is_impossible():
-    after_edit = ENTRY.index("processing_message_id = None")
-    tail = ENTRY[after_edit:]
-    assert "finally:" in tail and "delete_telegram_message" in tail, (
-        "no fallback cleanup once the edit did not happen"
+    assert [step[0] for step in seen] == ["send", "handle", "send", "delete"], seen
+    assert seen[0][2] == "⏳", "the first message is not the hourglass"
+    assert seen[1][0] == "handle", "the work runs before the hourglass"
+    assert seen[-1] == ("delete", "5864777376", 42), (
+        "the hourglass is not removed at the end"
     )
 
 
-def check_handler_does_not_send_media_replies_twice():
-    assert "media_handled = True" in HANDLER, "handler no longer tracks the media reply"
-    assert "if reply and not media_handled and not media_payload:" in HANDLER, (
-        "handler would both send and return a media reply"
-    )
+def check_the_hourglass_is_removed_when_the_work_fails():
+    import asyncio
 
+    seen = []
 
-def check_handler_returns_media_replies():
-    # Every media update gets an hourglass from the entry route, including one with
-    # no pending transaction, so all media replies must be handed back, not sent.
-    assert "handed_back = media_handled or bool(media_payload)" in HANDLER, (
-        "a media reply not handled by the pending branch is sent here instead of "
-        "replacing the hourglass"
-    )
-    assert 'return {"ok": True, "reply": reply if handed_back else None}' in HANDLER, (
-        "handler does not hand only the media reply to the entry route"
-    )
+    async def send(chat_id, text, **kwargs):
+        seen.append(("send", text))
+        return {"result": {"message_id": 42}}
 
+    async def delete(chat_id, message_id):
+        seen.append(("delete", message_id))
+        return {"ok": True}
 
-def check_no_second_hourglass():
-    """Only the entry route may create one, or the chat shows two."""
-    assert "⏳" not in HANDLER, "handler sends its own hourglass again"
-    assert "build_telegram_processing_text(payload)" in ENTRY, (
-        "entry route lost its hourglass"
+    class _Payload:
+        def __init__(self, **data):
+            self.message = data.get("message")
+
+        def model_dump(self):
+            return {"message": self.message}
+
+    class _Db:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+    async def handle(payload, db):
+        raise RuntimeError("boom")
+
+    asyncio.run(
+        entry.process_telegram_webhook_payload_background_route(
+            payload_data={"message": {"chat": {"id": 5864777376}}},
+            payload_model=_Payload,
+            telegram_should_show_processing_before_handle=lambda payload: True,
+            send_telegram_message=send,
+            build_telegram_processing_text=lambda payload: "⏳",
+            session_factory=lambda: _Db(),
+            handle_telegram_webhook_payload=handle,
+            delete_telegram_message=delete,
+        )
     )
+    assert ("delete", 42) in seen, f"a failed run left the hourglass spinning: {seen}"
 
 
 def main():
-    check_entry_edits_the_hourglass()
-    check_the_edit_call_actually_works()
-    check_entry_still_cleans_up_when_editing_is_impossible()
-    check_handler_does_not_send_media_replies_twice()
-    check_handler_returns_media_replies()
-    check_no_second_hourglass()
+    check_the_route_actually_writes_and_removes_the_hourglass()
+    check_the_hourglass_is_removed_when_the_work_fails()
+    check_entry_writes_and_removes_the_hourglass()
+    check_entry_removes_it_even_when_sending_fails()
+    check_handler_sends_the_reply_itself()
+    check_handler_still_uses_a_held_photo()
+    check_only_one_call_gets_the_fresh_photo()
     print("telegram processing placeholder OK")
 
 

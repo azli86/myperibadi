@@ -20,7 +20,6 @@ async def process_telegram_webhook_payload_background_route(
     payload_model: type,
     telegram_should_show_processing_before_handle: Callable[[Any], bool],
     send_telegram_message: Callable[..., Awaitable[dict[str, Any] | None]],
-    edit_telegram_message_text: Callable[..., Awaitable[dict[str, Any] | None]],
     build_telegram_processing_text: Callable[[Any], str],
     session_factory: Callable[[], Any],
     handle_telegram_webhook_payload: Callable[[Any, Any], Awaitable[dict[str, Any]]],
@@ -42,14 +41,8 @@ async def process_telegram_webhook_payload_background_route(
             processing_message_id = int((((processing_response or {}).get("result") or {}).get("message_id") or 0) or 0) or None
         async with session_factory() as db:
             print(f"[telegram-media] processing started chat={processing_chat_id}", flush=True)
-            result = await asyncio.wait_for(handle_telegram_webhook_payload(payload, db), timeout=60)
+            await asyncio.wait_for(handle_telegram_webhook_payload(payload, db), timeout=60)
             print(f"[telegram-media] processing completed chat={processing_chat_id}", flush=True)
-        # Replace the hourglass with the answer, so it turns into the reply instead
-        # of vanishing and leaving a second message beside where it stood.
-        reply = (result or {}).get("reply") if isinstance(result, dict) else None
-        if processing_chat_id and processing_message_id and reply:
-            await edit_telegram_message_text(processing_chat_id, processing_message_id, reply)
-            processing_message_id = None
     except Exception as exc:
         print(f"[telegram] Background webhook processing failed: {type(exc).__name__}: {exc}", flush=True)
         if processing_chat_id:
