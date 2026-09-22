@@ -118,12 +118,31 @@ def check_no_second_hourglass():
     )
 
 
+def check_pending_media_survives_the_category_prompt():
+    """A photo held for a category answer must still be used by that answer.
+
+    The prompt is answered with plain text, so the saved photo is the only copy
+    left. Popping it and then skipping the media branch lost the photo and left
+    the user with nothing.
+    """
+    assert "if not media_payload:\n        pending_media = _pop_telegram_pending_media" in HANDLER, (
+        "the saved photo is not claimed for a text answer"
+    )
+    assert "if pending_media or (media_payload and reply_txn_ref):" in HANDLER, (
+        "a claimed photo can still be skipped and thrown away"
+    )
+    assert 'media_payload=source.get("media_payload") or media_payload' in HANDLER, (
+        "the saved photo is never passed to the processor"
+    )
+
+
 def main():
     check_entry_edits_the_hourglass()
     check_the_edit_call_actually_works()
     check_entry_still_cleans_up_when_editing_is_impossible()
     check_handler_does_not_send_media_replies_twice()
     check_handler_returns_media_replies()
+    check_pending_media_survives_the_category_prompt()
     check_no_second_hourglass()
     print("telegram processing placeholder OK")
 
