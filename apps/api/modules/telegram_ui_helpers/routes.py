@@ -143,15 +143,8 @@ def telegram_update_has_media_route(payload: Any) -> bool:
 
 
 def build_telegram_processing_text_route(payload: Any) -> str:
-    message = payload.message or {}
-    sender = message.get("from") or {}
-    language_code = str(sender.get("language_code") or "").lower()
-    is_bm = language_code.startswith("ms") or language_code.startswith("id") or language_code.startswith("bm")
-
-    if is_bm:
-        return r"⚠️ *_Lampiran diterima dan diproses sebentar lagi\._*"
-
-    return r"⚠️ *_Uploading your attachment and processing the transaction shortly\._*"
+    # Hourglass only: the wording added nothing the icon does not already say.
+    return "⏳"
 
 
 def build_telegram_add_preview_text_route(
