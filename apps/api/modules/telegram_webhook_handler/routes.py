@@ -48,6 +48,7 @@ async def handle_telegram_webhook_payload_route(
     _set_telegram_pending_media: Callable[..., Any],
     _pop_telegram_pending_media: Callable[..., Any],
     _delete_telegram_message: Callable[..., Any],
+    _edit_telegram_message_text: Callable[..., Any],
     _build_telegram_numeric_choice_keyboard: Callable[..., Any],
     _build_telegram_pairing_prompt: Callable[..., str],
     _build_telegram_pair_code_rejected_text: Callable[..., str],
@@ -545,9 +546,13 @@ async def handle_telegram_webhook_payload_route(
 
     reply_txn_ref = whatsapp_service._extract_transaction_reference(reply) if reply else None
     pending_media = None
+    processing_message_id: int | None = None
     if reply_txn_ref and not media_payload:
         pending_media = _pop_telegram_pending_media(link.user_id, chat_id)
     if pending_media and reply_txn_ref:
+        # Placeholder, then replaced in place once the work is done. Editing the
+        # same message means the result appears where the hourglass was, instead
+        # of the hourglass vanishing and a second message arriving next to it.
         processing_response = await _send_telegram_message(
             chat_id,
             "⏳",
@@ -572,9 +577,12 @@ async def handle_telegram_webhook_payload_route(
                 target_txn_ref=reply_txn_ref,
                 source_channel="telegram",
             )
-        finally:
+        except Exception:
+            # The placeholder must not be left spinning on a failure the user can
+            # see, so clear it and fall through to the normal error reply.
             if processing_message_id:
                 await _delete_telegram_message(chat_id, processing_message_id)
+            raise
         media_reply = media_result.get("reply") if isinstance(media_result, dict) else None
         if media_reply:
             reply = (reply + "\n\n" + media_reply) if reply else media_reply
@@ -594,10 +602,18 @@ async def handle_telegram_webhook_payload_route(
             user_lang = getattr(user, "language", "BM") if user else "BM"
             balance = await whatsapp_service.get_user_balance(db, link.user_id)
             reply += await whatsapp_service._format_money_lifespan_message(db, link.user_id, balance, user_lang)
-        await _send_telegram_message(
-            chat_id,
-            reply,
-            linked=True,
-            reply_markup=_build_telegram_numeric_choice_keyboard(reply, is_bm=is_bm),
-        )
+        if processing_message_id:
+            await _edit_telegram_message_text(
+                chat_id,
+                processing_message_id,
+                reply,
+                _build_telegram_numeric_choice_keyboard(reply, is_bm=is_bm),
+            )
+        else:
+            await _send_telegram_message(
+                chat_id,
+                reply,
+                linked=True,
+                reply_markup=_build_telegram_numeric_choice_keyboard(reply, is_bm=is_bm),
+            )
     return {"ok": True}
