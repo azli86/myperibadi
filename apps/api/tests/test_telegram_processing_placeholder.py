@@ -7,6 +7,7 @@ handler still answers directly for everything that had no hourglass.
 Run: venv/bin/python -m tests.test_telegram_processing_placeholder
 """
 
+import asyncio
 import os
 import sys
 
@@ -19,12 +20,67 @@ ENTRY = open(entry.__file__, encoding="utf-8").read()
 HANDLER = open(handler.__file__, encoding="utf-8").read()
 
 
+class _Payload:
+    def __init__(self, **data):
+        self._data = data
+        self.message = data.get("message")
+
+    def model_dump(self):
+        return self._data
+
+
 def check_entry_edits_the_hourglass():
     assert "edit_telegram_message_text" in ENTRY, "entry route never edits"
     assert 'reply = (result or {}).get("reply")' in ENTRY, "entry route drops the reply"
     assert "processing_message_id = None" in ENTRY, (
         "entry route still deletes the message it just edited"
     )
+
+
+def check_the_edit_call_actually_works():
+    """Run the route against a real fake: a wrong arity must fail here, not live."""
+    edits = []
+    sends = []
+    deletes = []
+
+    async def send(chat_id, text, **kwargs):
+        sends.append(text)
+        return {"result": {"message_id": 77}}
+
+    async def edit(chat_id, message_id, text, *, reply_markup=None):
+        edits.append((chat_id, message_id, text))
+        return {"ok": True}
+
+    async def delete(chat_id, message_id):
+        deletes.append(message_id)
+        return {"ok": True}
+
+    class _Db:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+    async def handle(payload, db):
+        return {"ok": True, "reply": "the answer"}
+
+    asyncio.run(
+        entry.process_telegram_webhook_payload_background_route(
+            payload_data={"message": {"chat": {"id": 5}}},
+            payload_model=_Payload,
+            telegram_should_show_processing_before_handle=lambda payload: True,
+            send_telegram_message=send,
+            edit_telegram_message_text=edit,
+            build_telegram_processing_text=lambda payload: "⏳",
+            session_factory=lambda: _Db(),
+            handle_telegram_webhook_payload=handle,
+            delete_telegram_message=delete,
+        )
+    )
+    assert sends == ["⏳"], f"expected only the hourglass to be sent, got {sends}"
+    assert edits == [("5", 77, "the answer")], f"hourglass was not edited: {edits}"
+    assert deletes == [], "the edited hourglass was deleted anyway"
 
 
 def check_entry_still_cleans_up_when_editing_is_impossible():
@@ -64,6 +120,7 @@ def check_no_second_hourglass():
 
 def main():
     check_entry_edits_the_hourglass()
+    check_the_edit_call_actually_works()
     check_entry_still_cleans_up_when_editing_is_impossible()
     check_handler_does_not_send_media_replies_twice()
     check_handler_returns_media_replies()

@@ -48,7 +48,7 @@ async def process_telegram_webhook_payload_background_route(
         # of vanishing and leaving a second message beside where it stood.
         reply = (result or {}).get("reply") if isinstance(result, dict) else None
         if processing_chat_id and processing_message_id and reply:
-            await edit_telegram_message_text(processing_chat_id, processing_message_id, reply, None)
+            await edit_telegram_message_text(processing_chat_id, processing_message_id, reply)
             processing_message_id = None
     except Exception as exc:
         print(f"[telegram] Background webhook processing failed: {type(exc).__name__}: {exc}", flush=True)
