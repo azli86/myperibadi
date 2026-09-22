@@ -377,6 +377,7 @@ async function uploadMediaForTransaction({
       isSelfChat: jobContext.isSelfChat,
       text: fallbackText,
     });
+    await clearProcessingNotice(sessionObj, jobContext.processingNotice);
     return;
   }
   const mediaWebhookPayload = {
@@ -414,6 +415,7 @@ async function uploadMediaForTransaction({
     response: mediaRes,
     messageId: mediaWebhookPayload.message_id || fallbackMessageId,
     isSelfChat: jobContext.isSelfChat,
+    processingNotice: jobContext.processingNotice || null,
   });
 }
 
@@ -486,11 +488,11 @@ function shouldSendProcessingNotice(sessionObj, noticeKey) {
 }
 
 async function sendProcessingNotice({ userId, remoteJid, replyTargets, quotedMessage, sessionObj, isSelfChat, fromMe, hasMedia, hasQuotedMedia, noticeKey = null }) {
-  if (!isSelfChat || !fromMe) return;
-  const text = `⚠️ *_Uploading your attachment and processing the transaction shortly._*`;
+  if (!isSelfChat || !fromMe) return null;
+  const text = "⏳";
   const targetJid = remoteJid || (Array.isArray(replyTargets) && replyTargets.length ? replyTargets[0] : null);
-  if (!targetJid) return;
-  if (!shouldSendProcessingNotice(sessionObj, noticeKey || `${targetJid}:${text}`)) return;
+  if (!targetJid) return null;
+  if (!shouldSendProcessingNotice(sessionObj, noticeKey || `${targetJid}:${text}`)) return null;
   let sentMsg = null;
   try {
     sentMsg = await sessionObj.sock.sendMessage(targetJid, { text });
@@ -499,6 +501,19 @@ async function sendProcessingNotice({ userId, remoteJid, replyTargets, quotedMes
     console.warn(`⚠️ [${userId}] Processing notice failed ${targetJid}: ${err.message}`);
   }
   rememberOutgoingMessage(sessionObj, sentMsg, text);
+  return sentMsg;
+}
+
+// The hourglass is a real message, and WhatsApp has no way to edit it back into
+// the reply the way Telegram does. So the notice is recalled once the answer is
+// ready: the reply then stands alone instead of sitting above a stale hourglass.
+async function clearProcessingNotice(sessionObj, sentMsg) {
+  if (!sentMsg?.key) return;
+  try {
+    await sessionObj.sock.sendMessage(sentMsg.key.remoteJid, { delete: sentMsg.key });
+  } catch (err) {
+    console.warn(`⚠️ Processing notice delete failed: ${err.message}`);
+  }
 }
 
 function pendingMediaKey(userId, remoteJid) {
@@ -583,6 +598,7 @@ async function handleWebhookResponse({
   response,
   messageId,
   isSelfChat = false,
+  processingNotice = null,
 }) {
   const responseData = response?.data || {};
   const replyText = sanitizeBotReplyText(responseData?.reply);
@@ -618,10 +634,12 @@ async function handleWebhookResponse({
 
       if (!sentMsg && lastError) {
         console.error("❌ Send error:", lastError.message);
+        await clearProcessingNotice(sessionObj, processingNotice);
         return;
       }
 
       rememberOutgoingMessage(sessionObj, sentMsg, replyText);
+      await clearProcessingNotice(sessionObj, processingNotice);
 
       if (bankDetailsReply && sentTargetJid) {
         try {
@@ -667,10 +685,12 @@ async function handleWebhookResponse({
 
     if (!sentMsg && lastError) {
       console.error("❌ Send error:", lastError.message);
+      await clearProcessingNotice(sessionObj, processingNotice);
       return;
     }
 
     rememberOutgoingMessage(sessionObj, sentMsg, replyText);
+    await clearProcessingNotice(sessionObj, processingNotice);
 
     if (bankDetailsReply && sentTargetJid) {
       try {
@@ -686,6 +706,7 @@ async function handleWebhookResponse({
 
   if (response?.timedOut) {
     console.warn(`⏳ [${userId}] Webhook timed out after ${WA_WEBHOOK_TIMEOUT_MS}ms for ${phone}; skipping misleading failure reply.`);
+    await clearProcessingNotice(sessionObj, processingNotice);
     return;
   }
 
@@ -698,6 +719,7 @@ async function handleWebhookResponse({
       ).catch(() => null);
       rememberOutgoingMessage(sessionObj, sentMsg, "Maaf, server sedang bermasalah. Cuba lagi sebentar.");
     }
+    await clearProcessingNotice(sessionObj, processingNotice);
     return;
   }
 
@@ -710,10 +732,12 @@ async function handleWebhookResponse({
       isSelfChat,
       mediaUrls,
     });
+    await clearProcessingNotice(sessionObj, processingNotice);
     if (sent) return;
   }
 
   console.log(`ℹ️ [${userId}] Webhook returned empty reply for message id=${messageId || "-"}`);
+  await clearProcessingNotice(sessionObj, processingNotice);
 }
 
 function extractMessageText(innerMsg) {
@@ -1586,6 +1610,7 @@ async function startSock(userId, pairingPhone = null, options = {}) {
                 response: res,
                 messageId: jobContext.messageId,
                 isSelfChat,
+                processingNotice: jobContext.processingNotice || null,
               });
               const replyTxnRef = extractTxnReference(res?.data?.reply);
               const pendingMediaContext = replyTxnRef ? takePendingCategoryMedia(sessionObj, pendingMediaKey(userId, jobContext.remoteJid)) : null;
@@ -1627,10 +1652,15 @@ async function startSock(userId, pairingPhone = null, options = {}) {
                 response: textRes,
                 messageId: jobContext.messageId,
                 isSelfChat,
+                processingNotice: jobContext.processingNotice || null,
               });
               const replyText = textRes?.data?.reply || "";
               if (isCategoryPromptReply(replyText)) {
                 storePendingCategoryMedia(sessionObj, pendingMediaKey(userId, jobContext.remoteJid), jobContext);
+                // The category menu takes over from the notice; recall the hourglass.
+                await clearProcessingNotice(sessionObj, jobContext.processingNotice);
+                // The notice is spent, so the deferred upload must not try again.
+                jobContext.processingNotice = null;
                 return;
               }
               const replyTxnRef = extractTxnReference(replyText);
@@ -1653,7 +1683,7 @@ async function startSock(userId, pairingPhone = null, options = {}) {
 
           const isFastMedia = Boolean(mediaDescriptor || quotedMediaMessage);
           if (isFastMedia) {
-            await sendProcessingNotice({
+            jobContext.processingNotice = await sendProcessingNotice({
               userId,
               remoteJid: m.key.remoteJid,
               replyTargets,
