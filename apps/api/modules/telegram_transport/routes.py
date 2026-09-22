@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any, Awaitable, Callable
 
-import httpx
+from modules.telegram_api_core.routes import get_telegram_http_client
 
 
 def build_telegram_choice_keyboard_route(rows: list[list[str]]) -> dict[str, Any]:
@@ -165,17 +165,17 @@ async def download_telegram_file_route(
         return None, None, "Image processing took too long or failed. Please re-upload this image."
     url = f"https://api.telegram.org/file/bot{telegram_bot_token}/{file_path}"
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-            content_length = int(response.headers.get("content-length") or 0)
-            if content_length and content_length > telegram_max_media_bytes:
-                print(f"[telegram] File rejected by content-length: size={content_length} max={telegram_max_media_bytes}")
-                return None, None, "Image processing took too long or failed. Please re-upload this image."
-            if len(response.content) > telegram_max_media_bytes:
-                print(f"[telegram] File rejected after download: size={len(response.content)} max={telegram_max_media_bytes}")
-                return None, None, "Image processing took too long or failed. Please re-upload this image."
-            return response.content, file_path, None
+        client = get_telegram_http_client()
+        response = await client.get(url, timeout=30.0)
+        response.raise_for_status()
+        content_length = int(response.headers.get("content-length") or 0)
+        if content_length and content_length > telegram_max_media_bytes:
+            print(f"[telegram] File rejected by content-length: size={content_length} max={telegram_max_media_bytes}")
+            return None, None, "Image processing took too long or failed. Please re-upload this image."
+        if len(response.content) > telegram_max_media_bytes:
+            print(f"[telegram] File rejected after download: size={len(response.content)} max={telegram_max_media_bytes}")
+            return None, None, "Image processing took too long or failed. Please re-upload this image."
+        return response.content, file_path, None
     except Exception as exc:
         print(f"[telegram] File download failed: {exc}")
         return None, None, "Image processing took too long or failed. Please re-upload this image."

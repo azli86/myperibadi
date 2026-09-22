@@ -202,7 +202,39 @@ def check_handler_is_wired_to_its_caller():
     assert not missing, f"main.py does not pass {missing} to the handler"
 
 
+def check_telegram_calls_reuse_one_client():
+    """A fresh client per call redid the TLS handshake, adding a third of a
+    second each time and several times per photo."""
+    core = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "modules",
+        "telegram_api_core",
+        "routes.py",
+    )
+    core_source = open(core, encoding="utf-8").read()
+    assert "_telegram_http_client is None or _telegram_http_client.is_closed" in core_source, (
+        "the shared client is not created once and reused"
+    )
+    assert "async with httpx.AsyncClient" not in core_source, (
+        "a client is still built per call"
+    )
+    transport = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "modules",
+        "telegram_transport",
+        "routes.py",
+    )
+    transport_source = open(transport, encoding="utf-8").read()
+    assert "async with httpx.AsyncClient" not in transport_source, (
+        "the file download still builds its own client"
+    )
+    assert "get_telegram_http_client()" in transport_source, (
+        "the download does not use the shared client"
+    )
+
+
 def main():
+    check_telegram_calls_reuse_one_client()
     check_handler_is_wired_to_its_caller()
     check_the_route_actually_writes_and_removes_the_hourglass()
     check_the_hourglass_is_removed_when_the_work_fails()

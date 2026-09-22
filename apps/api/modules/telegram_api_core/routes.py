@@ -6,6 +6,18 @@ from typing import Any, Awaitable, Callable
 import httpx
 from fastapi import Request
 
+# One client for the process: a fresh AsyncClient per call redoes the TLS
+# handshake to api.telegram.org, which cost roughly a third of a second each time
+# and several calls per photo.
+_telegram_http_client: httpx.AsyncClient | None = None
+
+
+def get_telegram_http_client() -> httpx.AsyncClient:
+    global _telegram_http_client
+    if _telegram_http_client is None or _telegram_http_client.is_closed:
+        _telegram_http_client = httpx.AsyncClient(timeout=15.0, limits=httpx.Limits(max_connections=32))
+    return _telegram_http_client
+
 
 def has_valid_telegram_webhook_secret_route(
     *,
@@ -28,9 +40,9 @@ async def telegram_api_request_route(
         return None
     url = f"https://api.telegram.org/bot{telegram_bot_token}/{method}"
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.post(url, json=payload)
-            return response.json() if response.content else None
+        client = get_telegram_http_client()
+        response = await client.post(url, json=payload)
+        return response.json() if response.content else None
     except Exception as exc:
         print(f"[telegram] API request failed: {method}: {exc}")
         return None
