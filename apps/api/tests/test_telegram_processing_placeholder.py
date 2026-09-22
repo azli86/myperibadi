@@ -168,7 +168,42 @@ def check_the_hourglass_is_removed_when_the_work_fails():
     assert ("delete", 42) in seen, f"a failed run left the hourglass spinning: {seen}"
 
 
+def check_handler_is_wired_to_its_caller():
+    """Every keyword-only parameter must be supplied, and nothing else.
+
+    Dropping a parameter from one side left the webhook raising TypeError and the
+    bot answering nothing at all.
+    """
+    import ast
+
+    handler_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "main.py",
+    )
+    main = open(handler_path, encoding="utf-8").read()
+
+    tree = ast.parse(HANDLER)
+    fn = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.AsyncFunctionDef)
+        and node.name == "handle_telegram_webhook_payload_route"
+    )
+    params = {arg.arg for arg in fn.args.kwonlyargs}
+
+    marker = "_process_bot_input=_process_bot_input"
+    index = main.rindex(marker)
+    start = main.rindex("await _module_handle_telegram_webhook_payload_route(", 0, index)
+    end = main.index("\n    )", start)
+    call = ast.parse("f(" + main[start:end].split("(", 1)[1] + ")").body[0].value
+    passed = {kw.arg for kw in call.keywords}
+
+    missing = sorted(params - passed)
+    assert not missing, f"main.py does not pass {missing} to the handler"
+
+
 def main():
+    check_handler_is_wired_to_its_caller()
     check_the_route_actually_writes_and_removes_the_hourglass()
     check_the_hourglass_is_removed_when_the_work_fails()
     check_entry_writes_and_removes_the_hourglass()

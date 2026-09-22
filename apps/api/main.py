@@ -13019,6 +13019,7 @@ async def _handle_telegram_webhook_payload(
         _is_category_prompt_reply=_is_category_prompt_reply,
         _set_telegram_pending_media=_set_telegram_pending_media,
         _pop_telegram_pending_media=_pop_telegram_pending_media,
+        _delete_telegram_message=_delete_telegram_message,
         _build_telegram_numeric_choice_keyboard=_build_telegram_numeric_choice_keyboard,
         _build_telegram_pairing_prompt=_build_telegram_pairing_prompt,
         _build_telegram_pair_code_rejected_text=_build_telegram_pair_code_rejected_text,
