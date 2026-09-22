@@ -33,6 +33,20 @@ def check_notice_is_remembered_for_recall():
     )
 
 
+def check_reply_edits_the_notice_in_place():
+    assert "edit: processingNotice.key" in SOURCE, "reply does not edit the notice"
+    assert "editedInPlace = true" in SOURCE, "a successful edit is not recorded"
+    assert "if (!sentMsg && !editedInPlace && lastError)" in SOURCE, (
+        "a successful edit would be treated as a failed send"
+    )
+    # The hourglass has become the reply, so it must not also be deleted.
+    edit_branch = SOURCE.index("if (editedInPlace) {")
+    body = SOURCE[edit_branch : SOURCE.index("} else {", edit_branch)]
+    assert "clearProcessingNotice" not in body, (
+        "the edited notice is cleaned up as if it were still a placeholder"
+    )
+
+
 def _handler_body():
     """Text of handleWebhookResponse, up to the next top-level function."""
     start = SOURCE.index("async function handleWebhookResponse(")
@@ -63,6 +77,7 @@ def check_notice_reaches_the_handler():
 def main():
     check_notice_is_only_the_hourglass()
     check_notice_is_remembered_for_recall()
+    check_reply_edits_the_notice_in_place()
     check_every_exit_clears_the_notice()
     check_notice_reaches_the_handler()
     print("whatsapp processing notice OK")

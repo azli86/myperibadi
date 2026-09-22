@@ -504,9 +504,10 @@ async function sendProcessingNotice({ userId, remoteJid, replyTargets, quotedMes
   return sentMsg;
 }
 
-// The hourglass is a real message, and WhatsApp has no way to edit it back into
-// the reply the way Telegram does. So the notice is recalled once the answer is
-// ready: the reply then stands alone instead of sitting above a stale hourglass.
+// WhatsApp can edit an outgoing message for 15 minutes, so the hourglass is
+// edited into the reply instead of being recalled. Where an edit cannot apply
+// (media replies, no reply text, a failed send) the notice is deleted instead,
+// so no stale hourglass is ever left in the chat.
 async function clearProcessingNotice(sessionObj, sentMsg) {
   if (!sentMsg?.key) return;
   try {
@@ -612,6 +613,7 @@ async function handleWebhookResponse({
     let sentMsg = null;
     let lastError = null;
     let sentTargetJid = null;
+    let editedInPlace = false;
 
     // If we have text AND media, send first image with caption instead of separate messages
     if (mediaUrls.length > 0) {
@@ -673,8 +675,14 @@ async function handleWebhookResponse({
     for (const targetJid of targets) {
       console.log(`📤 [${userId}] Replying to ${phone} via ${targetJid}...`);
       try {
-        await sendTypingBeforeReply(sessionObj.sock, targetJid, replyText);
-        sentMsg = await sessionObj.sock.sendMessage(targetJid, { text: replyText });
+        if (processingNotice?.key) {
+          // Edit the hourglass in place, so the answer lands where it was.
+          await sessionObj.sock.sendMessage(targetJid, { text: replyText, edit: processingNotice.key });
+          editedInPlace = true;
+        } else {
+          await sendTypingBeforeReply(sessionObj.sock, targetJid, replyText);
+          sentMsg = await sessionObj.sock.sendMessage(targetJid, { text: replyText });
+        }
         sentTargetJid = targetJid;
         break;
       } catch (err) {
@@ -683,14 +691,19 @@ async function handleWebhookResponse({
       }
     }
 
-    if (!sentMsg && lastError) {
+    if (!sentMsg && !editedInPlace && lastError) {
       console.error("❌ Send error:", lastError.message);
       await clearProcessingNotice(sessionObj, processingNotice);
       return;
     }
 
-    rememberOutgoingMessage(sessionObj, sentMsg, replyText);
-    await clearProcessingNotice(sessionObj, processingNotice);
+    if (editedInPlace) {
+      // The hourglass is now the reply; there is nothing left to clean up.
+      rememberOutgoingMessage(sessionObj, processingNotice, replyText);
+    } else {
+      rememberOutgoingMessage(sessionObj, sentMsg, replyText);
+      await clearProcessingNotice(sessionObj, processingNotice);
+    }
 
     if (bankDetailsReply && sentTargetJid) {
       try {
