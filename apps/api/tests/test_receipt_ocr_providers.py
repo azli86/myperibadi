@@ -1,11 +1,11 @@
-"""Receipt OCR prefers the LAN vision model, with the cloud behind it.
+"""Receipt OCR prefers OpenAI, with the LAN box behind it.
 
-OCR used to go straight to the public OpenAI API, which meant every phone photo made a
-round trip over the internet. The same job is served on the office LAN, which is faster
-for a multi-megabyte photo.
+OpenAI used to sit behind the office LAN vision model, which was assumed faster and more
+accurate. In practice it misread plain receipts often enough that drafts had to be
+corrected by hand.
 
 These tests cover the parts that are easy to break: the provider order, the fallback
-when the LAN box is unreachable, tolerating the gateway's trailing SSE sentinel, and
+when OpenAI is unreachable, tolerating the gateway's trailing SSE sentinel, and
 rejecting a photo the model cannot read instead of raising a conversion error.
 """
 
@@ -25,30 +25,31 @@ def _source() -> str:
     with open(_receipt_ocr_path, encoding="utf-8") as fh:
         return fh.read()
 
-os.environ.setdefault("OCR_LOCAL_API_KEY", "test-key")
-os.environ.setdefault("OCR_LOCAL_BASE_URL", "http://127.0.0.1:59998/v1")
-os.environ.setdefault("OCR_LOCAL_MODEL", "test-vision")
-os.environ.setdefault("OCR_OPENAI_API_KEY", "test-cloud-key")
-os.environ.setdefault("OCR_OPENAI_MODEL", "test-cloud-model")
+os.environ["OCR_LOCAL_API_KEY"] = "test-key"
+os.environ["OCR_LOCAL_BASE_URL"] = "http://127.0.0.1:59998/v1"
+os.environ["OCR_LOCAL_MODEL"] = "test-vision"
+os.environ["OCR_OPENAI_API_KEY"] = "test-cloud-key"
+os.environ["OCR_OPENAI_MODEL"] = "test-cloud-model"
+os.environ["OCR_OPENAI_BASE_URL"] = "https://api.openai.com/v1"
 
 import httpx  # noqa: E402
 import receipt_ocr_service as ocr  # noqa: E402
 
 
-def test_local_is_offered_before_cloud():
+def test_cloud_is_offered_before_local():
     providers = asyncio.run(ocr._ocr_providers())
     names = [p["name"] for p in providers]
-    assert names == ["local", "cloud"], names
-    assert providers[0]["model"] == "test-vision"
-    assert providers[1]["model"] == "test-cloud-model"
+    assert names == ["cloud", "local"], names
+    assert providers[0]["model"] == "test-cloud-model"
+    assert providers[1]["model"] == "test-vision"
 
 
-def test_ocr_still_works_with_no_local_provider_configured():
-    """Removing OCR_LOCAL_MODEL must not disable OCR, only reorder it."""
-    saved = {k: os.environ.pop(k, None) for k in ("OCR_LOCAL_MODEL",)}
+def test_ocr_still_works_with_no_cloud_provider_configured():
+    """Removing the OpenAI key must not disable OCR, only reorder it."""
+    saved = {k: os.environ.pop(k, None) for k in ("OCR_OPENAI_API_KEY",)}
     try:
         providers = asyncio.run(ocr._ocr_providers())
-        assert [p["name"] for p in providers] == ["cloud"]
+        assert [p["name"] for p in providers] == ["local"]
     finally:
         for key, value in saved.items():
             if value is not None:
@@ -120,8 +121,8 @@ def test_empty_content_is_logged_with_the_finish_reason():
 
 
 if __name__ == "__main__":
-    test_local_is_offered_before_cloud()
-    test_ocr_still_works_with_no_local_provider_configured()
+    test_cloud_is_offered_before_local()
+    test_ocr_still_works_with_no_cloud_provider_configured()
     test_trailing_sse_sentinel_is_tolerated()
     test_plain_json_still_parses()
     test_null_amount_is_rejected_as_unreadable()

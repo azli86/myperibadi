@@ -127,28 +127,27 @@ def _json_object(text: str) -> dict:
 async def _ocr_providers() -> list[dict[str, str]]:
     """Vision providers, in the order they should be tried.
 
-    OCR used to go straight out to the public OpenAI API, which means every photo of a
-    receipt took a round trip over the internet. The identical model is served on the
-    office LAN at ILMU_BASE_URL, which is materially faster for a multi-megabyte phone
-    photo and, on the samples measured, more accurate too.
+    The LAN box at ILMU_BASE_URL used to be tried first on the grounds that it was
+    faster on a large phone photo. In practice it misread plain receipts often enough
+    that the draft had to be corrected by hand, which costs more than the round trip.
 
-    Local is tried first. A cloud provider is kept behind it so that losing the LAN box
-    degrades OCR to slow rather than to broken — the receipt path is how transactions get
+    OpenAI now goes first. The LAN box stays behind it so that an OpenAI outage degrades
+    OCR to poorer reads rather than to nothing — the receipt path is how transactions get
     created, so it must not have a single point of failure.
     """
     providers: list[dict[str, str]] = []
-
-    local_key = (os.getenv("OCR_LOCAL_API_KEY") or os.getenv("ILMU_API_KEY") or "").strip()
-    local_base = (os.getenv("OCR_LOCAL_BASE_URL") or os.getenv("ILMU_BASE_URL") or "").strip().rstrip("/")
-    local_model = (os.getenv("OCR_LOCAL_MODEL") or "").strip()
-    if local_key and local_base and local_model:
-        providers.append({"name": "local", "api_key": local_key, "base_url": local_base, "model": local_model})
 
     cloud_key = (os.getenv("OCR_OPENAI_API_KEY") or "").strip()
     cloud_base = (os.getenv("OCR_OPENAI_BASE_URL") or "https://api.openai.com/v1").strip().rstrip("/")
     cloud_model = (os.getenv("OCR_OPENAI_MODEL") or "gpt-4.1-mini").strip()
     if cloud_key:
         providers.append({"name": "cloud", "api_key": cloud_key, "base_url": cloud_base, "model": cloud_model})
+
+    local_key = (os.getenv("OCR_LOCAL_API_KEY") or os.getenv("ILMU_API_KEY") or "").strip()
+    local_base = (os.getenv("OCR_LOCAL_BASE_URL") or os.getenv("ILMU_BASE_URL") or "").strip().rstrip("/")
+    local_model = (os.getenv("OCR_LOCAL_MODEL") or "").strip()
+    if local_key and local_base and local_model:
+        providers.append({"name": "local", "api_key": local_key, "base_url": local_base, "model": local_model})
 
     if not providers:
         raise RuntimeError("Receipt OCR is not configured")
