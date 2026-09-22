@@ -543,31 +543,24 @@ async def handle_telegram_webhook_payload_route(
         )
 
     reply_txn_ref = whatsapp_service._extract_transaction_reference(reply) if reply else None
-    # A category-prompt answer arrives as plain text while the photo waits
-    # aside, so the pending media is claimed whenever there is one. It is also
-    # claimed for an explicit transaction reference, which is how a photo is
-    # attached to an existing transaction. Claiming plus discarding was what left
-    # an answered prompt with no photo left to use.
+    pending_media = None
     media_handled = False
-    if not media_payload:
+    if reply_txn_ref and not media_payload:
         pending_media = _pop_telegram_pending_media(link.user_id, chat_id)
-    else:
-        pending_media = None
-    if pending_media or (media_payload and reply_txn_ref):
-        source = pending_media or {}
+    if pending_media and reply_txn_ref:
         try:
             media_result = await _process_bot_input(
                 db,
                 user_id=link.user_id,
                 phone=f"telegram:{telegram_user_id}",
                 text="",
-                media_payload=source.get("media_payload") or media_payload,
-                media_mime_type=source.get("media_mime_type") or media_mime_type,
-                media_file_name=source.get("media_file_name") or media_file_name,
+                media_payload=pending_media.get("media_payload"),
+                media_mime_type=pending_media.get("media_mime_type"),
+                media_file_name=pending_media.get("media_file_name"),
                 latitude=None,
                 longitude=None,
                 location_name=None,
-                media_size_bytes=source.get("media_size_bytes") or media_size_bytes,
+                media_size_bytes=pending_media.get("media_size_bytes"),
                 target_txn_ref=reply_txn_ref,
                 source_channel="telegram",
             )
