@@ -40,6 +40,12 @@ sleep 2
 
 echo "Starting WhatsApp Worker service..."
 cd "$WORKER_DIR"
+# Rotate rather than truncate: the plain log reached 193MB of user messages in two
+# days, and truncating on every start is why nothing bounded it. One previous
+# generation is enough to read after a crash.
+if [ -s worker.log ]; then
+  mv -f worker.log worker.log.1
+fi
 setsid -f node index_v2.js > worker.log 2>&1
 
 if pgrep -u $(whoami) -f "index_v2\\.js" >/dev/null; then
