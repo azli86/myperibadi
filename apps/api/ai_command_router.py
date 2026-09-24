@@ -18,6 +18,7 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import llm_service
+from log_privacy import preview
 
 # id -> (BM label, English label, example question, command line template).
 # {category} is the only free-text arg and is sanitised before use.
@@ -204,8 +205,8 @@ async def infer_command(*, user_message: str, language: str) -> Optional[str]:
         return None
     command_text = build_command_text(parsed.get("command"), parsed.get("category"))
     print(
-        f"[AI-ROUTE] message={user_message[:60]!r} -> command={command_text!r} "
-        f"(raw={raw[:80]!r})"
+        f"[AI-ROUTE] message={preview(user_message, 60)} -> command={command_text!r} "
+        f"(raw={preview(raw, 80)})"
     )
     return command_text
 

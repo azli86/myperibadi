@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
+from log_privacy import preview
 
 
 @dataclass(frozen=True)
@@ -454,13 +455,6 @@ def _reply_looks_complete(reply_text: str, finish_reason: Optional[str]) -> bool
     return False
 
 
-def _preview_text(text: str, limit: int = 120) -> str:
-    cleaned = " ".join((text or "").split())
-    if len(cleaned) <= limit:
-        return cleaned
-    return cleaned[: limit - 3] + "..."
-
-
 def _build_command_help_reply(language: str) -> str:
     """Full MyPeribadi command list (mirrors the portal Help page)."""
     if (language or "BM").upper() == "EN":
@@ -580,7 +574,7 @@ async def request_budget_reply(
     # Short-circuit vague / incomplete questions before touching the LLM,
     # so the bot can never reply like a generic AI assistant (out of scope).
     if _looks_like_vague_how_to(user_message):
-        print(f"[ILMU] vague how-to short-circuit for user_message={_preview_text(user_message)!r}")
+        print(f"[ILMU] vague how-to short-circuit for user_message={preview(user_message)}")
         return _build_command_help_reply(preferred_language)
 
     personality_hint, user_call_name = await _fetch_user_profile_context(db, user_id)
@@ -671,19 +665,19 @@ async def _request_model_reply(
             print(
                 f"[ILMU] truncated reply rejected in {elapsed_ms:.0f}ms "
                 f"model={model_name} finish_reason={finish_reason} usage={usage} "
-                f"preview={_preview_text(reply_text)!r}"
+                f"preview={preview(reply_text)}"
             )
             return None
         print(
             f"[ILMU] reply ok in {elapsed_ms:.0f}ms "
             f"model={model_name} finish_reason={finish_reason} usage={usage} "
-            f"preview={_preview_text(reply_text)!r}"
+            f"preview={preview(reply_text)}"
         )
         return reply_text
 
     print(
         f"[ILMU] empty reply in {elapsed_ms:.0f}ms "
         f"model={model_name} finish_reason={finish_reason} usage={usage} "
-        f"user_message={_preview_text(user_message)!r}"
+        f"user_message={preview(user_message)}"
     )
     return None

@@ -1467,6 +1467,27 @@ async def start_expired_token_cleanup_task():
                 print(f"[ticket] stale sweep error: {e}")
     asyncio.create_task(_stale_ticket_loop())
 
+    # access_logs was 72% of the database and growing ~190MB/month, almost all of it
+    # in six indexes nothing ever scanned. The indexes are gone from the model; this
+    # keeps the table itself from becoming the next problem.
+    ACCESS_LOG_RETENTION_DAYS = max(1, int(os.getenv("ACCESS_LOG_RETENTION_DAYS", "30") or 30))
+
+    async def _access_log_retention_loop():
+        while True:
+            try:
+                async with database.SessionLocal() as db:
+                    cutoff = datetime.utcnow() - timedelta(days=ACCESS_LOG_RETENTION_DAYS)
+                    res = await db.execute(
+                        sa_delete(models.AccessLog).where(models.AccessLog.created_at < cutoff)
+                    )
+                    if res.rowcount:
+                        print(f"[access-log] purged {res.rowcount} row(s) older than {ACCESS_LOG_RETENTION_DAYS}d")
+                    await db.commit()
+            except Exception as e:
+                print(f"[access-log] retention sweep error: {e}")
+            await asyncio.sleep(6 * 3600)
+    asyncio.create_task(_access_log_retention_loop())
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -9211,7 +9232,7 @@ async def removed_business_cloud_inbox_webhook(
             raise HTTPException(status_code=404, detail='Webhook token not found')
 
         body = await request.json()
-        print(f"[cloud-webhook][api][POST] token={webhook_token} body={json.dumps(body)[:1200]}")
+        print(f"[cloud-webhook][api][POST] body_keys={sorted(body.keys()) if isinstance(body, dict) else '-'}")
         messages = _extract_cloud_api_messages(body if isinstance(body, dict) else {})
         print(f"[cloud-webhook][api][POST] messages={len(messages)}")
         results: list[dict[str, Any]] = []

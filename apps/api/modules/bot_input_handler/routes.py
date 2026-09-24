@@ -16,6 +16,7 @@ import whatsapp_service
 import receipt_ocr_service
 import storage_service
 import audio_transcription_service
+from log_privacy import preview
 
 
 # Remember recently-processed inventory images (hash -> unix ts) so an echoed/second
@@ -345,8 +346,8 @@ async def process_bot_input_route(
                             "Jika ini scan berganda, balas `batal`. Jika tidak, pilih kategori untuk simpan juga."
                         )
                         ocr_summary = f"{ocr_summary}\n\n{dup_msg}"
-                print(f"[receipt-ocr] draft description={draft.description!r} amount={draft.amount} date={draft.txn_date} category_options={len(category_rows)}")
-                print(f"[receipt-ocr] built text={text!r}")
+                print(f"[receipt-ocr] draft description={preview(draft.description)} amount={draft.amount} date={draft.txn_date} category_options={len(category_rows)}")
+                print(f"[receipt-ocr] built text={preview(text)}")
                 # Store pending OCR so a follow-up split/splitx command can reuse
                 # amount/title/date/time/media without the user retyping them.
                 from modules.split_bills import bot_flow
@@ -581,7 +582,7 @@ async def process_bot_input_route(
             },
         )
     print(
-        f"[WA][debug] has_media={has_media} target_ref={target_txn_ref!r} norm={normalized_target_txn_ref!r} replies={len(replies)} cat_prompt_pending={category_prompt_pending} reply_preview={(''.join(replies) or '')[:120]!r}",
+        f"[WA][debug] has_media={has_media} target_ref={target_txn_ref!r} norm={normalized_target_txn_ref!r} replies={len(replies)} cat_prompt_pending={category_prompt_pending} reply_preview={preview(''.join(replies))}",
         flush=True,
     )
 

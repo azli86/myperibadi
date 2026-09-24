@@ -581,6 +581,8 @@ class AccessLog(Base):
     user_id: Mapped[Optional[str]] = mapped_column(String(16), ForeignKey("users.id"), nullable=True, index=True)
     user_agent: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_blocked: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    # These indexes are for the admin log search (ip / path / status / blocked). The purge
+    # job in main.py is what keeps this table from growing without bound.
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
 def generate_business_order_no(dt: datetime = None):

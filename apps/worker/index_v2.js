@@ -15,6 +15,20 @@ const LID_MAPPING_DIR = path.join(__dirname, "lid_mapping");
 const API_ENV_PATH = path.join(__dirname, "..", "api", ".env");
 const sessions = {};
 const WA_WEBHOOK_TIMEOUT_MS = parseInt(process.env.WA_WEBHOOK_TIMEOUT_MS || "45000", 10);
+
+// Message text is off by default: the worker log reached 193MB of user messages, bot
+// replies and third party group text. Set LOG_MESSAGE_CONTENT=1 to get it back while
+// debugging. Length and identity stay in the logs either way.
+const LOG_MESSAGE_CONTENT = ["1", "true", "yes", "on"].includes(
+  String(process.env.LOG_MESSAGE_CONTENT || "").trim().toLowerCase()
+);
+
+function logPreview(value, limit = 120) {
+  const text = typeof value === "string" ? value : String(value ?? "");
+  if (!LOG_MESSAGE_CONTENT) return `<${text.length} chars>`;
+  const clean = text.split(/\s+/).filter(Boolean).join(" ");
+  return JSON.stringify(clean.length <= limit ? clean : clean.slice(0, limit - 3) + "...");
+}
 const WA_MESSAGE_QUEUE_MAX = Math.max(20, parseInt(process.env.WA_MESSAGE_QUEUE_MAX || "200", 10) || 200);
 const WA_PENDING_MEDIA_TTL_MS = Math.max(60000, parseInt(process.env.WA_PENDING_MEDIA_TTL_MS || "600000", 10) || 600000);
 const WA_CRYPTO_ERROR_WINDOW_MS = Math.max(60000, parseInt(process.env.WA_CRYPTO_ERROR_WINDOW_MS || "180000", 10) || 180000);
@@ -1473,7 +1487,7 @@ async function startSock(userId, pairingPhone = null, options = {}) {
             phone = mappedFromRemote;
           }
           if (mediaDescriptor || quotedMediaMessage || text) {
-            console.log(`[WA-DEBUG][${userId}] route=${mediaDescriptor || quotedMediaMessage ? 'media' : 'text'} remote_jid=${m.key?.remoteJid || '-'} participant_jid=${m.key?.participant || '-'} raw_phone=${formatPhone(m.key.participant || m.key.remoteJid || sock.user?.id) || '-'} mapped_participant=${mappedFromParticipant || '-'} mapped_remote=${mappedFromRemote || '-'} final_phone=${phone || '-'} is_self=${isSelfChat ? '1' : '0'} from_me=${m.key?.fromMe ? '1' : '0'} text=${JSON.stringify(text || '')}`);
+            console.log(`[WA-DEBUG][${userId}] route=${mediaDescriptor || quotedMediaMessage ? 'media' : 'text'} remote_jid=${m.key?.remoteJid || '-'} participant_jid=${m.key?.participant || '-'} raw_phone=${formatPhone(m.key.participant || m.key.remoteJid || sock.user?.id) || '-'} mapped_participant=${mappedFromParticipant || '-'} mapped_remote=${mappedFromRemote || '-'} final_phone=${phone || '-'} is_self=${isSelfChat ? '1' : '0'} from_me=${m.key?.fromMe ? '1' : '0'} text=${logPreview(text)}`);
           }
           const webhookPayload = {};
           if (messageId) webhookPayload.message_id = messageId;

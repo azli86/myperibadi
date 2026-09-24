@@ -18,6 +18,7 @@ import storage_service
 import budget_service
 import llm_service
 import ai_command_router
+from log_privacy import preview
 import location_service
 from time_utils import current_business_date, _get_business_timezone
 from bot_responses import CHAT_AUTO_REPLIES, INSTRUCTIONAL_FALLBACKS, normalize_message_text
@@ -4052,7 +4053,7 @@ async def _process_whatsapp_message_impl(
             resolved_longitude = float(ctx.longitude)
             resolved_location_name = ctx.location_name
         
-        _safe_print(f"[WA] Processing: \"{text}\" for user {user_name} ({user_lang})")
+        _safe_print(f"[WA] Processing: {preview(text)} for user {user_name} ({user_lang})")
 
         pending_selection = None if skip_category_prompt else _get_pending_category_selection(user_id, source_channel)
         if pending_selection:
@@ -4932,7 +4933,7 @@ async def _process_whatsapp_message_impl(
 
             # Out-of-scope questions (how to use git/python/etc.) -> stay silent.
             if _is_out_of_scope_question(text):
-                print(f"[BOT] Out-of-scope question, staying silent for user={user_id} channel={source_channel} text={text[:80]!r}")
+                print(f"[BOT] Out-of-scope question, staying silent for user={user_id} channel={source_channel} text={preview(text, 80)}")
                 return None, None
 
             if any(pattern in normalized_help_text for pattern in ["location", "lokasi", "map", "peta", "@here", "here", "mark location", "tanda lokasi", "lampir lokasi", "attach location", "reply location", "reply @here", "slide reply"]):
