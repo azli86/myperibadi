@@ -5021,7 +5021,27 @@ async def _process_whatsapp_message_impl(
         # 4. Find category from portal mapping (web-app source of truth)
         # When force_category_prompt is set (OCR media flow), always ask the user to
         # pick a category instead of auto-matching a keyword inside the scan text.
-        category = None if force_category_prompt else await get_category_by_keywords(db, text, household_id=household_id)
+        #
+        # A leading kind word is a statement of intent, not a category: "income grab tng"
+        # means income, category Grab, wallet TNG. get_category_by_keywords matches the
+        # whole string as one keyword when the first word is not itself a keyword, so
+        # passing the full text here would find nothing and then fall back to the
+        # expense default -- recording income as spending. Strip the leading kind word
+        # before matching and remember it, so the kind the user stated is respected
+        # instead of being decided by whichever category happens to match.
+        stated_kind: Optional[str] = None
+        category_search_text = text
+        leading_kind_match = re.match(
+            r"^\s*(income|pendapatan|gaji|salary|expense|expenses|belanja|perbelanjaan)\b[\s,:-]*",
+            text or "",
+            flags=re.IGNORECASE,
+        )
+        if leading_kind_match:
+            kind_word = leading_kind_match.group(1).lower()
+            stated_kind = "income" if kind_word in {"income", "pendapatan", "gaji", "salary"} else "expense"
+            category_search_text = (text or "")[leading_kind_match.end():].strip()
+
+        category = None if force_category_prompt else await get_category_by_keywords(db, category_search_text, household_id=household_id)
         
         # 5. Determine Transaction Type (Income vs Expense)
         category_suggestions: list[models.Category] = []
@@ -5039,8 +5059,8 @@ async def _process_whatsapp_message_impl(
             txn_type = category.kind
         else:
             # Fallback ONLY if no keyword mapping exists in the portal
-            # We default to 'expense' for safety
-            txn_type = forced_kind or "expense"
+            # We default to 'expense' for safety, unless the user named the kind.
+            txn_type = forced_kind or stated_kind or "expense"
             category_suggestions = await get_category_suggestions_by_keywords(
                 db,
                 text,
@@ -5081,6 +5101,13 @@ async def _process_whatsapp_message_impl(
                 ]
                 return "\n".join(lines), None
             category = await get_default_category(db, txn_type, household_id=household_id)
+
+        # A leading kind word that matched a category of the other kind is a contradiction
+        # the user did not intend, e.g. "income grab tng" where Grab is filed as an expense.
+        # Their stated kind wins and the keyword match is dropped, so the transaction lands
+        # under the default category of that kind rather than being recorded as its opposite.
+        if stated_kind and category is not None and category.kind != stated_kind:
+            category = await get_default_category(db, stated_kind, household_id=household_id)
 
         cat = category
         cat_name = cat.name if cat else ("Pendapatan" if txn_type == "income" else "Lain-lain")
