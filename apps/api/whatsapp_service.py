@@ -7,6 +7,7 @@ import math
 import secrets
 import sys
 import difflib
+from decimal import Decimal
 from pathlib import Path
 from typing import Optional, Tuple, List, Any
 from datetime import datetime, date, timedelta
@@ -4218,7 +4219,8 @@ async def _process_whatsapp_message_impl(
                             inc_res = await db.execute(select(func.sum(models.Transaction.amount)).where(models.Transaction.wallet_id == from_w.id, models.Transaction.type == "income"))
                             exp_res = await db.execute(select(func.sum(models.Transaction.amount)).where(models.Transaction.wallet_id == from_w.id, models.Transaction.type == "expense"))
                             from_w_bal = (inc_res.scalar() or 0) - (exp_res.scalar() or 0)
-                            if from_w_bal >= ocr_amount:
+                            # Decimal vs float again: an exact-balance move reads as short.
+                            if from_w_bal >= Decimal(str(ocr_amount)):
                                 txn_date = current_business_date()
                                 ocr_dt, _cleaned, _inv = extract_explicit_txn_date(str(pending_selection.get("original_text") or ""))
                                 if ocr_dt:
@@ -4854,8 +4856,14 @@ async def _process_whatsapp_message_impl(
                 inc_res = await db.execute(select(func.sum(models.Transaction.amount)).where(models.Transaction.wallet_id == from_w.id, models.Transaction.type == "income"))
                 exp_res = await db.execute(select(func.sum(models.Transaction.amount)).where(models.Transaction.wallet_id == from_w.id, models.Transaction.type == "expense"))
                 from_w_bal = (inc_res.scalar() or 0) - (exp_res.scalar() or 0)
-                
-                if from_w_bal < amount:
+
+                # Both sides must be Decimal. func.sum over a NUMERIC column returns
+                # Decimal, while amount is a float from extract_amount, and Python
+                # compares the pair exactly by widening the float to Decimal(0.34) =
+                # 0.34000000000000002... That made an exact-balance transfer read as
+                # short: Decimal("0.34") < 0.34 is True. The ticket that found this
+                # was a wallet with RM0.34 that refused "pindah 0.34 tng cimb".
+                if from_w_bal < Decimal(str(amount)):
                     transfer_error_key = "transfer_insufficient_bal_hidden" if hide_group_balance else "transfer_insufficient_bal"
                     return t.get(
                         transfer_error_key,
