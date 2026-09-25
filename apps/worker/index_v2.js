@@ -1034,8 +1034,35 @@ function quarantineSession(userId, reason = "crypto_error_storm") {
 }
 
 function isCryptoErrorLog(line) {
-  return /Bad MAC|Invalid PreKey ID|No matching sessions found|No session found to decrypt message|failed to decrypt message/i.test(line || "");
+  // "Over 2000 messages into the future" was missing from this list, so a single dead
+  // session wrote 570k lines and grew the log to 549MB in five hours -- above the
+  // throttle in createSessionLogger, because that throttle keys off this predicate.
+  return /Bad MAC|Invalid PreKey ID|No matching sessions found|No session found to decrypt message|failed to decrypt message|messages into the future|MessageCounterError/i.test(line || "");
 }
+
+// libsignal writes decryption failures with a bare console.error, which never passes
+// through the pino logger or its throttle. One dead session produced 549MB of these in
+// five hours. node_modules cannot be patched (npm install replaces it), so the noise is
+// filtered at the console instead. Everything else still reaches stderr, and the first
+// occurrence per minute is kept so a real problem is still visible.
+(function dampenSignalNoise() {
+  const originalError = console.error.bind(console);
+  const lastSeen = new Map();
+  const REPEAT_LOG_INTERVAL_MS = 60000;
+  console.error = (...args) => {
+    const text = args.map((a) => (a instanceof Error ? a.message : String(a))).join(" ");
+    if (!isCryptoErrorLog(text)) {
+      originalError(...args);
+      return;
+    }
+    const key = text.slice(0, 120);
+    const now = Date.now();
+    const previous = lastSeen.get(key) || 0;
+    if (now - previous < REPEAT_LOG_INTERVAL_MS) return;
+    lastSeen.set(key, now);
+    originalError(`[suppressed repeats for 60s] ${text.slice(0, 300)}`);
+  };
+})();
 
 function recordSessionCryptoError(userId, line) {
   const sessionObj = sessions[userId];
