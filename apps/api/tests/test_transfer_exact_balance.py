@@ -5,11 +5,16 @@ insufficient. The cause is a mixed-type comparison, not the balance.
 
 func.sum over a NUMERIC column returns Decimal. The requested amount comes from
 extract_amount as a float. Python compares Decimal to float exactly, widening the
-float, so float(0.34) becomes 0.34000000000000002... and Decimal("0.34") < 0.34 is
-True. Only amounts that float cannot represent exactly are affected: 0.34, 0.10,
-0.07. RM10.34 looks fine, RM0.34 does not.
+float to its true binary value, which sits very slightly above or below the written
+number. float(0.34) is 0.34000000000000002..., so the comparison asks whether the
+wallet is short of the amount the user just typed.
 
-These checks use the real comparison, on the exact values from the ticket, so a
+The direction depends on how that amount rounds, so the set of broken commands is
+not a short list and not 'the small ones': 0.34 rounds up and breaks, 0.30 rounds
+down and works, and 0.10 rounds up so it breaks whenever the balance is exactly
+0.10. That is why it looked intermittent rather than reproducible.
+
+These checks use the real comparison, on the values from the ticket, so a
 reintroduced float comparison fails here rather than in someone's chat.
 """
 
@@ -44,6 +49,29 @@ def test_affected_amounts_are_the_ones_float_cannot_hold():
     assert affected == ["0.34", "0.10", "0.07"], affected
 
 
+def test_the_breakage_follows_the_rounding_direction():
+    """The defect is not 'small amounts'. It is whichever way the float rounds.
+
+    Pinning the shapes down keeps a future reader from 'fixing' this by special
+    casing a list of amounts, which is what the first commit message implied.
+    """
+    rounds_up = [a for a in ("0.34", "0.10", "0.07") if Decimal(float(a)) > Decimal(a)]
+    rounds_down = [a for a in ("0.30", "10.34") if Decimal(float(a)) < Decimal(a)]
+    assert rounds_up == ["0.34", "0.10", "0.07"], rounds_up
+    assert rounds_down == ["0.30", "10.34"], rounds_down
+    # rounding up is what makes an exact balance read as short
+    for amount in rounds_up:
+        assert Decimal(amount) < float(amount), amount
+    # rounding down is what let some wrong comparisons pass by luck
+    for amount in rounds_down:
+        assert not (Decimal(amount) < float(amount)), amount
+
+
+def test_reported_balance_is_a_rounds_up_amount():
+    """Connects the general rule back to the ticket, so the two cannot drift."""
+    assert Decimal(float(REPORTED_COMMAND_AMOUNT)) > REPORTED_BALANCE
+
+
 def test_unaffected_amounts_are_still_compared_exactly():
     """A whole-cent amount must compare equal to itself once both sides are Decimal.
 
@@ -75,6 +103,8 @@ if __name__ == "__main__":
     test_the_old_comparison_is_the_defect()
     test_comparing_as_decimal_allows_the_full_transfer()
     test_affected_amounts_are_the_ones_float_cannot_hold()
+    test_the_breakage_follows_the_rounding_direction()
+    test_reported_balance_is_a_rounds_up_amount()
     test_unaffected_amounts_are_still_compared_exactly()
     test_transfer_code_compares_as_decimal()
     print("exact-balance transfer checks passed")

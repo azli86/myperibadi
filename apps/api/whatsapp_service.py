@@ -4859,10 +4859,11 @@ async def _process_whatsapp_message_impl(
 
                 # Both sides must be Decimal. func.sum over a NUMERIC column returns
                 # Decimal, while amount is a float from extract_amount, and Python
-                # compares the pair exactly by widening the float to Decimal(0.34) =
-                # 0.34000000000000002... That made an exact-balance transfer read as
-                # short: Decimal("0.34") < 0.34 is True. The ticket that found this
-                # was a wallet with RM0.34 that refused "pindah 0.34 tng cimb".
+                # compares the pair exactly by widening the float to its true binary
+                # value. That value sits slightly above or below what the user typed,
+                # so an exact-balance transfer could read as short: Decimal("0.34") <
+                # 0.34 is True. Ticket: a wallet with RM0.34 refused "pindah 0.34 tng
+                # cimb" while "pindah 0.30" worked, because 0.30 rounds the other way.
                 if from_w_bal < Decimal(str(amount)):
                     transfer_error_key = "transfer_insufficient_bal_hidden" if hide_group_balance else "transfer_insufficient_bal"
                     return t.get(
