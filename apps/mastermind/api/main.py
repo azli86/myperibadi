@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from fastapi import Cookie, Depends, FastAPI, HTTPException, Response, Request
 import bcrypt
 from jose import JWTError, jwt
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import text
 from sqlalchemy.engine import URL
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -15,6 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 load_dotenv()
 
 SECRET = os.environ.get("MASTERMIND_SECRET_KEY", "")
+# Shared with the budget API (apps/api): its access tokens are signed with
+# SECRET_KEY, and the same value is present in this service's env. Used only
+# to mint short-lived tokens for the notice-banner proxy below.
+BUDGET_SECRET_KEY = os.environ.get("SECRET_KEY", "") or SECRET
 if not SECRET:
     raise RuntimeError("MASTERMIND_SECRET_KEY is required")
 
@@ -653,3 +657,93 @@ async def support_ticket_reply(ticket_id: int, request: Request, actor: dict = D
     await db.commit()
     await _audit(db, actor, "ticket_reply", "support_ticket", str(ticket_id), row["title"])
     return {"ok": True, "admin_note": reply}
+
+# ── Notice banners (proxied to the budget API) ────────────────────────────────
+# Mastermind keeps no code sharing with apps/api, so the minimal request/response
+# shape is duplicated here. The banner config lives in the budget DB
+# (user_settings, key adminportal.notice_banners) and is read by the budget API,
+# which the user-facing app already calls via its own /api rewrite.
+BUDGET_API_BASE = os.getenv("BUDGET_API_INTERNAL_ORIGIN", "http://127.0.0.1:8023").rstrip("/")
+
+
+class NoticeBannerItem(BaseModel):
+    enabled: bool = False
+    type: str = Field(default="info", pattern="^(info|warning|alert)$")
+    title_bm: str = Field(default="", max_length=120)
+    message_bm: str = Field(default="", max_length=600)
+    title_en: str = Field(default="", max_length=120)
+    message_en: str = Field(default="", max_length=600)
+
+
+class NoticeBannerSettings(BaseModel):
+    personal: NoticeBannerItem = Field(default_factory=NoticeBannerItem)
+
+
+def _budget_token(email: str) -> str:
+    """Mint a short-lived budget-API access token.
+
+    The budget API authenticates its adminportal routes by decoding a JWT whose
+    `sub` is the user's email and which is signed with SECRET_KEY. Mastermind
+    already loads the same SECRET_KEY (shared budget/Mastermind secret), so the
+    admin's email is enough to obtain a token — no shared cookie and no import
+    from apps/api. Worst case if the secrets ever diverge: the budget API
+    returns 401 and the panel reports it, nothing else breaks.
+    """
+    if not BUDGET_SECRET_KEY:
+        raise HTTPException(502, "SECRET_KEY kongsi dengan Budget API tiada — banner tidak boleh diakses")
+    return jwt.encode(
+        {
+            "sub": email,
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
+            "token_type": "access",
+        },
+        BUDGET_SECRET_KEY,
+        algorithm="HS256",
+    )
+
+
+async def _budget_api_call(method: str, path: str, email: str, payload: dict | None = None):
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.request(
+                method,
+                f"{BUDGET_API_BASE}{path}",
+                json=payload,
+                headers={"Authorization": f"Bearer {_budget_token(email)}"},
+            )
+    except httpx.HTTPError as e:  # noqa: BLE001
+        logging.warning("Budget API call failed: %s %s: %s", method, path, e)
+        raise HTTPException(502, "Budget API tidak dapat dihubungi")
+    if r.status_code >= 400:
+        detail = ""
+        try:
+            detail = str((r.json() or {}).get("detail") or "")
+        except Exception:  # noqa: BLE001
+            detail = (r.text or "")[:200]
+        raise HTTPException(r.status_code, detail or "Banner gagal disimpan")
+    try:
+        return r.json()
+    except Exception:  # noqa: BLE001
+        raise HTTPException(502, "Respons Budget API tidak sah")
+
+
+# Mastermind admin gate reuses the existing `admin` dependency (mastermind_session
+# cookie), so these endpoints are NOT publicly reachable.
+@app.get("/notice-banners")
+async def get_notice_banners(actor: dict = Depends(admin)):
+    return await _budget_api_call("GET", "/adminportal/notice-banners", actor["email"])
+
+
+@app.patch("/notice-banners")
+async def update_notice_banners(
+    payload: NoticeBannerSettings,
+    actor: dict = Depends(admin),
+    db: AsyncSession = Depends(db_session),
+):
+    data = await _budget_api_call(
+        "PATCH", "/adminportal/notice-banners", actor["email"], payload.model_dump()
+    )
+    await _audit(db, actor, "notice_banners_update", "user_settings", "adminportal.notice_banners", "updated")
+    return data

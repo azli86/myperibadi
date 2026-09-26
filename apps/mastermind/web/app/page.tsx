@@ -52,6 +52,9 @@ import {
   Lightbulb,
   LifeBuoy,
   Bug,
+  Megaphone,
+  Bell,
+  Save,
 } from "lucide-react";
 
 function GoogleIcon() {
@@ -86,7 +89,8 @@ type View =
   | "system"
   | "activity"
   | "transactions"
-  | "tickets";
+  | "tickets"
+  | "banners";
 
 type Stats = Record<
   | "users"
@@ -181,6 +185,42 @@ const fmtDay = (s: string | null | undefined) => {
   });
 };
 
+type BannerScope = "personal";
+
+type BannerItem = {
+  enabled: boolean;
+  type: "info" | "warning" | "alert";
+  title_bm: string;
+  message_bm: string;
+  title_en: string;
+  message_en: string;
+};
+
+type Banners = Record<BannerScope, BannerItem>;
+
+const emptyBannerItem: BannerItem = {
+  enabled: false,
+  type: "info",
+  title_bm: "",
+  message_bm: "",
+  title_en: "",
+  message_en: "",
+};
+
+const emptyBanners: Banners = {
+  personal: { ...emptyBannerItem },
+};
+
+const bannerScopes: { id: BannerScope; label: string; hint: string }[] = [
+  {
+    id: "personal",
+    label: "Banner Personal",
+    hint: "Ditunjuk kepada semua pengguna MyPeribadi",
+  },
+];
+
+const bannerTypes: BannerItem["type"][] = ["info", "warning", "alert"];
+
 export default function Home() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -209,6 +249,9 @@ export default function Home() {
   const [ticketsTotal, setTicketsTotal] = useState(0);
   const [ticketKindFilter, setTicketKindFilter] = useState("");
   const [ticketDetail, setTicketDetail] = useState<any | null>(null);
+
+  const [banners, setBanners] = useState<Banners>(emptyBanners);
+  const [bannerSaved, setBannerSaved] = useState("");
 
   const [busy, setBusy] = useState(false);
   const [ticketReply, setTicketReply] = useState("");
@@ -534,6 +577,55 @@ export default function Home() {
     setRecentTxns(await r.json());
   }
 
+  async function showBanners() {
+    setView("banners");
+    setMobileNavOpen(false);
+    setError("");
+    setBannerSaved("");
+    const r = await fetch("/api/notice-banners", { credentials: "include" });
+    if (!r.ok) {
+      setError("Banner gagal dimuat");
+      return;
+    }
+    const d = await r.json();
+    setBanners({
+      personal: { ...emptyBannerItem, ...(d?.personal || {}) },
+    });
+  }
+
+  function editBanner(scope: BannerScope, patch: Partial<BannerItem>) {
+    setBanners((b) => ({ ...b, [scope]: { ...b[scope], ...patch } }));
+    setBannerSaved("");
+  }
+
+  async function saveBanners() {
+    setBusy(true);
+    setError("");
+    setBannerSaved("");
+    try {
+      const r = await fetch("/api/notice-banners", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(banners),
+      });
+      if (!r.ok) {
+        const d = await r.json().catch(() => null);
+        setError((d && d.detail) || "Banner gagal disimpan");
+        return;
+      }
+      const d = await r.json();
+      setBanners({
+        personal: { ...emptyBannerItem, ...(d?.personal || {}) },
+      });
+      setBannerSaved("Banner berjaya disimpan.");
+    } catch (e: any) {
+      setError(e?.message || "Banner gagal disimpan");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const handleRefresh = async () => {
     if (view === "dashboard") await load();
     else if (view === "users") await showUsers(userQuery, userFilter);
@@ -544,6 +636,7 @@ export default function Home() {
     else if (view === "transactions") await showTransactions();
     else if (view === "logs") await showLogs(activeLogTab);
     else if (view === "tickets") await showTickets(ticketKindFilter);
+    else if (view === "banners") await showBanners();
   };
 
   // Unauthenticated State (Login Screen)
@@ -748,6 +841,10 @@ export default function Home() {
       title: "Tiket Sokongan & Cadangan",
       desc: "Permintaan bantuan, laporan pepijat dan maklum balas",
     },
+    banners: {
+      title: "Banner Notis Aplikasi",
+      desc: "Notis yang dipaparkan kepada pengguna dalam aplikasi MyPeribadi",
+    },
   };
 
   const navItems = [
@@ -816,6 +913,12 @@ export default function Home() {
       label: "Tiket",
       icon: <Ticket className="nav-icon" />,
       onClick: () => void showTickets(),
+    },
+    {
+      id: "banners" as View,
+      label: "Banner",
+      icon: <Megaphone className="nav-icon" />,
+      onClick: () => void showBanners(),
     },
   ];
 
@@ -2133,6 +2236,174 @@ export default function Home() {
           )}
 
           {/* VIEW: TICKETS */}
+          {view === "banners" && (
+            <div className="banner-view">
+              <div className="card" style={{ marginBottom: "16px" }}>
+                <div className="card-header">
+                  <div className="card-title-group">
+                    <div className="card-title-icon">
+                      <Megaphone size={18} />
+                    </div>
+                    <div>
+                      <div className="card-title">Notis &amp; Pengumuman</div>
+                      <div className="card-subtitle">
+                        Perubahan disimpan ke pangkalan data dan terus dipaparkan
+                        kepada pengguna aplikasi.
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    className="primary banner-save"
+                    disabled={busy}
+                    onClick={() => void saveBanners()}
+                  >
+                    {busy ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Save size={16} />
+                    )}
+                    <span>Simpan Banner</span>
+                  </button>
+                </div>
+              </div>
+
+              {bannerSaved && (
+                <div
+                  className="pill ok"
+                  style={{ marginBottom: "16px", padding: "8px 14px" }}
+                >
+                  <CheckCircle2 size={14} /> {bannerSaved}
+                </div>
+              )}
+
+              <div className="grid">
+                {bannerScopes.map((scope) => {
+                  const item = banners[scope.id];
+                  return (
+                    <article className="card" key={scope.id}>
+                      <div className="card-header banner-card-header">
+                        <div className="card-title-group">
+                          <div className="card-title-icon">
+                            <Bell size={18} />
+                          </div>
+                          <div>
+                            <div className="card-title">{scope.label}</div>
+                            <div className="card-subtitle">{scope.hint}</div>
+                          </div>
+                        </div>
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            cursor: "pointer",
+                            fontSize: "12.5px",
+                            fontWeight: 700,
+                            color: item.enabled
+                              ? "var(--emerald-text)"
+                              : "var(--text-muted)",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={item.enabled}
+                            onChange={(e) =>
+                              editBanner(scope.id, { enabled: e.target.checked })
+                            }
+                            style={{ width: "16px", height: "16px" }}
+                          />
+                          {item.enabled ? "AKTIF" : "MATI"}
+                        </label>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Jenis Notis</label>
+                        <select
+                          className="field"
+                          value={item.type}
+                          onChange={(e) =>
+                            editBanner(scope.id, {
+                              type: e.target.value as BannerItem["type"],
+                            })
+                          }
+                        >
+                          {bannerTypes.map((t) => (
+                            <option key={t} value={t}>
+                              {t}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Tajuk (BM)</label>
+                        <input
+                          className="field"
+                          maxLength={120}
+                          value={item.title_bm}
+                          onChange={(e) =>
+                            editBanner(scope.id, { title_bm: e.target.value })
+                          }
+                          placeholder="Tajuk notis dalam Bahasa Melayu"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Mesej (BM)</label>
+                        <textarea
+                          className="field"
+                          maxLength={600}
+                          rows={3}
+                          value={item.message_bm}
+                          onChange={(e) =>
+                            editBanner(scope.id, { message_bm: e.target.value })
+                          }
+                          placeholder="Mesej penuh dalam Bahasa Melayu"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Tajuk (EN)</label>
+                        <input
+                          className="field"
+                          maxLength={120}
+                          value={item.title_en}
+                          onChange={(e) =>
+                            editBanner(scope.id, { title_en: e.target.value })
+                          }
+                          placeholder="Notice title in English"
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Mesej (EN)</label>
+                        <textarea
+                          className="field"
+                          maxLength={600}
+                          rows={3}
+                          value={item.message_en}
+                          onChange={(e) =>
+                            editBanner(scope.id, { message_en: e.target.value })
+                          }
+                          placeholder="Full message in English"
+                        />
+                      </div>
+
+                      <div className="metric-footer">
+                        <span className="pulse-dot" />
+                        <span>
+                          {item.enabled
+                            ? `Aktif · jenis ${item.type}`
+                            : "Tidak dipaparkan kepada pengguna"}
+                        </span>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {view === "tickets" && (
             <>
               <div className="card">
