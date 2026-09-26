@@ -332,7 +332,7 @@ export default function InventoryItemDetailPage() {
                 aria-label={tr("Pindahkan", "Move")}
                 title={tr("Pindahkan", "Move")}
               >
-                <ArrowRightLeft size={15} className="text-sky-500 dark:text-sky-400" />
+                <ArrowRightLeft size={15} className="text-sky-700 dark:text-sky-400" />
               </button>
               <button
                 type="button"
@@ -346,7 +346,7 @@ export default function InventoryItemDetailPage() {
               <button
                 type="button"
                 onClick={deleteItem}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-500 transition active:scale-[0.98] hover:bg-rose-500/20"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-500 transition active:scale-[0.98] hover:bg-rose-500/20"
                 aria-label={tr("Padam", "Delete")}
                 title={tr("Padam", "Delete")}
               >
@@ -384,7 +384,7 @@ export default function InventoryItemDetailPage() {
             <button
               type="button"
               onClick={deleteItem}
-              className="inline-flex h-8 min-w-0 flex-1 shrink items-center justify-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-2 text-xs font-bold leading-none text-rose-500 transition active:scale-[0.98] sm:flex-none sm:px-3 [&_svg]:h-3.5 [&_svg]:w-3.5"
+              className="inline-flex h-8 min-w-0 flex-1 shrink items-center justify-center gap-1.5 rounded-xl border border-rose-500/20 bg-rose-500/10 px-2 text-xs font-bold leading-none text-rose-700 dark:text-rose-500 transition active:scale-[0.98] sm:flex-none sm:px-3 [&_svg]:h-3.5 [&_svg]:w-3.5"
               aria-label={tr("Padam", "Delete")}
             >
               <Trash2 size={16} />
@@ -455,7 +455,7 @@ export default function InventoryItemDetailPage() {
                 {item.transaction_id && (
                   <Link
                     href={`/${sessionId}/transactions/${item.transaction_id}`}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300 transition hover:bg-emerald-500/20"
                   >
                     <Receipt className="h-3.5 w-3.5" />
                     <span>{tr("Lihat Resit / Transaksi Pembelian", "View Purchase Transaction")}</span>
@@ -465,7 +465,7 @@ export default function InventoryItemDetailPage() {
                 {item.warranty_id && (
                   <Link
                     href={`/${sessionId}/warranty/${item.warranty_id}`}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-sky-500/10 border border-sky-500/20 px-3 py-1.5 text-xs font-semibold text-sky-300 transition hover:bg-sky-500/20"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-sky-500/10 border border-sky-500/20 px-3 py-1.5 text-xs font-semibold text-sky-800 dark:text-sky-300 transition hover:bg-sky-500/20"
                   >
                     <ShieldCheck className="h-3.5 w-3.5" />
                     <span>{tr("Lihat Maklumat Waranti", "View Warranty Info")}</span>
@@ -480,7 +480,7 @@ export default function InventoryItemDetailPage() {
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
-                <MapPin className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
+                <MapPin className="h-4 w-4 text-emerald-700 dark:text-emerald-400" />
                 {tr("Lokasi Penyimpanan", "Storage Location")}
               </h2>
               <button
@@ -488,7 +488,7 @@ export default function InventoryItemDetailPage() {
                 onClick={() => setShowMove(true)}
                 className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-1 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)]"
               >
-                <ArrowRightLeft size={13} className="text-sky-500 dark:text-sky-400" />
+                <ArrowRightLeft size={13} className="text-sky-700 dark:text-sky-400" />
                 {tr("Pindah", "Move")}
               </button>
             </div>
@@ -619,7 +619,7 @@ export default function InventoryItemDetailPage() {
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
-                <History className="h-4 w-4 text-sky-400" />
+                <History className="h-4 w-4 text-sky-700 dark:text-sky-400" />
                 {tr("Sejarah Pergerakan & Stok", "Movement & Stock History")}
               </h2>
               <span className="text-xs font-semibold text-[var(--muted)]">
@@ -637,16 +637,16 @@ export default function InventoryItemDetailPage() {
                   let badge = "bg-[var(--surface-tint)] text-[var(--muted)]"
                   let title = m.movement_type
                   if (m.movement_type === "created") {
-                    badge = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                    badge = "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
                     title = tr("Barang dicipta", "Item created")
                   } else if (m.movement_type === "moved") {
-                    badge = "bg-sky-500/10 text-sky-400 border-sky-500/20"
+                    badge = "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/20"
                     title = tr("Lokasi dipindahkan", "Location moved")
                   } else if (m.movement_type === "quantity_changed") {
-                    badge = "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                    badge = "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
                     title = tr("Kuantiti diubah", "Quantity changed")
                   } else if (m.movement_type === "status_changed") {
-                    badge = "bg-purple-500/10 text-purple-400 border-purple-500/20"
+                    badge = "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20"
                     title = tr("Status ditukar", "Status changed")
                   }
 
@@ -690,7 +690,7 @@ export default function InventoryItemDetailPage() {
           {/* ── DANGER ZONE (DELETE ITEM) ── */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4 sm:p-5">
             <div>
-              <p className="text-xs font-bold text-rose-500">
+              <p className="text-xs font-bold text-rose-700 dark:text-rose-500">
                 {tr("Padam Rekod Barang", "Delete Item Record")}
               </p>
               <p className="mt-0.5 text-[11px] text-[var(--muted)]">
@@ -700,7 +700,7 @@ export default function InventoryItemDetailPage() {
             <button
               type="button"
               onClick={deleteItem}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-rose-500/40 bg-rose-500/15 px-3.5 py-2 text-xs font-bold text-rose-500 transition hover:bg-rose-500/25 active:scale-95"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-rose-500/40 bg-rose-500/15 px-3.5 py-2 text-xs font-bold text-rose-700 dark:text-rose-500 transition hover:bg-rose-500/25 active:scale-95"
             >
               <Trash2 size={14} />
               <span>{tr("Padam Barang Ini", "Delete This Item")}</span>
@@ -1085,7 +1085,7 @@ function EditSheet({
                       setImageFile(null)
                       setImagePreview(item.has_image ? `/api/inventory/items/${item.id}/image` : null)
                     }}
-                    className="text-xs font-medium text-rose-400 hover:underline"
+                    className="text-xs font-medium text-rose-700 dark:text-rose-400 hover:underline"
                   >
                     {tr("Padam", "Remove")}
                   </button>
