@@ -1718,9 +1718,15 @@ export default function SettingsPage() {
                           type="button"
                           onClick={() => {
                             if (!isActive) {
-                              switchToAccount(acct.email)
-                              setActiveEmail(acct.email)
-                              window.location.reload()
+                              if (switchToAccount(acct.email)) {
+                                setActiveEmail(acct.email)
+                                window.location.reload()
+                              } else {
+                                window.alert(tr(
+                                  `Akaun ${acct.email} perlu log masuk semula untuk diaktifkan.`,
+                                  `Account ${acct.email} needs to sign in again before it can be activated.`,
+                                ))
+                              }
                             }
                           }}
                           className={cn(
@@ -2109,9 +2115,15 @@ export default function SettingsPage() {
                           type="button"
                           onClick={() => {
                             if (!isActive) {
-                              switchToAccount(acct.email)
-                              setActiveEmail(acct.email)
-                              window.location.reload()
+                              if (switchToAccount(acct.email)) {
+                                setActiveEmail(acct.email)
+                                window.location.reload()
+                              } else {
+                                window.alert(tr(
+                                  `Akaun ${acct.email} perlu log masuk semula untuk diaktifkan.`,
+                                  `Account ${acct.email} needs to sign in again before it can be activated.`,
+                                ))
+                              }
                             }
                           }}
                           className={cn(

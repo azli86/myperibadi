@@ -14,6 +14,11 @@ import {
 
 const ACCOUNTS_STORAGE_KEY = "bdp_accounts"
 const ACTIVE_EMAIL_STORAGE_KEY = "bdp_active_email"
+/**
+ * Token yang hanya bermakna "auth melalui cookie HttpOnly" — bukan JWT sebenar.
+ * Profil yang menyimpan ini masih boleh dihidupkan (permintaan akan bawa cookie).
+ */
+const COOKIE_AUTH_SENTINEL_FALLBACK = "__cookie_auth__"
 
 export type AccountProfile = {
   email: string
@@ -67,25 +72,33 @@ function setActiveEmail(email: string) {
   s.setItem(ACTIVE_EMAIL_STORAGE_KEY, email)
 }
 
-/** Sync current auth tokens into the active account profile */
+/**
+ * Sync the active account's name (and current session id) into its profile.
+ *
+ * Token TIDAK disalin dari storan auth-session. Server hanya menyimpan hash
+ * refresh token TERAKHIR (session_row.refresh_token_hash), jadi menyalin token
+ * yang lebih baru ke dalam profil akan membuat profil akaun ini mustahil
+ * dihidupkan semula selepas akaun lain me-refresh — pusing balik ke akaun ini
+ * akan hantar token lama -> 401 "Invalid refresh token" berulang.
+ */
 export function syncCurrentAccountToProfile(name: string) {
   const s = store()
   if (!s) return
-  const token = getAccessToken()
-  const refresh = getRefreshToken()
   const sessionId = getSessionId()
-  if (!token || !sessionId) return
+  if (!sessionId) return
 
   const email = getActiveEmail()
   if (!email) return
 
   const accounts = getAccounts()
   const idx = accounts.findIndex((a) => a.email === email)
+  const existing = idx >= 0 ? accounts[idx] : null
   const profile: AccountProfile = {
     email,
     name,
-    accessToken: token,
-    refreshToken: refresh,
+    // Kekalkan token profil yang diterbitkan semasa akaun ini terakhir aktif.
+    accessToken: existing?.accessToken ?? getAccessToken() ?? COOKIE_AUTH_SENTINEL_FALLBACK,
+    refreshToken: existing?.refreshToken ?? getRefreshToken(),
     sessionId,
   }
   if (idx >= 0) {
@@ -112,11 +125,17 @@ export function initActiveAccount(): AccountProfile | null {
   return null
 }
 
-/** Switch to a different account */
+/** Switch to a different account. Returns false bila profil tiada / tidak boleh dihidupkan. */
 export function switchToAccount(email: string) {
   const accounts = getAccounts()
   const profile = accounts.find((a) => a.email === email)
   if (!profile) return false
+
+  // Profil tanpa refresh token tidak boleh dihidupkan: setAuthTokens akan
+  // biarkan refresh token akaun SEBELUM ini di dalam storan, jadi app nampak
+  // 'berjaya tukar' tetapi setiap panggilan API gagal 401 -> butang seolah-olah
+  // 'tk kluar pape'. Lapor gagal supaya pemanggil boleh minta login semula.
+  if (!profile.refreshToken) return false
 
   setAuthTokens(profile.accessToken, profile.refreshToken)
   const s = store()
@@ -160,9 +179,22 @@ export function removeAccount(email: string): string | null {
   return next
 }
 
-/** Called after login to store the initial account */
+/**
+ * Called after login to store the account.
+ * Upsert — menyimpan akaun lain yang sudah ada. Sebelum ini ia guna
+ * saveAccounts([profile]), jadi setiap login menimpa seluruh senarai
+ * (akaun lain terus hilang -> butang "Tukar akaun" nampak tak berfungsi).
+ */
 export function initFirstAccount(email: string, name: string, accessToken: string, refreshToken: string | null, sessionId: string) {
   setActiveEmail(email)
+  const accounts = getAccounts()
+  const idx = accounts.findIndex((a) => a.email === email)
   const profile: AccountProfile = { email, name, accessToken, refreshToken, sessionId }
-  saveAccounts([profile])
+  if (idx >= 0) {
+    accounts[idx] = profile
+  } else {
+    accounts.push(profile)
+  }
+  saveAccounts(accounts)
 }
+

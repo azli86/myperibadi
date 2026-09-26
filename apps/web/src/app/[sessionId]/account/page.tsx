@@ -102,6 +102,13 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
     subscription_count: number
   } | null>(null)
   const [activeMobileSheet, setActiveMobileSheet] = useState<"profile" | "email" | "danger" | null>(null)
+  // Profil akaun yang gagal dihidupkan (refresh token hilang) — papar mesej,
+  // jangan reload.
+  // Profil akaun yang gagal dihidupkan (refresh token tiada) — papar mesej,
+  // jangan reload buta.
+  // Profil akaun yang gagal dihidupkan (refresh token tiada) — papar mesej,
+  // jangan reload buta.
+  const [switchFailedEmail, setSwitchFailedEmail] = useState<string | null>(null)
   const [accounts, setAccounts] = useState<AccountProfile[]>([])
   const [activeEmail, setActiveEmail] = useState<string | null>(null)
 
@@ -504,6 +511,16 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
           <div className="space-y-1.5">
             <p className="px-1 text-[0.68rem] font-extrabold uppercase tracking-wider text-[var(--muted)]">
               {tr("Tukar Akaun / Multi-Account", "Multi-Account Switching")}
+            {switchFailedEmail && (
+              <p className="rounded-xl border border-[var(--expense)]/30 bg-[var(--expense-bg)] px-3 py-2 text-[0.68rem] font-semibold text-[var(--expense)]">
+                {tr(
+                  `Akaun ${switchFailedEmail} perlu log masuk semula untuk diaktifkan.`,
+                  `Account ${switchFailedEmail} needs to sign in again before it can be activated.`,
+                )}
+              </p>
+            )}
+
+
             </p>
             <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] divide-y divide-[var(--divider)] shadow-sm">
               {accounts.map((acct) => {
@@ -514,9 +531,12 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
                     type="button"
                     onClick={() => {
                       if (!isActive) {
-                        switchToAccount(acct.email)
-                        setActiveEmail(acct.email)
-                        window.location.reload()
+                        if (switchToAccount(acct.email)) {
+                          setActiveEmail(acct.email)
+                          window.location.reload()
+                        } else {
+                          setSwitchFailedEmail(acct.email)
+                        }
                       }
                     }}
                     className={cn(
@@ -859,9 +879,15 @@ export function AccountContent({ embedded = false }: { embedded?: boolean }) {
                         type="button"
                         onClick={() => {
                           if (!isActive) {
-                            switchToAccount(acct.email)
-                            setActiveEmail(acct.email)
-                            window.location.reload()
+                            // switchToAccount pulangkan false bila profil akaun tiada refresh
+                            // token lagi (akaun lama / selepas log masuk semula akaun lain).
+                            // Reload buta buat butang nampak 'tk kluar pape'.
+                            if (switchToAccount(acct.email)) {
+                              setActiveEmail(acct.email)
+                              window.location.reload()
+                            } else {
+                              setSwitchFailedEmail(acct.email)
+                            }
                           }
                         }}
                         className={cn(
@@ -1418,3 +1444,5 @@ function RedirectToSettings({ sessionId, router }: { sessionId: string; router: 
   }, [sessionId, router])
   return null
 }
+
+
