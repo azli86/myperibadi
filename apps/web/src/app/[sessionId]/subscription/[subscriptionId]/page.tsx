@@ -10,11 +10,8 @@ import {
   Pencil,
   Trash2,
   X,
-  BadgeCheck,
-  Calendar,
   Copy,
   Check,
-  AlertTriangle,
   History,
   RotateCcw,
   CreditCard,
@@ -153,7 +150,6 @@ export default function SubscriptionDetailPage() {
   const [transactions, setTransactions] = useState<SubscriptionTxn[]>([])
   const [loading, setLoading] = useState(true)
   const [hasLoadedData, setHasLoadedData] = useState(false)
-  const [detailsOpen, setDetailsOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const mobileMenuRef = useRef<HTMLDivElement>(null)
   const [mounted, setMounted] = useState(false)
@@ -291,41 +287,33 @@ export default function SubscriptionDetailPage() {
     return `SUBX PAY ${name} ${amountText} WALLET`
   }, [subscription])
 
-  const groupedTransactions = useMemo(() => {
-    const noDateLabel = isBM ? "Tiada tarikh" : "No date"
-    return Object.entries(
-      transactions.reduce(
-        (groups, item) => {
-          const dateKey = String(item.txn_date || item.created_at || "").trim().slice(0, 10) || noDateLabel
-          if (!groups[dateKey]) groups[dateKey] = []
-          groups[dateKey].push(item)
-          return groups
-        },
-        {} as Record<string, SubscriptionTxn[]>,
+  const sortedTransactions = useMemo(
+    () =>
+      [...transactions].sort((a, b) =>
+        String(b.txn_date || b.created_at || "").localeCompare(String(a.txn_date || a.created_at || ""))
       ),
-    )
-      .sort(([a], [b]) => b.localeCompare(a))
-      .map(([date, items]) => {
-        const hasRealDate = date !== noDateLabel
-        const dateObj = hasRealDate ? new Date(`${date}T12:00:00`) : null
-        const dayNumber = dateObj
-          ? dateObj.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", { day: "numeric" })
-          : "--"
-        const weekdayLabel = dateObj
-          ? dateObj.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", { weekday: "long" })
-          : date
-        const monthYearLabel = dateObj
-          ? dateObj.toLocaleDateString(lang === "EN" ? "en-MY" : "ms-MY", { month: "long", year: "numeric" })
-          : ""
-        const total = items.reduce((acc, item) => acc + Number(item.amount || 0), 0)
-        return { date, items, dayNumber, weekdayLabel, monthYearLabel, total }
-      })
-  }, [isBM, lang, transactions])
+    [transactions],
+  )
+
+  const category = useMemo(
+    () => categories.find((c) => c.id === subscription?.category_id) || null,
+    [categories, subscription?.category_id],
+  )
+
+  // Next due date as a calendar date, from the same KL-based day count.
+  const nextDueLabel = useMemo(() => {
+    const kl = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" }))
+    kl.setHours(12, 0, 0, 0)
+    kl.setDate(kl.getDate() + days)
+    return kl.toLocaleDateString(isBM ? "ms-MY" : "en-MY", { day: "numeric", month: "short", year: "numeric" })
+  }, [days, isBM])
+
+  // How far through the monthly cycle we are: empty just after paying, full
+  // on the due day, and pinned full once overdue.
+  const cycleProgress = days <= 0 ? 1 : Math.min(1, Math.max(0, (30 - days) / 30))
 
   const showDataSkeleton = useDelayedSkeleton(loading && !hasLoadedData)
-  const surfaceCardClass = isLight ? "border-[color:var(--border)] bg-[var(--card)]" : "border-white/10 bg-[var(--card)]"
   const mutedClass = isLight ? "text-slate-500" : "text-white/55"
-  const softClass = isLight ? "text-slate-400" : "text-white/35"
 
   const closeEditSheet = useCallback(() => setShowEditSheet(false), [])
   const { requestClose: requestEditSheetClose } = useOverlayBackClose({
@@ -467,13 +455,17 @@ export default function SubscriptionDetailPage() {
   const title = subscription?.name || tr("Detail Subscription", "Subscription Detail")
   const isActive = subscription?.status === "active"
 
-  const statusBadge = (() => {
-    if (!isActive) return { label: tr("Tak Aktif", "Inactive"), className: "bg-white/10 text-[#8c8c8c]" }
-    if (urgency === "overdue") return { label: tr("Lewat", "Overdue"), className: "bg-white/12 text-[#f5f5f5]" }
-    if (urgency === "today") return { label: tr("Hari Ini", "Today"), className: "bg-white/12 text-[#f5f5f5]" }
-    if (urgency === "soon") return { label: tr("Hampir Due", "Due Soon"), className: "bg-white/10 text-[#e5e5e5]" }
-    return { label: tr("Aktif", "Active"), className: "bg-white/10 text-[#e5e5e5]" }
-  })()
+  const statusLabel = !isActive
+    ? tr("Tak Aktif", "Inactive")
+    : urgency === "overdue"
+      ? tr("Lewat", "Overdue")
+      : urgency === "today"
+        ? tr("Hari Ini", "Today")
+        : urgency === "soon"
+          ? tr("Hampir Due", "Due Soon")
+          : tr("Aktif", "Active")
+  const urgencyColor =
+    urgency === "overdue" ? "var(--expense)" : urgency === "today" || urgency === "soon" ? "var(--warning)" : "var(--income)"
 
   const subListHref = `/${sessionId}/subscription`
 
@@ -527,9 +519,9 @@ export default function SubscriptionDetailPage() {
         />
         <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
           <div className="animate-pulse space-y-4">
-            <div className="h-44 rounded-2xl bg-[var(--surface-tint)]" />
-            <div className="h-64 rounded-2xl bg-[var(--surface-tint)]" />
-            <div className="h-40 rounded-2xl bg-[var(--surface-tint)]" />
+            <div className="h-64 rounded-2xl bg-[var(--card)]" />
+            <div className="h-28 rounded-2xl bg-[var(--card)]" />
+            <div className="h-56 rounded-2xl bg-[var(--card)]" />
           </div>
         </DesktopPageBody>
       </div>
@@ -630,307 +622,224 @@ export default function SubscriptionDetailPage() {
 
       <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
 
-      {/* Hero */}
-      <div className="mt-4 px-1">
-        <div className="subscription-hero relative overflow-hidden rounded-2xl border border-[#2a2a2a] bg-[#1a1a1a] p-5 text-[#f5f5f5] md:p-6">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-          <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-          <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
+      <div className="grid grid-cols-1 gap-4 px-1 pt-2 md:gap-5 md:pt-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-start">
+        {/* The money column stays in view on desktop while the history scrolls. */}
+        <div className="space-y-4 lg:sticky lg:top-6">
+          {/* Identity + the monthly amount on the subscription hero: the dark
+              premium card globals.css defines for this module (.subscription-hero
+              keeps its text light in both themes), with the debt page's gradient
+              and blooms. */}
+          <section className="subscription-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] p-5 text-[#f5f5f5] md:p-6">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
+            <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
+            <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
 
-          <div className="relative">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">
-                    {tr("Bayaran Bulanan", "Monthly Payment")}
-                  </p>
-                  <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em]", statusBadge.className)}>
-                    {statusBadge.label}
-                  </span>
-                </div>
-                <p className="subscription-hero-amount mt-2 leading-none text-[#f5f5f5]">
-                  {showDataSkeleton ? (
-                    <AmountSkeleton className="h-7 w-32 bg-white/10" />
+            <div className="relative">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-[#e5e5e5]">
+                  {category ? (
+                    <CategoryIconGlyph iconName={category.icon_name} categoryName={category.name} kind="expense" size={22} />
                   ) : (
-                    <MoneyAmount
-                      value={summary.amount}
-                      size="hero"
-                      className="text-[#f5f5f5] md:text-3xl"
-                      currencyClassName="text-[#f5f5f5] opacity-55"
-                    />
+                    <CalendarClock size={22} aria-hidden />
                   )}
-                </p>
-                <p className="mt-1.5 text-[0.625rem] font-semibold text-[#8c8c8c]">
-                  {formatDueDay(summary.dueDay, lang)}
-                  {isActive ? ` · ${dueLabel}` : ""}
-                  {summary.transactionCount > 0 ? ` · ${summary.transactionCount} ${tr("rekod", "records")}` : ""}
-                </p>
-              </div>
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-[#e5e5e5]">
-                <CalendarClock size={20} />
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-3 gap-2.5">
-              <div className="rounded-[1.15rem] bg-white/[0.06] p-3">
-                <div className="flex items-center gap-1.5">
-                  <Calendar size={12} className="text-[#b3b3b3]" />
-                  <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{tr("Due Day", "Due Day")}</p>
                 </div>
-                <p className="mt-2 text-sm font-black tabular-nums text-[#f5f5f5]">
-                  {showDataSkeleton ? <AmountSkeleton className="h-4 w-10 bg-white/10" /> : `${formatDueDay(summary.dueDay, lang)}`}
-                </p>
-              </div>
-              <div className="rounded-[1.15rem] bg-white/[0.06] p-3">
-                <div className="flex items-center gap-1.5">
-                  {(urgency === "overdue" || urgency === "today" || urgency === "soon") ? (
-                    <AlertTriangle size={12} className="text-[#b3b3b3]" />
-                  ) : (
-                    <BadgeCheck size={12} className="text-[#b3b3b3]" />
-                  )}
-                  <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{tr("Seterusnya", "Next")}</p>
+                <div className="min-w-0 flex-1">
+                  <h1 className="truncate text-lg font-black leading-tight tracking-tight text-[#f5f5f5] md:text-xl">
+                    {subscription?.name || title}
+                  </h1>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {/* The hero forces light text, so the tone rides on a dot. */}
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 text-[0.625rem] font-extrabold uppercase tracking-[0.08em] text-[#e5e5e5]">
+                      <i
+                        aria-hidden
+                        className="block h-1.5 w-1.5 rounded-full"
+                        style={{ backgroundColor: isActive ? urgencyColor : "#8c8c8c" }}
+                      />
+                      {statusLabel}
+                    </span>
+                    {category ? (
+                      <span className="truncate text-[0.6875rem] font-semibold text-[#a3a3a3]">{category.name}</span>
+                    ) : null}
+                  </div>
                 </div>
-                <p className="mt-2 text-sm font-black tabular-nums text-[#f5f5f5]">
-                  {showDataSkeleton ? <AmountSkeleton className="h-4 w-12 bg-white/10" /> : isActive ? dueLabel : "–"}
-                </p>
               </div>
-              <div className="rounded-[1.15rem] bg-white/[0.06] p-3">
-                <div className="flex items-center gap-1.5">
-                  <History size={12} className="text-[#b3b3b3]" />
-                  <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{tr("Dibayar", "Paid")}</p>
-                </div>
-                <p className="mt-2 text-[#e5e5e5]">
-                  {showDataSkeleton ? (
-                    <AmountSkeleton className="h-4 w-12 bg-white/10" />
-                  ) : (
-                    <MoneyAmount
-                      value={summary.paidTotal}
-                      size="xs"
-                      className="text-[#e5e5e5]"
-                      currencyClassName="text-[#e5e5e5] opacity-55"
-                    />
-                  )}
-                </p>
-              </div>
-            </div>
 
-            {subscription?.notes ? (
-              <div className="mt-3.5 rounded-[1.15rem] bg-white/[0.06] px-3 py-2.5">
-                <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{tr("Nota", "Notes")}</p>
-                <p className="mt-1 text-[12px] font-medium leading-snug text-[#e5e5e5]">{subscription.notes}</p>
-              </div>
-            ) : null}
-
-            <div className="mt-4 flex items-center justify-center gap-6">
-              <button
-                type="button"
-                onClick={handleResetDue}
-                disabled={loading || !subscription}
-                className="inline-flex items-center gap-1.5 text-sm font-bold text-[#d4d4d4] underline-offset-4 transition hover:text-[#f5f5f5] hover:underline disabled:opacity-40"
-              >
-                <RotateCcw size={15} />
-                {tr("Reset", "Reset")}
-              </button>
-              <span className="h-3.5 w-px bg-white/15" aria-hidden />
-              <button
-                type="button"
-                onClick={() => setShowEditSheet(true)}
-                disabled={loading || !subscription}
-                className="inline-flex items-center gap-1.5 text-sm font-bold text-[#d4d4d4] underline-offset-4 transition hover:text-[#f5f5f5] hover:underline disabled:opacity-40"
-              >
-                <Pencil size={15} />
-                {tr("Edit", "Edit")}
-              </button>
-              <span className="h-3.5 w-px bg-white/15" aria-hidden />
-              <button
-                type="button"
-                onClick={handleDeleteSubscription}
-                disabled={deleting || loading || !subscription}
-                className="inline-flex items-center gap-1.5 text-sm font-bold text-rose-400 underline-offset-4 transition hover:text-rose-300 hover:underline disabled:opacity-40"
-              >
-                {deleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
-                {tr("Padam", "Delete")}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* SUBX command */}
-      <div className="mt-3.5 px-1">
-        <div className="relative overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-4">
-          <div className="mb-2.5 flex items-center justify-between gap-2">
-            <p className="text-[0.625rem] font-black uppercase tracking-widest text-[var(--muted)]">SUBX PAY</p>
-            <button
-              type="button"
-              onClick={handleCopyCommand}
-              className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2.5 py-1 text-[10px] font-bold text-[var(--muted)] transition hover:text-[var(--text)] active:scale-95"
-            >
-              {copiedCmd ? <Check size={12} className="text-[var(--text)]" /> : <Copy size={12} />}
-              {copiedCmd ? tr("Disalin", "Copied") : tr("Salin", "Copy")}
-            </button>
-          </div>
-          <div className="select-all rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2.5 font-mono text-[11px] text-[var(--text)]">
-            {subxPayCommand}
-          </div>
-          <p className="mt-2 text-[0.58rem] font-medium text-[var(--muted)]">
-            {tr("Format: SUBX PAY [nama] [jumlah] [wallet]", "Format: SUBX PAY [name] [amount] [wallet]")}
-          </p>
-        </div>
-      </div>
-
-      {/* Details */}
-      <div className="mt-3.5 px-1">
-        <div className={cn("overflow-hidden rounded-[1.35rem] border", surfaceCardClass)}>
-          <button
-            type="button"
-            onClick={() => setDetailsOpen((prev) => !prev)}
-            className="flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition-colors hover:bg-[var(--surface-tint)]/10"
-          >
-            <div>
-              <h2 className="text-xs font-black uppercase tracking-wider text-[var(--text)]">{tr("Butiran", "Details")}</h2>
-              <p className={cn("mt-0.5 text-[0.7rem] font-semibold", mutedClass)}>
-                {tr("Maklumat penuh subscription", "Full subscription information")}
+              <p className="mt-5 text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">
+                {tr("Bayaran Bulanan", "Monthly Payment")}
               </p>
-            </div>
-            <ChevronDown size={16} className={cn("transition-transform duration-200", detailsOpen ? "rotate-180" : "", softClass)} />
-          </button>
+              <div className="subscription-hero-amount mt-2 leading-none text-[#f5f5f5]">
+                {showDataSkeleton ? (
+                  <AmountSkeleton className="h-8 w-36 bg-white/10" />
+                ) : (
+                  <MoneyAmount
+                    value={summary.amount}
+                    size="hero"
+                    className="text-[#f5f5f5] md:text-4xl"
+                    currencyClassName="text-[#f5f5f5] opacity-55"
+                  />
+                )}
+              </div>
 
-          {detailsOpen && (
-            <div className="border-t border-[var(--border)] px-4 py-4">
-              <div className="grid grid-cols-2 gap-2.5">
+              {/* Where this month's cycle stands: the bar fills toward the due day. */}
+              {isActive ? (
+                <div className="mt-4">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="h-full rounded-full transition-[width] duration-300"
+                      style={{ width: `${Math.round(cycleProgress * 100)}%`, backgroundColor: urgencyColor }}
+                    />
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-xs font-bold">
+                    <span className="text-[#a3a3a3]">
+                      {tr("Seterusnya", "Next")} {nextDueLabel}
+                    </span>
+                    <span className="tabular-nums text-[#f5f5f5]">{dueLabel}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-3 text-xs font-bold text-[#a3a3a3]">
+                  {tr("Subscription ini tidak aktif.", "This subscription is inactive.")}
+                </p>
+              )}
+
+              <div className="mt-5 grid grid-cols-3 gap-2.5">
                 {[
-                  { label: tr("Jumlah", "Amount"), value: formatCurrency(summary.amount) },
-                  { label: tr("Due Day", "Due Day"), value: `${formatDueDay(summary.dueDay, lang)}` },
-                  { label: tr("Transaksi", "Transactions"), value: String(summary.transactionCount) },
-                  { label: tr("Jumlah dibayar", "Total paid"), value: formatCurrency(summary.paidTotal) },
+                  { label: tr("Due Day", "Due Day"), value: formatDueDay(summary.dueDay, lang) },
+                  { label: tr("Dibayar", "Paid"), value: showDataSkeleton ? null : formatCurrency(summary.paidTotal) },
                   { label: tr("Mula", "Start"), value: formatDateLabel(subscription?.start_date) },
-                  { label: tr("Terkini", "Latest"), value: formatDateLabel(summary.latest) },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
-                    <p className="text-[0.5rem] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">{item.label}</p>
-                    <p className="mt-1.5 text-sm font-black text-[var(--text)]">{item.value}</p>
+                ].map((tile) => (
+                  <div key={tile.label} className="min-w-0 rounded-[1.15rem] bg-white/[0.06] p-3">
+                    <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{tile.label}</p>
+                    <p className="mt-2 truncate text-sm font-black tabular-nums text-[#f5f5f5]">
+                      {tile.value ?? <AmountSkeleton className="h-4 w-12 bg-white/10" />}
+                    </p>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* Transactions */}
-      <div className="mt-3.5 px-1">
-        <div className={cn("overflow-hidden rounded-[1.35rem] border", surfaceCardClass)}>
-          <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-4">
-            <div>
-              <h2 className="text-xs font-black uppercase tracking-wider text-[var(--text)]">
-                {tr("Transaksi Subscription", "Subscription Transactions")}
-              </h2>
-              <p className={cn("mt-0.5 text-[0.7rem] font-semibold", mutedClass)}>
-                {tr("Sejarah bayaran melalui SUBX PAY", "Payment history via SUBX PAY")}
-              </p>
+              {subscription?.notes ? (
+                <div className="mt-3 rounded-[1.15rem] bg-white/[0.06] px-3 py-2.5">
+                  <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{tr("Nota", "Notes")}</p>
+                  <p className="mt-1 whitespace-pre-line text-xs font-medium leading-snug text-[#e5e5e5] [overflow-wrap:anywhere]">
+                    {subscription.notes}
+                  </p>
+                </div>
+              ) : null}
             </div>
-            <span className={cn("text-[0.7rem] font-bold", mutedClass)}>
+          </section>
+
+          {/* SUBX command: the bot is how payments are recorded, so the exact
+              line to send sits right under the amount. */}
+          <section className="rounded-2xl bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5">
+            <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+              {tr("Rekod bayaran melalui chat", "Record a payment via chat")}
+            </p>
+            <div className="mt-2 flex items-stretch gap-2">
+              <code className="flex min-w-0 flex-1 select-all items-center overflow-x-auto whitespace-nowrap rounded-xl bg-[var(--surface-tint-strong)] px-3 py-2.5 font-mono text-xs text-[var(--text)]">
+                {subxPayCommand}
+              </code>
+              <button
+                type="button"
+                onClick={handleCopyCommand}
+                aria-label={tr("Salin arahan", "Copy command")}
+                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-[var(--surface-tint-strong)] px-3 text-xs font-bold text-[var(--text)] transition active:scale-95"
+              >
+                {copiedCmd ? <Check size={14} /> : <Copy size={14} />}
+                {copiedCmd ? tr("Disalin", "Copied") : tr("Salin", "Copy")}
+              </button>
+            </div>
+            <p className="mt-2 text-[0.6875rem] text-[var(--muted)]">
+              {tr("Format: SUBX PAY [nama] [jumlah] [wallet]", "Format: SUBX PAY [name] [amount] [wallet]")}
+            </p>
+          </section>
+        </div>
+
+        {/* Payment history */}
+        <section aria-labelledby="subscription-txn-heading" className="min-w-0">
+          <div className="flex items-baseline justify-between gap-3 px-3 pb-3 pt-2 md:px-1 lg:pt-0">
+            <h2 id="subscription-txn-heading" className="text-base font-black text-[var(--text)]">
+              {tr("Sejarah Bayaran", "Payment History")}
+            </h2>
+            <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--muted)]">
               {transactions.length} {tr("rekod", "records")}
+              {summary.latest && transactions.length > 0 ? ` · ${tr("terkini", "latest")} ${formatDateLabel(summary.latest)}` : ""}
             </span>
           </div>
 
-          <div>
+          <div className="overflow-hidden rounded-2xl bg-[var(--card)] shadow-[var(--shadow-card)]">
             {showDataSkeleton ? (
-              Array.from({ length: 4 }).map((_, idx) => (
-                <div key={idx} className="border-b border-[var(--border)] px-4 py-4 last:border-b-0">
-                  <AmountSkeleton className="h-4 w-32" />
-                  <AmountSkeleton className="mt-2 h-3 w-52" />
-                </div>
-              ))
-            ) : groupedTransactions.length === 0 ? (
-              <div className={cn("px-4 py-12 text-center", mutedClass)}>
-                <History size={28} className="mx-auto opacity-40" />
-                <p className="mt-3 text-sm font-bold">{tr("Belum ada transaksi subscription.", "No subscription transactions yet.")}</p>
-                <p className="mt-1 text-[11px] font-medium opacity-80">
+              <div className="divide-y divide-[var(--divider)]">
+                {Array.from({ length: 4 }).map((_, idx) => (
+                  <div key={idx} className="flex items-center gap-3 px-4 py-3.5">
+                    <AmountSkeleton className="h-11 w-11 rounded-xl" />
+                    <div className="flex-1">
+                      <AmountSkeleton className="h-4 w-32" />
+                      <AmountSkeleton className="mt-2 h-3 w-44" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : sortedTransactions.length === 0 ? (
+              <div className="px-5 py-12 text-center">
+                <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--muted)]">
+                  <History size={20} aria-hidden />
+                </span>
+                <p className="mt-3 text-sm font-bold text-[var(--text)]">
+                  {tr("Belum ada transaksi subscription.", "No subscription transactions yet.")}
+                </p>
+                <p className="mt-1 text-xs text-[var(--muted)]">
                   {tr("Guna SUBX PAY di chat untuk rekod bayaran.", "Use SUBX PAY in chat to record payments.")}
                 </p>
               </div>
             ) : (
-              groupedTransactions.map(({ date, items, dayNumber, weekdayLabel, monthYearLabel, total }) => (
-                <div key={date}>
-                  <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] bg-[var(--surface-tint)]/30 px-4 py-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <div className="text-[1.5rem] font-black leading-none tabular-nums text-[var(--text)]">{dayNumber}</div>
-                      <div className="min-w-0">
-                        <p className="truncate text-[0.82rem] font-bold text-[var(--text)]">{weekdayLabel}</p>
-                        {monthYearLabel ? <p className={cn("mt-0.5 text-[0.7rem]", mutedClass)}>{monthYearLabel}</p> : null}
-                      </div>
-                    </div>
-                    <div className="text-right text-[var(--text)]">
-                      <MoneyAmount value={total} size="xs" prefix="- " className="text-[var(--text)]" currencyClassName="text-[var(--muted)]" />
-                    </div>
-                  </div>
-
-                  <div>
-                    {items.map((item, index) => {
-                      const txnLinkId = item.reference_id || String(item.id)
-                      const rowClassName = cn(
-                        "w-full px-4 py-3 text-left transition",
-                        txnLinkId ? "hover:bg-[var(--surface-tint)]/30 active:opacity-80" : "cursor-default",
-                      )
-                      const rowStyle = {
-                        borderBottom: index < items.length - 1 ? "1px solid var(--border)" : "none",
-                      }
-                      const content = (
-                        <div className="flex min-w-0 items-center justify-between gap-3">
-                          <div className="flex min-w-0 items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)]">
-                              <CalendarClock size={14} />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-[0.8125rem] font-bold text-[var(--text)]">
-                                {item.reference_id
-                                  ? `#${item.reference_id}`
-                                  : `${tr("Transaksi", "Transaction")} #${item.id}`}
-                              </p>
-                              <p className={cn("mt-0.5 truncate text-[0.68rem]", mutedClass)}>
-                                {item.wallet_name || item.source_channel || "-"}
-                                {item.vendor_or_source
-                                  ? ` • ${item.vendor_or_source}`
-                                  : item.notes
-                                    ? ` • ${item.notes}`
-                                    : ""}
-                              </p>
-                            </div>
-                          </div>
-                          <p className="shrink-0 text-[var(--text)]">
-                            <MoneyAmount value={item.amount} size="sm" prefix="- " className="text-[var(--text)]" currencyClassName="text-[var(--muted)]" />
-                          </p>
-                        </div>
-                      )
-
-                      if (txnLinkId) {
-                        return (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => router.push(`/${sessionId}/transactions/${txnLinkId}`)}
-                            className={rowClassName}
-                            style={rowStyle}
-                          >
-                            {content}
-                          </button>
-                        )
-                      }
-
-                      return (
-                        <div key={item.id} className={rowClassName} style={rowStyle}>
-                          {content}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))
+              <ul className="divide-y divide-[var(--divider)]">
+                {sortedTransactions.map((item) => {
+                  const txnLinkId = item.reference_id || String(item.id)
+                  const rawDate = String(item.txn_date || item.created_at || "").slice(0, 10)
+                  const dateObj = rawDate ? new Date(`${rawDate}T12:00:00`) : null
+                  const validDate = dateObj && !Number.isNaN(dateObj.getTime()) ? dateObj : null
+                  const locale = isBM ? "ms-MY" : "en-MY"
+                  const meta = [item.wallet_name || item.source_channel, item.vendor_or_source || item.notes]
+                    .filter(Boolean)
+                    .join(" · ")
+                  return (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/${sessionId}/transactions/${txnLinkId}`)}
+                        className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-[var(--surface-tint)] active:bg-[var(--surface-tint-strong)]"
+                      >
+                        {/* Date tile: one payment a month, so the date is the row's identity. */}
+                        <span className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] leading-none">
+                          <span className="text-base font-black tabular-nums text-[var(--text)]">
+                            {validDate ? validDate.toLocaleDateString(locale, { day: "numeric" }) : "–"}
+                          </span>
+                          <span className="mt-0.5 text-[0.5625rem] font-bold uppercase text-[var(--muted)]">
+                            {validDate ? validDate.toLocaleDateString(locale, { month: "short" }) : ""}
+                          </span>
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-bold text-[var(--text)]">
+                            {validDate
+                              ? validDate.toLocaleDateString(locale, { month: "long", year: "numeric" })
+                              : tr("Tiada tarikh", "No date")}
+                          </span>
+                          <span className="mt-0.5 block truncate text-[0.6875rem] font-semibold text-[var(--muted)]">
+                            {item.reference_id ? `#${item.reference_id}` : `${tr("Transaksi", "Transaction")} #${item.id}`}
+                            {meta ? ` · ${meta}` : ""}
+                          </span>
+                        </span>
+                        <span className="shrink-0 text-sm font-black tabular-nums text-[var(--text)]">
+                          −{formatCurrency(item.amount)}
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
             )}
           </div>
-        </div>
+        </section>
       </div>
       </DesktopPageBody>
 

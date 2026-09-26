@@ -418,145 +418,246 @@ export default function SubscriptionPage() {
     [tr],
   )
 
-  const renderSubscriptionCard = (c: SubscriptionItem, compact = false) => {
+  const renderSubscriptionRow = (c: SubscriptionItem) => {
     const isActive = c.status === "active"
     const days = daysUntilDueDay(Number(c.due_day_of_month || 1), c.last_payment_date, c.start_date)
     const tone = isActive ? urgencyTone(days) : "ok"
-    const initial = (c.name?.[0] || "S").toUpperCase()
-
-    const avatarClass = !isActive
-      ? "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]"
-      : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)]"
-
-    const statusLabel = !isActive
-      ? tr("Tak Aktif", "Inactive")
-      : tone === "overdue"
-        ? tr("Lewat", "Overdue")
-        : tone === "today"
-          ? tr("Hari Ini", "Today")
-          : tone === "soon"
-            ? tr("Hampir", "Soon")
-            : tr("Aktif", "Active")
+    const category = c.category_id ? catById.get(c.category_id) : undefined
+    // The bar fills toward the due day, the same cycle bar as the detail page.
+    const cycle = days <= 0 ? 1 : Math.min(1, Math.max(0, (30 - days) / 30))
+    const toneColor = tone === "overdue" ? "var(--expense)" : tone === "ok" ? "var(--income)" : "var(--warning)"
 
     return (
-      <div
-        key={c.id}
-        className={cn(
-          "group w-full overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] px-3.5 py-3 transition",
-          compact
-            ? "hover:border-[color-mix(in_srgb,var(--accent2)_30%,var(--border))] md:px-4 md:py-3.5"
-            : "active:scale-[0.985]",
-        )}
-      >
-        <div className="flex items-center gap-2.5 md:gap-4">
-          <button
-            type="button"
-            onClick={() => openDetail(c.id)}
-            className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-sm font-black md:h-11 md:w-11 md:rounded-2xl",
-              avatarClass,
+      <li key={c.id}>
+        <button
+          type="button"
+          onClick={() => openDetail(c.id)}
+          className={cn(
+            "flex w-full items-center gap-3 px-3.5 py-3 text-left transition hover:bg-[var(--surface-tint)] active:bg-[var(--surface-tint-strong)]",
+            !isActive && "opacity-60"
+          )}
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-sm font-black text-[var(--text-soft)]">
+            {category ? (
+              <CategoryIconGlyph iconName={category.icon_name} categoryName={category.name} kind="expense" size={20} />
+            ) : (
+              (c.name?.[0] || "S").toUpperCase()
             )}
-            aria-label={c.name}
-          >
-            {initial}
-          </button>
+          </span>
 
-          <button
-            type="button"
-            onClick={() => openDetail(c.id)}
-            className="min-w-0 flex-1 text-left md:w-[14rem] md:flex-none md:shrink-0"
-          >
-            <p className="truncate text-sm font-black leading-tight text-[var(--text)]">{c.name}</p>
-            <p className="mt-0.5 truncate text-[11px] font-semibold text-[var(--muted)]">
-              {formatDueDay(c.due_day_of_month, lang)} · {isActive ? <span className={tone === "overdue" ? "text-red-500" : undefined}>{dueLabel(days)}</span> : tr("Tak aktif", "Inactive")}
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => openDetail(c.id)}
-            className="flex shrink-0 items-baseline gap-0.5 whitespace-nowrap text-right md:hidden"
-          >
-            <MoneyAmount value={Number(c.amount || 0)} size="xs" className="text-[var(--text)]" />
-            <span className="text-[10px] font-semibold text-[var(--muted)]">/{tr("bln", "mo")}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => openDetail(c.id)}
-            className="hidden min-w-0 flex-1 items-center gap-6 text-left md:flex"
-          >
-            <div className="min-w-[7.5rem] shrink-0">
-              <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                {tr("Jumlah", "Amount")}
-              </p>
-              <p className="mt-0.5 truncate leading-none text-[var(--text)]">
-                <MoneyAmount value={Number(c.amount || 0)} size="sm" className="text-[var(--text)]" />
-              </p>
-            </div>
-            <div className="min-w-[8rem] shrink-0">
-              <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                {tr("Due seterusnya", "Next due")}
-              </p>
-              <p className={cn("mt-0.5 truncate text-sm font-semibold leading-none", tone === "overdue" ? "text-red-500" : "text-[var(--text)]")}>
-                {isActive ? dueLabel(days) : "–"}
-              </p>
-            </div>
-            <div className="min-w-[5rem] shrink-0">
-              <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                {tr("Tarikh", "Due day")}
-              </p>
-              <p className="mt-0.5 truncate text-sm font-semibold leading-none text-[var(--text)]">
-                {formatDueDay(c.due_day_of_month, lang)}
-              </p>
-            </div>
-          </button>
-
-          <div className="flex shrink-0 items-center gap-0">
-            <span
-              className={cn(
-                "mr-1 hidden rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] md:inline",
-                "bg-[var(--surface-tint)] text-[var(--muted)]",
-              )}
-            >
-              {statusLabel}
+          <span className="min-w-0 flex-1">
+            <span className="flex items-baseline justify-between gap-3">
+              <span className="truncate text-sm font-black text-[var(--text)]">{c.name}</span>
+              <span className="shrink-0 whitespace-nowrap text-sm font-black tabular-nums text-[var(--text)]">
+                {formatCurrency(Number(c.amount || 0))}
+                <span className="text-[0.625rem] font-semibold text-[var(--muted)]">/{tr("bln", "mo")}</span>
+              </span>
             </span>
-
-          </div>
-        </div>
-      </div>
+            <span className="mt-0.5 flex items-center justify-between gap-3 text-[0.6875rem] font-semibold">
+              <span className="truncate text-[var(--muted)]">
+                {formatDueDay(c.due_day_of_month, lang)}
+                {category ? ` · ${category.name}` : ""}
+              </span>
+              <span
+                className={cn(
+                  "shrink-0 whitespace-nowrap",
+                  !isActive
+                    ? "text-[var(--muted)]"
+                    : tone === "overdue"
+                      ? "text-rose-700 dark:text-rose-400"
+                      : tone === "ok"
+                        ? "text-[var(--muted)]"
+                        : "text-amber-700 dark:text-amber-400"
+                )}
+              >
+                {isActive ? dueLabel(days) : tr("Tak aktif", "Inactive")}
+              </span>
+            </span>
+            {isActive ? (
+              <span className="mt-2 block h-1 overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
+                <span
+                  className="block h-full rounded-full"
+                  style={{ width: `${Math.round(cycle * 100)}%`, backgroundColor: toneColor }}
+                />
+              </span>
+            ) : null}
+          </span>
+        </button>
+      </li>
     )
   }
 
+  // Grouped by what the user has to do: pay now, pay later, or nothing.
+  const sections = (() => {
+    const due: SubscriptionItem[] = []
+    const later: SubscriptionItem[] = []
+    const inactive: SubscriptionItem[] = []
+    for (const c of sortedSubscriptions) {
+      if (c.status !== "active") inactive.push(c)
+      else if (daysUntilDueDay(Number(c.due_day_of_month || 1), c.last_payment_date, c.start_date) <= 7) due.push(c)
+      else later.push(c)
+    }
+    return [
+      { key: "due", label: tr("Perlu dibayar", "Due soon"), items: due },
+      { key: "later", label: tr("Akan datang", "Upcoming"), items: later },
+      { key: "inactive", label: tr("Tak aktif", "Inactive"), items: inactive },
+    ].filter((s) => s.items.length > 0)
+  })()
+
   const filterToggle = (
-    <div className="inline-flex rounded-full border border-[var(--border)] bg-[var(--surface-tint)]/40 p-0.5">
-      <button
-        type="button"
-        onClick={() => setIncludeSettled(false)}
-        className={cn(
-          "rounded-full px-3 py-1.5 text-[0.55rem] font-black uppercase tracking-[0.12em] transition",
-          !includeSettled ? "bg-[var(--text)] text-[var(--bg)]" : "text-[var(--muted)]",
-        )}
-      >
-        {tr("Aktif", "Active")}
-      </button>
-      <button
-        type="button"
-        onClick={() => setIncludeSettled(true)}
-        className={cn(
-          "rounded-full px-3 py-1.5 text-[0.55rem] font-black uppercase tracking-[0.12em] transition",
-          includeSettled ? "bg-[var(--text)] text-[var(--bg)]" : "text-[var(--muted)]",
-        )}
-      >
-        {tr("Semua", "All")}
-      </button>
+    <div className="inline-flex rounded-full bg-[var(--surface-tint-strong)] p-0.5">
+      {[
+        { value: false, label: tr("Aktif", "Active") },
+        { value: true, label: tr("Semua", "All") },
+      ].map((opt) => (
+        <button
+          key={String(opt.value)}
+          type="button"
+          onClick={() => setIncludeSettled(opt.value)}
+          aria-pressed={includeSettled === opt.value}
+          className={cn(
+            "min-h-8 rounded-full px-3.5 text-xs font-bold transition",
+            includeSettled === opt.value ? "bg-[var(--card)] text-[var(--text)] shadow-sm" : "text-[var(--muted)]"
+          )}
+        >
+          {opt.label}
+        </button>
+      ))}
     </div>
   )
 
-  const nearestHint =
-    summary.activeCount > 0 && Number.isFinite(summary.nearestDays)
-      ? `${summary.nearestName} · ${formatDueDay(summary.nearestDueDay, lang)} · ${dueLabel(summary.nearestDays)}`
-      : tr("Tiada langganan aktif", "No active subscriptions")
+  // Summary on the subscription hero: the dark premium card globals.css defines
+  // for this module (.subscription-hero keeps its text light in both themes),
+  // with the debt page's gradient and blooms. The monthly total leads, then
+  // what is due now.
+  const renderSummary = (isDesktop: boolean) => {
+    const hasNearest = summary.activeCount > 0 && Number.isFinite(summary.nearestDays)
+    return (
+      <section
+        className={cn(
+          "subscription-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] text-[#f5f5f5]",
+          isDesktop ? "p-6" : "p-5"
+        )}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
+        <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
+        <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
+
+        <div className="relative">
+          <p className={cn("font-bold uppercase tracking-[0.14em] text-[#a3a3a3]", isDesktop ? "text-[0.7rem]" : "text-[0.625rem]")}>
+            {tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}
+          </p>
+          <div className="subscription-hero-amount mt-2 leading-none text-[#f5f5f5]">
+            {showDataSkeleton ? (
+              <AmountSkeleton className={cn("bg-white/10", isDesktop ? "h-10 w-40" : "h-8 w-32")} />
+            ) : (
+              <MoneyAmount
+                value={Number(summary.totalMonthly || 0)}
+                size={isDesktop ? "heroLg" : "hero"}
+                className="text-[#f5f5f5]"
+                currencyClassName="text-[#f5f5f5] opacity-55"
+              />
+            )}
+          </div>
+
+          {/* What needs paying this week. The hero forces light text, so the
+              warning tone rides on a dot rather than on the words. */}
+          <p className="mt-2 flex items-center gap-1.5 text-[0.6875rem] font-bold text-[#e5e5e5]">
+            <i
+              aria-hidden
+              className="block h-1.5 w-1.5 shrink-0 rounded-full"
+              style={{ backgroundColor: summary.dueSoonCount > 0 ? "var(--warning)" : "var(--income)" }}
+            />
+            {summary.dueSoonCount > 0
+              ? tr(
+                  `${summary.dueSoonCount} perlu dibayar dalam 7 hari · ${formatCurrency(summary.dueSoonTotal)}`,
+                  `${summary.dueSoonCount} due within 7 days · ${formatCurrency(summary.dueSoonTotal)}`
+                )
+              : tr("Tiada bayaran dalam 7 hari", "Nothing due in the next 7 days")}
+          </p>
+
+          <div className={cn("grid grid-cols-3", isDesktop ? "mt-6 gap-3" : "mt-5 gap-2.5")}>
+            {[
+              { label: tr("Aktif", "Active"), value: String(summary.activeCount), sub: null },
+              { label: tr("Setahun", "Per year"), value: formatCurrencyShort(summary.totalMonthly * 12), sub: null },
+              {
+                label: tr("Terdekat", "Next"),
+                value: hasNearest ? dueLabel(summary.nearestDays) : "—",
+                sub: hasNearest ? summary.nearestName : null,
+              },
+            ].map((tile) => (
+              <div key={tile.label} className={cn("min-w-0 bg-white/[0.06]", isDesktop ? "rounded-2xl p-4" : "rounded-[1.15rem] p-3")}>
+                <p className={cn("font-bold uppercase tracking-[0.1em] text-[#a3a3a3]", isDesktop ? "text-[0.6rem]" : "text-[0.5rem]")}>
+                  {tile.label}
+                </p>
+                <p className={cn("truncate font-black tabular-nums tracking-tight text-[#f5f5f5]", isDesktop ? "mt-3 text-lg" : "mt-2 text-sm")}>
+                  {tile.value}
+                </p>
+                {tile.sub ? <p className="mt-0.5 truncate text-[0.625rem] font-semibold text-[#a3a3a3]">{tile.sub}</p> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  const renderList = () => (
+    <section aria-labelledby="subscription-list-heading" className="min-w-0">
+      <div className="flex items-center justify-between gap-3 px-3 pb-3 md:px-1">
+        <h2 id="subscription-list-heading" className="text-base font-black text-[var(--text)]">
+          {tr("Langganan", "Subscriptions")}
+        </h2>
+        {filterToggle}
+      </div>
+
+      {showDataSkeleton ? (
+        <div className="divide-y divide-[var(--divider)] overflow-hidden rounded-2xl bg-[var(--card)] shadow-[var(--shadow-card)]">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 px-3.5 py-3.5">
+              <AmountSkeleton className="h-11 w-11 rounded-xl" />
+              <div className="flex-1">
+                <AmountSkeleton className="h-4 w-32" />
+                <AmountSkeleton className="mt-2 h-3 w-44" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : sections.length === 0 ? (
+        <div className="rounded-2xl bg-[var(--card)] px-6 py-12 text-center shadow-[var(--shadow-card)]">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--muted)]">
+            <CalendarClock size={22} aria-hidden />
+          </span>
+          <p className="mt-3 text-sm font-bold text-[var(--text)]">{tr("Belum ada subscription.", "No subscriptions yet.")}</p>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            {tr("Simpan bil & langganan bulanan di sini.", "Track monthly bills & subscriptions here.")}
+          </p>
+          <button
+            type="button"
+            onClick={openCreateSheet}
+            className="mt-4 inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 text-xs font-black text-[var(--btn-primary-text)] transition active:scale-95"
+          >
+            <Plus size={15} />
+            {tr("Tambah Subscription", "Add Subscription")}
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {sections.map((section) => (
+            <div key={section.key}>
+              <p className="flex items-center justify-between px-3 pb-2 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)] md:px-1">
+                <span>{section.label}</span>
+                <span className="tabular-nums">{section.items.length}</span>
+              </p>
+              <ul className="divide-y divide-[var(--divider)] overflow-hidden rounded-2xl bg-[var(--card)] shadow-[var(--shadow-card)]">
+                {section.items.map((c) => renderSubscriptionRow(c))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
 
   return (
     <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
@@ -571,70 +672,10 @@ export default function SubscriptionPage() {
             </MobileIconButton>
           }
         />
-
-        <section className="px-1">
-          <div className="subscription-hero relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] p-5 text-[#f5f5f5]">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-            <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-            <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
-
-            <div className="relative">
-              <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">{tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}</p>
-              <div className="mt-2 text-[#f5f5f5]">
-                {showDataSkeleton ? <div className="h-7 w-32 animate-pulse rounded bg-white/10" /> : <MoneyAmount value={Number(summary.totalMonthly || 0)} size="hero" className="text-[#f5f5f5]" currencyClassName="text-[#f5f5f5] opacity-55" />}
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.625rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">
-                <span>{tr("Aktif", "Active")}: {summary.activeCount}</span>
-                <span>{tr("Semua", "All")}: {subscriptions.length}</span>
-              </div>
-
-              <div className="mt-5 grid grid-cols-3 gap-2.5">
-                {[
-                  { label: tr("Semua", "All"), value: subscriptions.length },
-                  { label: tr("Aktif", "Active"), value: summary.activeCount },
-                  { label: tr("Tidak Aktif", "Inactive"), value: subscriptions.length - summary.activeCount },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-[1.15rem] bg-white/[0.06] p-3">
-                    <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{item.label}</p>
-                    <p className="mt-2 text-sm font-semibold tabular-nums tracking-tight text-[#e5e5e5]">{item.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="px-1">
-          <div className="space-y-3">
-            {showDataSkeleton ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-4">
-                  <AmountSkeleton className="h-4 w-32" />
-                  <AmountSkeleton className="mt-3 h-6 w-24" />
-                  <AmountSkeleton className="mt-2 h-3 w-40" />
-                </div>
-              ))
-            ) : sortedSubscriptions.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 text-center">
-                <CalendarClock size={32} className="mx-auto text-[var(--muted)]/40" />
-                <p className="mt-3 text-sm font-bold text-[var(--muted)]">{tr("Belum ada subscription.", "No subscriptions yet.")}</p>
-                <p className="mt-1 text-[11px] font-medium text-[var(--muted)]/80">
-                  {tr("Simpan bil & langganan bulanan di sini.", "Track monthly bills & subscriptions here.")}
-                </p>
-                <button
-                  type="button"
-                  onClick={openCreateSheet}
-                  className="mt-4 rounded-full bg-[var(--text)] px-4 py-2 text-[0.625rem] font-black uppercase tracking-wider text-[var(--bg)] transition active:scale-95"
-                >
-                  <Plus size={14} className="mr-1 inline" />
-                  {tr("Tambah Subscription", "Add Subscription")}
-                </button>
-              </div>
-            ) : (
-              sortedSubscriptions.map((c) => renderSubscriptionCard(c, false))
-            )}
-          </div>
-        </section>
+        <div className="space-y-5 px-1">
+          {renderSummary(false)}
+          {renderList()}
+        </div>
       </div>
 
       {/* ─── Desktop ─── */}
@@ -650,63 +691,11 @@ export default function SubscriptionPage() {
           }
         />
 
-        <DesktopPageBody className="space-y-5">
-        <div className="subscription-hero relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] p-6 text-[#f5f5f5]">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-          <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-          <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
-
-          <div className="relative flex items-center gap-5">
-            <div className="min-w-[10rem] shrink-0">
-              <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">{tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}</p>
-              <div className="mt-2 text-[#f5f5f5]">
-                {showDataSkeleton ? <div className="h-10 w-40 animate-pulse rounded bg-white/10" /> : <MoneyAmount value={Number(summary.totalMonthly || 0)} size="heroLg" className="text-[#f5f5f5]" currencyClassName="text-[#f5f5f5] opacity-55" />}
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">
-                <span>{tr("Aktif", "Active")}: {summary.activeCount}</span>
-                <span>{tr("Semua", "All")}: {subscriptions.length}</span>
-              </div>
-            </div>
-
-            <div className="grid min-w-0 flex-1 grid-cols-3 gap-3">
-              {[
-                { label: tr("Semua", "All"), value: subscriptions.length },
-                { label: tr("Aktif", "Active"), value: summary.activeCount },
-                { label: tr("Tidak Aktif", "Inactive"), value: subscriptions.length - summary.activeCount },
-              ].map((item) => (
-                <div key={item.label} className="rounded-2xl bg-white/[0.06] p-4">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[#a3a3a3]">{item.label}</p>
-                  <p className="mt-3 text-xl font-semibold tabular-nums tracking-tight text-[#e5e5e5]">{item.value}</p>
-                </div>
-              ))}
-            </div>
+        <DesktopPageBody>
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start">
+            <div className="lg:sticky lg:top-6">{renderSummary(true)}</div>
+            {renderList()}
           </div>
-        </div>
-
-        <div>
-          <div className="space-y-3">
-            {showDataSkeleton ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-16 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
-              ))
-            ) : sortedSubscriptions.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/70 px-6 py-14 text-center">
-                <CalendarClock size={40} className="text-[var(--muted)]/30" />
-                <p className="mt-3 text-sm font-bold text-[var(--muted)]">{tr("Belum ada subscription.", "No subscriptions yet.")}</p>
-                <button
-                  type="button"
-                  onClick={openCreateSheet}
-                  className="mt-4 rounded-full bg-[var(--text)] px-4 py-2 text-xs font-black uppercase tracking-wider text-[var(--bg)]"
-                >
-                  <Plus size={14} className="mr-1.5 inline" />
-                  {tr("Tambah Subscription", "Add Subscription")}
-                </button>
-              </div>
-            ) : (
-              sortedSubscriptions.map((c) => renderSubscriptionCard(c, true))
-            )}
-          </div>
-        </div>
         </DesktopPageBody>
       </div>
 
