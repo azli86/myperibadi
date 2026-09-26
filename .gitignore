@@ -59,3 +59,7 @@ apps/api/.env
 # runtime user data
 apps/worker/lid_mapping/
 apps/mastermind/api/venv
+
+# local build caches and downloaded tool binaries
+apps/mastermind/web/tsconfig.tsbuildinfo
+.pi/skills/impeccable/scripts/bin/
