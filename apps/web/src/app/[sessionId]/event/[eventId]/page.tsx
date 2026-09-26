@@ -4,8 +4,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   AlertCircle,
   Check,
+  ChevronDown,
   Loader2,
   Receipt,
+  StickyNote,
   Wallet as WalletIcon,
 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
@@ -17,10 +19,9 @@ import {
   DesktopPageHeader,
   MobilePageHeader,
 } from "@/components/layout/PageHeader"
-import { StickyNote } from "lucide-react"
 import { EventHeroCard } from "./EventHeroCard"
 import { EventSummaryCard } from "./EventSummaryCard"
-import { MoneyAmount, formatCurrencyLabel, formatMoneyValue } from "@/components/ui/MoneyAmount"
+import { formatCurrencyLabel, formatMoneyValue } from "@/components/ui/MoneyAmount"
 import { CategoryIconGlyph } from "@/lib/category-icons"
 
 type EventItem = {
@@ -91,6 +92,18 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [busyId, setBusyId] = useState<number | null>(null)
+  // Category groups start collapsed: each header already shows the category's
+  // total and share, so the closed list is the overview, and a trip's full
+  // list of rows is too long to scroll one-handed.
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set())
+  const toggleGroup = useCallback((key: string, open?: boolean) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev)
+      if (open ?? !next.has(key)) next.add(key)
+      else next.delete(key)
+      return next
+    })
+  }, [])
   // usePageAlert returns a fresh function on every render, so it must never appear
   // in a useCallback/useEffect dependency list: doing so recreated `load` each
   // render, re-ran its effect, and looped until React threw "Maximum update depth".
@@ -265,32 +278,33 @@ export default function EventDetailPage() {
     )
   }
 
+  const hasImage = Boolean(event.has_image && event.image_url)
   const days = daysUntil(event?.end_date)
-    const isEnded = event?.status === "ended" || (days != null && days < 0)
-    const isToday = days === 0
-    const isSoon = days != null && days > 0 && days <= 7
+  const isEnded = event?.status === "ended" || (days != null && days < 0)
+  const isToday = days === 0
+  const isSoon = days != null && days > 0 && days <= 7
 
-    const statusLabel = isEnded
-      ? tr("Tamat", "Ended")
-      : isToday
-        ? tr("Hari Ini!", "Today!")
-        : isSoon
-          ? (isBm ? `Tinggal ${days} hari` : `${days} days left`)
-          : tr("Akan Datang", "Upcoming")
+  const statusLabel = isEnded
+    ? tr("Tamat", "Ended")
+    : isToday
+      ? tr("Hari Ini!", "Today!")
+      : isSoon
+        ? (isBm ? `Tinggal ${days} hari` : `${days} days left`)
+        : tr("Akan Datang", "Upcoming")
 
-    const statusClass = isEnded
-      ? "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]"
-      : isToday
-        ? "bg-cyan-500/15 text-cyan-500 border-cyan-500/30 font-bold"
-        : isSoon
-          ? "bg-amber-500/15 text-amber-500 border-amber-500/30 font-bold"
-          : "bg-emerald-500/15 text-emerald-500 border-emerald-500/30 font-bold"
+  const statusClass = isEnded
+    ? "bg-[var(--surface-tint-strong)] text-[var(--muted)] border-transparent font-bold"
+    : isToday
+      ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 border-cyan-500/30 font-bold"
+      : isSoon
+        ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 font-bold"
+        : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 font-bold"
 
   return (
     <div className="min-h-[70vh] w-full bg-[var(--page-bg)]">
       <div className="hidden md:block">
         <DesktopPageHeader
-          title={event.name}
+          title={tr("Butiran Acara", "Event Details")}
           breadcrumbs={[{ label: tr("Acara", "Events"), href: `/${sessionId}/event` }]}
           homeHref={`/${sessionId}`}
           backHref={`/${sessionId}/event`}
@@ -298,20 +312,23 @@ export default function EventDetailPage() {
         />
       </div>
 
-      <div className="mx-auto w-full space-y-4 px-1 pb-24 pt-0 md:max-w-6xl md:space-y-4 md:px-6 md:pb-16 lg:max-w-7xl">
+      <div className="mx-auto w-full px-1 pb-24 pt-0 md:max-w-6xl md:px-6 md:pb-16 lg:max-w-7xl">
         <div className="md:hidden">
-          <MobilePageHeader title={event.name} fallbackHref={`/${sessionId}/event`} backPreferHistory alignLeft />
+          <MobilePageHeader title={tr("Butiran Acara", "Event Details")} fallbackHref={`/${sessionId}/event`} backPreferHistory alignLeft />
         </div>
 
-        <EventHeroCard
-          event={event}
-          statusLabel={statusLabel}
-          statusClass={statusClass}
-          isBm={isBm}
-        />
+        <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
+          {/* The money column stays in view on desktop while the list scrolls,
+              so the total is always beside the rows being ticked. */}
+          <div className="space-y-4 lg:sticky lg:top-6">
+            <EventHeroCard
+              event={event}
+              statusLabel={statusLabel}
+              statusClass={statusClass}
+              isBm={isBm}
+              totalLabel={`${formatCurrencyLabel(currency)} ${formatMoneyValue(stats.spent)}`}
+            />
 
-        <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-start">
-          <div className="space-y-4">
             <EventSummaryCard
               isBm={isBm}
               currency={currency}
@@ -323,165 +340,217 @@ export default function EventDetailPage() {
               countedCount={stats.countedCount}
               excludedCount={stats.excludedCount}
               totalCount={transactions.length}
+              spark={spark}
+              totalOnPhoto={hasImage}
             />
 
             {event.notes ? (
-              <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5">
-                <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+              <section className="rounded-2xl bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5">
+                <p className="flex items-center gap-1.5 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                  <StickyNote size={12} aria-hidden />
                   {tr("Nota", "Notes")}
                 </p>
-                <p className="mt-2 text-sm italic text-[var(--text-soft)]">{event.notes}</p>
+                <p className="mt-2 whitespace-pre-line text-sm text-[var(--text-soft)] [overflow-wrap:anywhere]">
+                  {event.notes}
+                </p>
               </section>
             ) : null}
           </div>
 
-          <div className="space-y-4">
-            <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5">
-              <div className="mb-3.5 flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--muted)]">
-                    <Receipt size={17} />
-                  </span>
-                  <div className="min-w-0">
-                    <h2 className="text-sm font-black text-[var(--text)]">
-                      {tr("Transaksi", "Transactions")}
-                    </h2>
-                    <p className="mt-0.5 text-[11px] font-semibold text-[var(--muted)]">
-                      {transactions.length}{" "}
-                      {stats.excludedCount > 0
-                        ? tr(`· ${stats.excludedCount} diabai`, `· ${stats.excludedCount} ignored`)
-                        : ""}
-                    </p>
-                  </div>
-                </div>
-              </div>
+          <section aria-labelledby="event-txn-heading" className="min-w-0">
+            <div className="flex items-baseline justify-between gap-3 px-3 pb-1 pt-2 md:px-1 lg:pt-0">
+              <h2 id="event-txn-heading" className="text-base font-black text-[var(--text)]">
+                {tr("Transaksi", "Transactions")}
+              </h2>
+              <span className="shrink-0 text-xs font-semibold tabular-nums text-[var(--muted)]">
+                {transactions.length}
+                {stats.excludedCount > 0
+                  ? tr(` · ${stats.excludedCount} diabai`, ` · ${stats.excludedCount} ignored`)
+                  : ""}
+              </span>
+            </div>
+            {transactions.length > 0 ? (
+              <p className="px-3 pb-3 text-xs text-[var(--muted)] md:px-1">
+                {tr(
+                  "Tekan bulatan untuk masukkan atau keluarkan transaksi daripada bajet acara. Rekod asal tidak diubah.",
+                  "Tap the circle to include or exclude a transaction from the event budget. The original record is not changed."
+                )}
+              </p>
+            ) : null}
 
-              {transactions.length === 0 ? (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 px-4 py-12 text-center">
-                  <AlertCircle size={24} className="mx-auto text-[var(--muted)]" />
-                  <p className="mt-3 text-sm font-bold text-[var(--text)]">
-                    {event.start_date && event.end_date
-                      ? tr("Tiada transaksi dalam julat tarikh acara ini.", "No transactions found within this event's dates.")
-                      : tr("Acara ini tiada tarikh mula & tamat.", "This event has no start and end dates configured.")}
-                  </p>
-                  <p className="mt-1 text-xs text-[var(--muted)]">
-                    {tr(
-                      "Sebarang transaksi yang direkodkan antara tarikh mula dan tamat akan dipaparkan secara automatik di sini.",
-                      "Any transaction dated within the start and end dates will automatically show up here."
-                    )}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-5">
-                  {groups.map((group) => (
-                    <div key={group.key || "none"}>
-                      <div className="flex items-center justify-between px-1">
-                        <h3 className="flex min-w-0 items-center gap-1.5 text-[0.65rem] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+            {transactions.length === 0 ? (
+              <div className="mt-2 rounded-2xl bg-[var(--card)] px-5 py-12 text-center shadow-[var(--shadow-card)]">
+                <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--muted)]">
+                  <Receipt size={20} aria-hidden />
+                </span>
+                <p className="mt-3 text-sm font-bold text-[var(--text)]">
+                  {event.start_date && event.end_date
+                    ? tr("Tiada transaksi dalam julat tarikh acara ini.", "No transactions found within this event's dates.")
+                    : tr("Acara ini tiada tarikh mula & tamat.", "This event has no start and end dates configured.")}
+                </p>
+                <p className="mx-auto mt-1 max-w-sm text-xs text-[var(--muted)]">
+                  {tr(
+                    "Sebarang transaksi yang direkodkan antara tarikh mula dan tamat akan dipaparkan secara automatik di sini.",
+                    "Any transaction dated within the start and end dates will automatically show up here."
+                  )}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {groups.map((group) => {
+                  const share = stats.spent > 0 ? group.total / stats.spent : 0
+                  const isOpen = openGroups.has(group.key)
+                  const panelId = `event-group-rows-${group.key || "none"}`
+                  return (
+                    <div
+                      key={group.key || "none"}
+                      id={`event-group-${group.key || "none"}`}
+                      className="scroll-mt-20 overflow-hidden rounded-2xl bg-[var(--card)] shadow-[var(--shadow-card)]"
+                    >
+                      <h3>
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(group.key)}
+                        aria-expanded={isOpen}
+                        aria-controls={panelId}
+                        className="flex w-full items-center gap-3 px-3.5 pb-2.5 pt-3.5 text-left"
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text-soft)]">
                           <CategoryIconGlyph
                             iconName={group.icon}
                             categoryName={group.label}
                             kind="expense"
-                            size={13}
+                            size={16}
                           />
-                          <span className="truncate">{group.label}</span>
-                        </h3>
-                        <span className="shrink-0 text-[0.65rem] font-black tabular-nums text-[var(--muted)]">
-                          {moneyLabel(group.total, currency)}
                         </span>
-                      </div>
-
-                      <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--border)]">
-                        <div className="divide-y divide-[var(--border)]">
-                          {group.items.map((txn) => {
-                            const isIncome = txn.type === "income"
-                            return (
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-baseline justify-between gap-3">
+                            <span className="truncate text-sm font-black text-[var(--text)]">{group.label}</span>
+                            <span className="shrink-0 text-sm font-black tabular-nums text-[var(--text)]">
+                              {moneyLabel(group.total, currency)}
+                            </span>
+                          </div>
+                          {/* Share of the event's counted spend: the reason the list
+                              is grouped at all is to show where the money went. */}
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <div className="h-1 flex-1 overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
                               <div
-                                key={txn.id}
-                                className={cn(
-                                  "flex items-center gap-3 bg-[var(--surface-tint)]/20 px-3.5 py-3 transition",
-                                  !txn.included && "opacity-55"
-                                )}
+                                className="h-full rounded-full bg-[var(--text-soft)]"
+                                style={{ width: `${Math.min(100, share * 100)}%` }}
+                              />
+                            </div>
+                            <span className="w-9 shrink-0 text-right text-[0.625rem] font-bold tabular-nums text-[var(--muted)]">
+                              {Math.round(share * 100)}%
+                            </span>
+                          </div>
+                          <span className="mt-1 block text-[0.625rem] font-semibold text-[var(--muted)]">
+                            {group.items.length} {tr("transaksi", group.items.length === 1 ? "transaction" : "transactions")}
+                          </span>
+                        </div>
+                        <ChevronDown
+                          size={18}
+                          aria-hidden
+                          className={cn(
+                            "shrink-0 text-[var(--muted)] transition-transform",
+                            isOpen && "rotate-180"
+                          )}
+                        />
+                      </button>
+                      </h3>
+
+                      <ul
+                        id={panelId}
+                        className={cn(
+                          "divide-y divide-[var(--divider)] border-t border-[var(--divider)]",
+                          !isOpen && "hidden"
+                        )}
+                      >
+                        {group.items.map((txn) => {
+                          const isIncome = txn.type === "income"
+                          return (
+                            <li
+                              key={txn.id}
+                              className={cn(
+                                "flex items-center gap-1.5 py-1 pl-1 pr-3.5 transition-opacity",
+                                !txn.included && "opacity-55"
+                              )}
+                            >
+                              {/* 44px hit area around a 24px mark: this is tapped
+                                  one-handed, often while scrolling. */}
+                              <button
+                                type="button"
+                                disabled={busyId === txn.id}
+                                onClick={() => void toggle(txn)}
+                                aria-label={
+                                  txn.included
+                                    ? tr("Keluarkan dari kiraan bajet", "Exclude from budget count")
+                                    : tr("Masukkan ke dalam kiraan bajet", "Include in budget count")
+                                }
+                                aria-pressed={txn.included}
+                                className="group flex h-11 w-11 shrink-0 items-center justify-center rounded-full disabled:opacity-40"
                               >
-                                <button
-                                  type="button"
-                                  disabled={busyId === txn.id}
-                                  onClick={() => void toggle(txn)}
-                                  aria-label={
-                                    txn.included
-                                      ? tr("Keluarkan dari kiraan bajet", "Exclude from budget count")
-                                      : tr("Masukkan ke dalam kiraan bajet", "Include in budget count")
-                                  }
-                                  aria-pressed={txn.included}
+                                <span
                                   className={cn(
-                                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition active:scale-90 disabled:opacity-40",
+                                    "flex h-6 w-6 items-center justify-center rounded-full border-2 transition group-active:scale-90",
                                     txn.included
                                       ? "border-[var(--income)] bg-[var(--income)] text-white"
-                                      : "border-[var(--border-strong)] bg-[var(--surface-tint)] text-transparent"
+                                      : "border-[var(--divider)] bg-transparent text-transparent"
                                   )}
                                 >
                                   {busyId === txn.id ? (
-                                    <Loader2 size={12} className="animate-spin" />
+                                    <Loader2 size={12} className="animate-spin text-[var(--muted)]" />
                                   ) : (
                                     <Check size={13} strokeWidth={3} />
                                   )}
-                                </button>
+                                </span>
+                              </button>
 
-                                <div className="flex min-w-0 flex-1 flex-col">
-                                  <p
-                                    className={cn(
-                                      "truncate text-sm font-bold text-[var(--text)]",
-                                      !txn.included && "text-[var(--muted)] line-through"
-                                    )}
-                                  >
-                                    {txn.vendor_or_source || tr("Transaksi", "Transaction")}
-                                  </p>
-                                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[0.65rem] font-semibold text-[var(--muted)]">
-                                    <span>{formatDateShort(txn.txn_date)}</span>
-                                    {txn.wallet_name ? (
-                                      <span className="inline-flex items-center gap-1">
-                                        <WalletIcon size={10} />
-                                        {txn.wallet_name}
-                                      </span>
-                                    ) : null}
-                                    {txn.notes ? (
-                                      <span className="inline-flex min-w-0 items-center gap-1">
-                                        <StickyNote size={10} />
-                                        <span className="truncate">{txn.notes}</span>
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                </div>
-
-                                <span
+                              <div className="flex min-w-0 flex-1 flex-col py-1.5">
+                                <p
                                   className={cn(
-                                    "shrink-0 text-sm font-black tabular-nums tracking-tight",
-                                    isIncome ? "text-[var(--income)]" : "text-[var(--text)]"
+                                    "truncate text-sm font-bold text-[var(--text)]",
+                                    !txn.included && "text-[var(--muted)] line-through"
                                   )}
                                 >
-                                  {isIncome ? "+" : "−"}
-                                  {moneyLabel(txn.amount, txn.currency)}
-                                </span>
+                                  {txn.vendor_or_source || tr("Transaksi", "Transaction")}
+                                </p>
+                                <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.6875rem] font-semibold text-[var(--muted)]">
+                                  <span className="whitespace-nowrap">{formatDateShort(txn.txn_date)}</span>
+                                  {txn.wallet_name ? (
+                                    <span className="inline-flex min-w-0 items-center gap-1">
+                                      <WalletIcon size={10} aria-hidden />
+                                      <span className="truncate">{txn.wallet_name}</span>
+                                    </span>
+                                  ) : null}
+                                </div>
+                                {txn.notes ? (
+                                  <p className="mt-0.5 flex min-w-0 items-center gap-1 text-[0.6875rem] text-[var(--text-soft)]">
+                                    <StickyNote size={10} className="shrink-0" aria-hidden />
+                                    <span className="truncate">{txn.notes}</span>
+                                  </p>
+                                ) : null}
                               </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
 
-            <section className="flex items-start gap-2.5 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-[0.6875rem] text-[var(--muted)] shadow-[var(--shadow-card)] sm:p-5">
-              <Check size={14} className="mt-0.5 shrink-0 text-[var(--income)]" />
-              <p>
-                {tr(
-                  "Tekan bulatan semak untuk masukkan atau keluarkan transaksi daripada pengiraan bajet acara. Rekod transaksi dalam pangkalan data tidak akan dipadam atau diubah suai.",
-                  "Tap the checkbox to include or exclude transactions from the event budget. Records in the database remain completely intact."
-                )}
-              </p>
-            </section>
-          </div>
+                              <span
+                                className={cn(
+                                  "shrink-0 text-sm font-black tabular-nums tracking-tight",
+                                  isIncome ? "text-[var(--income)]" : "text-[var(--text)]",
+                                  !txn.included && "line-through"
+                                )}
+                              >
+                                {isIncome ? "+" : "−"}
+                                {moneyLabel(txn.amount, txn.currency)}
+                              </span>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
         </div>
       </div>
 

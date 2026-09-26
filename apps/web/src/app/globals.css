@@ -3413,3 +3413,28 @@ html[data-theme="light"] .portal-personal-shell .event-hero [class*="text-rose-4
   background-color: var(--surface-tint);
 }
 
+
+/* Text laid over an event photo (the spend total on the scrim). The light
+   theme remaps text-white to var(--text) across the personal shell, which
+   turned this total black on a dark scrim, so it gets its own class that
+   stays light in both themes. */
+.event-photo-overlay,
+.event-photo-overlay p,
+.event-photo-overlay span,
+.event-photo-overlay h1,
+html[data-theme="light"] .event-photo-overlay,
+html[data-theme="light"] .event-photo-overlay p,
+html[data-theme="light"] .event-photo-overlay span,
+html[data-theme="light"] .event-photo-overlay h1,
+html[data-theme="light"] .portal-personal-shell .event-photo-overlay,
+html[data-theme="light"] .portal-personal-shell .event-photo-overlay p,
+html[data-theme="light"] .portal-personal-shell .event-photo-overlay span,
+html[data-theme="light"] .portal-personal-shell .event-photo-overlay h1 {
+  color: #ffffff !important;
+}
+
+.event-photo-overlay .event-photo-overlay-label,
+html[data-theme="light"] .event-photo-overlay .event-photo-overlay-label,
+html[data-theme="light"] .portal-personal-shell .event-photo-overlay .event-photo-overlay-label {
+  color: rgba(255, 255, 255, 0.8) !important;
+}

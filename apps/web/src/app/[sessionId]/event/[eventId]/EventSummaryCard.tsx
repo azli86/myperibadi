@@ -1,8 +1,7 @@
 "use client"
 
-import { CheckCircle2, CircleSlash, Receipt, Wallet } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { MoneyAmount, formatCurrencyLabel, formatMoneyValue } from "@/components/ui/MoneyAmount"
+import { formatCurrencyLabel, formatMoneyValue } from "@/components/ui/MoneyAmount"
 
 export function EventSummaryCard({
   isBm,
@@ -15,6 +14,8 @@ export function EventSummaryCard({
   countedCount,
   excludedCount,
   totalCount,
+  spark,
+  totalOnPhoto = false,
   className,
 }: {
   isBm: boolean
@@ -27,97 +28,119 @@ export function EventSummaryCard({
   countedCount: number
   excludedCount: number
   totalCount: number
+  /** SVG polyline points in a 100×28 box, oldest first; null under two points. */
+  spark?: string | null
+  /** The hero already shows the total over the photo. */
+  totalOnPhoto?: boolean
   className?: string
 }) {
   const money = (n: number) => `${formatCurrencyLabel(currency)} ${formatMoneyValue(n)}`
   const hasBudget = budget > 0
   const over = remaining != null && remaining < 0
+  const tone = ratio >= 1 ? "var(--expense)" : ratio >= 0.8 ? "var(--warning)" : "var(--income)"
 
   return (
     <section
       className={cn(
-        "rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5",
+        "rounded-2xl bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5",
         className
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-            {isBm ? "Ringkasan acara" : "Event summary"}
-          </p>
-          <p className="mt-1.5 text-2xl font-black tabular-nums tracking-tight text-[var(--text)]">
-            {money(spent)}
-          </p>
-          <p className="mt-1 text-[11px] font-semibold text-[var(--muted)]">
-            {isBm ? `${countedCount} daripada ${totalCount} transaksi dikira` : `${countedCount} of ${totalCount} transactions counted`}
-          </p>
-        </div>
+      <div className={cn(totalOnPhoto && "hidden")}>
+        <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+          {isBm ? "Jumlah belanja" : "Total spent"}
+        </p>
+        <p className="mt-1 text-[2rem] font-black leading-none tabular-nums tracking-tight text-[var(--text)] [overflow-wrap:anywhere] sm:text-4xl">
+          {money(spent)}
+        </p>
       </div>
 
       {hasBudget ? (
-        <div className="mt-4">
-          <div className="flex items-baseline justify-between text-[0.6875rem] font-bold">
-            <span className="text-[var(--muted)]">
-              {isBm ? "Daripada bajet" : "Of budget"} {money(budget)}
-            </span>
-            <span className={cn(over ? "text-[var(--expense)]" : "text-[var(--muted)]")}>
-              {Math.round(ratio * 100)}%
-            </span>
-          </div>
-          <div className="event-progress-track mt-2">
+        <div className={cn(!totalOnPhoto && "mt-4")}>
+          <div className="event-progress-track">
             <div
-              className={cn(
-                "event-progress-fill",
-                ratio >= 1 ? "bg-[var(--expense)]" : ratio >= 0.8 ? "bg-amber-500" : "bg-[var(--income)]"
-              )}
-              style={{ width: `${Math.min(100, ratio * 100)}%` }}
+              className="event-progress-fill"
+              style={{ width: `${Math.min(100, ratio * 100)}%`, backgroundColor: tone }}
             />
           </div>
-          <p className={cn("mt-2 text-[0.6875rem] font-bold", over ? "text-[var(--expense)]" : "text-[var(--income)]")}>
-            {over
-              ? isBm
-                ? `Lebih ${money(Math.abs(remaining || 0))}`
-                : `Over by ${money(Math.abs(remaining || 0))}`
-              : isBm
-                ? `Baki ${money(remaining || 0)}`
-                : `${money(remaining || 0)} left`}
-          </p>
+          <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-xs font-bold">
+            <span className="text-[var(--muted)]">
+              {Math.round(ratio * 100)}% {isBm ? "daripada" : "of"} {money(budget)}
+            </span>
+            <span className={cn("tabular-nums", over ? "text-[var(--expense)]" : "text-[var(--text)]")}>
+              {over
+                ? isBm
+                  ? `Lebih ${money(Math.abs(remaining || 0))}`
+                  : `Over by ${money(Math.abs(remaining || 0))}`
+                : isBm
+                  ? `Baki ${money(remaining || 0)}`
+                  : `${money(remaining || 0)} left`}
+            </span>
+          </div>
         </div>
       ) : (
-        <p className="mt-4 text-[0.6875rem] font-bold text-[var(--muted)]">
+        <p className={cn("text-xs font-bold text-[var(--muted)]", !totalOnPhoto && "mt-3")}>
           {isBm ? "Tiada had bajet ditetapkan" : "No budget limit set"}
         </p>
       )}
 
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
-          <Receipt size={14} className="text-[var(--muted)]" />
-          <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
+      {spark ? (
+        <figure className="mt-4">
+          <svg
+            viewBox="0 0 100 28"
+            preserveAspectRatio="none"
+            className="h-12 w-full overflow-visible text-[var(--text-soft)]"
+            role="img"
+            aria-label={isBm ? "Perbelanjaan terkumpul mengikut tarikh" : "Running spend by date"}
+          >
+            <polygon points={`0,28 ${spark} 100,28`} fill="currentColor" opacity={0.08} />
+            <polyline
+              points={spark}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.75}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+          <figcaption className="mt-1 text-[0.625rem] font-semibold text-[var(--muted)]">
+            {isBm ? "Perbelanjaan terkumpul" : "Running spend"}
+          </figcaption>
+        </figure>
+      ) : null}
+
+      <dl className="mt-4 grid grid-cols-3 border-t border-[var(--divider)] pt-3.5">
+        <div className="min-w-0">
+          <dt className="text-[0.625rem] font-bold uppercase tracking-wide text-[var(--muted)]">
             {isBm ? "Dikira" : "Counted"}
-          </p>
-          <p className="mt-0.5 truncate text-sm font-black tabular-nums text-[var(--text)]">
+          </dt>
+          <dd className="mt-0.5 text-sm font-black tabular-nums text-[var(--text)]">
             {countedCount}
-          </p>
+            <span className="font-semibold text-[var(--muted)]">/{totalCount}</span>
+          </dd>
         </div>
-        <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
-          <CircleSlash size={14} className="text-[var(--muted)]" />
-          <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
+        <div className="min-w-0 border-l border-[var(--divider)] pl-3">
+          <dt className="text-[0.625rem] font-bold uppercase tracking-wide text-[var(--muted)]">
             {isBm ? "Diabai" : "Ignored"}
-          </p>
-          <p className="mt-0.5 truncate text-sm font-black tabular-nums text-[var(--text)]">
-            {excludedCount}
-          </p>
+          </dt>
+          <dd className="mt-0.5 text-sm font-black tabular-nums text-[var(--text)]">{excludedCount}</dd>
         </div>
-        <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
-          <Wallet size={14} className="text-[var(--muted)]" />
-          <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
+        <div className="min-w-0 border-l border-[var(--divider)] pl-3">
+          <dt className="text-[0.625rem] font-bold uppercase tracking-wide text-[var(--muted)]">
             {isBm ? "Masuk" : "Income"}
-          </p>
-          <p className="mt-0.5 truncate text-sm font-black tabular-nums text-[var(--text)]">
-            <MoneyAmount value={income} currency={currency} size="sm" />
-          </p>
+          </dt>
+          <dd
+            className={cn(
+              "mt-0.5 truncate text-sm font-black tabular-nums",
+              income > 0 ? "text-[var(--income)]" : "text-[var(--text)]"
+            )}
+          >
+            {income > 0 ? "+" : ""}
+            {money(income)}
+          </dd>
         </div>
-      </div>
+      </dl>
     </section>
   )
 }

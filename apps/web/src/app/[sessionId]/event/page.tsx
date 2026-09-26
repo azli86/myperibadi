@@ -9,11 +9,8 @@ import {
   Compass,
   Loader2,
   PartyPopper,
-  PieChart,
   Plus,
-  Receipt,
   Sparkles,
-  Tag,
   Pencil,
   Trash2,
   Upload,
@@ -432,12 +429,12 @@ export default function EventPage() {
 
     const statusClass =
       tone === "ended"
-        ? "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]"
+        ? "bg-[var(--surface-tint-strong)] text-[var(--muted)] border-transparent font-bold"
         : tone === "today"
-          ? "bg-cyan-500/15 text-cyan-500 border-cyan-500/30 font-bold"
+          ? "bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 border-cyan-500/30 font-bold"
           : tone === "soon"
-            ? "bg-amber-500/15 text-amber-500 border-amber-500/30 font-bold"
-            : "bg-emerald-500/15 text-emerald-500 border-emerald-500/30 font-bold"
+            ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 font-bold"
+            : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 font-bold"
 
     const budgetNum = Number(ev.budget || 0)
     const spentNum = Number(ev.spent || 0)
@@ -447,6 +444,9 @@ export default function EventPage() {
     // remaining = -spent and painted a no-budget trip as overspent.
     const remainingNum = hasBudget ? budgetNum - spentNum : 0
     const ratio = spendRatio(ev)
+
+    const hasImage = Boolean(ev.has_image && ev.image_url)
+    const toneColor = ratio >= 1 ? "var(--expense)" : ratio >= 0.8 ? "var(--warning)" : "var(--income)"
 
     return (
       <div
@@ -460,221 +460,242 @@ export default function EventPage() {
             router.push(`/${sessionId}/event/${ev.id}`)
           }
         }}
-        className="group relative grid w-full grid-cols-1 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] text-left shadow-[var(--shadow-soft)] transition active:scale-[0.99]"
+        className="group relative flex w-full flex-col overflow-hidden rounded-2xl bg-[var(--card)] text-left shadow-[var(--shadow-card)] transition active:scale-[0.99]"
       >
-        {/* Title strip — name and dates span the card so neither has to fight the
-            media column for width. */}
-        <div className="flex flex-col items-center gap-0.5 border-b border-[var(--border)]/60 px-3.5 py-2 text-center">
-          <p className="w-full truncate text-[0.95rem] font-black leading-tight tracking-tight text-[var(--text)]">
-            {ev.name}
-          </p>
-          <p className="w-full truncate text-[11px] font-semibold text-[var(--muted)]">
-            {ev.start_date ? formatDateShort(ev.start_date) : "—"}{" → "}{ev.end_date ? formatDateShort(ev.end_date) : tr("Tiada tarikh tamat", "No end date")}
-          </p>
-        </div>
-
-        <div className="flex gap-3 p-2.5 pt-3">
-        {/* Left media — square, inset from the card edge so it reads as art, not
-            as a bleeding edge of the card itself. */}
-        <div className="relative aspect-square w-[42%] min-w-[6.5rem] max-w-[9rem] shrink-0 self-start overflow-hidden rounded-xl bg-[var(--surface-tint-strong)]">
-          {ev.has_image && ev.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
+        {/* Photo with the spend total centred on it — the same treatment as the
+            event detail page, so the card previews the page it opens. */}
+        {hasImage ? (
+          <div className="relative aspect-[16/9] w-full overflow-hidden bg-[var(--surface-tint-strong)]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={ev.image_url}
-              alt={ev.name}
+              src={ev.image_url!}
+              alt=""
               className="absolute inset-0 h-full w-full object-cover object-center transition duration-500 group-active:scale-[1.03]"
             />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-[var(--surface-tint-strong)]">
-              <CategoryIconGlyph
-                iconName={ev.icon_name}
-                categoryName={ev.name}
-                kind="expense"
-                size={36}
-              />
-            </div>
-          )}
-
-          {/* Status overlay on the media, top-left. The pill says how close the
-              trip is, so it belongs on the photo, not in the text column. */}
-          <span
-            className={cn(
-              "absolute left-2 top-2 rounded-full border px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider backdrop-blur-md",
-              statusClass
-            )}
-          >
-            {statusLabel}
-          </span>
-        </div>
-
-        {/* Right info */}
-        <div className="flex min-w-0 flex-1 flex-col justify-between gap-2.5 pb-9 pl-0.5">
-          <div className="min-w-0">
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-            <div className="min-w-0">
-              <p className="flex items-center gap-1 text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                <WalletIcon size={10} className="text-[var(--accent2)]" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center event-photo-overlay bg-black/45 px-4 text-center">
+              {/* The name sits on the photo with the total, so the card reads
+                  as one image rather than a photo with a caption under it. */}
+              <p className="line-clamp-2 max-w-full text-2xl font-black leading-tight tracking-tight [overflow-wrap:anywhere] [text-shadow:0_1px_10px_rgba(0,0,0,0.5)]">
+                {ev.name}
+              </p>
+              <p className="mt-3 text-[0.6rem] event-photo-overlay-label font-bold uppercase tracking-[0.14em]">
                 {tr("Dibelanjakan", "Spent")}
               </p>
-              <p className="mt-0.5 truncate text-xs font-black tabular-nums text-[var(--text)]">
+              <p className="mt-1 text-3xl font-black leading-none tabular-nums tracking-tight [overflow-wrap:anywhere] [text-shadow:0_1px_12px_rgba(0,0,0,0.45)]">
                 {moneyLabel(spentNum, ev.currency)}
               </p>
             </div>
-            <div className="min-w-0">
-              <p className="flex items-center gap-1 text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                <Tag size={10} className="text-sky-500" />
-                {tr("Bajet", "Budget")}
-              </p>
-              <p className="mt-0.5 truncate text-xs font-black tabular-nums text-[var(--text)]">
-                {hasBudget ? moneyLabel(budgetNum, ev.currency) : "—"}
-              </p>
-            </div>
-            <div className="min-w-0">
-              <p className="flex items-center gap-1 text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                <PieChart
-                  size={10}
+          </div>
+        ) : null}
+
+        <div className="flex flex-1 flex-col p-3.5">
+          <div className="flex items-start gap-3">
+            {!hasImage ? (
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--text-soft)]">
+                <CategoryIconGlyph iconName={ev.icon_name} categoryName={ev.name} kind="expense" size={22} />
+              </span>
+            ) : null}
+            <div className="min-w-0 flex-1">
+              {!hasImage ? (
+                <p className="truncate text-xl font-black leading-tight tracking-tight text-[var(--text)]">{ev.name}</p>
+              ) : null}
+              <div className={cn("flex flex-wrap", hasImage ? "mt-1.5" : "mt-1", "items-center gap-x-2 gap-y-1 text-[11px] font-semibold text-[var(--muted)]")}>
+                <span
                   className={cn(
-                    !hasBudget && "text-[var(--muted)]",
-                    hasBudget && ratio >= 1 && "text-rose-500",
-                    hasBudget && ratio >= 0.8 && ratio < 1 && "text-amber-500",
-                    hasBudget && ratio < 0.8 && "text-emerald-500"
+                    "rounded-full border px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.08em]",
+                    statusClass
                   )}
-                />
-                {tr("Baki", "Left")}
-              </p>
-              <p
-                className={cn(
-                  "mt-0.5 truncate text-xs font-black tabular-nums",
-                  !hasBudget && "text-[var(--muted)]",
-                  hasBudget && (remainingNum >= 0 ? "text-emerald-500" : "text-rose-500")
-                )}
-              >
-                {hasBudget ? moneyLabel(remainingNum, ev.currency) : "—"}
-              </p>
+                >
+                  {statusLabel}
+                </span>
+                <span className="whitespace-nowrap">
+                  {ev.start_date ? formatDateShort(ev.start_date) : "—"}
+                  {" → "}
+                  {ev.end_date ? formatDateShort(ev.end_date) : tr("Tiada tarikh tamat", "No end date")}
+                </span>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="flex items-center gap-1 text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                <Receipt size={10} className="text-[var(--muted)]" />
-                {tr("Transaksi", "Txn")}
-              </p>
-              <p className="mt-0.5 truncate text-xs font-black tabular-nums text-[var(--text)]">
-                {ev.transaction_count || 0}
-              </p>
+
+            {/* Edit / delete stay reachable without opening the event. */}
+            <div className="-mr-1.5 -mt-1.5 flex shrink-0 items-center">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  openEditSheet(ev)
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95"
+                aria-label={tr("Edit", "Edit")}
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDeleteEvent(ev)
+                }}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-rose-600 transition hover:bg-rose-500/10 active:scale-95 dark:text-rose-400"
+                aria-label={tr("Padam", "Delete")}
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
           </div>
+
+          {/* Without a photo the total leads the body instead. */}
+          {!hasImage ? (
+            <div className="mt-3">
+              <p className="text-[0.6rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
+                {tr("Dibelanjakan", "Spent")}
+              </p>
+              <p className="mt-0.5 truncate text-2xl font-black leading-none tabular-nums tracking-tight text-[var(--text)]">
+                {moneyLabel(spentNum, ev.currency)}
+              </p>
+            </div>
+          ) : null}
 
           {/* Budget bar, only when a limit exists — a 0% bar on a budget-less
               trip reads as an error. */}
           {hasBudget ? (
-            <div className="event-progress-track">
+            <div className="event-progress-track mt-3">
               <div
-                className={cn(
-                  "event-progress-fill",
-                  ratio >= 1 ? "bg-[var(--expense)]" : ratio >= 0.8 ? "bg-amber-500" : "bg-[var(--income)]"
-                )}
-                style={{ width: `${Math.min(100, ratio * 100)}%` }}
+                className="event-progress-fill"
+                style={{ width: `${Math.min(100, ratio * 100)}%`, backgroundColor: toneColor }}
               />
             </div>
-          ) : (
-            <p className="truncate text-[0.6rem] font-semibold text-[var(--muted)]">
+          ) : null}
+
+          <dl className="mt-3 grid grid-cols-3 border-t border-[var(--divider)] pt-3">
+            <div className="min-w-0">
+              <dt className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--muted)]">{tr("Bajet", "Budget")}</dt>
+              <dd className="mt-0.5 truncate text-xs font-black tabular-nums text-[var(--text)]">
+                {hasBudget ? moneyLabel(budgetNum, ev.currency) : "—"}
+              </dd>
+            </div>
+            <div className="min-w-0 border-l border-[var(--divider)] pl-3">
+              <dt className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--muted)]">{tr("Baki", "Left")}</dt>
+              <dd
+                className={cn(
+                  "mt-0.5 truncate text-xs font-black tabular-nums",
+                  !hasBudget && "text-[var(--muted)]",
+                  hasBudget &&
+                    (remainingNum >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")
+                )}
+              >
+                {hasBudget ? moneyLabel(remainingNum, ev.currency) : "—"}
+              </dd>
+            </div>
+            <div className="min-w-0 border-l border-[var(--divider)] pl-3">
+              <dt className="text-[0.6rem] font-bold uppercase tracking-wide text-[var(--muted)]">{tr("Transaksi", "Txn")}</dt>
+              <dd className="mt-0.5 truncate text-xs font-black tabular-nums text-[var(--text)]">
+                {ev.transaction_count || 0}
+              </dd>
+            </div>
+          </dl>
+
+          {!hasBudget ? (
+            <p className="mt-2 flex items-center gap-1 truncate text-[0.6875rem] font-semibold text-[var(--muted)]">
+              <WalletIcon size={11} aria-hidden className="shrink-0" />
               {walletName(ev.wallet_id) || tr("Semua Wallet", "All Wallets")}
             </p>
-          )}
-        </div>
-        </div>
-        </div>
-
-        {/* Edit / delete stay reachable without opening the event. */}
-        <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              openEditSheet(ev)
-            }}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--surface-tint)] text-[var(--muted)] transition active:scale-95"
-            aria-label={tr("Edit", "Edit")}
-          >
-            <Pencil size={12} />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              handleDeleteEvent(ev)
-            }}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-rose-500/10 text-rose-500 transition active:scale-95"
-            aria-label={tr("Padam", "Delete")}
-          >
-            <Trash2 size={12} />
-          </button>
+          ) : null}
         </div>
       </div>
     )
   }
 
-  // Hero Card Component (debt layout: total left, metrics right)
-  const renderHeroStats = (isDesktop = false) => (
-    <div className={cn("relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] text-[#f5f5f5]", isDesktop ? "p-6 md:p-8" : "p-6")}>
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-      <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-      <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
+  // Summary on the event hero: the dark card globals.css defines for this
+  // module (.event-hero keeps its text light in both themes), with the debt
+  // page's gradient and blooms. Spend on running events leads, then the budget
+  // it is measured against.
+  const renderHeroStats = (isDesktop = false) => {
+    const hasTotalBudget = stats.totalBudget > 0
+    const totalRatio = hasTotalBudget ? Math.max(0, stats.totalSpent / stats.totalBudget) : 0
+    const totalTone = totalRatio >= 1 ? "var(--expense)" : totalRatio >= 0.8 ? "var(--warning)" : "var(--income)"
+    const over = stats.netRemaining < 0
+    return (
+      <section className={cn("event-hero", isDesktop ? "p-6 md:p-7" : "p-5")}>
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
+        <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
+        <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
 
-      <div className={cn("relative", isDesktop && "flex items-center gap-5")}>
-        <div className={cn(isDesktop && "min-w-[12rem] shrink-0")}>
-          <p className={cn(
-            "font-bold uppercase tracking-[0.14em] text-[#a3a3a3]",
-            isDesktop ? "text-[0.7rem]" : "text-[0.625rem]",
-          )}>
-            {tr("Peruntukan Bajet Acara", "Event Budget Allocation")}
-          </p>
-
-          <div className="mt-2 leading-none tabular-nums tracking-tight text-4xl font-black text-white md:text-5xl">
+        <div className={cn("relative", isDesktop && "grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] items-center gap-8")}>
+          <div className="min-w-0">
+            <p className={cn("font-bold uppercase tracking-[0.14em] text-[#a3a3a3]", isDesktop ? "text-[0.7rem]" : "text-[0.625rem]")}>
+              {tr("Dibelanjakan · acara aktif", "Spent · active events")}
+            </p>
             {showDataSkeleton ? (
-              <div className={cn("animate-pulse rounded bg-white/10", isDesktop ? "h-10 w-40" : "h-8 w-32")} />
+              <div className={cn("mt-2 animate-pulse rounded bg-white/10", isDesktop ? "h-10 w-40" : "h-8 w-32")} />
             ) : (
-              <p className="leading-none tabular-nums tracking-tight text-4xl font-black text-white md:text-5xl">
-                <span className="event-hero-currency text-white font-extrabold opacity-100 text-2xl md:text-3xl mr-1.5 inline-block">RM</span>
-                <span>{formatMoneyValue(Number(stats.totalBudget || 0))}</span>
+              <p className="event-hero-amount mt-2 text-4xl leading-none tabular-nums md:text-5xl">
+                <span className="event-hero-currency mr-1.5 inline-block text-2xl md:text-3xl">RM</span>
+                <span>{formatMoneyValue(stats.totalSpent)}</span>
+              </p>
+            )}
+
+            {hasTotalBudget ? (
+              <div className="mt-4">
+                <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full transition-[width] duration-300"
+                    style={{ width: `${Math.min(100, totalRatio * 100)}%`, backgroundColor: totalTone }}
+                  />
+                </div>
+                {/* The hero forces light text, so the tone rides on the bar and a dot. */}
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-0.5 text-xs font-bold">
+                  <span className="text-[#a3a3a3]">
+                    {Math.round(totalRatio * 100)}% {tr("daripada", "of")} {moneyLabel(stats.totalBudget, "RM")}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 tabular-nums text-[#f5f5f5]">
+                    <i aria-hidden className="block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: totalTone }} />
+                    {over
+                      ? tr(
+                          `Lebih ${moneyLabel(Math.abs(stats.netRemaining), "RM")}`,
+                          `Over by ${moneyLabel(Math.abs(stats.netRemaining), "RM")}`
+                        )
+                      : tr(`Baki ${moneyLabel(stats.netRemaining, "RM")}`, `${moneyLabel(stats.netRemaining, "RM")} left`)}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <p className="mt-3 text-xs font-bold text-[#a3a3a3]">
+                {tr("Tiada had bajet ditetapkan", "No budget limit set")}
               </p>
             )}
           </div>
 
-          <p className="mt-1.5 text-[0.625rem] font-semibold text-[#8c8c8c]">
-            {stats.nextUpcoming
-              ? `${tr("Acara terdekat:", "Next upcoming:")} ${stats.nextUpcoming.name} (${stats.nextUpcoming.days === 0 ? tr("Hari ini", "Today") : `${stats.nextUpcoming.days}d`})`
-              : tr("Tiada acara terdekat", "No upcoming events")}
-          </p>
+          <div className={cn("grid grid-cols-3", isDesktop ? "gap-3" : "mt-5 gap-2.5")}>
+            {[
+              { label: tr("Aktif", "Active"), value: String(stats.activeCount), sub: null },
+              { label: tr("Tamat", "Ended"), value: String(stats.endedCount), sub: null },
+              {
+                label: tr("Terdekat", "Next"),
+                value: stats.nextUpcoming
+                  ? stats.nextUpcoming.days === 0
+                    ? tr("Hari ini", "Today")
+                    : isBm
+                      ? `${stats.nextUpcoming.days} hari`
+                      : `${stats.nextUpcoming.days}d`
+                  : "—",
+                sub: stats.nextUpcoming?.name || null,
+              },
+            ].map((tile) => (
+              <div key={tile.label} className={cn("min-w-0 bg-white/[0.06]", isDesktop ? "rounded-2xl p-4" : "rounded-[1.15rem] p-3")}>
+                <p className={cn("font-bold uppercase tracking-[0.1em] text-[#a3a3a3]", isDesktop ? "text-[0.6rem]" : "text-[0.5rem]")}>
+                  {tile.label}
+                </p>
+                <p className={cn("truncate font-black tabular-nums tracking-tight text-[#f5f5f5]", isDesktop ? "mt-3 text-lg" : "mt-2 text-sm")}>
+                  {tile.value}
+                </p>
+                {tile.sub ? <p className="mt-0.5 truncate text-[0.625rem] font-semibold text-[#a3a3a3]">{tile.sub}</p> : null}
+              </div>
+            ))}
+          </div>
         </div>
-
-        <div className={cn(
-          "grid grid-cols-3",
-          isDesktop ? "min-w-0 flex-1 gap-3" : "mt-5 gap-2.5",
-        )}>
-          {[
-            { label: tr("Dibelanjakan", "Spent"), value: `RM ${formatMoneyValue(stats.totalSpent)}`, tone: "text-[#e5e5e5]" },
-            { label: stats.netRemaining >= 0 ? tr("Baki", "Remaining") : tr("Lebihan", "Over"), value: `RM ${formatMoneyValue(Math.abs(stats.netRemaining))}`, tone: stats.netRemaining >= 0 ? "text-[#6ee7b7]" : "text-[#fdba74]" },
-            { label: tr("Acara", "Events"), value: `${stats.activeCount}/${stats.endedCount}`, tone: "text-[#e5e5e5]" },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className={cn("bg-white/[0.06]", isDesktop ? "rounded-2xl p-4" : "rounded-[1.15rem] p-3")}
-            >
-              <p className={cn(
-                "font-bold uppercase tracking-[0.1em] text-[#a3a3a3]",
-                isDesktop ? "text-[0.6rem] tracking-[0.12em]" : "text-[0.5rem]",
-              )}>
-                {item.label}
-              </p>
-              <p className={cn("font-semibold tabular-nums tracking-tight", item.tone, isDesktop ? "mt-3 text-lg" : "mt-2 text-xs")}>
-                {item.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
+      </section>
+    )
+  }
 
   // Filter Segmented Tabs
   const renderFilterTabs = () => (
@@ -689,7 +710,7 @@ export default function EventPage() {
           type="button"
           onClick={() => setFilterTab(tab.key)}
           className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition active:scale-95",
+            "flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold transition active:scale-95",
             filterTab === tab.key
               ? "bg-[var(--text)] text-[var(--bg)] shadow-xs"
               : "bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)]"
@@ -698,7 +719,7 @@ export default function EventPage() {
           <span>{tab.label}</span>
           <span
             className={cn(
-              "rounded-full px-1.5 py-0.2 text-[0.625rem] font-black",
+              "rounded-full px-1.5 py-0.5 text-[0.625rem] font-black",
               filterTab === tab.key ? "bg-[var(--bg)]/20 text-[var(--bg)]" : "bg-[var(--card)] text-[var(--muted)]"
             )}
           >
@@ -732,10 +753,10 @@ export default function EventPage() {
         <div className="space-y-3">
           {showDataSkeleton ? (
             Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-36 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
+              <div key={i} className="h-52 animate-pulse rounded-2xl bg-[var(--card)]" />
             ))
           ) : filteredEvents.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/20 p-8 text-center">
+            <div className="rounded-2xl border border-dashed border-[var(--divider)] bg-[var(--card)] p-8 text-center">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--muted)]">
                 <PartyPopper size={28} />
               </div>
@@ -779,10 +800,10 @@ export default function EventPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {showDataSkeleton ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-44 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
+                <div key={i} className="h-64 animate-pulse rounded-2xl bg-[var(--card)]" />
               ))
             ) : filteredEvents.length === 0 ? (
-              <div className="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/70 px-6 py-14 text-center">
+              <div className="col-span-full flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--divider)] bg-[var(--card)] px-6 py-14 text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--muted)]">
                   <PartyPopper size={32} />
                 </div>
