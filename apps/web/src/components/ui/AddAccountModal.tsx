@@ -16,7 +16,7 @@ type AddAccountModalProps = {
 
 /**
  * Reusable "Add Account" login modal for multi-account switching.
- * Used by the Shell bottom-sheet menu AND the /account page so both entry
+ * Used by the Shell bottom-sheet menu AND the settings page so both entry
  * points share the exact same Google / email multi-account login UX.
  */
 export function AddAccountModal({ open, onClose, onAdded }: AddAccountModalProps) {

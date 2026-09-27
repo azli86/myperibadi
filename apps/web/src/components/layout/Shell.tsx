@@ -804,15 +804,6 @@ function getMobileHeaderMeta(
     };
   }
 
-  if (pathname === `${base}/account`) {
-    return {
-      title: t.myAccount,
-      subtitle: t.headerAccountSubtitle,
-      eyebrow: t.profile,
-      icon: User,
-      backHref: `${base}/settings`,
-    };
-  }
 
   if (pathname === `${base}/wallet-settings`) {
     return {
@@ -1739,7 +1730,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       if (href === `${base}/settings`) {
         return [
           `${base}/settings`,
-          `${base}/account`,
           `${base}/security`,
           `${base}/bot-command`,
           `${base}/about`,

@@ -34,7 +34,6 @@ export const translations = {
     headerCategoriesSubtitle: "Organize categories and smart keyword rules.",
     headerWhatsappSubtitle: "Connect your bot and control automations.",
     headerSettingsSubtitle: "Preferences, profile, and portal tools.",
-    headerAccountSubtitle: "Update your personal details and contact info.",
     headerWalletSubtitle: "Manage wallets, currency, and account structure.",
     headerNotificationsSubtitle: "Choose which alerts reach your device.",
     headerSecuritySubtitle: "Password, privacy, and sign-in protection.",
@@ -82,7 +81,6 @@ export const translations = {
     // Lagi Page
     lagiTitle: "Settings",
     profile: "Profile",
-    myAccount: "My Account",
     language: "Language",
     switchLang: "Switch Language",
     notifications: "Notifications",
@@ -412,7 +410,6 @@ export const translations = {
     headerCategoriesSubtitle: "Urus kategori dan keyword pintar untuk auto-map.",
     headerWhatsappSubtitle: "Sambung bot anda dan kawal automasi dengan mudah.",
     headerSettingsSubtitle: "Keutamaan, profil, dan alat portal anda.",
-    headerAccountSubtitle: "Kemaskini maklumat peribadi dan butiran hubungan.",
     headerWalletSubtitle: "Urus wallet, mata wang, dan struktur akaun.",
     headerNotificationsSubtitle: "Pilih notifikasi yang anda mahu terima.",
     headerSecuritySubtitle: "Kata laluan, privasi, dan perlindungan log masuk.",
@@ -468,7 +465,6 @@ export const translations = {
     // Lagi Page
     lagiTitle: "Tetapan",
     profile: "Profil",
-    myAccount: "Akaun Saya",
     language: "Bahasa",
     switchLang: "Tukar Bahasa",
     notifications: "Pemberitahuan",
