@@ -12,6 +12,8 @@ export type TxnItemsTableProps = {
   formatReceiptLineQty: (value: number) => string
 }
 
+// Items laid out like the printed receipt they came from: one line per item,
+// quantity and unit price under the name, and a dashed rule above the total.
 export default function TxnItemsTable({
   txn,
   receiptItems,
@@ -22,51 +24,47 @@ export default function TxnItemsTable({
   const { lang } = useLang()
   const isBm = lang === "BM"
   const isIncome = txn.type === "income"
+  const count = receiptItems.length
 
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 md:p-6">
-      <h3 className="mb-3 text-sm font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
-        {isBm ? "Item" : "Items"}
-      </h3>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[var(--border)] text-left text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
-              <th className="pb-2.5 pt-1">{isBm ? "Item / Harga" : "Item / Price"}</th>
-              <th className="pb-2.5 pt-1 text-center">Qty</th>
-              <th className="pb-2.5 pt-1 text-right">{isBm ? "Jumlah" : "Amount"}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--border)]">
-            {receiptItems.map((item, index) => (
-              <tr key={`${item.id}-${index}`}>
-                <td className="py-3 pr-3">
-                  <p className="font-semibold text-[var(--text)]">{item.name}</p>
-                  <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">
-                    @ {showDataSkeleton ? <AmountSkeleton className="h-3 w-16" /> : formatReceiptLineAmount(item.unit_price)}
-                  </p>
-                </td>
-                <td className="py-3 text-center tabular-nums text-[var(--text)]">
-                  {formatReceiptLineQty(item.quantity)}
-                </td>
-                <td className="py-3 text-right tabular-nums font-semibold text-[var(--text)]">
-                  {showDataSkeleton ? <AmountSkeleton className="h-3 w-20" /> : formatReceiptLineAmount(item.subtotal)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="border-t border-[var(--border-strong)]">
-              <td className="py-3 pr-3 text-sm font-bold text-[var(--text)]">
-                {isBm ? "Jumlah" : "Total"}
-              </td>
-              <td className="py-3" />
-              <td className="py-3 text-right text-base font-black tabular-nums text-[var(--text)]">
-                {showDataSkeleton ? <AmountSkeleton className="h-4 w-24" /> : <>{isIncome ? "+" : "-"}RM {txn.amount.toLocaleString(lang === "BM" ? "ms-MY" : "en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+    <div className="rounded-[1.5rem] bg-[var(--card)] px-5 pb-4 pt-4 shadow-[var(--shadow-card)] md:px-6">
+      <div className="flex items-baseline justify-between">
+        <h3 className="text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-[var(--muted)]">
+          {isBm ? "Item" : "Items"}
+        </h3>
+        <span className="text-[0.6875rem] font-semibold tabular-nums text-[var(--muted)]">
+          {count} {isBm ? "item" : count === 1 ? "item" : "items"}
+        </span>
+      </div>
+
+      <ul className="mt-2">
+        {receiptItems.map((item, index) => (
+          <li key={`${item.id}-${index}`} className="flex items-start justify-between gap-4 py-2.5">
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-[var(--text)] [overflow-wrap:anywhere]">{item.name}</span>
+              <span className="mt-0.5 block text-xs font-medium tabular-nums text-[var(--muted)]">
+                {formatReceiptLineQty(item.quantity)} ×{" "}
+                {showDataSkeleton ? <AmountSkeleton className="h-3 w-16" /> : formatReceiptLineAmount(item.unit_price)}
+              </span>
+            </span>
+            <span className="shrink-0 text-sm font-bold tabular-nums text-[var(--text)]">
+              {showDataSkeleton ? <AmountSkeleton className="h-3 w-20" /> : formatReceiptLineAmount(item.subtotal)}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-2 flex items-baseline justify-between border-t-2 border-dashed border-[var(--divider)] pt-3">
+        <span className="text-sm font-black text-[var(--text)]">{isBm ? "Jumlah" : "Total"}</span>
+        <span className="text-lg font-black tabular-nums text-[var(--text)]">
+          {showDataSkeleton ? (
+            <AmountSkeleton className="h-4 w-24" />
+          ) : (
+            <>
+              {isIncome ? "+" : "−"}RM {txn.amount.toLocaleString(isBm ? "ms-MY" : "en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </>
+          )}
+        </span>
       </div>
     </div>
   )

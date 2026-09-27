@@ -22,7 +22,7 @@ import { DesktopPageAction, DesktopPageBody, DesktopPageHeader, MobilePageHeader
 import { usePageAlert } from "@/hooks/usePageAlert"
 import { splitWalletTaggedDescription } from "@/lib/transaction-display"
 import TxnHeader from "./sections/TxnHeader"
-import TxnSummaryCard from "./sections/TxnSummaryCard"
+import TxnSummaryCard, { TxnActionButton } from "./sections/TxnSummaryCard"
 import TxnDetailsList from "./sections/TxnDetailsList"
 import TxnItemsTable from "./sections/TxnItemsTable"
 import TxnAttachmentsPanel from "./sections/TxnAttachmentsPanel"
@@ -1534,58 +1534,44 @@ export default function TransactionDetailPage() {
       ? "loading"
       : "idle"
 
-  const amountClass = isIncome ? "text-emerald-500" : "text-rose-500"
+  // Income reads green; spending stays in the text colour, as on the lists.
+  // Each tone has a darker light-mode shade: -500 on white is under 4.5:1.
+  const amountClass = isWalletTransfer
+    ? "text-[var(--text)]"
+    : isIncome
+      ? "text-emerald-700 dark:text-emerald-400"
+      : "text-[var(--text)]"
   const badgeClass = isIncome
-    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-    : "border-rose-500/20 bg-rose-500/10 text-rose-500"
+    ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+    : "border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-400"
 
   const transactionDetailTitle = lang === "BM" ? "Butiran Transaksi" : "Transaction Details"
 
   const summaryCardActions = (
     <>
-      <button
-        type="button"
-        onClick={() => setShowEditModal(true)}
-        disabled={saving || !txn}
-        className="inline-flex items-center gap-1.5 text-sm font-bold text-[#d4d4d4] underline-offset-4 transition hover:text-[#f5f5f5] hover:underline disabled:opacity-40"
-      >
-        <Edit3 size={15} />
-        {langT.edit}
-      </button>
+      <TxnActionButton icon={<Edit3 size={18} />} label={langT.edit} onClick={() => setShowEditModal(true)} disabled={saving || !txn} />
       {refundButtonState !== "hidden" ? (
-        <>
-          <span className="h-3.5 w-px bg-white/15" aria-hidden />
-          <button
-            type="button"
-            onClick={handleRefundClick}
-            disabled={refundButtonState === "loading" || !txn}
-            className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-400 underline-offset-4 transition hover:text-emerald-300 hover:underline disabled:opacity-40"
-          >
-            {refundButtonState === "loading" ? <Loader2 size={15} className="animate-spin" /> : <Undo2 size={15} />}
-            Refund
-          </button>
-        </>
+        <TxnActionButton
+          icon={refundButtonState === "loading" ? <Loader2 size={18} className="animate-spin" /> : <Undo2 size={18} />}
+          label="Refund"
+          tone="positive"
+          onClick={handleRefundClick}
+          disabled={refundButtonState === "loading" || !txn}
+        />
       ) : null}
-      <span className="h-3.5 w-px bg-white/15" aria-hidden />
-      <button
-        type="button"
+      <TxnActionButton
+        icon={<BadgePercent size={18} />}
+        label={lang === "BM" ? "Cukai" : "Tax"}
         onClick={() => setShowTaxModal(true)}
         disabled={saving || !txn}
-        className="inline-flex items-center gap-1.5 text-sm font-bold text-[#d4d4d4] underline-offset-4 transition hover:text-[#f5f5f5] hover:underline disabled:opacity-40"
-      >
-        <BadgePercent size={15} />
-        {lang === "BM" ? "Cukai" : "Tax"}
-      </button>
-      <span className="h-3.5 w-px bg-white/15" aria-hidden />
-      <button
-        type="button"
+      />
+      <TxnActionButton
+        icon={<Trash2 size={18} />}
+        label={langT.delete}
+        tone="danger"
         onClick={() => setShowDeleteModal(true)}
         disabled={saving || !txn}
-        className="inline-flex items-center gap-1.5 text-sm font-bold text-rose-400 underline-offset-4 transition hover:text-rose-300 hover:underline disabled:opacity-40"
-      >
-        <Trash2 size={15} />
-        {langT.delete}
-      </button>
+      />
     </>
   )
 
@@ -1656,6 +1642,7 @@ export default function TransactionDetailPage() {
         <DesktopPageBody className="px-1 pb-24 md:px-4 md:pb-16 lg:max-w-7xl">
           <TxnSummaryCard
             txn={txn}
+            title={txnDisplay.title || txn.vendor_or_source}
             transactionDateLabel={transactionDateLabel}
             formattedAmount={formattedAmount}
             amountClass={amountClass}
@@ -1672,7 +1659,7 @@ export default function TransactionDetailPage() {
                     ? "?tab=fuel"
                     : ""
               }`}
-              className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
+              className="mt-3 flex items-center gap-3 rounded-[1.25rem] bg-[var(--card)] p-3.5 shadow-[var(--shadow-card)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--accent2)]">
                 <Car size={18} />
@@ -1701,7 +1688,7 @@ export default function TransactionDetailPage() {
             splitBill ? (
               <Link
                 href={`/${sessionId}/split-bills`}
-                className="mt-3 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
+                className="mt-3 flex items-center gap-3 rounded-[1.25rem] bg-[var(--card)] p-3.5 shadow-[var(--shadow-card)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--accent)]">
                   <Users size={18} />
@@ -1724,7 +1711,7 @@ export default function TransactionDetailPage() {
             ) : (
               <Link
                 href={`/${sessionId}/split-bills?create=1&txn=${txn?.id}`}
-                className="mt-3 flex items-center gap-3 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
+                className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-dashed border-[var(--divider)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
               >
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)]">
                   <Users size={18} />
@@ -1751,7 +1738,7 @@ export default function TransactionDetailPage() {
               type="button"
               onClick={addTxnToInventory}
               disabled={invAdding}
-              className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-3.5 text-left transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30 disabled:opacity-50"
+              className="mt-3 flex w-full items-center gap-3 rounded-[1.25rem] border border-dashed border-[var(--divider)] bg-[var(--card)] p-3.5 text-left transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30 disabled:opacity-50"
             >
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600">
                 {invAdding ? <Loader2 size={18} className="animate-spin" /> : <Package size={18} />}
@@ -1796,7 +1783,6 @@ export default function TransactionDetailPage() {
                 categoryLabel={getTransactionCategoryLabel(txn, langT.other)}
                 walletLabel={txn.wallet_name || langT.walletCash}
                 displayNotes={displayNotes}
-                merchantLabel={txnDisplay.title || txn.vendor_or_source}
               />
               <TxnItemsTable
                 txn={txn}

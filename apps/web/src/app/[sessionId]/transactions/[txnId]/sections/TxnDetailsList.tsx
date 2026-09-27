@@ -19,14 +19,12 @@ export type TxnDetailsListProps = {
 
 function Row({ label, value, leading, children }: { label: string; value?: string; leading?: React.ReactNode; children?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-2.5">
-      <span className="flex items-center gap-2 text-sm font-medium text-[var(--text-soft)]">
-        {leading}
-        {label}
-      </span>
+    <div className="flex min-h-12 items-center justify-between gap-4 py-2.5">
+      <span className="shrink-0 text-sm font-medium text-[var(--muted)]">{label}</span>
       {children ?? (
-        <span className="max-w-[60%] text-right text-sm font-semibold text-[var(--text)]">
-          {value}
+        <span className="flex min-w-0 items-center justify-end gap-2 text-right text-sm font-bold text-[var(--text)]">
+          {leading}
+          <span className="min-w-0 [overflow-wrap:anywhere]">{value}</span>
         </span>
       )}
     </div>
@@ -48,11 +46,12 @@ export default function TxnDetailsList({
   const isWalletTransfer = Boolean(txn.is_wallet_transfer)
 
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 md:p-6">
-      <h3 className="mb-3 text-sm font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
+    <div className="rounded-[1.5rem] bg-[var(--card)] px-5 pb-3 pt-4 shadow-[var(--shadow-card)] md:px-6">
+      <h3 className="text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-[var(--muted)]">
         {isBm ? "Maklumat Transaksi" : "Transaction Info"}
       </h3>
-      <div className="divide-y divide-[var(--border)]">
+      {/* --divider, not --border: --border is transparent in every theme. */}
+      <div className="mt-1 divide-y divide-[var(--divider)]">
         {merchantLabel && (
           <Row label={isBm ? "Peniaga / Penerangan" : "Merchant / Description"} value={merchantLabel} />
         )}
@@ -106,8 +105,8 @@ export default function TxnDetailsList({
       </div>
 
       {displayNotes && (
-        <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-3.5">
-          <p className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+        <div className="mb-2 mt-2 rounded-2xl bg-[var(--surface-tint-strong)] p-3.5">
+          <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-[var(--muted)]">
             {isBm ? "Nota" : "Notes"}
           </p>
           <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text)]">
@@ -118,8 +117,8 @@ export default function TxnDetailsList({
 
       {isWalletTransfer && (
         <div className={cn(
-          "mt-4 rounded-xl border px-4 py-3.5 text-sm font-medium",
-          "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-300"
+          "mb-2 mt-2 rounded-2xl border px-4 py-3.5 text-sm font-medium",
+          "border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300"
         )}>
           {isBm ? "Pemindahan wallet tidak boleh diubah suai atau direfund." : "Wallet transfers cannot be edited or refunded."}
         </div>

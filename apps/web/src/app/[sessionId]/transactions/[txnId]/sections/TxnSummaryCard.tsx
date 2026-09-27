@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { Banknote } from "lucide-react"
+import { ArrowLeftRight, Banknote } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLang } from "@/lib/lang"
 import { CategoryIconGlyph } from "@/lib/category-icons"
@@ -9,6 +9,8 @@ import type { TransactionDetail } from "../types"
 
 export type TxnSummaryCardProps = {
   txn: TransactionDetail
+  /** What the money was for, as the list shows it: merchant or description. */
+  title: string
   transactionDateLabel: string
   formattedAmount: string
   amountClass: string
@@ -16,8 +18,11 @@ export type TxnSummaryCardProps = {
   actions?: React.ReactNode
 }
 
+// The top of the transaction page, in the same plain style as the phone home:
+// no card, everything centred on the page, the amount as the largest thing.
 export default function TxnSummaryCard({
   txn,
+  title,
   transactionDateLabel,
   formattedAmount,
   amountClass,
@@ -27,63 +32,90 @@ export default function TxnSummaryCard({
   const { lang } = useLang()
   const isBm = lang === "BM"
   const isIncome = txn.type === "income"
-  const sign = isIncome ? "+" : "-"
+  const isTransfer = Boolean(txn.is_wallet_transfer)
+  const sign = isTransfer ? "" : isIncome ? "+" : "−"
   const receiptNumber = txn.reference_id || `TXN-${txn.id}`
-  const categoryName = txn.category_name || (isBm ? "Tiada Kategori" : "No Category")
+  const categoryName = isTransfer
+    ? isBm
+      ? "Pindahan wallet"
+      : "Wallet transfer"
+    : txn.category_name || (isBm ? "Tiada Kategori" : "No Category")
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-[#1a1a1a] p-6 text-[#f5f5f5] md:p-8">
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-      <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-      <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
+    <section className="flex flex-col items-center px-3 pb-2 pt-4 text-center md:pt-6">
+      <span className="flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-[var(--card)] text-[var(--text-soft)] shadow-[var(--shadow-card)]">
+        {isTransfer ? (
+          <ArrowLeftRight size={26} />
+        ) : txn.category_icon_name || txn.category_name ? (
+          <CategoryIconGlyph iconName={txn.category_icon_name} categoryName={txn.category_name || undefined} kind={isIncome ? "income" : "expense"} size={28} />
+        ) : (
+          <Banknote size={26} />
+        )}
+      </span>
 
-      <div className="relative flex flex-col items-center text-center">
-        {/* Category icon */}
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 text-[#e5e5e5]">
-          {txn.category_icon_name ? (
-            <CategoryIconGlyph iconName={txn.category_icon_name} categoryName={txn.category_name || undefined} size={24} />
-          ) : (
-            <Banknote size={24} />
+      <h2 className="mt-3 max-w-full text-lg font-black leading-tight tracking-tight text-[var(--text)] [overflow-wrap:anywhere] md:text-xl">
+        {title}
+      </h2>
+      <p className="mt-1 text-xs font-bold text-[var(--muted)]">{categoryName}</p>
+
+      <p className={cn("mt-4 font-black leading-none tabular-nums tracking-tight", amountClass)}>
+        <span className="mr-1 align-top text-lg font-bold opacity-70 md:text-xl">{sign}RM</span>
+        <span className="text-[2.75rem] md:text-6xl">{formattedAmount}</span>
+      </p>
+
+      <p className="mt-3 text-xs font-semibold text-[var(--text-soft)]">{transactionDateLabel}</p>
+      <p className="mt-1 font-mono text-[0.6875rem] font-semibold text-[var(--muted)]">{receiptNumber}</p>
+
+      {txn.is_refund || txn.has_been_refunded ? (
+        <span
+          className={cn(
+            "mt-3 rounded-full border px-2.5 py-0.5 text-[0.625rem] font-extrabold uppercase tracking-[0.08em]",
+            txn.is_refund ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : badgeClass
           )}
-        </div>
+        >
+          {txn.is_refund ? "Refund" : isBm ? "Direfund" : "Refunded"}
+        </span>
+      ) : null}
 
-        {/* Category — big */}
-        <h2 className="mt-3 max-w-full break-words text-lg font-black leading-tight text-[#f5f5f5] md:text-xl">
-          {categoryName}
-        </h2>
+      {actions ? <div className="mt-6 flex w-full max-w-sm items-start justify-center gap-3">{actions}</div> : null}
+    </section>
+  )
+}
 
-        {/* Amount — big */}
-        <p className={cn("mt-3 leading-none tabular-nums tracking-tight", amountClass, "text-5xl font-black md:text-6xl")}>
-          {sign}RM {formattedAmount}
-        </p>
-
-        {/* Transaction ID — small */}
-        <p className="mt-3 text-xs font-bold text-[#8c8c8c]">
-          {receiptNumber}
-        </p>
-
-        {/* Time — small */}
-        <p className="mt-1 text-[0.625rem] font-semibold text-[#6b6b6b]">
-          {transactionDateLabel}
-        </p>
-
-        {txn.is_refund || txn.has_been_refunded ? (
-          <span className={cn(
-            "mt-3 shrink-0 rounded-full border px-2.5 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em]",
-            txn.is_refund
-              ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-              : badgeClass
-          )}>
-            {txn.is_refund ? "Refund" : (isBm ? "Direfund" : "Refunded")}
-          </span>
-        ) : null}
-
-        {actions ? (
-          <div className="mt-5 flex items-center justify-center gap-6">
-            {actions}
-          </div>
-        ) : null}
-      </div>
-    </div>
+/** A round, labelled action like a banking app's: 48px target, label below. */
+export function TxnActionButton({
+  icon,
+  label,
+  onClick,
+  disabled,
+  tone = "default",
+}: {
+  icon: React.ReactNode
+  label: string
+  onClick: () => void
+  disabled?: boolean
+  tone?: "default" | "positive" | "danger"
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="group flex min-w-0 flex-1 flex-col items-center gap-1.5 disabled:opacity-40"
+    >
+      <span
+        className={cn(
+          "flex h-12 w-12 items-center justify-center rounded-full bg-[var(--card)] shadow-[var(--shadow-card)] transition group-active:scale-95",
+          tone === "positive"
+            ? "text-emerald-700 dark:text-emerald-400"
+            : tone === "danger"
+              ? "text-rose-600 dark:text-rose-400"
+              : "text-[var(--text)]"
+        )}
+      >
+        {icon}
+      </span>
+      <span className="text-[0.6875rem] font-bold text-[var(--text-soft)]">{label}</span>
+    </button>
   )
 }
