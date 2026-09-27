@@ -3,11 +3,11 @@
 import dynamic from "next/dynamic"
 import { useParams } from "next/navigation"
 import { useCallback, useState, useSyncExternalStore } from "react"
-import { PwaHome } from "./PwaHome"
+import { MobileHome } from "./MobileHome"
 
 // The home route picks between two screens.
 //
-// A phone opens on PwaHome: balance, wallets and recent activity, without the
+// A phone opens on MobileHome: balance, wallets and recent activity, without the
 // chart libraries. Desktop and large tablets get the full dashboard exactly as
 // before.
 //
@@ -19,15 +19,10 @@ import { PwaHome } from "./PwaHome"
 // The full dashboard is a separate chunk. On desktop its download starts as
 // soon as this module runs, before hydration, so a desktop visit waits no
 // longer than it did when the dashboard was this file.
-//
-// ?home=lite or ?home=full forces either screen.
 
 function prefersLiteHome(): boolean {
   if (typeof window === "undefined") return false
   try {
-    const forced = new URLSearchParams(window.location.search).get("home")
-    if (forced === "lite") return true
-    if (forced === "full") return false
     return (
       window.matchMedia("(max-width: 767.98px)").matches ||
       window.matchMedia("(pointer: coarse) and (max-width: 1023.98px)").matches
@@ -54,7 +49,7 @@ export default function HomePage() {
   const handOver = useCallback(() => setForceFull(true), [])
 
   if (lite === null) return <HomeBootSkeleton />
-  if (lite && !forceFull) return <PwaHome sessionId={sessionId} onNeedsFullDashboard={handOver} />
+  if (lite && !forceFull) return <MobileHome sessionId={sessionId} onNeedsFullDashboard={handOver} />
   return <DashboardHome />
 }
 

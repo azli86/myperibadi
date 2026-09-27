@@ -6,7 +6,7 @@ Two additions:
    #4 sat untouched for 22 days before a human closed them.
 
 2. A customer who gets an admin reply sees a popup on the home screen, once.
-   Both home screens carry it: the full dashboard and the light PWA home.
+   Both home screens carry it: the full dashboard and the phone home.
    Repeat popups are the failure mode here, so the read marker matters as much
    as the popup itself. Reopening it would have hit every dashboard load from
    20 Aug onward.
@@ -20,8 +20,8 @@ MAIN = (API / "main.py").read_text(encoding="utf-8")
 MODELS = (API / "models.py").read_text(encoding="utf-8")
 HOME_DIR = API.parents[0] / "web" / "src" / "app" / "[sessionId]"
 DASHBOARD = (HOME_DIR / "DashboardHome.tsx").read_text(encoding="utf-8")
-PWA_HOME = (HOME_DIR / "PwaHome.tsx").read_text(encoding="utf-8")
-HOMES = {"DashboardHome": DASHBOARD, "PwaHome": PWA_HOME}
+MOBILE_HOME = (HOME_DIR / "MobileHome.tsx").read_text(encoding="utf-8")
+HOMES = {"DashboardHome": DASHBOARD, "MobileHome": MOBILE_HOME}
 
 
 def test_ticket_carries_a_read_marker():

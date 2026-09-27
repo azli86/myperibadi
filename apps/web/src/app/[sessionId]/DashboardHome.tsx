@@ -2,7 +2,6 @@
 
 import { getWalletAccent as getDashboardWalletAccent } from "@/lib/wallet-accents"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
-import { createPortal } from "react-dom"
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import {
   TrendingDown,
@@ -12,25 +11,18 @@ import {
   Loader2,
   BarChart2,
   Wallet,
-  CreditCard,
   AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
   ArrowDown,
-  ChevronLeft,
   ChevronRight,
   Eye,
   EyeClosed,
   Plus,
   PieChart,
-  LayoutGrid,
-  MapPinned,
-  MessageCircle,
-  Receipt,
   Award,
   MinusCircle,
   HeartHandshake,
-  Coins,
   Layers,
   Mic,
   Square,
@@ -41,8 +33,6 @@ import { cn, getTodayDateInTimeZone } from "@/lib/utils"
 import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
 import { usePageAlert } from "@/hooks/usePageAlert"
-import { CategoryIconGlyph } from "@/lib/category-icons"
-import { splitWalletTaggedDescription } from "@/lib/transaction-display"
 import { fetchApiJson, readApiCache } from "@/lib/api-cache"
 import { categoryCycleMonthBounds, cycleMonthBounds } from "@/lib/cycle"
 import BadgeOverviewModal from "@/components/badges/BadgeOverviewModal"
@@ -56,7 +46,6 @@ import { MonthlyChecklistSection } from "@/components/dashboard/MonthlyChecklist
 import { VehicleOverdueWidget } from "@/components/dashboard/VehicleOverdueWidget"
 import { DashboardVehicleHeroRow } from "@/components/dashboard/DashboardVehicleHeroRow"
 import { DashboardBnplHeroRow } from "@/components/dashboard/DashboardBnplHeroRow"
-import { CatPlayground } from "@/components/dashboard/CatPlayground"
 import { WeatherClockMini } from "@/components/layout/SidebarWeatherClock"
 import { UserAvatar } from "@/components/ui/UserAvatar"
 import Onboarding from "@/components/onboarding/Onboarding"
@@ -75,11 +64,9 @@ import {
   Tooltip, 
   Legend, 
   ArcElement,
-  type ActiveElement,
-  type ChartEvent,
   type ChartOptions
 } from 'chart.js'
-import { Doughnut, Bar, Line } from 'react-chartjs-2'
+import { Bar } from 'react-chartjs-2'
 
 const customDataLabelPlugin = {
   id: 'customDataLabel',
@@ -150,12 +137,6 @@ const customDataLabelPlugin = {
   }
 }
 
-type CustomDataLabelPluginOptions = (
-  NonNullable<ChartOptions<"bar">["plugins"]> &
-  NonNullable<ChartOptions<"line">["plugins"]>
-) & {
-  customDataLabel: { activeIndex: number | null }
-}
 
 ChartJS.register(
   CategoryScale,
@@ -258,7 +239,6 @@ function createDefaultAddItems(): AddItemState[] {
 
 const MONTHLY_EXPENSE_MONTHS = 7
 const DASHBOARD_DAILY_TIMEZONE = "Asia/Kuala_Lumpur"
-const MOBILE_MONTHLY_BAR_WIDTH = 56
 const MOBILE_DAILY_BAR_WIDTH = 44
 const DESKTOP_DAILY_BAR_WIDTH = 42
 const DAILY_EDGE_SPACER_DAYS = 4
@@ -287,97 +267,8 @@ const DASHBOARD_BADGES: DashboardBadge[] = APP_BADGES.map((badge) => ({
   icon: badge.icon,
 }))
 
-const BADGE_TONE_STYLES: Record<DashboardBadge["tone"], { chip: string, panel: string, text: string }> = {
-  blue: {
-    chip: "bg-white/10 text-[#e5e5e5] border-white/15",
-    panel: "border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.08),rgba(13,13,13,0.96))]",
-    text: "text-[#f5f5f5]",
-  },
-  violet: {
-    chip: "bg-white/10 text-[#e5e5e5] border-white/15",
-    panel: "border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.08),rgba(13,13,13,0.96))]",
-    text: "text-[#f5f5f5]",
-  },
-  amber: {
-    chip: "bg-white/10 text-[#e5e5e5] border-white/15",
-    panel: "border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.08),rgba(13,13,13,0.96))]",
-    text: "text-[#f5f5f5]",
-  },
-  emerald: {
-    chip: "bg-white/10 text-[#e5e5e5] border-white/15",
-    panel: "border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.08),rgba(13,13,13,0.96))]",
-    text: "text-[#f5f5f5]",
-  },
-  rose: {
-    chip: "bg-white/10 text-[#e5e5e5] border-white/15",
-    panel: "border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.08),rgba(13,13,13,0.96))]",
-    text: "text-[#f5f5f5]",
-  },
-  cyan: {
-    chip: "bg-white/10 text-[#e5e5e5] border-white/15",
-    panel: "border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.08),rgba(13,13,13,0.96))]",
-    text: "text-[#f5f5f5]",
-  },
-}
 
-function renderMiniGemGlyph(icon: "verified" | "active" | "streak" | "budget" | "receipt" | "bot") {
-  switch (icon) {
-    case "verified":
-      return <path d="M31 41 l6 6 l13 -15" fill="none" stroke="white" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
-    case "active":
-      return <path d="M40 24 l4.7 9.5 l10.5 1.5 l-7.6 7.3 l1.8 10.3 l-9.4 -5 l-9.4 5 l1.8 -10.3 l-7.6 -7.3 l10.5 -1.5 z" fill="white" />
-    case "streak":
-      return <path d="M42 24 C50 31 49 39 43 43 C49 43 53 50 48 57 C39 54 32 45 32 37 C32 31 36 27 42 24 Z" fill="white" />
-    case "budget":
-      return <path d="M25 31 h30 a4 4 0 0 1 4 4 v12 a4 4 0 0 1 -4 4 h-30 a4 4 0 0 1 -4 -4 v-12 a4 4 0 0 1 4 -4 Z M46 41 h8" fill="none" stroke="white" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-    case "receipt":
-      return <path d="M31 24 h18 l6 6 v26 l-4 -2 l-4 2 l-4 -2 l-4 2 l-4 -2 l-4 2 Z M35 36 h14 M35 44 h10" fill="none" stroke="white" strokeWidth="4.6" strokeLinecap="round" strokeLinejoin="round" />
-    case "bot":
-      return <path d="M32 34 a8 8 0 0 1 8 -8 h0 a8 8 0 0 1 8 8 v11 h-16 Z M36 45 h8 M35 30 l-3 -4 M45 30 l3 -4 M36 38 h.01 M44 38 h.01" fill="none" stroke="white" strokeWidth="4.6" strokeLinecap="round" strokeLinejoin="round" />
-  }
-}
 
-function MiniVerifiedGemBadge({ outlined = false, icon = "verified" }: { outlined?: boolean, icon?: DashboardBadge["icon"] }) {
-  return (
-    <span className="relative inline-grid h-8 w-8 place-items-center overflow-visible">
-      <style jsx>{`
-        @keyframes miniGemFloat { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-2px) scale(1.05); } }
-        @keyframes miniGemSpark { 0%, 100% { transform: scale(.72) rotate(0deg); opacity: .25; } 45% { transform: scale(1.18) rotate(16deg); opacity: 1; } }
-        @keyframes miniGemShine { 0% { transform: translateX(-16px) translateY(5px) rotate(-24deg); opacity: 0; } 35% { opacity: .58; } 70%, 100% { transform: translateX(18px) translateY(-5px) rotate(-24deg); opacity: 0; } }
-        .mini-gem-main { animation: miniGemFloat 2.7s ease-in-out infinite; transform-origin: center; }
-        .mini-gem-spark-a { animation: miniGemSpark 1.8s ease-in-out infinite; transform-origin: center; }
-        .mini-gem-spark-b { animation: miniGemSpark 2.1s ease-in-out infinite .25s; transform-origin: center; }
-        .mini-gem-shine { animation: miniGemShine 2.8s ease-in-out infinite; transform-origin: center; }
-      `}</style>
-      <svg viewBox="0 0 80 80" className={cn("h-8 w-8", outlined ? "drop-shadow-[0_6px_10px_rgba(148,163,184,0.24)]" : "drop-shadow-[0_8px_12px_rgba(37,99,235,0.32)]")} aria-hidden="true">
-        <defs><clipPath id="miniVerifiedGemClip"><path d="M40 8 L58 26 L52 55 L40 72 L28 55 L22 26 Z" /></clipPath></defs>
-        {!outlined && <path className="mini-gem-spark-a" d="M14 25 l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#fde68a" />}
-        {!outlined && <path className="mini-gem-spark-b" d="M65 51 l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#67e8f9" />}
-        <g className="mini-gem-main">
-          {outlined ? (
-            <>
-              <path d="M40 8 L58 26 L52 55 L40 72 L28 55 L22 26 Z" fill="rgba(148,163,184,0.08)" stroke="rgba(191,219,254,0.9)" strokeWidth="4" />
-              <path d="M40 8 L58 26 L40 35 L22 26 Z" fill="rgba(191,219,254,0.12)" />
-              <path d="M22 26 L40 35 L28 55 Z" fill="rgba(125,211,252,0.12)" />
-              <path d="M58 26 L40 35 L52 55 Z" fill="rgba(96,165,250,0.14)" />
-              <path d="M28 55 L40 35 L52 55 L40 72 Z" fill="rgba(59,130,246,0.12)" />
-            </>
-          ) : (
-            <>
-              <path d="M40 8 L58 26 L52 55 L40 72 L28 55 L22 26 Z" fill="#091b3a" />
-              <path d="M40 8 L58 26 L40 35 L22 26 Z" fill="#bfdbfe" />
-              <path d="M22 26 L40 35 L28 55 Z" fill="#60a5fa" />
-              <path d="M58 26 L40 35 L52 55 Z" fill="#2563eb" />
-              <path d="M28 55 L40 35 L52 55 L40 72 Z" fill="#0f2a55" />
-              <g clipPath="url(#miniVerifiedGemClip)"><rect className="mini-gem-shine" x="13" y="12" width="8" height="58" rx="4" fill="white" opacity="0.5" /></g>
-              {renderMiniGemGlyph(icon)}
-            </>
-          )}
-        </g>
-      </svg>
-    </span>
-  )
-}
 
 // App-entry redirect lives in `src/middleware.ts` (reads the landing cookie before
 // this route renders). Do NOT redirect here: opening the app straight into another
@@ -386,7 +277,7 @@ function MiniVerifiedGemBadge({ outlined = false, icon = "verified" }: { outline
 
 export default function Dashboard() {
   const params = useParams()
-  const { lang, timezone, timeFormat, t } = useLang()
+  const { lang, timezone, t } = useLang()
   const { resolvedTheme } = useTheme()
   const sessionId = params.sessionId as string || ""
   const isLight = resolvedTheme === "light"
@@ -426,18 +317,12 @@ export default function Dashboard() {
   const voiceChunksRef = useRef<Blob[]>([])
   const [chartView, setChartView] = useState<"monthly" | "daily">("monthly")
   const [showChartModal, setShowChartModal] = useState(false)
-  const [activeMonthlyBarIndex, setActiveMonthlyBarIndex] = useState<number | null>(null)
   const [activeDailyBarIndex, setActiveDailyBarIndex] = useState<number | null>(null)
-  const [activeWalletIndex, setActiveWalletIndex] = useState(0)
+  const [, setActiveWalletIndex] = useState(0)
   const [isMobileViewport, setIsMobileViewport] = useState(false)
   const [showHeroAmounts, setShowHeroAmounts] = useState(true)
-  const [showMobileWalletDeck, setShowMobileWalletDeck] = useState(false)
-  const [deckRows, setDeckRows] = useState<DashboardWallet[] | null>(null)
   const [showAnalyticsMonthDropdown, setShowAnalyticsMonthDropdown] = useState(false)
-  const [walletHovered, setWalletHovered] = useState(false)
   const [dashboardFocusedCardIndex, setDashboardFocusedCardIndex] = useState<number | null>(null)
-  const walletAutoScrollRef = useRef<HTMLDivElement | null>(null)
-  const walletScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
 
   // Tell the user an admin answered their ticket. Shown once: opening it marks
@@ -486,173 +371,9 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const { requestClose: requestDashboardAddClose } = useOverlayBackClose({ id: "dashboard-add", isOpen: showAddModal, onClose: () => setShowAddModal(false) })
-  const { requestClose: requestWalletDeckClose } = useOverlayBackClose({ id: "dashboard-wallets", isOpen: showMobileWalletDeck, onClose: () => setShowMobileWalletDeck(false) })
   const { requestClose: requestChartClose } = useOverlayBackClose({ id: "dashboard-chart", isOpen: showChartModal, onClose: () => setShowChartModal(false) })
   const { requestClose: requestBadgeClose } = useOverlayBackClose({ id: "dashboard-badges", isOpen: showBadgeModal, onClose: () => setShowBadgeModal(false) })
   const dashboardAddSheetSwipe = useSwipeDownToClose(requestDashboardAddClose)
-  const walletSheetSwipe = useSwipeDownToClose(requestWalletDeckClose)
-  const deckDragRef = useRef<{
-    kind: "regular" | "saving"
-    startIndex: number
-    index: number
-    startY: number
-    startX: number
-    rowH: number
-    pointerId: number
-    activated: boolean
-    el: HTMLElement | null
-    kindIds: number[]
-  } | null>(null)
-  const deckHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [deckDraggingId, setDeckDraggingId] = useState<number | null>(null)
-  const [deckDragY, setDeckDragY] = useState(0)
-  useEffect(() => {
-    deckDragRef.current = null
-    if (!showMobileWalletDeck) setDeckRows(null)
-  }, [showMobileWalletDeck])
-  const deckRowsByKind = (kind: "regular" | "saving") =>
-    (deckRows ?? heroWallets).filter((w) => (kind === "saving" ? !!w.is_saving : !w.is_saving))
-  const commitDeckOrder = (rows: DashboardWallet[]) => {
-    const orderedIds = rows.map((w) => w.id)
-    const visibleIds = new Set(orderedIds)
-    const ranked = rows.map((w, i) => ({ ...w, dashboard_rank: i as number | null }))
-    const hidden = wallets
-      .filter((w) => w.show_on_dashboard === false)
-      .map((w) => ({ ...w, dashboard_rank: null }))
-    const missing = wallets.filter((w) => w.show_on_dashboard !== false && !visibleIds.has(w.id))
-    setWallets([...ranked, ...hidden, ...missing])
-    const token = getAccessToken()
-    fetch("/api/wallets/dashboard-order", {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && !isCookieAuthSentinel(token) ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ ordered_ids: orderedIds }),
-    }).catch(() => {})
-  }
-  const clearDeckHoldTimer = () => {
-    if (deckHoldTimerRef.current) {
-      clearTimeout(deckHoldTimerRef.current)
-      deckHoldTimerRef.current = null
-    }
-  }
-  const activateDeckDrag = (kind: "regular" | "saving", wallet: DashboardWallet) => {
-    const meta = deckDragRef.current
-    if (!meta || meta.activated) return
-    const el = meta.el
-    if (!el) return
-    meta.activated = true
-    meta.rowH = el.getBoundingClientRect().height || 72
-    meta.kindIds = deckRowsByKind(kind).map((w) => w.id)
-    el.setPointerCapture?.(meta.pointerId)
-    setDeckDraggingId(wallet.id)
-    setDeckDragY(0)
-  }
-  const downDeckRow = (e: React.PointerEvent, kind: "regular" | "saving", wallet: DashboardWallet) => {
-    if (e.button !== undefined && e.button !== 0) return
-    const idx = deckRowsByKind(kind).findIndex((w) => w.id === wallet.id)
-    if (idx < 0) return
-    e.stopPropagation()
-    clearDeckHoldTimer()
-    deckDragRef.current = {
-      kind,
-      startIndex: idx,
-      index: idx,
-      startY: e.clientY,
-      startX: e.clientX,
-      rowH: 0,
-      pointerId: e.pointerId,
-      activated: false,
-      el: e.currentTarget as HTMLElement,
-      kindIds: [],
-    }
-    deckHoldTimerRef.current = setTimeout(() => {
-      activateDeckDrag(kind, wallet)
-    }, 230)
-  }
-  const moveDeckRow = (e: React.PointerEvent) => {
-    const meta = deckDragRef.current
-    if (!meta) return
-    if (!meta.activated) {
-      const moved = Math.hypot(e.clientX - meta.startX, e.clientY - meta.startY)
-      if (moved > 8) {
-        clearDeckHoldTimer()
-        deckDragRef.current = null
-      }
-      return
-    }
-    e.preventDefault()
-    const els = Array.from(
-      document.querySelectorAll<HTMLElement>(`[data-deck-kind="${meta.kind}"]`),
-    )
-    if (!els.length) return
-    const y = e.clientY
-    let target = els.findIndex((el) => {
-      const r = el.getBoundingClientRect()
-      return y >= r.top && y <= r.bottom
-    })
-    if (target < 0) {
-      const first = els[0].getBoundingClientRect()
-      target = y < first.top ? 0 : els.length - 1
-    }
-    // Centre-line hysteresis: only swap once the pointer passes a neighbour's
-    // middle, so a boundary position never oscillates between two slots.
-    if (target !== meta.index) {
-      const nr = els[target]?.getBoundingClientRect()
-      if (nr) {
-        const mid = nr.top + nr.height / 2
-        if (target > meta.index && y < mid) target = meta.index
-        else if (target < meta.index && y > mid) target = meta.index
-      }
-    }
-    if (target === meta.index) {
-      setDeckDragY(e.clientY - meta.startY - (meta.index - meta.startIndex) * meta.rowH)
-      return
-    }
-    // Move the dragged id within the live kind snapshot (source of truth);
-    // index bookkeeping stays synchronous so the lift offset never lags a slot.
-    const id = meta.kindIds[meta.index]
-    meta.kindIds.splice(meta.index, 1)
-    meta.kindIds.splice(target, 0, id)
-    meta.index = target
-    setDeckDragY(e.clientY - meta.startY - (meta.index - meta.startIndex) * meta.rowH)
-    setDeckRows((prev) => {
-      const base = prev ?? heroWallets
-      const byId = new Map(base.map((w) => [w.id, w]))
-      const ordered = meta.kindIds
-        .map((kid) => byId.get(kid))
-        .filter((w): w is DashboardWallet => !!w)
-      const rebuilt =
-        meta.kind === "regular"
-          ? [...ordered, ...base.filter((w) => !!w.is_saving)]
-          : [...base.filter((w) => !w.is_saving), ...ordered]
-      return rebuilt
-    })
-  }
-  const endDeckRow = () => {
-    const meta = deckDragRef.current
-    if (!meta) return
-    clearDeckHoldTimer()
-    deckDragRef.current = null
-    setDeckDraggingId(null)
-    setDeckDragY(0)
-    if (meta.activated && deckRows && deckRows.length > 1) commitDeckOrder(deckRows)
-    setDeckRows(null)
-  }
-  const cancelDeckRow = () => {
-    clearDeckHoldTimer()
-    deckDragRef.current = null
-    setDeckDraggingId(null)
-    setDeckDragY(0)
-  }
-  const walletDragStateRef = useRef({
-    pointerId: -1,
-    startX: 0,
-    startY: 0,
-    scrollLeft: 0,
-    dragging: false,
-  })
   const dailyChartScrollRef = useRef<HTMLDivElement | null>(null)
   const dailyScrollInitializedRef = useRef(false)
   const analyticalTransactions = transactions.filter((tx) => !tx.is_wallet_transfer && !tx.is_debt_movement)
@@ -829,7 +550,7 @@ export default function Dashboard() {
 
 
   useEffect(() => {
-    const hidden = showAddModal || showMobileWalletDeck
+    const hidden = showAddModal
     window.dispatchEvent(
       new CustomEvent("portal:mobile-bottom-nav-visibility", {
         detail: { hidden }
@@ -843,7 +564,7 @@ export default function Dashboard() {
         })
       )
     }
-  }, [showAddModal, showMobileWalletDeck])
+  }, [showAddModal])
 
   useEffect(() => {
     if (!showChartModal || typeof document === "undefined") return
@@ -1155,12 +876,6 @@ export default function Dashboard() {
   const latestDoughnutData = getDoughnutData(analyticalCurrentMonthTransactions)
   const selectedCategoriesTotal = selectedDoughnutData.datasets[0]?.data.reduce((sum, value) => sum + value, 0) || 0
   const latestCategoriesTotal = latestDoughnutData.datasets[0]?.data.reduce((sum, value) => sum + value, 0) || 0
-  const selectedDoughnutColorMap = Object.fromEntries(
-    selectedDoughnutData.labels.map((label, index) => [label, String((selectedDoughnutData.datasets[0]?.backgroundColor as string[] | undefined)?.[index] || "rgba(148, 163, 184, 0.85)")])
-  ) as Record<string, string>
-  const latestDoughnutColorMap = Object.fromEntries(
-    latestDoughnutData.labels.map((label, index) => [label, String((latestDoughnutData.datasets[0]?.backgroundColor as string[] | undefined)?.[index] || "rgba(59, 130, 246, 0.85)")])
-  ) as Record<string, string>
   const categoryComparisonRows = (() => {
     const rows = new Map<string, { label: string; previous: number; current: number; count: number }>()
     analyticalPreviousMonthTransactions.forEach((tx) => {
@@ -1190,10 +905,6 @@ export default function Dashboard() {
       const pctChange = row.previous > 0 ? (delta / row.previous) * 100 : (row.current > 0 ? 100 : 0)
       return { ...row, delta, pctChange }
     })
-  const compareOverallDelta = latestCategoriesTotal - selectedCategoriesTotal
-  const compareOverallPct = selectedCategoriesTotal > 0
-    ? (compareOverallDelta / selectedCategoriesTotal) * 100
-    : (latestCategoriesTotal > 0 ? 100 : 0)
 
   const categoryAnalyticsCard = (
     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5 shadow-[var(--shadow-soft)]">
@@ -1336,7 +1047,6 @@ export default function Dashboard() {
     }
   })
 
-  const resolvedMonthlyBarIndex = activeMonthlyBarIndex ?? currentMonthIndex
   const selectedDailyMonthDate = new Date(currentYearInKualaLumpur, currentMonthIndexInKualaLumpur, 1)
   const selectedDailyMonthKey = `${selectedDailyMonthDate.getFullYear()}-${String(selectedDailyMonthDate.getMonth() + 1).padStart(2, "0")}`
   const daysInSelectedMonth = new Date(
@@ -1406,8 +1116,6 @@ export default function Dashboard() {
 
   const currentMonthExpense = monthlySeries[currentMonthIndex]?.total ?? 0
   const previousMonthExpense = monthlySeries[Math.max(0, currentMonthIndex - 1)]?.total ?? 0
-  const hasMonthlyExpenseData = monthlySeries.some((item) => item.total > 0)
-  const hasDailyExpenseData = dailySeries.some((item) => item.total > 0)
   const monthlyExpenseDelta = previousMonthExpense > 0
     ? ((currentMonthExpense - previousMonthExpense) / previousMonthExpense) * 100
     : null
@@ -1439,36 +1147,12 @@ export default function Dashboard() {
     : Math.max(0, Math.min(dailySeries.length - 1, activeDailyBarIndex))
   const paddedResolvedDailyBarIndex = resolvedDailyBarIndex + DAILY_EDGE_SPACER_DAYS
 
-  const trendPoint = chartView === "daily"
-    ? dailySeries[resolvedDailyBarIndex]
-    : monthlySeries[resolvedMonthlyBarIndex]
   const currentDailyTrendPoint = dailySeries[resolvedDailyBarIndex]
 
   const monthlyAreaChartData = monthlySeries.map((item) => ({ label: item.label, expense: item.total }))
   const dailyAreaChartData = dailySeries.map((item) => ({ label: item.axisLabel, expense: item.total }))
 
-  const displayedStats = {
-    income: trendPoint?.income ?? 0,
-    expense: trendPoint?.expense ?? 0,
-    label: trendPoint?.label ?? "-",
-  }
 
-  const monthlyExpenseData = {
-    labels: monthlySeries.map((item) => item.label),
-    datasets: [
-      {
-        data: monthlySeries.map((item) => item.total),
-        backgroundColor: monthlySeries.map((_, index) => {
-          if (index === currentMonthIndex) return "#dbeafe"
-          if (index < currentMonthIndex) return "#60a5fa"
-          return "#3b82f6"
-        }),
-        borderRadius: 8,
-        borderSkipped: false,
-        maxBarThickness: 32,
-      },
-    ],
-  }
 
   const fullMonthlySeries = Array.from({ length: 12 }, (_, index) => {
     const monthDate = new Date(currentYearInTimezone, index, 1)
@@ -1503,11 +1187,6 @@ export default function Dashboard() {
     }
   })
 
-  const fullPaddedDailySeries = [
-    ...Array.from({ length: DAILY_EDGE_SPACER_DAYS }, (_, index) => ({ key: `full-daily-spacer-start-${index}`, axisLabel: "", total: 0, isSpacer: true })),
-    ...fullDailySeries.map((item) => ({ ...item, isSpacer: false })),
-    ...Array.from({ length: DAILY_EDGE_SPACER_DAYS }, (_, index) => ({ key: `full-daily-spacer-end-${index}`, axisLabel: "", total: 0, isSpacer: true })),
-  ]
 
   const fullMonthlyExpenseData = {
     labels: fullMonthlySeries.map((item) => item.label),
@@ -1541,81 +1220,17 @@ export default function Dashboard() {
   const hasFullMonthlyExpenseData = fullMonthlySeries.some((item) => item.total > 0)
   const hasFullDailyExpenseData = fullDailySeries.some((item) => item.total > 0)
   const fullDailyChartWidth = Math.max(fullDailySeries.length * (isMobileViewport ? 28 : 26), isMobileViewport ? 920 : 980)
-  const hasModalChartData = chartView === "daily" ? hasFullDailyExpenseData : hasFullMonthlyExpenseData
-  const modalChartWidth = chartView === "daily"
-    ? Math.max(fullPaddedDailySeries.length * (isMobileViewport ? MOBILE_DAILY_BAR_WIDTH : DESKTOP_DAILY_BAR_WIDTH), isMobileViewport ? 1120 : 1180)
-    : Math.max(fullMonthlySeries.length * 58, isMobileViewport ? 760 : 980)
 
-  const dailyLineData = {
-    labels: paddedDailySeries.map((item) => item.axisLabel),
-    datasets: [
-      {
-        data: paddedDailySeries.map((item) => item.isSpacer ? null : item.total),
-        borderColor: "#f6a07d",
-        backgroundColor: "rgba(246, 160, 125, 0.18)",
-        fill: true,
-        tension: 0.38,
-        borderWidth: 3,
-        spanGaps: false,
-        pointRadius: paddedDailySeries.map((item, index) => {
-          if (item.isSpacer) return 0
-          if (index === paddedResolvedDailyBarIndex) return 5
-          return item.total > 0 ? 3 : 2
-        }),
-        pointHoverRadius: 6,
-        pointBackgroundColor: paddedDailySeries.map((item, index) => {
-          if (item.isSpacer) return "rgba(0,0,0,0)"
-          if (index === paddedResolvedDailyBarIndex) return "#ffffff"
-          return "#242424"
-        }),
-        pointBorderColor: paddedDailySeries.map((item, index) => {
-          if (item.isSpacer) return "rgba(0,0,0,0)"
-          if (index === paddedResolvedDailyBarIndex) return "#ffffff"
-          return "#f6a07d"
-        }),
-        pointBorderWidth: paddedDailySeries.map((item, index) => (
-          !item.isSpacer && index === paddedResolvedDailyBarIndex ? 3 : 2
-        )),
-      },
-    ],
-  }
 
-  const hasChartData = chartView === "daily" ? hasDailyExpenseData : hasMonthlyExpenseData
-  const chartEmptyLabel = chartView === "daily" ? t.expenseTrendDailyEmpty : t.expenseTrendEmpty
-  const chartDataLabelActiveIndex = chartView === "daily"
-    ? paddedResolvedDailyBarIndex
-    : resolvedMonthlyBarIndex
   const mobileChartWidth = Math.max(paddedDailySeries.length * MOBILE_DAILY_BAR_WIDTH, 920)
   const desktopDailyChartWidth = Math.max(paddedDailySeries.length * DESKTOP_DAILY_BAR_WIDTH, 700)
 
-  const handleBarChartClick = (_event: ChartEvent, elements: ActiveElement[]) => {
-    if (!elements.length) return
-    const clickedIndex = elements[0]?.index
-    if (!Number.isFinite(clickedIndex)) return
-
-    if (chartView === "daily") {
-      const dailyPoint = paddedDailySeries[clickedIndex]
-      if (!dailyPoint || dailyPoint.isSpacer) return
-      const nextDailyIndex = Math.max(
-        0,
-        Math.min(dailySeries.length - 1, clickedIndex - DAILY_EDGE_SPACER_DAYS)
-      )
-      setActiveDailyBarIndex(nextDailyIndex)
-      return
-    }
-
-    setActiveMonthlyBarIndex(clickedIndex)
-  }
 
   const activateLatestDailyPoint = React.useCallback(() => {
     setActiveDailyBarIndex(latestDailyExpenseIndex)
     dailyScrollInitializedRef.current = false
   }, [latestDailyExpenseIndex])
 
-  const handleSwitchToDailyChart = React.useCallback(() => {
-    setChartView("daily")
-    activateLatestDailyPoint()
-  }, [activateLatestDailyPoint])
 
   const openChartModal = React.useCallback((view: "monthly" | "daily") => {
     if (view === "daily") {
@@ -1627,16 +1242,6 @@ export default function Dashboard() {
     setShowChartModal(true)
   }, [activateLatestDailyPoint])
 
-  const scrollDailyChartBy = React.useCallback((direction: "prev" | "next") => {
-    const container = dailyChartScrollRef.current
-    if (!container) return
-
-    const delta = Math.max(180, Math.round(container.clientWidth * 0.42))
-    container.scrollBy({
-      left: direction === "next" ? delta : -delta,
-      behavior: "smooth",
-    })
-  }, [])
 
   useEffect(() => {
     if (!dailySeries.length) return
@@ -1663,91 +1268,10 @@ export default function Dashboard() {
     dailyScrollInitializedRef.current = true
   }, [isMobileViewport, chartView, mobileChartWidth, desktopDailyChartWidth, paddedDailySeries.length, paddedResolvedDailyBarIndex])
 
-  const handleDailyChartScroll = () => {
-    if (chartView !== "daily") return
-    const container = dailyChartScrollRef.current
-    if (!container || !paddedDailySeries.length || !dailySeries.length) return
-    
-    const currentChartWidth = isMobileViewport ? mobileChartWidth : desktopDailyChartWidth
-    const slotWidth = currentChartWidth / paddedDailySeries.length
-    const centerX = container.scrollLeft + container.clientWidth / 2
-    const nextPaddedIndex = Math.max(
-      0,
-      Math.min(paddedDailySeries.length - 1, Math.round(centerX / slotWidth - 0.5))
-    )
-    const nextIndex = Math.max(
-      0,
-      Math.min(dailySeries.length - 1, nextPaddedIndex - DAILY_EDGE_SPACER_DAYS)
-    )
-    setActiveDailyBarIndex((prev) => (prev === nextIndex ? prev : nextIndex))
-  }
 
-  const getClosestWalletSlideIndex = (container: HTMLElement) => {
-    const slides = Array.from(container.children) as HTMLElement[]
-    if (!slides.length) return 0
 
-    const centerX = container.scrollLeft + container.clientWidth / 2
-    return slides.reduce((closest, slide, index) => {
-      const slideCenter = slide.offsetLeft + slide.offsetWidth / 2
-      const closestSlide = slides[closest]
-      const closestCenter = closestSlide.offsetLeft + closestSlide.offsetWidth / 2
-      return Math.abs(slideCenter - centerX) < Math.abs(closestCenter - centerX) ? index : closest
-    }, 0)
-  }
 
-  const handleWalletCarouselScroll = (event: React.UIEvent<HTMLDivElement>) => {
-    const container = event.currentTarget
-    if (walletScrollTimerRef.current) clearTimeout(walletScrollTimerRef.current)
-    walletScrollTimerRef.current = setTimeout(() => {
-      const closestIndex = getClosestWalletSlideIndex(container)
-      const slide = container.children[closestIndex] as HTMLElement | undefined
-      if (slide) {
-        const target = slide.offsetLeft - (container.clientWidth - slide.offsetWidth) / 2
-        const start = container.scrollLeft
-        const distance = target - start
-        if (Math.abs(distance) < 2) {
-          setActiveWalletIndex((prev) => (prev === closestIndex ? prev : closestIndex))
-          return
-        }
-        const duration = 300
-        const startTime = performance.now()
-        const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
-        const animate = (now: number) => {
-          const elapsed = now - startTime
-          const progress = Math.min(elapsed / duration, 1)
-          container.scrollLeft = start + distance * easeOutCubic(progress)
-          if (progress < 1) requestAnimationFrame(animate)
-          else setActiveWalletIndex((prev) => (prev === closestIndex ? prev : closestIndex))
-        }
-        requestAnimationFrame(animate)
-      }
-    }, 120)
-  }
 
-  const smoothScrollWallet = (container: HTMLElement, target: number) => {
-    const start = container.scrollLeft
-    const distance = target - start
-    const duration = 350
-    const startTime = performance.now()
-    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3)
-    const animate = (now: number) => {
-      const elapsed = now - startTime
-      const progress = Math.min(elapsed / duration, 1)
-      container.scrollLeft = start + distance * easeOutCubic(progress)
-      if (progress < 1) requestAnimationFrame(animate)
-    }
-    requestAnimationFrame(animate)
-  }
-
-  const scrollToWallet = (index: number, trigger: HTMLElement) => {
-    const section = trigger.closest("[data-wallet-section]")
-    const container = section?.querySelector<HTMLElement>("[data-wallet-carousel]")
-    const slide = container?.children[index] as HTMLElement | undefined
-    if (!slide || !container) return
-    const target = slide.offsetLeft - (container.clientWidth - slide.offsetWidth) / 2
-    smoothScrollWallet(container, target)
-    setActiveWalletIndex(index)
-  }
 
 
   const earnedBadgeKeys = useMemo(() => deriveEarnedBadgeKeys(transactions as BadgeTransactionLike[], budgetItems as BadgeBudgetItemLike[]), [transactions, budgetItems])
@@ -1757,15 +1281,8 @@ export default function Dashboard() {
     status: earnedBadgeKeys.has(badge.key) ? "unlocked" as const : "locked" as const,
   })), [earnedBadgeKeys])
   const unlockedBadges = liveBadges.filter((badge) => badge.status === "unlocked")
-  const lockedBadges = liveBadges.filter((badge) => badge.status === "locked")
-  const primaryBadge = unlockedBadges[0] ?? liveBadges[0]
-  const extraBadgeCount = Math.max(unlockedBadges.length - 1, 0)
 
   const displayName = userName.trim() || "User"
-  const formatHeroAmount = (value: number, options?: Intl.NumberFormatOptions) =>
-    showHeroAmounts
-      ? `RM ${Number(value || 0).toLocaleString("en-MY", options)}`
-      : "RM ••••••"
   const formatHeroNumber = (value: number, options?: Intl.NumberFormatOptions) =>
     Number(value || 0).toLocaleString("en-MY", options)
 
@@ -1843,22 +1360,6 @@ export default function Dashboard() {
       <div className="mt-5 border-t border-[color:var(--skeleton-border)] pt-3">
         <div className="skeleton-surface h-2.5 w-28 rounded-full" />
       </div>
-    </div>
-  )
-
-  const walletRowSkeleton = (key: string | number) => (
-    <div
-      key={key}
-      aria-hidden="true"
-      className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-[color:var(--skeleton-border)] bg-[var(--skeleton-panel)] px-4 py-3"
-    >
-      <div className="flex min-w-0 items-center gap-2.5">
-        <div className="skeleton-surface h-8 w-8 shrink-0 rounded-xl" />
-        <div className="min-w-0 flex-1">
-          <div className="skeleton-surface h-2.5 w-24 rounded-full" />
-        </div>
-      </div>
-      <div className="skeleton-surface h-3 w-20 rounded-full" />
     </div>
   )
 
@@ -2159,117 +1660,7 @@ export default function Dashboard() {
     </div>
   )
 
-  const categoryAnalyticsCardMobile = (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3.5 shadow-[var(--shadow-soft)]">
-      {/* Header — title only */}
-      <h3 className="truncate text-sm font-bold text-[var(--text)]">
-        {lang === "EN" ? "Category compare" : "Banding kategori"}
-      </h3>
-
-      {/* Totals side by side */}
-      <div className="mt-3 grid grid-cols-2 gap-1.5">
-        <div className="rounded-xl bg-[var(--surface-tint)] px-2.5 py-2 text-center">
-          <div className="flex items-center justify-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--muted)]/60" />
-            <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-              {previousDashboardMonthOption?.shortLabel}
-            </p>
-          </div>
-          <p className="mt-0.5 text-[0.85rem] font-black tabular-nums text-[var(--muted)]">
-            RM {selectedCategoriesTotal.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-          </p>
-        </div>
-        <div className="rounded-xl bg-[var(--accent-bg)] px-2.5 py-2 text-center">
-          <div className="flex items-center justify-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-[var(--btn-primary-bg)]" />
-            <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--accent2)]">
-              {selectedDashboardMonthOption?.shortLabel}
-            </p>
-          </div>
-          <p className="mt-0.5 text-[0.85rem] font-black tabular-nums text-[var(--text)]">
-            RM {latestCategoriesTotal.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-          </p>
-        </div>
-      </div>
-
-      {/* Compact side-by-side rows */}
-      {categoryCompareItems.length > 0 ? (
-        <div className="mt-2.5 space-y-2">
-          {categoryCompareItems.slice(0, 6).map((item) => {
-            const beforePct = Math.max(4, (item.previous / categoryComparisonMax) * 100)
-            const nowPct = Math.max(4, (item.current / categoryComparisonMax) * 100)
-
-            return (
-              <div key={`m-cmp-${item.label}`}>
-                <div className="mb-1 flex items-center justify-center">
-                  <p className="truncate text-center text-[0.72rem] font-semibold text-[var(--text)]">{item.label}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-px">
-                  <div className="min-w-0">
-                    <div className="relative h-5 overflow-hidden rounded-l-md bg-[var(--surface-tint)]">
-                      <div
-                        className="absolute inset-y-0 right-0 rounded-l-md bg-[var(--muted)]/35"
-                        style={{ width: `${Math.min(100, beforePct)}%` }}
-                      />
-                      <span className="absolute inset-0 flex items-center justify-center px-1 text-[9px] font-bold tabular-nums text-[var(--muted)]">
-                        {item.previous > 0
-                          ? `RM ${item.previous.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-                          : "—"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="relative h-5 overflow-hidden rounded-r-md bg-[var(--surface-tint)]">
-                      <div
-                        className="absolute inset-y-0 left-0 rounded-r-md bg-[var(--btn-primary-bg)]"
-                        style={{ width: `${Math.min(100, nowPct)}%` }}
-                      />
-                      <span className={cn(
-                        "absolute inset-0 flex items-center justify-center px-1 text-[9px] font-bold tabular-nums",
-                        nowPct >= 40 ? "text-[var(--bg)]" : "text-[var(--text)]"
-                      )}>
-                        {item.current > 0
-                          ? `RM ${item.current.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-                          : "—"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="mt-3 flex flex-col items-center gap-1.5 py-6 opacity-40">
-          <BarChart2 size={22} className="text-[var(--muted)]" />
-          <p className="text-[0.7rem] font-medium text-[var(--muted)]">{t.noAnalytics}</p>
-        </div>
-      )}
-    </div>
-  )
-
-  const topCategoriesSection = (
-    <section className="space-y-3">
-      {categoryComparisonRows.length > 0 ? (
-        <div className="mt-1">
-          {categoryAnalyticsCardMobile}
-        </div>
-      ) : (
-        <div className="flex h-36 flex-col items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-float)] opacity-40">
-          <BarChart2 size={22} className="mb-1.5 text-[var(--muted)]" />
-          <p className="text-xs font-semibold text-[var(--muted)]">{t.noAnalytics}</p>
-        </div>
-      )}
-    </section>
-  )
-
   const heroBalanceDigitCount = heroBalanceDisplay.replace(/\D/g, "").length
-  const mobileHeroBalanceSizeClass =
-    heroBalanceDigitCount >= 14
-      ? "text-[1.45rem]"
-      : heroBalanceDigitCount >= 11
-        ? "text-[1.7rem]"
-        : "text-[2.1rem]"
   const desktopHeroBalanceSizeClass =
     heroBalanceDigitCount >= 14
       ? "text-[1.95rem] lg:text-[2.2rem]"
@@ -2310,31 +1701,12 @@ export default function Dashboard() {
       : moneyLifespanDailyAmount >= 20
         ? lang === "EN" ? "Tight Budget" : "Ketat"
         : lang === "EN" ? "Critical Mode" : "Nazak"
-  const moneyLifespanStatusClass = moneyLifespanDailyAmount >= 50
-    ? "bg-[var(--btn-primary-bg)]/10 text-emerald-500"
-    : moneyLifespanDailyAmount >= 30
-      ? "bg-amber-500/10 text-amber-500"
-      : moneyLifespanDailyAmount >= 20
-        ? "bg-orange-500/10 text-orange-400"
-        : "bg-rose-500/10 text-rose-500"
-  const moneyLifespanDailyDisplay = formatHeroAmount(moneyLifespanDailyAmount, {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  })
   const moneyLifespanDailyNum = formatHeroNumber(moneyLifespanDailyAmount, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   })
   const moneyLifespanSavingsDailyAmount = moneyLifespanSavingsAmount / moneyLifespanDaysLeft
-  const moneyLifespanEmergencyDailyDisplay = formatHeroAmount(moneyLifespanSavingsDailyAmount, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
   const moneyLifespanEmergencyDailyNum = formatHeroNumber(moneyLifespanSavingsDailyAmount, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-  const moneyLifespanEmergencyMonthDisplay = formatHeroAmount(moneyLifespanSavingsAmount, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
@@ -2350,9 +1722,6 @@ export default function Dashboard() {
       ? "Amounts are hidden."
       : "Nilai disembunyikan."
   const moneyLifespanStatusDisplay = showHeroAmounts ? moneyLifespanStatus : "Private"
-  const moneyLifespanStatusDisplayClass = showHeroAmounts
-    ? moneyLifespanStatusClass
-    : "bg-[var(--surface-tint-strong)] text-[var(--muted)]"
 
   const moneyLifespanMonthProgress = (() => {
     if (!moneyLifespanCycleBounds) return Math.min(100, Math.max(0, (currentDayInKualaLumpur / Math.max(daysInSelectedMonth, 1)) * 100))
@@ -2363,79 +1732,6 @@ export default function Dashboard() {
     const elapsed = Math.max(Math.floor((today.getTime() - start.getTime()) / 86400000) + 1, 0)
     return Math.min(100, Math.max(0, (elapsed / total) * 100))
   })()
-  const moneyLifespanFocusText = showHeroAmounts
-    ? lang === "EN"
-      ? `Spend around ${moneyLifespanDailyDisplay} daily after setting aside 20% of current balance.`
-      : `Bajet belanja ${moneyLifespanDailyDisplay} sehari selepas asingkan 20% baki semasa.`
-    : lang === "EN"
-      ? "Turn on amounts to see your daily budget."
-      : "Aktifkan paparan nilai untuk lihat bajet sehari."
-
-  const moneyLifespanMobileSection = (
-    <div className="space-y-3">
-      {/* Daily budget card */}
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold text-[var(--muted)]">
-              {lang === "EN" ? "Daily Budget" : "Bajet Sehari"}
-            </p>
-            <p className="mt-2 text-xl font-black leading-none tracking-tight text-[var(--text)] tabular-nums">
-              {showDataSkeleton ? dashboardAmountSkeleton("h-7 w-28") : showHeroAmounts ? <><span className="text-[0.5em] font-medium mr-1 text-[var(--muted)]">RM</span>{moneyLifespanDailyNum}</> : "RM ••••••"}
-            </p>
-          </div>
-          <div className="shrink-0 text-right">
-            <p className="text-xs font-semibold text-[var(--muted)]">
-              {lang === "EN" ? "Days Left" : "Hari Lagi"}
-            </p>
-            <p className="mt-1 text-lg font-black leading-none text-[var(--text)] tabular-nums">
-              {showDataSkeleton ? dashboardAmountSkeleton("h-5 w-8") : moneyLifespanDaysLeft}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--surface-tint)]">
-          <div
-            className={cn(
-              "h-full rounded-full transition-all duration-500",
-              moneyLifespanDailyAmount >= 50 ? "bg-[var(--btn-primary-bg)]" :
-              moneyLifespanDailyAmount >= 30 ? "bg-amber-500" :
-              moneyLifespanDailyAmount >= 20 ? "bg-orange-500" : "bg-rose-500"
-            )}
-            style={{ width: `${moneyLifespanMonthProgress}%` }}
-          />
-        </div>
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <p className="text-xs font-medium text-[var(--muted)]">
-            {moneyLifespanSummaryText}
-          </p>
-          <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide", moneyLifespanStatusDisplayClass)}>
-            {moneyLifespanStatusDisplay}
-          </span>
-        </div>
-      </div>
-
-      {/* Emergency + Savings */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
-          <p className="text-xs font-semibold text-[var(--muted)]">
-            {lang === "EN" ? "Emergency / Day" : "Simpan / Hari"}
-          </p>
-          <p className="mt-2 text-base font-black leading-none text-[var(--text)] tabular-nums">
-            {showDataSkeleton ? dashboardAmountSkeleton("h-5 w-20") : showHeroAmounts ? <><span className="text-[0.6em] font-medium mr-0.5 text-[var(--muted)]">RM</span>{moneyLifespanEmergencyDailyNum}</> : "RM ••••••"}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
-          <p className="text-xs font-semibold text-[var(--muted)]">
-            {lang === "EN" ? "Savings Pot" : "Simpanan Semasa"}
-          </p>
-          <p className="mt-2 text-base font-black leading-none text-[var(--text)] tabular-nums">
-            {showDataSkeleton ? dashboardAmountSkeleton("h-5 w-24") : showHeroAmounts ? <><span className="text-[0.6em] font-medium mr-0.5 text-[var(--muted)]">RM</span>{moneyLifespanEmergencyMonthNum}</> : "RM ••••••"}
-          </p>
-        </div>
-      </div>
-    </div>
-  )
 
   return (
     <>
@@ -2491,260 +1787,6 @@ export default function Dashboard() {
           </div>
         </div>
       ) : null}
-
-      {/* ─── MOBILE VIEW (md:hidden) ─── */}
-      <div className="md:hidden space-y-5 pb-16 text-[0.8125rem]">
-        <div className="-mt-[calc(env(safe-area-inset-top,0px)+0.75rem)]">
-          <div className="px-4 pt-[calc(env(safe-area-inset-top,0px)+1rem)]" aria-hidden="true" />
-
-          {/* Balance Hero Card — Modern Fintech Style */}
-          <div className="relative px-1">
-          <div
-            className="balance-hero relative overflow-hidden rounded-2xl p-6 pb-7"
-          >
-            {/* Abstract curved layers — deeper navy orbs (mobile-friendly) */}
-            <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
-              <div
-                className="absolute -right-16 -top-20 h-64 w-64 rounded-full"
-                style={{ background: "linear-gradient(135deg, rgba(21,101,255,0.22), rgba(8,18,44,0.35))", filter: "blur(2px)" }}
-              />
-              <div
-                className="absolute -left-20 top-8 h-56 w-56 rounded-full"
-                style={{ background: "linear-gradient(225deg, rgba(13,27,61,0.55), transparent 70%)" }}
-              />
-              <div
-                className="absolute -bottom-24 right-4 h-52 w-72 rounded-[50%] rotate-[-15deg]"
-                style={{ background: "linear-gradient(45deg, rgba(10,61,158,0.28), rgba(6,14,32,0.4))" }}
-              />
-              <div
-                className="absolute right-8 top-32 h-20 w-20 rounded-full"
-                style={{ background: "radial-gradient(circle, rgba(21,101,255,0.2), transparent 70%)" }}
-              />
-              <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/[0.06]" />
-              <div className="absolute inset-x-0 top-0 h-1/3 rounded-t-[28px] bg-gradient-to-b from-white/[0.05] to-transparent" />
- <div className="absolute inset-0 rounded-2xl bg-transparent" />
-            </div>
-
-            <div className="relative z-10 flex flex-col text-white">
-              {/* Header row — logo top-left, label centered, eye top-right */}
-              <div className="relative flex items-center justify-center">
-                <img
-                  src="/icon-512-v3.png"
-                  alt=""
-                  aria-hidden="true"
-                  className="absolute left-0 h-8 w-8 shrink-0 rounded-full object-cover"
-                />
-                <p className="text-[0.78rem] font-semibold tracking-wide" style={{ color: "#B8C8D8" }}>
-                  {lang === "BM" ? "Jumlah Baki" : "Total Balance"}
-                </p>
-                <button
-                  type="button"
-                  onClick={handleToggleHeroAmounts}
-                  className="absolute right-0 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all active:scale-90 hover:bg-white/10"
-                  style={{ color: "#B8C8D8" }}
-                >
-                  {showHeroAmounts ? <Eye size={15} strokeWidth={2} /> : <EyeClosed size={15} strokeWidth={2} />}
-                </button>
-              </div>
-
-              {/* Balance — centered, large, with 3D shadow depth */}
-              <div className="pt-1.5 pb-4 text-center">
-                <p
-                  className={cn("font-bold tracking-tight text-white tabular-nums", mobileHeroBalanceSizeClass)}
-                >
-                  {showDataSkeleton
-                    ? dashboardAmountSkeleton("h-[0.85em] w-[8.5rem] mx-auto")
-                    : showHeroAmounts
-                      ? <>RM {heroBalanceDisplay}</>
-                      : "RM ••••••"}
-                </p>
-              </div>
-
-              {/* Income & Expense — rounded glass pills with subtle depth */}
-              <div className="grid w-full grid-cols-2 gap-2.5">
-                <div
-                  className="relative overflow-hidden rounded-2xl px-4 py-3 backdrop-blur-md ring-1 ring-white/[0.08]"
-                  style={{ background: "rgba(255,255,255,0.06)" }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-transparent" />
-                  <div className="relative flex items-center gap-2.5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/15">
-                      <ArrowDownRight size={12} strokeWidth={2.5} className="text-emerald-300" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[0.5rem] font-semibold uppercase tracking-wider leading-none mb-1" style={{ color: "#B8C8D8" }}>{t.income}</p>
-                      <p className="text-[0.8rem] font-bold tabular-nums text-white leading-none">
-                        {showDataSkeleton
-                          ? dashboardAmountSkeleton("h-3 w-16")
-                          : showHeroAmounts
-                            ? <><span className="text-[0.6em] font-medium mr-0.5" style={{ color: "#B8C8D8" }}>RM</span>{formatHeroNumber(filteredIncomeMonth, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</>
-                            : "••••••"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  className="relative overflow-hidden rounded-2xl px-4 py-3 backdrop-blur-md ring-1 ring-white/[0.08]"
-                  style={{ background: "rgba(255,255,255,0.06)" }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-rose-400/10 to-transparent" />
-                  <div className="relative flex items-center gap-2.5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/15">
-                      <ArrowUpRight size={12} strokeWidth={2.5} className="text-rose-300" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-[0.5rem] font-semibold uppercase tracking-wider leading-none mb-1" style={{ color: "#B8C8D8" }}>{t.expense}</p>
-                      <p className="text-[0.8rem] font-bold tabular-nums text-white leading-none">
-                        {showDataSkeleton
-                          ? dashboardAmountSkeleton("h-3 w-16")
-                          : showHeroAmounts
-                            ? <><span className="text-[0.6em] font-medium mr-0.5" style={{ color: "#B8C8D8" }}>RM</span>{formatHeroNumber(filteredExpenseMonth, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</>
-                            : "••••••"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          </div>
-        </div>
-
-          {/* Wallet deck — primary row + popup sheet for all wallets */}
-          {showDataSkeleton ? (
-            <div
-              className="space-y-1.5 px-1"
-              aria-busy="true"
-              aria-label={lang === "BM" ? "Memuatkan dompet" : "Loading wallets"}
-            >
-              {[0, 1].map((i) => walletRowSkeleton(i))}
-            </div>
-          ) : heroWallets.length > 0 ? (
-            <div className="px-1">
-              {(() => {
-                const primary = heroWallets[0]
-                const accent = getDashboardWalletAccent(primary)
-                const walletLabel =
-                  primary.label || primary.name || (lang === "BM" ? "Dompet" : "Wallet")
-                return (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      heroWallets.length > 1
-                        ? setShowMobileWalletDeck(true)
-                        : undefined
-                    }
-                    className={cn(
-                      "relative grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] px-4 py-3.5 text-left shadow-sm transition active:scale-[0.99]",
-                      heroWallets.length > 1 && "cursor-pointer",
-                    )}
-                    style={{
-                      background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 14%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 7%, var(--card)) 100%)`,
-                    }}
-                  >
-                    
-                    <div className="relative flex min-w-0 items-center gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)]">
-                        {primary.image_url ? <img src={primary.image_url} alt="" className="h-full w-full object-cover" /> : <Wallet size={16} strokeWidth={2.4} />}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-black tracking-tight text-[var(--text)]">
-                          {walletLabel}
-                        </p>
-                        {heroWallets.length > 1 ? (
-                          <p className="mt-0.5 text-[11px] font-semibold text-[var(--muted)]">
-                            {lang === "BM"
-                              ? `${heroWallets.length} dompet`
-                              : `${heroWallets.length} wallets`}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                    <p className="max-w-[10rem] truncate text-right text-sm font-semibold tabular-nums tracking-tight text-[var(--text)]">
-                      {showHeroAmounts ? (
-                        <>
-                          {formatCurrencyLabel(primary.currency)}{" "}
-                          {formatHeroNumber(primary.balance, { minimumFractionDigits: 2 })}
-                        </>
-                      ) : (
-                        "RM ••••••"
-                      )}
-                    </p>
-                  </button>
-                )
-              })()}
-            </div>
-          ) : null}
-
-          {/* Vehicle details — below wallets, outside hero */}
-          <div className="px-1">
-            <DashboardVehicleHeroRow variant="card" className="mt-0" />
-            <DashboardBnplHeroRow variant="card" className="mt-2" />
-          </div>
-
-          {/* Cat playground — slim chip; full arena opens in sheet */}
-          <div className="-mt-1 px-1">
-            <CatPlayground lang={lang === "BM" ? "BM" : "EN"} userKey={sessionId} compact presentation="chip" />
-          </div>
-
-          {/* Charts — monthly + daily side by side */}
-          <div className="px-1">
-            {showDataSkeleton ? (
-              <div className="grid w-full grid-cols-2 gap-3" aria-busy="true">
-                {chartMiniSkeleton("m-month")}
-                {chartMiniSkeleton("m-day")}
-              </div>
-            ) : (
-            <div className="grid w-full grid-cols-2 gap-3">
-              <button type="button" onClick={() => openChartModal("monthly")} className="modern-card modern-card-interactive p-4 text-left">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-bold text-[var(--text)]">{t.monthlyTab}</p>
-                  <BarChart2 size={13} className="text-[var(--muted)]" />
-                </div>
-                <p className="mt-2 text-base font-black tabular-nums text-[var(--text)]">RM {currentMonthExpense.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
-                <p className="mt-0.5 text-xs font-semibold text-[var(--muted)]">7 {lang === "EN" ? "months" : "bulan"}</p>
-                <ChartContainer config={{ expense: { label: t.expense, color: "var(--text)" } }} className="mt-3 h-10 w-full">
-                  <AreaChart accessibilityLayer data={monthlyAreaChartData} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
-                    <Area isAnimationActive={false} dataKey="expense" type="natural" fill="var(--color-expense)" fillOpacity={0.16} stroke="var(--color-expense)" strokeWidth={2.5} dot={false} activeDot={false} />
-                  </AreaChart>
-                </ChartContainer>
-              </button>
-              <button type="button" onClick={() => openChartModal("daily")} className="modern-card modern-card-interactive p-4 text-left">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-bold text-[var(--text)]">{t.dailyTab}</p>
-                  <BarChart2 size={13} className="text-[var(--muted)]" />
-                </div>
-                <p className="mt-2 text-base font-black tabular-nums text-[var(--text)]">RM {(currentDailyTrendPoint?.expense ?? 0).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
-                <p className="mt-0.5 text-xs font-semibold text-[var(--muted)]">7 {lang === "EN" ? "days" : "hari"}</p>
-                <ChartContainer config={{ expense: { label: t.expense, color: "var(--muted)" } }} className="mt-3 h-10 w-full">
-                  <AreaChart accessibilityLayer data={dailyAreaChartData} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
-                    <Area isAnimationActive={false} dataKey="expense" type="natural" fill="var(--color-expense)" fillOpacity={0.16} stroke="var(--color-expense)" strokeWidth={2.5} dot={false} activeDot={false} />
-                  </AreaChart>
-                </ChartContainer>
-              </button>
-            </div>
-            )}
-          </div>
-
-          {/* Daily Budget */}
-          <div className="px-1">
-            {moneyLifespanMobileSection}
-          </div>
-
-
-        {/* Category Comparison */}
-        <div className="px-1">
-          {topCategoriesSection}
-        </div>
-
-        {/* Sidebar stack — same order as desktop: commitments → budget alerts */}
-        <div className="space-y-3 px-1">
-          <VehicleOverdueWidget />
-          <MonthlyChecklistSection />
-          {budgetAlertSection}
-        </div>
-      </div>
 
       {/* ─── DESKTOP VIEW (hidden md:block) ─── */}
       <div className="hidden md:block space-y-5 pb-12">
@@ -3493,140 +2535,6 @@ export default function Dashboard() {
         )}
       
 
-      {typeof document !== "undefined" && showMobileWalletDeck && heroWallets.length > 0
-        ? createPortal(
-                <div
-                  key="wallet-sheet"
-                  className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-transparent p-0 sm:items-center sm:p-4"
-                  onClick={requestWalletDeckClose}
-                >
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    data-swipe-sheet
-                    {...walletSheetSwipe}
-                    className="app-sheet-panel relative z-10 flex max-h-[82vh] w-full flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl sm:max-w-md sm:rounded-2xl"
-                  >
-                    <AppSheetHeader
-                      title={lang === "BM" ? "Semua baki" : "All balances"}
-                      onClose={requestWalletDeckClose}
-                    />
-
-                    <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-1">
-                      {(() => {
-                        const renderWalletRow = (wallet: (typeof heroWallets)[number], index: number, kind: "regular" | "saving") => {
-                        const accent = getDashboardWalletAccent(wallet)
-                        const walletLabel =
-                          wallet.label || wallet.name || (lang === "BM" ? "Dompet" : "Wallet")
-                        const walletType = walletTypeLabel(wallet.type)
-                        const isDragging = deckDraggingId === wallet.id
-                        return (
-                          <div
-                            key={`${wallet.id || index}-wallet-sheet-row`}
-                            data-deck-row
-                            data-deck-kind={kind}
-                            data-rid={wallet.id}
-                            onPointerDown={(e) => downDeckRow(e, kind, wallet)}
-                            onPointerMove={moveDeckRow}
-                            onPointerUp={endDeckRow}
-                            onPointerCancel={cancelDeckRow}
-                            className="relative cursor-grab touch-none select-none overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-4 active:cursor-grabbing"
-                            style={{
-                              background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 14%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 6%, var(--card)) 100%)`,
-                              WebkitTouchCallout: "none",
-                              WebkitUserSelect: "none",
-                              ...(isDragging
-                                ? {
-                                    transform: `translateY(${deckDragY}px) scale(1.03)`,
-                                    zIndex: 20,
-                                    boxShadow: "0 18px 40px -12px rgba(0,0,0,0.45)",
-                                    borderColor: "var(--border-strong, var(--border))",
-                                  }
-                                : { transition: "transform 120ms ease" }),
-                            }}
-                          >
-                            
-                            <div className="absolute -right-6 -top-8 h-20 w-20 rounded-full opacity-15 blur-2xl" style={{ backgroundColor: accent.color }} />
-                            <div className="relative flex items-center gap-3">
-                              <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)]">
-                                {wallet.image_url ? <img src={wallet.image_url} alt="" draggable={false} className="pointer-events-none h-full w-full object-cover" /> : <Wallet size={17} strokeWidth={2.3} />}
-                                {wallet.is_bot_default ? (
-                                  <span className="absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[0.5rem] font-black leading-none text-white ring-2 ring-[var(--card)]">
-                                    B
-                                  </span>
-                                ) : null}
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-black tracking-tight text-[var(--text)]">
-                                  {walletLabel}
-                                </p>
-                                <p className="mt-0.5 truncate text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
-                                  {wallet.name} · {walletType}
-                                </p>
-                              </div>
-                              <div className="shrink-0 text-right">
-                                <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[var(--muted)]">
-                                  {lang === "BM" ? "Baki" : "Balance"}
-                                </p>
-                                <p className="mt-0.5 text-base font-semibold tabular-nums tracking-tight text-[var(--text)]">
-                                  {showHeroAmounts ? (
-                                    <>
-                                      {formatCurrencyLabel(wallet.currency)}{" "}
-                                      {formatHeroNumber(wallet.balance, {
-                                        minimumFractionDigits: 2,
-                                      })}
-                                    </>
-                                  ) : (
-                                    "RM ••••••"
-                                  )}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                        }
-
-                        const savingWallets = (deckRows ?? heroWallets).filter((wallet) => wallet.is_saving)
-                        const regularWallets = (deckRows ?? heroWallets).filter((wallet) => !wallet.is_saving)
-                        return (
-                          <>
-                            {regularWallets.map((wallet, index) => renderWalletRow(wallet, index, "regular"))}
-                            {savingWallets.length > 0 ? (
-                              <div className="pt-2">
-                                <div className="flex items-center gap-2 px-1 pb-1">
-                                  <Coins size={14} className="text-[var(--muted)]" />
-                                  <p className="text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                                    {lang === "BM" ? "Simpanan" : "Saving"}
-                                  </p>
-                                  <div className="h-px flex-1 bg-[var(--border)]" />
-                                </div>
-                                {savingWallets.map((wallet, index) => renderWalletRow(wallet, index, "saving"))}
-                              </div>
-                            ) : null}
-                          </>
-                        )
-                      })()}
-
-                      <Link
-                        href={`/${sessionId}/wallet-settings`}
-                        onClick={(e) => {
-                          e.preventDefault()
-                          requestWalletDeckClose()
-                          window.setTimeout(() => {
-                            window.location.href = `/${sessionId}/wallet-settings`
-                          }, 0)
-                        }}
-                        className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm font-bold text-[var(--text)] transition active:scale-[0.99]"
-                      >
-                        <Wallet size={15} strokeWidth={2.4} />
-                        {lang === "BM" ? "Urus dompet" : "Manage wallets"}
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-            ,
-            document.body,
-          )
-        : null}
 
       {alertModal}
       <BadgeOverviewModal

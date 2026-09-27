@@ -16,13 +16,13 @@ Chrome tab (display-mode "browser"), so the screen size decides. Pinned here:
 4. A user still due for onboarding is handed to the full dashboard, where the
    onboarding flow lives.
 
-Run: cd apps/api && venv/bin/python -m tests.test_pwa_home
+Run: cd apps/api && venv/bin/python -m tests.test_mobile_home
 """
 from pathlib import Path
 
 HOME_DIR = Path(__file__).resolve().parents[2] / "web" / "src" / "app" / "[sessionId]"
 PAGE = (HOME_DIR / "page.tsx").read_text(encoding="utf-8")
-LITE = (HOME_DIR / "PwaHome.tsx").read_text(encoding="utf-8")
+LITE = (HOME_DIR / "MobileHome.tsx").read_text(encoding="utf-8")
 DASH = (HOME_DIR / "DashboardHome.tsx").read_text(encoding="utf-8")
 
 # 1. Dynamic dashboard only.
@@ -49,9 +49,14 @@ assert "onNeedsFullDashboard={handOver}" in PAGE
 
 # 5. The home shows one wallet (the bot default); tapping it opens a sheet with
 # every wallet, which closes on back and swipe like the other sheets.
-assert "wallets.find((w) => w.is_bot_default) ?? wallets[0]" in LITE
+# The card shows the top wallet in the user's dashboard order (as the old
+# dashboard did), and the sheet lets them drag to reorder, saved the same way.
+assert "const homeWallet = heroWallets === null ? undefined : heroWallets[0] ?? null" in LITE
+assert 'fetch("/api/wallets/dashboard-order"' in LITE and "body: JSON.stringify({ ordered_ids: orderedIds })" in LITE
+assert "deckHoldTimerRef.current = setTimeout(() => activateDeckDrag(kind, wallet), 230)" in LITE, "long-press to lift, as before"
+assert 'data-deck-kind={group.key}' in LITE, "rows reorder within their group"
 assert LITE.count("onClick={() => setWalletsOpen(true)}") == 2, "the card and the header link both open the sheet"
-assert 'useOverlayBackClose({ id: "pwa-home-wallets"' in LITE and "useSwipeDownToClose(requestWalletsClose)" in LITE
+assert 'id="mobile-home-wallets"' in LITE and "<AppSheet" in LITE, "the wallets sheet uses the shared AppSheet"
 assert 'title={tr("Semua Dompet", "All Wallets")}' in LITE
 
 # 6. The top right holds the announcement bell, not the avatar. It opens a
@@ -61,7 +66,7 @@ assert "UserAvatar" not in LITE, "the bell replaced the avatar"
 assert "useAnnouncements()" in LITE and "<AnnouncementList" in LITE
 assert '"translateX(100%)"' in LITE, "the panel slides in from the right"
 assert 'className="absolute inset-0 flex flex-col bg-[var(--page-bg)]' in LITE, "the panel opens full screen"
-assert 'useOverlayBackClose({ id: "pwa-home-notices"' in LITE
+assert 'useOverlayBackClose({ id: "mobile-home-notices"' in LITE
 assert '"portal:notice-banner-inline", { detail: { hidden: true } }' in LITE
 SHELL = (HOME_DIR.parents[1] / "components" / "layout" / "Shell.tsx").read_text(encoding="utf-8")
 assert "&& !noticeInlineHidden" in SHELL, "the Shell banner yields to the bell"
@@ -90,4 +95,31 @@ assert "<DesktopAnnouncementBell sessionId={sessionId} lang={lang} />" in SHELL
 assert SHELL.index('{lang === "BM" ? "Tetapan" : "Settings"}</span>') < SHELL.index("<DesktopAnnouncementBell"), "the bell follows Settings"
 assert "shadow-[var(--shadow-soft)] lg:hidden" in SHELL, "the dashboard banner yields to the rail bell on desktop"
 
-print("pwa home OK")
+# 9. Tapping the balance opens the old dashboard's expense charts popup
+# straight away (no small chart cards); its chart library loads only then.
+assert "miniCharts" not in LITE, "no small chart cards on the phone home"
+assert LITE.count("onClick={() => setChartsOpen(true)}") == 1, "the balance opens the popup"
+assert 'dynamic(() => import("./MobileHomeCharts")' in LITE and "ssr: false" in LITE
+CHARTS = (HOME_DIR / "MobileHomeCharts.tsx").read_text(encoding="utf-8")
+assert 'from "react-chartjs-2"' in CHARTS, "the popup keeps the old bar charts"
+
+# 10. After login the Shell mounts in the same commit as this home, and child
+# effects run first, so the "hide the banner" event fired before the Shell was
+# listening: the banner showed on first login and vanished after a refresh.
+# A flag on <html> now carries it regardless of mount order.
+assert 'document.documentElement.dataset.noticeInline = "hidden"' in LITE
+assert 'if (document.documentElement.dataset.noticeInline === "hidden") setNoticeInlineHidden(true);' in SHELL
+
+# 11. The phone home is the only home on phones: no ?home= override, and the
+# old dashboard's phone layout is gone from DashboardHome.
+assert "home=" not in PAGE and 'get("home")' not in PAGE, "no ?home= override"
+assert "MOBILE VIEW (md:hidden)" not in DASH and "showMobileWalletDeck" not in DASH
+
+# 12. The cat widget from the old phone home lives in the menu sheet, above
+# the nav cards, and its arena opens above that sheet (z-500).
+menu = SHELL[SHELL.index("Quick Controls Toolbar"):SHELL.index("Nav cards: one card per group")]
+assert 'presentation="chip"' in menu and "<CatPlayground" in menu
+CAT = (HOME_DIR.parents[1] / "components" / "dashboard" / "CatPlayground.tsx").read_text(encoding="utf-8")
+assert "fixed inset-0 z-[600]" in CAT, "the arena must open above the z-500 menu sheet"
+
+print("mobile home OK")

@@ -3,6 +3,7 @@
 import { getWalletAccent as walletAccent } from "@/lib/wallet-accents"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import dynamic from "next/dynamic"
 import { createPortal } from "react-dom"
 import { ArrowLeftRight, Bell, ChevronRight, Eye, EyeClosed, Wallet, X } from "lucide-react"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
@@ -14,13 +15,23 @@ import { cn, getTodayDateInTimeZone } from "@/lib/utils"
 import { formatCurrencyLabel } from "@/components/ui/MoneyAmount"
 import { useAnnouncements } from "@/lib/announcements"
 import { AnnouncementList } from "@/components/announcements/AnnouncementList"
+
+// The chart library comes with the popup, and only once the balance is tapped.
+const MobileHomeCharts = dynamic(() => import("./MobileHomeCharts"), {
+  ssr: false,
+  loading: () => (
+    <div className="space-y-4" aria-busy="true">
+      <div className="skeleton-surface h-[290px] rounded-2xl" />
+      <div className="skeleton-surface h-[310px] rounded-2xl" />
+    </div>
+  ),
+})
 import { usePageAlert } from "@/hooks/usePageAlert"
-import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
-import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
+import { AppSheet } from "@/components/ui/AppSheet"
 import { onDataChanged, shouldRefetchFor } from "@/hooks/useRealtime"
 
-// The light home an installed PWA opens on, on a phone. The full dashboard
+// The home screen on phones. The full dashboard
 // ships two chart libraries and a 3,600-line page before it can paint; this
 // shows only the balance, the wallets and the latest activity. It reads the
 // same URLs as the dashboard, so both share one cache and show the same
@@ -107,7 +118,7 @@ function walletKind(w: Pick<WalletRow, "type" | "is_saving">, isBm: boolean) {
 const num = (v: number, digits = 2) =>
   Number(v || 0).toLocaleString("en-MY", { minimumFractionDigits: digits, maximumFractionDigits: digits })
 
-export function PwaHome({
+export function MobileHome({
   sessionId,
   onNeedsFullDashboard,
 }: {
@@ -127,6 +138,7 @@ export function PwaHome({
   const [wallets, setWallets] = useState<WalletRow[] | null>(null)
   const [showAmounts, setShowAmounts] = useState(true)
   const [walletsOpen, setWalletsOpen] = useState(false)
+  const [chartsOpen, setChartsOpen] = useState(false)
 
   // ── Announcement bell ── history of notices published from Mastermind, in a
   // full-screen panel that slides in from the right.
@@ -140,7 +152,7 @@ export function PwaHome({
     setBellShown(false)
     window.setTimeout(() => setBellOpen(false), 220)
   }, [])
-  const { requestClose: requestBellClose } = useOverlayBackClose({ id: "pwa-home-notices", isOpen: bellOpen, onClose: closeBell })
+  const { requestClose: requestBellClose } = useOverlayBackClose({ id: "mobile-home-notices", isOpen: bellOpen, onClose: closeBell })
   const openBell = () => {
     setNewAbove(seenId)
     setBellOpen(true)
@@ -179,23 +191,16 @@ export function PwaHome({
   }
   // The Shell shows the same notice as a banner on the home route; the bell
   // replaces it here, so ask for the banner to stay hidden while this is up.
+  // The flag on <html> covers the first render after login, when the Shell
+  // mounts alongside this and its listener is not attached yet.
   useEffect(() => {
+    document.documentElement.dataset.noticeInline = "hidden"
     window.dispatchEvent(new CustomEvent("portal:notice-banner-inline", { detail: { hidden: true } }))
     return () => {
+      delete document.documentElement.dataset.noticeInline
       window.dispatchEvent(new CustomEvent("portal:notice-banner-inline", { detail: { hidden: false } }))
     }
   }, [])
-  const closeWallets = useCallback(() => setWalletsOpen(false), [])
-  const { requestClose: requestWalletsClose } = useOverlayBackClose({ id: "pwa-home-wallets", isOpen: walletsOpen, onClose: closeWallets })
-  const walletsSheetSwipe = useSwipeDownToClose(requestWalletsClose)
-
-  // The bottom nav would sit over the sheet's last rows; hide it while open.
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent("portal:mobile-bottom-nav-visibility", { detail: { hidden: walletsOpen } }))
-    return () => {
-      window.dispatchEvent(new CustomEvent("portal:mobile-bottom-nav-visibility", { detail: { hidden: false } }))
-    }
-  }, [walletsOpen])
   const handoffRef = useRef(onNeedsFullDashboard)
   handoffRef.current = onNeedsFullDashboard
 
@@ -326,26 +331,169 @@ export function PwaHome({
     return { income, expense }
   }, [transactions, cycle, profile, timezone])
 
-  // One wallet only: the one the bot records into by default, as the wallet
-  // page picks it (falling back to the first wallet when none is set).
-  const botWallet = useMemo(() => {
-    if (!wallets) return undefined
-    const pick = wallets.find((w) => w.is_bot_default) ?? wallets[0] ?? null
-    return pick ? { ...pick, balance: Number(pick.balance || 0) } : null
-  }, [wallets])
-
-  // Every wallet for the sheet, bot default first, then the dashboard order.
-  const allWallets = useMemo(() => {
-    if (!wallets) return []
+  // Wallets shown on the dashboard, in the order the user dragged them into
+  // (dashboard_rank, then balance), exactly as the old dashboard deck.
+  const heroWallets = useMemo(() => {
+    if (!wallets) return null
     return wallets
+      .filter((w) => w.show_on_dashboard !== false)
       .map((w) => ({ ...w, balance: Number(w.balance || 0) }))
       .sort((a, b) => {
-        if (Boolean(a.is_bot_default) !== Boolean(b.is_bot_default)) return a.is_bot_default ? -1 : 1
         const ra = a.dashboard_rank == null ? Infinity : a.dashboard_rank
         const rb = b.dashboard_rank == null ? Infinity : b.dashboard_rank
         return ra !== rb ? ra - rb : b.balance - a.balance
       })
   }, [wallets])
+  // The home card shows the wallet at the top of that order.
+  const homeWallet = heroWallets === null ? undefined : heroWallets[0] ?? null
+
+  // ── Drag to reorder (ported from the old dashboard's wallet deck) ──
+  // Long-press a row (230ms) to lift it, then drag within its group; the order
+  // is saved to /api/wallets/dashboard-order on release.
+  type DeckKind = "regular" | "saving"
+  const [deckRows, setDeckRows] = useState<WalletRow[] | null>(null)
+  const [deckDraggingId, setDeckDraggingId] = useState<number | null>(null)
+  const [deckDragY, setDeckDragY] = useState(0)
+  const deckHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const deckDragRef = useRef<{
+    kind: DeckKind
+    startIndex: number
+    index: number
+    startY: number
+    startX: number
+    rowH: number
+    pointerId: number
+    activated: boolean
+    el: HTMLElement | null
+    kindIds: number[]
+  } | null>(null)
+  useEffect(() => {
+    deckDragRef.current = null
+    if (!walletsOpen) setDeckRows(null)
+  }, [walletsOpen])
+  const deckRowsByKind = (kind: DeckKind) =>
+    (deckRows ?? heroWallets ?? []).filter((w) => (kind === "saving" ? !!w.is_saving : !w.is_saving))
+  const commitDeckOrder = (rows: WalletRow[]) => {
+    const orderedIds = rows.map((w) => w.id)
+    const visibleIds = new Set(orderedIds)
+    const all = wallets || []
+    const ranked = rows.map((w, i) => ({ ...w, dashboard_rank: i as number | null }))
+    const hidden = all.filter((w) => w.show_on_dashboard === false).map((w) => ({ ...w, dashboard_rank: null }))
+    const missing = all.filter((w) => w.show_on_dashboard !== false && !visibleIds.has(w.id))
+    setWallets([...ranked, ...hidden, ...missing])
+    const token = getAccessToken()
+    fetch("/api/wallets/dashboard-order", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token && !isCookieAuthSentinel(token) ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ ordered_ids: orderedIds }),
+    })
+      // Refresh the cached list so the next launch opens on the new order.
+      .then(() => fetchApiJson<WalletRow[]>(URLS.wallets, token))
+      .catch(() => {})
+  }
+  const clearDeckHoldTimer = () => {
+    if (deckHoldTimerRef.current) {
+      clearTimeout(deckHoldTimerRef.current)
+      deckHoldTimerRef.current = null
+    }
+  }
+  const activateDeckDrag = (kind: DeckKind, wallet: WalletRow) => {
+    const meta = deckDragRef.current
+    if (!meta || meta.activated || !meta.el) return
+    meta.activated = true
+    meta.rowH = meta.el.getBoundingClientRect().height || 72
+    meta.kindIds = deckRowsByKind(kind).map((w) => w.id)
+    meta.el.setPointerCapture?.(meta.pointerId)
+    try {
+      navigator.vibrate?.(10)
+    } catch {}
+    setDeckDraggingId(wallet.id)
+    setDeckDragY(0)
+  }
+  const downDeckRow = (e: React.PointerEvent, kind: DeckKind, wallet: WalletRow) => {
+    if (e.button !== undefined && e.button !== 0) return
+    const idx = deckRowsByKind(kind).findIndex((w) => w.id === wallet.id)
+    if (idx < 0) return
+    e.stopPropagation()
+    clearDeckHoldTimer()
+    deckDragRef.current = {
+      kind,
+      startIndex: idx,
+      index: idx,
+      startY: e.clientY,
+      startX: e.clientX,
+      rowH: 0,
+      pointerId: e.pointerId,
+      activated: false,
+      el: e.currentTarget as HTMLElement,
+      kindIds: [],
+    }
+    deckHoldTimerRef.current = setTimeout(() => activateDeckDrag(kind, wallet), 230)
+  }
+  const moveDeckRow = (e: React.PointerEvent) => {
+    const meta = deckDragRef.current
+    if (!meta) return
+    if (!meta.activated) {
+      if (Math.hypot(e.clientX - meta.startX, e.clientY - meta.startY) > 8) {
+        clearDeckHoldTimer()
+        deckDragRef.current = null
+      }
+      return
+    }
+    e.preventDefault()
+    const els = Array.from(document.querySelectorAll<HTMLElement>(`[data-deck-kind="${meta.kind}"]`))
+    if (!els.length) return
+    const y = e.clientY
+    let target = els.findIndex((el) => {
+      const r = el.getBoundingClientRect()
+      return y >= r.top && y <= r.bottom
+    })
+    if (target < 0) target = y < els[0].getBoundingClientRect().top ? 0 : els.length - 1
+    // Only swap once the pointer passes a neighbour's middle, so a boundary
+    // position never oscillates between two slots.
+    if (target !== meta.index) {
+      const nr = els[target]?.getBoundingClientRect()
+      if (nr) {
+        const mid = nr.top + nr.height / 2
+        if ((target > meta.index && y < mid) || (target < meta.index && y > mid)) target = meta.index
+      }
+    }
+    if (target !== meta.index) {
+      const id = meta.kindIds[meta.index]
+      meta.kindIds.splice(meta.index, 1)
+      meta.kindIds.splice(target, 0, id)
+      meta.index = target
+      setDeckRows((prev) => {
+        const base = prev ?? heroWallets ?? []
+        const byId = new Map(base.map((w) => [w.id, w]))
+        const ordered = meta.kindIds.map((kid) => byId.get(kid)).filter((w): w is WalletRow => !!w)
+        return meta.kind === "regular"
+          ? [...ordered, ...base.filter((w) => !!w.is_saving)]
+          : [...base.filter((w) => !w.is_saving), ...ordered]
+      })
+    }
+    setDeckDragY(e.clientY - meta.startY - (meta.index - meta.startIndex) * meta.rowH)
+  }
+  const endDeckRow = () => {
+    const meta = deckDragRef.current
+    if (!meta) return
+    clearDeckHoldTimer()
+    deckDragRef.current = null
+    setDeckDraggingId(null)
+    setDeckDragY(0)
+    if (meta.activated && meta.startIndex !== meta.index && deckRows && deckRows.length > 1) commitDeckOrder(deckRows)
+    setDeckRows(null)
+  }
+  const cancelDeckRow = () => {
+    clearDeckHoldTimer()
+    deckDragRef.current = null
+    setDeckDraggingId(null)
+    setDeckDragY(0)
+    setDeckRows(null)
+  }
 
   const activity = useMemo(() => {
     if (!transactions) return null
@@ -412,35 +560,42 @@ export function PwaHome({
           </button>
         </div>
 
-        {/* The eye button sits after the label; a matching spacer before it keeps the label centred. */}
-        <div className="mt-5 flex items-center justify-center gap-1">
-          <span aria-hidden className="h-9 w-9" />
-          <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-[var(--muted)]">
-            {tr("Jumlah Baki", "Total Balance")}
-          </p>
+        <p className="mt-5 text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-[var(--muted)]">
+          {tr("Jumlah Baki", "Total Balance")}
+        </p>
+        {/* The eye sits right after the number it hides. */}
+        <div className="mt-1 flex min-w-0 items-center gap-1.5">
+          {/* Tapping the balance opens the old dashboard's expense charts popup. */}
+          <button
+            type="button"
+            onClick={() => setChartsOpen(true)}
+            disabled={stats == null}
+            aria-haspopup="dialog"
+            aria-label={tr("Lihat graf perbelanjaan", "See spending charts")}
+            className="min-w-0 truncate text-left font-black leading-none tracking-tight tabular-nums text-[var(--text)] transition active:opacity-70"
+          >
+            {stats == null ? (
+              skeleton("h-10 w-48")
+            ) : (
+              <>
+                <span className="mr-1.5 align-top text-base font-bold text-[var(--muted)]">RM</span>
+                <span className="text-[2.7rem]">{showAmounts ? num(stats.balance) : hidden}</span>
+              </>
+            )}
+          </button>
           <button
             type="button"
             onClick={toggleAmounts}
             aria-label={showAmounts ? tr("Sembunyikan jumlah", "Hide amounts") : tr("Tunjuk jumlah", "Show amounts")}
             aria-pressed={!showAmounts}
-            className="-my-2 flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] transition active:scale-90"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--muted)] transition active:scale-90"
           >
-            {showAmounts ? <Eye size={15} /> : <EyeClosed size={15} />}
+            {showAmounts ? <Eye size={20} /> : <EyeClosed size={20} />}
           </button>
         </div>
-        <p className="mt-1 truncate text-center font-black leading-none tracking-tight tabular-nums text-[var(--text)]">
-          {stats == null ? (
-            skeleton("h-10 w-48")
-          ) : (
-            <>
-              <span className="mr-1.5 align-top text-base font-bold text-[var(--muted)]">RM</span>
-              <span className="text-[2.7rem]">{showAmounts ? num(stats.balance) : hidden}</span>
-            </>
-          )}
-        </p>
 
         {/* This cycle's money in and out, computed as the dashboard hero does. */}
-        <div className="mt-3.5 flex flex-wrap justify-center gap-2">
+        <div className="mt-3.5 flex flex-wrap gap-2">
           {[
             { key: "in", label: tr("Masuk", "In"), value: month?.income, dot: "var(--income)" },
             { key: "out", label: tr("Keluar", "Out"), value: month?.expense, dot: "var(--expense)" },
@@ -454,29 +609,30 @@ export function PwaHome({
             </span>
           ))}
         </div>
+
       </section>
 
-      {/* ── Wallet ── the bot's default wallet, drawn as the wallet page draws its cards. */}
-      <section aria-labelledby="pwa-wallets-heading">
+      {/* ── Wallet ── the top wallet in the user's dashboard order, drawn as the wallet page draws its cards. */}
+      <section aria-labelledby="mobile-wallets-heading">
         <div className="mb-2 flex items-center justify-between px-2">
-          <h2 id="pwa-wallets-heading" className="text-base font-black text-[var(--text)]">
+          <h2 id="mobile-wallets-heading" className="text-base font-black text-[var(--text)]">
             {tr("Dompet", "Wallet")}
           </h2>
           <button
             type="button"
             onClick={() => setWalletsOpen(true)}
-            disabled={!botWallet}
+            disabled={!homeWallet}
             className="-mr-1 flex min-h-10 items-center gap-0.5 px-1 text-xs font-bold text-[var(--muted)] disabled:opacity-40"
           >
             {tr("Semua dompet", "All wallets")}
-            {allWallets.length ? <span className="ml-0.5 tabular-nums">({allWallets.length})</span> : null}
+            {heroWallets && heroWallets.length ? <span className="ml-0.5 tabular-nums">({heroWallets.length})</span> : null}
             <ChevronRight size={14} />
           </button>
         </div>
 
-        {botWallet === undefined ? (
+        {homeWallet === undefined ? (
           <div className="skeleton-surface h-[196px] rounded-2xl" />
-        ) : botWallet === null ? (
+        ) : homeWallet === null ? (
           <Link
             href={`/${sessionId}/wallet-settings`}
             className="flex h-24 items-center justify-center rounded-2xl border border-dashed border-[var(--divider)] text-sm font-bold text-[var(--muted)]"
@@ -485,7 +641,7 @@ export function PwaHome({
           </Link>
         ) : (
           (() => {
-            const w = botWallet
+            const w = homeWallet
             const accent = walletAccent(w)
             const count = Number(w.transaction_count || 0)
             return (
@@ -568,9 +724,9 @@ export function PwaHome({
       </section>
 
       {/* ── Current activity ── the latest transactions, by day, with each day's net. */}
-      <section aria-labelledby="pwa-activity-heading" className="mt-5">
+      <section aria-labelledby="mobile-activity-heading" className="mt-5">
         <div className="mb-2 flex items-center justify-between px-2">
-          <h2 id="pwa-activity-heading" className="text-base font-black text-[var(--text)]">
+          <h2 id="mobile-activity-heading" className="text-base font-black text-[var(--text)]">
             {tr("Aktiviti Terkini", "Recent Activity")}
           </h2>
           <Link href={`/${sessionId}/transactions`} className="-mr-1 flex min-h-10 items-center gap-0.5 px-1 text-xs font-bold text-[var(--muted)]">
@@ -658,24 +814,27 @@ export function PwaHome({
         </div>
       </section>
 
-      {walletsOpen && typeof document !== "undefined"
-        ? createPortal(
-            <div className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-[var(--overlay)]" onClick={requestWalletsClose}>
-              <div
-                onClick={(e) => e.stopPropagation()}
-                data-swipe-sheet
-                {...walletsSheetSwipe}
-                className="app-sheet-panel relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl"
-              >
-                <AppSheetHeader
-                  title={tr("Semua Dompet", "All Wallets")}
-                  subtitle={`${tr("Jumlah", "Total")} ${showAmounts && stats ? `RM ${num(stats.balance)}` : `RM ${hidden}`}`}
-                  onClose={requestWalletsClose}
-                />
-                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-1">
+      <AppSheet open={chartsOpen} onClose={() => setChartsOpen(false)} id="mobile-home-charts" title={tr("Graf Perbelanjaan", "Expense Charts")} size="xl">
+        <MobileHomeCharts transactions={transactions || []} lang={lang} timezone={timezone} />
+      </AppSheet>
+
+      <AppSheet
+        open={walletsOpen}
+        onClose={() => setWalletsOpen(false)}
+        id="mobile-home-wallets"
+        title={tr("Semua Dompet", "All Wallets")}
+        subtitle={`${tr("Jumlah", "Total")} ${showAmounts && stats ? `RM ${num(stats.balance)}` : `RM ${hidden}`}`}
+        bodyClassName="space-y-4"
+      >
+                  <p className="px-1 text-xs font-medium text-[var(--muted)]">
+                    {tr(
+                      "Tekan lama dan seret untuk susun. Dompet paling atas dipaparkan di page utama.",
+                      "Press and hold, then drag to reorder. The top wallet is shown on the home screen."
+                    )}
+                  </p>
                   {[
-                    { key: "regular", label: tr("Dompet", "Wallets"), rows: allWallets.filter((w) => !w.is_saving) },
-                    { key: "saving", label: tr("Simpanan", "Savings"), rows: allWallets.filter((w) => w.is_saving) },
+                    { key: "regular" as const, label: tr("Dompet", "Wallets"), rows: deckRowsByKind("regular") },
+                    { key: "saving" as const, label: tr("Simpanan", "Savings"), rows: deckRowsByKind("saving") },
                   ]
                     .filter((g) => g.rows.length > 0)
                     .map((group) => (
@@ -687,13 +846,24 @@ export function PwaHome({
                         <ul className="space-y-2">
                           {group.rows.map((w) => {
                             const accent = walletAccent(w)
+                            const isDragging = deckDraggingId === w.id
                             return (
                               <li
                                 key={w.id}
-                                className="wallet-card-solid relative flex items-center gap-3 overflow-hidden rounded-[1.25rem] px-4 py-3.5"
+                                data-deck-kind={group.key}
+                                onPointerDown={(e) => downDeckRow(e, group.key, w)}
+                                onPointerMove={moveDeckRow}
+                                onPointerUp={endDeckRow}
+                                onPointerCancel={cancelDeckRow}
+                                onContextMenu={(e) => e.preventDefault()}
+                                className="wallet-card-solid relative flex cursor-grab touch-none select-none items-center gap-3 overflow-hidden rounded-[1.25rem] px-4 py-3.5 active:cursor-grabbing"
                                 style={{
                                   background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)`,
                                   ...({ "--wallet-from": accent.from } as React.CSSProperties),
+                                  WebkitTouchCallout: "none",
+                                  ...(isDragging
+                                    ? { transform: `translateY(${deckDragY}px) scale(1.03)`, zIndex: 20, boxShadow: "0 18px 40px -12px rgba(0,0,0,0.45)" }
+                                    : { transition: "transform 120ms ease" }),
                                 }}
                               >
                                 <span aria-hidden className="absolute -right-6 -top-8 h-20 w-20 rounded-full" style={{ background: "rgba(255,255,255,0.14)" }} />
@@ -739,12 +909,7 @@ export function PwaHome({
                     {tr("Urus dompet", "Manage wallets")}
                     <ChevronRight size={16} />
                   </Link>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
+      </AppSheet>
 
       {bellOpen && typeof document !== "undefined"
         ? createPortal(
@@ -758,7 +923,7 @@ export function PwaHome({
               <section
                 role="dialog"
                 aria-modal="true"
-                aria-labelledby="pwa-notices-title"
+                aria-labelledby="mobile-notices-title"
                 onPointerDown={onPanelPointerDown}
                 onPointerMove={onPanelPointerMove}
                 onPointerUp={onPanelPointerUp}
@@ -771,7 +936,7 @@ export function PwaHome({
                 }}
               >
                 <header className="flex items-center justify-between gap-3 px-4 pb-3 pt-[calc(env(safe-area-inset-top,0px)+1rem)]">
-                  <h2 id="pwa-notices-title" className="text-lg font-black text-[var(--text)]">
+                  <h2 id="mobile-notices-title" className="text-lg font-black text-[var(--text)]">
                     {tr("Pengumuman", "Announcements")}
                   </h2>
                   <button

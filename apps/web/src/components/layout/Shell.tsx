@@ -910,6 +910,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   // inline banner to stay hidden while it is on screen.
   const [noticeInlineHidden, setNoticeInlineHidden] = useState(false);
   useEffect(() => {
+    // After login the Shell mounts in the same commit as the phone home, and
+    // React runs the child's effects first, so the home's event fires before
+    // this listener exists. The home also leaves a flag on <html>; read it
+    // here so the order of mounting no longer matters.
+    if (document.documentElement.dataset.noticeInline === "hidden") setNoticeInlineHidden(true);
     const onInline = (event: Event) => {
       setNoticeInlineHidden(Boolean((event as CustomEvent<{ hidden?: boolean }>).detail?.hidden));
     };
@@ -4039,6 +4044,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
               {/* ── Main Sheet Content: Grouped Cards ── */}
               <div className="px-4 pb-12 space-y-3.5 pt-1">
+                {/* ── Cat playground: the same chip the old phone home had; its arena opens above this sheet ── */}
+                <div className="mt-3">
+                  <CatPlayground lang={lang === "BM" ? "BM" : "EN"} userKey={sessionId} compact presentation="chip" />
+                </div>
+
                 {/* ── Nav cards: one card per group, no headings ── */}
                 {([
                     [

@@ -1812,8 +1812,9 @@ export function CatPlayground({
     const sheet =
       sheetOpen && typeof document !== "undefined"
         ? createPortal(
+            // z-600: the chip also lives in the phone menu sheet (z-500), and the arena must open above it.
             <div
-              className="fixed inset-0 z-[140] flex items-end justify-center overflow-hidden bg-transparent px-0 py-0 sm:items-center sm:px-4 sm:py-6"
+              className="fixed inset-0 z-[600] flex items-end justify-center overflow-hidden bg-transparent px-0 py-0 sm:items-center sm:px-4 sm:py-6"
               onClick={requestSheetClose}
               role="presentation"
             >

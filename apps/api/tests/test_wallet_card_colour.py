@@ -31,7 +31,7 @@ for token in ("--text: #ffffff", "--muted:", "--card: var(--wallet-from", "--ico
 # wallet page, the dashboard, the phone home and bank reconciliation.
 LIB = (WEB.parent / "lib" / "wallet-accents.ts").read_text(encoding="utf-8")
 for f in ("[sessionId]/wallet-settings/page.tsx", "[sessionId]/bank-reconciliation/page.tsx",
-          "[sessionId]/DashboardHome.tsx", "[sessionId]/PwaHome.tsx"):
+          "[sessionId]/DashboardHome.tsx", "[sessionId]/MobileHome.tsx"):
     src = (WEB / f).read_text(encoding="utf-8")
     assert '@/lib/wallet-accents"' in src, f"{f} must use the shared palette"
     assert 'key: "indigo", label: "Indigo", color: "#4f46e5"' not in src, f"{f} keeps no copy of the palette"
