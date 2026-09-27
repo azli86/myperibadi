@@ -3438,3 +3438,22 @@ html[data-theme="light"] .event-photo-overlay .event-photo-overlay-label,
 html[data-theme="light"] .portal-personal-shell .event-photo-overlay .event-photo-overlay-label {
   color: rgba(255, 255, 255, 0.8) !important;
 }
+
+/* Wallet cards drawn in the wallet's own colour (its card_color setting) at
+   full strength. Everything inside them reads the theme tokens, so the tokens
+   are re-pointed here instead of recolouring every element: text turns white,
+   and --card becomes the wallet colour so the fade behind a wallet picture and
+   the ring around the bot badge blend into the card. The light theme's
+   !important remaps resolve to var(--text) and var(--muted), so they pick up
+   these values too. */
+.wallet-card-solid {
+  --text: #ffffff;
+  --text-soft: rgba(255, 255, 255, 0.85);
+  --muted: rgba(255, 255, 255, 0.75);
+  --icon-bg: rgba(255, 255, 255, 0.2);
+  --icon-fg: #ffffff;
+  --border: rgba(255, 255, 255, 0.22);
+  --border-strong: rgba(255, 255, 255, 0.45);
+  --card: var(--wallet-from, #3730a3);
+  color: #ffffff;
+}

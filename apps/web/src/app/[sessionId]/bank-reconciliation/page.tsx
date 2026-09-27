@@ -1,5 +1,6 @@
 "use client"
 
+import { WALLET_ACCENTS as CARD_ACCENTS, getWalletAccent } from "@/lib/wallet-accents"
 import React, { useState, useEffect, useMemo } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
@@ -86,23 +87,7 @@ type CategoryItem = {
   icon?: string
 }
 
-const CARD_ACCENTS = [
-  { key: "indigo", label: "Indigo", color: "#4f46e5", dark: "#3730a3", from: "#6366f1", to: "#3730a3", soft: "#eef2ff" },
-  { key: "pink", label: "Pink", color: "#db2777", dark: "#9d174d", from: "#ec4899", to: "#9d174d", soft: "#fdf2f8" },
-  { key: "amber", label: "Amber", color: "#d97706", dark: "#92400e", from: "#f59e0b", to: "#92400e", soft: "#fffbeb" },
-  { key: "emerald", label: "Emerald", color: "#059669", dark: "#065f46", from: "#10b981", to: "#065f46", soft: "#ecfdf5" },
-  { key: "cyan", label: "Cyan", color: "#0891b2", dark: "#155e75", from: "#06b6d4", to: "#155e75", soft: "#ecfeff" },
-  { key: "violet", label: "Violet", color: "#7c3aed", dark: "#5b21b6", from: "#8b5cf6", to: "#5b21b6", soft: "#f5f3ff" },
-]
 
-function getWalletAccent(wallet?: Pick<WalletItem, "id" | "card_color"> | null) {
-  if (wallet?.card_color) {
-    const selectedAccent = CARD_ACCENTS.find((accent) => accent.key === wallet.card_color)
-    if (selectedAccent) return selectedAccent
-  }
-  const fallbackIndex = Math.abs(wallet?.id ?? 0) % CARD_ACCENTS.length
-  return CARD_ACCENTS[fallbackIndex]
-}
 
 function walletTypeIcon(type?: string) {
   const t = String(type || "").toLowerCase()

@@ -1,5 +1,6 @@
 "use client"
 
+import { WALLET_ACCENTS as CARD_ACCENTS, getWalletAccent } from "@/lib/wallet-accents"
 import { getAccessToken } from "@/lib/auth-session"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
@@ -153,23 +154,7 @@ function toWalletPayload(wallet: DraftWallet | WalletItem) {
   }
 }
 
-const CARD_ACCENTS = [
-  { key: "indigo", label: "Indigo", color: "#4f46e5", dark: "#3730a3", from: "#6366f1", to: "#3730a3", soft: "#eef2ff" },
-  { key: "pink", label: "Pink", color: "#db2777", dark: "#9d174d", from: "#ec4899", to: "#9d174d", soft: "#fdf2f8" },
-  { key: "amber", label: "Amber", color: "#d97706", dark: "#92400e", from: "#f59e0b", to: "#92400e", soft: "#fffbeb" },
-  { key: "emerald", label: "Emerald", color: "#059669", dark: "#065f46", from: "#10b981", to: "#065f46", soft: "#ecfdf5" },
-  { key: "cyan", label: "Cyan", color: "#0891b2", dark: "#155e75", from: "#06b6d4", to: "#155e75", soft: "#ecfeff" },
-  { key: "violet", label: "Violet", color: "#7c3aed", dark: "#5b21b6", from: "#8b5cf6", to: "#5b21b6", soft: "#f5f3ff" },
-]
 
-function getWalletAccent(wallet: Pick<WalletItem, "id" | "card_color"> | null) {
-  if (wallet?.card_color) {
-    const selectedAccent = CARD_ACCENTS.find((accent) => accent.key === wallet.card_color)
-    if (selectedAccent) return selectedAccent
-  }
-  const fallbackIndex = Math.abs(wallet?.id ?? 0) % CARD_ACCENTS.length
-  return CARD_ACCENTS[fallbackIndex]
-}
 
 function formatMoney(value: number) {
   return Number(value || 0).toLocaleString("en-MY", {
@@ -217,9 +202,10 @@ function GlossyWalletPreview({
 }) {
   return (
     <div
-      className="relative flex h-[196px] w-full flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 pb-6 shadow-sm"
+      className="wallet-card-solid relative flex h-[196px] w-full flex-col overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 pb-6 shadow-sm"
       style={{
-        background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 16%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 8%, var(--card)) 100%)`,
+        background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)`,
+                    ...({ "--wallet-from": accent.from } as React.CSSProperties),
       }}
     >
       {imageUrl && (
@@ -646,9 +632,10 @@ export default function WalletSettingsPage() {
         key={wallet.id}
         type="button"
         onClick={() => openWalletModal(wallet)}
-        className="group relative flex h-[196px] w-full flex-col overflow-hidden rounded-2xl border border-[var(--border)] p-5 pb-6 text-left shadow-sm transition hover:border-[var(--border-strong)] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text)]/25"
+        className="wallet-card-solid group relative flex h-[196px] w-full flex-col overflow-hidden rounded-2xl border border-[var(--border)] p-5 pb-6 text-left shadow-sm transition hover:border-[var(--border-strong)] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text)]/25"
         style={{
-          background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 16%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 8%, var(--card)) 100%)`,
+          background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)`,
+                    ...({ "--wallet-from": accent.from } as React.CSSProperties),
         }}
       >
         {wallet.image_url && (
@@ -827,11 +814,12 @@ export default function WalletSettingsPage() {
                     zIndex,
                     opacity,
                     boxShadow,
-                    background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 18%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 10%, var(--card)) 100%)`,
+                    background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)`,
+                    ...({ "--wallet-from": accent.from } as React.CSSProperties),
                     transition: "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease, z-index 0.35s ease",
                   }}
                   className={cn(
-                    "group relative flex h-[218px] w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 p-5 pb-5 text-left select-none will-change-transform",
+                    "wallet-card-solid group relative flex h-[218px] w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 p-5 pb-5 text-left select-none will-change-transform",
                     isFocused && "border-[var(--border-strong)] ring-1 ring-white/25",
                   )}
                 >
@@ -999,11 +987,12 @@ export default function WalletSettingsPage() {
                   zIndex,
                   opacity,
                   boxShadow,
-                  background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 18%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 10%, var(--card)) 100%)`,
+                  background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)`,
+                    ...({ "--wallet-from": accent.from } as React.CSSProperties),
                   transition: "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease, z-index 0.35s ease",
                 }}
                 className={cn(
-                  "group relative flex h-[206px] w-[320px] shrink-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 p-5 pb-5 text-left select-none will-change-transform",
+                  "wallet-card-solid group relative flex h-[206px] w-[320px] shrink-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 p-5 pb-5 text-left select-none will-change-transform",
                   isFocused && "border-[var(--border-strong)] ring-1 ring-white/25",
                 )}
               >
@@ -1290,7 +1279,7 @@ export default function WalletSettingsPage() {
                         <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
                           {tr("Warna kad", "Card color")}
                         </p>
-                        <div className="flex flex-wrap items-center justify-center gap-3">
+                        <div className="flex flex-wrap items-center justify-center gap-2.5">
                           {CARD_ACCENTS.map((accent) => {
                             const isSelected = draft.card_color === accent.key
                             return (
@@ -1299,16 +1288,16 @@ export default function WalletSettingsPage() {
                                 type="button"
                                 onClick={() => setDraft((prev) => ({ ...prev, card_color: accent.key }))}
                                 className={cn(
-                                  "flex h-7 w-7 items-center justify-center rounded-full transition-all",
+                                  "flex h-9 w-9 items-center justify-center rounded-full transition-all",
                                   isSelected
                                     ? "scale-105 ring-2 ring-[var(--text)] ring-offset-1 ring-offset-[var(--card)]"
                                     : "opacity-80 hover:opacity-100",
                                 )}
                                 aria-label={accent.label}
                                 title={accent.label}
-                                style={{ backgroundColor: accent.color }}
+                                style={{ background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)` }}
                               >
-                                {isSelected && <Check size={11} className="text-white" strokeWidth={3} />}
+                                {isSelected && <Check size={14} className="text-white" strokeWidth={3} />}
                               </button>
                             )
                           })}
@@ -1561,7 +1550,7 @@ export default function WalletSettingsPage() {
                         </button>
                       ) : null}
                     </div>
-                    <div className="flex flex-wrap items-center justify-center gap-3">
+                    <div className="flex flex-wrap items-center justify-center gap-2.5">
                       {CARD_ACCENTS.map((accent) => {
                         const isSelected = activeWallet.card_color === accent.key
                         return (
@@ -1570,16 +1559,16 @@ export default function WalletSettingsPage() {
                             type="button"
                             onClick={() => updateActiveWallet({ card_color: accent.key })}
                             className={cn(
-                              "flex h-7 w-7 items-center justify-center rounded-full transition-all",
+                              "flex h-9 w-9 items-center justify-center rounded-full transition-all",
                               isSelected
                                 ? "scale-105 ring-2 ring-[var(--text)] ring-offset-1 ring-offset-[var(--card)]"
                                 : "opacity-80 hover:opacity-100",
                             )}
                             aria-label={accent.label}
                             title={accent.label}
-                            style={{ backgroundColor: accent.color }}
+                            style={{ background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)` }}
                           >
-                            {isSelected && <Check size={11} className="text-white" strokeWidth={3} />}
+                            {isSelected && <Check size={14} className="text-white" strokeWidth={3} />}
                           </button>
                         )
                       })}
