@@ -122,6 +122,7 @@ import { fetchApiJson, readApiCache, writeApiCache, invalidateApiCache } from "@
 import Turnstile from "@/components/auth/Turnstile"
 import BadgeOverviewModal from "@/components/badges/BadgeOverviewModal";
 import Calculator from "@/components/calculator/Calculator";
+import { DesktopAnnouncementBell } from "@/components/announcements/DesktopAnnouncementBell";
 import { CatPlayground } from "@/components/dashboard/CatPlayground";
 import {
   APP_BADGES,
@@ -913,6 +914,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     (pathname === `/${sessionId}` || pathname === `/${sessionId}/`);
   const isLight = resolvedTheme === "light";
   const [noticeBanners, setNoticeBanners] = useState<{ personal?: NoticeBannerItem } | null>(null);
+  // The phone home shows the notice behind its bell instead, so it asks for the
+  // inline banner to stay hidden while it is on screen.
+  const [noticeInlineHidden, setNoticeInlineHidden] = useState(false);
+  useEffect(() => {
+    const onInline = (event: Event) => {
+      setNoticeInlineHidden(Boolean((event as CustomEvent<{ hidden?: boolean }>).detail?.hidden));
+    };
+    window.addEventListener("portal:notice-banner-inline", onInline as EventListener);
+    return () => window.removeEventListener("portal:notice-banner-inline", onInline as EventListener);
+  }, []);
   const menuTitle = lang === "BM" ? "Menu Utama" : "Main Menu";
 
   useEffect(() => {
@@ -958,9 +969,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         ? (activeNoticeBanner.message_bm || activeNoticeBanner.message_en || activeNoticeBanner.message || "")
         : (activeNoticeBanner.message_en || activeNoticeBanner.message_bm || activeNoticeBanner.message || "")).trim()
     : "";
-  const showNoticeBanner = Boolean(activeNoticeBanner?.enabled && (noticeTitle || noticeMessage) && isPersonalDashboardHome);
+  const showNoticeBanner = Boolean(activeNoticeBanner?.enabled && (noticeTitle || noticeMessage) && isPersonalDashboardHome && !noticeInlineHidden);
   const noticeBannerNode = showNoticeBanner && activeNoticeBanner ? (
-    <section className={cn("mb-4 rounded-2xl border px-4 py-3 text-sm shadow-[var(--shadow-soft)]", activeNoticeBanner.type === "alert" ? "border-rose-500/25 bg-rose-500/12 text-rose-700 dark:text-rose-200" : activeNoticeBanner.type === "warning" ? "border-amber-500/25 bg-amber-400/15 text-amber-800 dark:text-amber-200" : "border-sky-500/25 bg-sky-500/12 text-sky-700 dark:text-sky-200")}>
+    // Hidden from lg up: the desktop right rail carries the notice behind its
+    // bell instead. Tablets have no right rail, so they keep the banner.
+    <section className={cn("mb-4 rounded-2xl border px-4 py-3 text-sm shadow-[var(--shadow-soft)] lg:hidden", activeNoticeBanner.type === "alert" ? "border-rose-500/25 bg-rose-500/12 text-rose-700 dark:text-rose-200" : activeNoticeBanner.type === "warning" ? "border-amber-500/25 bg-amber-400/15 text-amber-800 dark:text-amber-200" : "border-sky-500/25 bg-sky-500/12 text-sky-700 dark:text-sky-200")}>
       <div className="flex items-start gap-3">
         {activeNoticeBanner.type === "alert" ? <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> : activeNoticeBanner.type === "warning" ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> : <Info className="mt-0.5 h-4 w-4 shrink-0" />}
         <div className="min-w-0 flex-1">
@@ -3865,6 +3878,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 <Settings size={13} strokeWidth={2.2} />
                 <span>{lang === "BM" ? "Tetapan" : "Settings"}</span>
               </Link>
+              <DesktopAnnouncementBell sessionId={sessionId} lang={lang} />
               <button
                 type="button"
                 onClick={() => setShowChatOverlay(true)}
