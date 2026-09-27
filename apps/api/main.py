@@ -930,6 +930,7 @@ async def ensure_database_schema():
         await conn.run_sync(database.Base.metadata.create_all)
         if conn.dialect.name == "postgresql":
             await conn.execute(text("ALTER TABLE split_bills ADD COLUMN IF NOT EXISTS members TEXT NULL"))
+            await conn.execute(text("ALTER TABLE announcements ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP NULL"))
             await conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS subscription_id BIGINT NULL REFERENCES subscriptions(id) ON DELETE SET NULL"))
             await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_transactions_subscription_id ON transactions (subscription_id)"))
             await conn.execute(text("UPDATE transactions t SET subscription_id = s.id FROM subscriptions s WHERE t.subscription_id IS NULL AND t.user_id = s.user_id AND LOWER(TRIM(t.vendor_or_source)) = LOWER(TRIM('SUBX ' || s.name))"))
@@ -8358,6 +8359,8 @@ async def adminportal_get_notice_banners(db: AsyncSession = Depends(database.get
 @app.patch("/adminportal/notice-banners", response_model=schemas.NoticeBannerSettings)
 async def adminportal_update_notice_banners(payload: schemas.NoticeBannerSettings, db: AsyncSession = Depends(database.get_db), current_admin: models.User = Depends(get_adminportal_admin)):
     data = payload.model_dump()
+    # Read the notice being replaced before it is overwritten below.
+    previous = (await _get_notice_banner_settings(db)).get("personal") or {}
     value = json.dumps(data, ensure_ascii=False)
     # Canonical write: keep a single newest row, drop stale duplicates so GET
     # (which reads the latest row for this key across all users) cannot flip
@@ -8378,8 +8381,109 @@ async def adminportal_update_notice_banners(payload: schemas.NoticeBannerSetting
             await db.delete(stale)
     else:
         db.add(models.UserSetting(user_id=current_admin.id, key=ADMINPORTAL_NOTICE_BANNER_SETTING_KEY, value=value))
+    # A live notice from before the history table existed would be lost when
+    # replaced, so it goes into the history first while the table is empty.
+    if previous.get("enabled") and not await db.scalar(select(func.count()).select_from(models.Announcement)):
+        await _record_announcement(db, previous, created_by=None)
+        await db.flush()
+    await _record_announcement(db, data.get("personal") or {}, created_by=current_admin.id)
     await db.commit()
     return data
+
+
+def _announcement_fields(item: dict[str, Any]) -> dict[str, str]:
+    norm = _normalize_notice_banner_item(item)
+    return {
+        "type": norm["type"],
+        "title_bm": norm["title_bm"].strip(),
+        "message_bm": norm["message_bm"].strip(),
+        "title_en": norm["title_en"].strip(),
+        "message_en": norm["message_en"].strip(),
+    }
+
+
+async def _record_announcement(db: AsyncSession, item: dict[str, Any], created_by: str | None) -> None:
+    """Add the notice to the history when it is switched on and new.
+
+    Saving the same notice again (toggling, re-saving) must not stack copies,
+    so it is compared with the latest history row first. A notice that is off,
+    or has no text, is not published and is not recorded.
+    """
+    if not _normalize_notice_banner_item(item).get("enabled"):
+        return
+    fields = _announcement_fields(item)
+    if not any(fields[k] for k in ("title_bm", "message_bm", "title_en", "message_en")):
+        return
+    latest = await db.scalar(
+        select(models.Announcement)
+        .where(models.Announcement.deleted_at.is_(None))
+        .order_by(models.Announcement.id.desc())
+        .limit(1)
+    )
+    if latest and all(getattr(latest, k) == v for k, v in fields.items()):
+        return
+    db.add(models.Announcement(**fields, created_by=created_by))
+
+
+async def _announcement_rows(db: AsyncSession, limit: int = 50) -> list[dict[str, Any]]:
+    visible = (
+        select(models.Announcement)
+        .where(models.Announcement.deleted_at.is_(None))
+        .order_by(models.Announcement.id.desc())
+        .limit(limit)
+    )
+    rows = (await db.scalars(visible)).all()
+    current = (await _get_notice_banner_settings(db)).get("personal") or {}
+    # History starts with whatever notice is live when this table first exists,
+    # so the bell is not empty on day one. Deleted rows still count as "the
+    # table has rows", so deleting every entry does not bring the notice back.
+    if not rows and current.get("enabled") and not await db.scalar(select(func.count()).select_from(models.Announcement)):
+        await _record_announcement(db, current, created_by=None)
+        await db.commit()
+        rows = (await db.scalars(visible)).all()
+    live = _announcement_fields(current) if current.get("enabled") else None
+    out = []
+    for i, row in enumerate(rows):
+        item = schemas.AnnouncementResponse.model_validate(row).model_dump()
+        item["is_current"] = bool(live and i == 0 and all(item[k] == v for k, v in live.items()))
+        out.append(item)
+    return out
+
+
+@app.get("/adminportal/announcements", response_model=List[schemas.AnnouncementResponse])
+async def adminportal_list_announcements(db: AsyncSession = Depends(database.get_db), current_admin: models.User = Depends(get_adminportal_admin)):
+    return await _announcement_rows(db, limit=200)
+
+
+@app.delete("/adminportal/announcements/{announcement_id}")
+async def adminportal_delete_announcement(announcement_id: int, db: AsyncSession = Depends(database.get_db), current_admin: models.User = Depends(get_adminportal_admin)):
+    """Hide one history entry. The notice that is live right now cannot be
+    deleted: it would vanish from the bell while its banner still showed."""
+    row = await db.get(models.Announcement, announcement_id)
+    if not row or row.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Announcement not found")
+    rows = await _announcement_rows(db, limit=1)
+    if rows and rows[0]["id"] == announcement_id and rows[0]["is_current"]:
+        raise HTTPException(status_code=409, detail="Pengumuman ini masih aktif. Matikan banner dahulu.")
+    row.deleted_at = datetime.utcnow()
+    await db.commit()
+    return {"ok": True, "id": announcement_id}
+
+
+@app.get("/announcements", response_model=List[schemas.AnnouncementResponse])
+async def list_announcements(db: AsyncSession = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
+    return await _announcement_rows(db)
+
+
+@app.get("/announcements/{announcement_id}", response_model=schemas.AnnouncementResponse)
+async def get_announcement(announcement_id: int, db: AsyncSession = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
+    for item in await _announcement_rows(db, limit=500):
+        if item["id"] == announcement_id:
+            return item
+    row = await db.get(models.Announcement, announcement_id)
+    if not row or row.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Announcement not found")
+    return schemas.AnnouncementResponse.model_validate(row).model_dump()
 
 @app.patch("/adminportal/users/{user_id}/status")
 async def adminportal_update_user_status(

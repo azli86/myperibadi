@@ -55,6 +55,10 @@ import {
   Megaphone,
   Bell,
   Save,
+  Info,
+  AlertCircle,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
 
 function GoogleIcon() {
@@ -252,6 +256,52 @@ export default function Home() {
 
   const [banners, setBanners] = useState<Banners>(emptyBanners);
   const [bannerSaved, setBannerSaved] = useState("");
+  const [bannerLang, setBannerLang] = useState<"bm" | "en">("bm");
+  // Two-step delete: the first click arms the row, the second deletes it.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  async function deleteAnnouncement(id: number) {
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id);
+      window.setTimeout(() => setConfirmDeleteId((cur) => (cur === id ? null : cur)), 4000);
+      return;
+    }
+    setDeletingId(id);
+    setError("");
+    try {
+      const r = await fetch(`/api/announcements/${id}`, { method: "DELETE", credentials: "include" });
+      if (!r.ok) {
+        const d = await r.json().catch(() => null);
+        setError((d && d.detail) || "Rekod gagal dipadam");
+        return;
+      }
+      setAnnouncementHistory((list) => list.filter((a) => a.id !== id));
+      setBannerSaved("Rekod sejarah dipadam.");
+    } finally {
+      setDeletingId(null);
+      setConfirmDeleteId(null);
+    }
+  }
+  const [announcementHistory, setAnnouncementHistory] = useState<
+    {
+      id: number;
+      type: string;
+      title_bm: string;
+      message_bm: string;
+      title_en: string;
+      message_en: string;
+      created_at: string;
+      is_current: boolean;
+    }[]
+  >([]);
+
+  async function loadAnnouncementHistory() {
+    const r = await fetch("/api/announcements", { credentials: "include" });
+    if (!r.ok) return;
+    const d = await r.json().catch(() => []);
+    setAnnouncementHistory(Array.isArray(d) ? d : []);
+  }
 
   const [busy, setBusy] = useState(false);
   const [ticketReply, setTicketReply] = useState("");
@@ -591,6 +641,7 @@ export default function Home() {
     setBanners({
       personal: { ...emptyBannerItem, ...(d?.personal || {}) },
     });
+    void loadAnnouncementHistory();
   }
 
   function editBanner(scope: BannerScope, patch: Partial<BannerItem>) {
@@ -619,6 +670,7 @@ export default function Home() {
         personal: { ...emptyBannerItem, ...(d?.personal || {}) },
       });
       setBannerSaved("Banner berjaya disimpan.");
+      void loadAnnouncementHistory();
     } catch (e: any) {
       setError(e?.message || "Banner gagal disimpan");
     } finally {
@@ -2237,170 +2289,199 @@ export default function Home() {
 
           {/* VIEW: TICKETS */}
           {view === "banners" && (
-            <div className="banner-view">
-              <div className="card" style={{ marginBottom: "16px" }}>
-                <div className="card-header">
-                  <div className="card-title-group">
-                    <div className="card-title-icon">
-                      <Megaphone size={18} />
-                    </div>
-                    <div>
-                      <div className="card-title">Notis &amp; Pengumuman</div>
-                      <div className="card-subtitle">
-                        Perubahan disimpan ke pangkalan data dan terus dipaparkan
-                        kepada pengguna aplikasi.
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    className="primary banner-save"
-                    disabled={busy}
-                    onClick={() => void saveBanners()}
-                  >
-                    {busy ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <Save size={16} />
-                    )}
-                    <span>Simpan Banner</span>
-                  </button>
-                </div>
-              </div>
-
-              {bannerSaved && (
-                <div
-                  className="pill ok"
-                  style={{ marginBottom: "16px", padding: "8px 14px" }}
-                >
-                  <CheckCircle2 size={14} /> {bannerSaved}
-                </div>
-              )}
-
-              <div className="grid">
-                {bannerScopes.map((scope) => {
-                  const item = banners[scope.id];
-                  return (
-                    <article className="card" key={scope.id}>
-                      <div className="card-header banner-card-header">
-                        <div className="card-title-group">
-                          <div className="card-title-icon">
-                            <Bell size={18} />
-                          </div>
-                          <div>
-                            <div className="card-title">{scope.label}</div>
-                            <div className="card-subtitle">{scope.hint}</div>
+            <div className="ann-view">
+              {(() => {
+                const item = banners.personal;
+                const toneOf = (t: string) => (t === "alert" ? "alert" : t === "warning" ? "warning" : "info");
+                const toneIcon = (t: string, size = 16) =>
+                  toneOf(t) === "alert" ? <AlertCircle size={size} /> : toneOf(t) === "warning" ? <AlertTriangle size={size} /> : <Info size={size} />;
+                const titleKey = bannerLang === "bm" ? "title_bm" : "title_en";
+                const messageKey = bannerLang === "bm" ? "message_bm" : "message_en";
+                const previewTitle = (bannerLang === "bm" ? item.title_bm || item.title_en : item.title_en || item.title_bm) || "Tajuk pengumuman";
+                const previewMessage = (bannerLang === "bm" ? item.message_bm || item.message_en : item.message_en || item.message_bm) || "Mesej akan muncul di sini.";
+                const fmt = (raw: string) => {
+                  const d = new Date(/Z|[+-]\d\d:?\d\d$/.test(raw) ? raw : `${raw.replace(" ", "T")}Z`);
+                  return Number.isNaN(d.getTime())
+                    ? raw
+                    : d.toLocaleString("ms-MY", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+                };
+                return (
+                  <>
+                    <div className="card ann-head">
+                      <div className="card-title-group">
+                        <div className="card-title-icon">
+                          <Megaphone size={18} />
+                        </div>
+                        <div>
+                          <div className="card-title">Notis &amp; Pengumuman</div>
+                          <div className="card-subtitle">
+                            Disimpan dengan status AKTIF → dipaparkan di loceng aplikasi dan direkod dalam sejarah.
                           </div>
                         </div>
-                        <label
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            cursor: "pointer",
-                            fontSize: "12.5px",
-                            fontWeight: 700,
-                            color: item.enabled
-                              ? "var(--emerald-text)"
-                              : "var(--text-muted)",
-                          }}
-                        >
+                      </div>
+                      <button className="primary ann-save" disabled={busy} onClick={() => void saveBanners()}>
+                        {busy ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                        <span>{item.enabled ? "Simpan & terbitkan" : "Simpan"}</span>
+                      </button>
+                    </div>
+
+                    {bannerSaved && (
+                      <div className="pill ok ann-saved">
+                        <CheckCircle2 size={14} /> {bannerSaved}
+                      </div>
+                    )}
+
+                    <div className="ann-grid">
+                      {/* ── Editor ── */}
+                      <section className="card ann-editor" aria-label="Penyunting pengumuman">
+                        <div className="ann-row">
+                          <span className="form-label">Status</span>
+                          <div className="ann-seg" role="group" aria-label="Status">
+                            <button type="button" className={item.enabled ? "on" : ""} aria-pressed={item.enabled} onClick={() => editBanner("personal", { enabled: true })}>
+                              <span className="ann-dot live" /> Aktif
+                            </button>
+                            <button type="button" className={!item.enabled ? "on" : ""} aria-pressed={!item.enabled} onClick={() => editBanner("personal", { enabled: false })}>
+                              Mati
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="ann-row ann-row-top">
+                          <span className="form-label">Jenis</span>
+                          <div className="ann-types" role="radiogroup" aria-label="Jenis notis">
+                            {bannerTypes.map((t) => (
+                              <button
+                                key={t}
+                                type="button"
+                                role="radio"
+                                aria-checked={item.type === t}
+                                className={`ann-type ${toneOf(t)} ${item.type === t ? "on" : ""}`}
+                                onClick={() => editBanner("personal", { type: t })}
+                              >
+                                {toneIcon(t, 15)}
+                                <span>{t === "info" ? "Info" : t === "warning" ? "Warning" : "Alert"}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="ann-langs" role="tablist" aria-label="Bahasa">
+                          {(["bm", "en"] as const).map((l) => {
+                            const filled = l === "bm" ? item.title_bm || item.message_bm : item.title_en || item.message_en;
+                            return (
+                              <button key={l} type="button" role="tab" aria-selected={bannerLang === l} className={bannerLang === l ? "on" : ""} onClick={() => setBannerLang(l)}>
+                                {l === "bm" ? "Bahasa Melayu" : "English"}
+                                {filled ? <span className="ann-dot done" aria-label="ada isi" /> : null}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <label className="ann-field">
+                          <span className="ann-field-top">
+                            <span className="form-label">Tajuk</span>
+                            <span className="ann-count">{(item[titleKey] || "").length}/120</span>
+                          </span>
                           <input
-                            type="checkbox"
-                            checked={item.enabled}
-                            onChange={(e) =>
-                              editBanner(scope.id, { enabled: e.target.checked })
-                            }
-                            style={{ width: "16px", height: "16px" }}
+                            className="field"
+                            maxLength={120}
+                            value={item[titleKey]}
+                            onChange={(e) => editBanner("personal", { [titleKey]: e.target.value } as Partial<BannerItem>)}
+                            placeholder={bannerLang === "bm" ? "Tajuk dalam Bahasa Melayu" : "Title in English"}
                           />
-                          {item.enabled ? "AKTIF" : "MATI"}
                         </label>
-                      </div>
 
-                      <div className="form-group">
-                        <label className="form-label">Jenis Notis</label>
-                        <select
-                          className="field"
-                          value={item.type}
-                          onChange={(e) =>
-                            editBanner(scope.id, {
-                              type: e.target.value as BannerItem["type"],
-                            })
-                          }
-                        >
-                          {bannerTypes.map((t) => (
-                            <option key={t} value={t}>
-                              {t}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                        <label className="ann-field">
+                          <span className="ann-field-top">
+                            <span className="form-label">Mesej</span>
+                            <span className="ann-count">{(item[messageKey] || "").length}/600</span>
+                          </span>
+                          <textarea
+                            className="field"
+                            maxLength={600}
+                            rows={8}
+                            value={item[messageKey]}
+                            onChange={(e) => editBanner("personal", { [messageKey]: e.target.value } as Partial<BannerItem>)}
+                            placeholder={bannerLang === "bm" ? "Mesej penuh. Baris baharu dikekalkan dalam aplikasi." : "Full message. Line breaks are kept in the app."}
+                          />
+                        </label>
+                      </section>
 
-                      <div className="form-group">
-                        <label className="form-label">Tajuk (BM)</label>
-                        <input
-                          className="field"
-                          maxLength={120}
-                          value={item.title_bm}
-                          onChange={(e) =>
-                            editBanner(scope.id, { title_bm: e.target.value })
-                          }
-                          placeholder="Tajuk notis dalam Bahasa Melayu"
-                        />
-                      </div>
+                      {/* ── Preview + history ── */}
+                      <div className="ann-side">
+                        <section className="card ann-preview" aria-label="Pratonton">
+                          <div className="ann-side-title">
+                            <Eye size={15} /> Pratonton di aplikasi
+                            <span className={`pill ${item.enabled ? "ok" : "warn"}`}>{item.enabled ? "Akan dipaparkan" : "Tidak dipaparkan"}</span>
+                          </div>
+                          <div className={`ann-card ${toneOf(item.type)}`}>
+                            <span className="ann-card-icon">{toneIcon(item.type, 22)}</span>
+                            <span className="ann-card-body">
+                              <span className="ann-card-title">{previewTitle}</span>
+                              <span className="ann-card-msg">{previewMessage}</span>
+                            </span>
+                          </div>
+                        </section>
 
-                      <div className="form-group">
-                        <label className="form-label">Mesej (BM)</label>
-                        <textarea
-                          className="field"
-                          maxLength={600}
-                          rows={3}
-                          value={item.message_bm}
-                          onChange={(e) =>
-                            editBanner(scope.id, { message_bm: e.target.value })
-                          }
-                          placeholder="Mesej penuh dalam Bahasa Melayu"
-                        />
+                        <section className="card ann-history" aria-label="Sejarah pengumuman">
+                          <div className="ann-side-title">
+                            <Clock size={15} /> Sejarah
+                            <span className="pill purple">{announcementHistory.length} rekod</span>
+                          </div>
+                          {announcementHistory.length === 0 ? (
+                            <p className="ann-empty">Belum ada pengumuman direkod.</p>
+                          ) : (
+                            <ol className="ann-timeline">
+                              {announcementHistory.map((a) => (
+                                <li key={a.id} className={toneOf(a.type)}>
+                                  <span className="ann-tl-dot" aria-hidden />
+                                  <div className="ann-tl-body">
+                                    <div className="ann-tl-meta">
+                                      <span>{fmt(a.created_at)}</span>
+                                      <span className={`pill ${toneOf(a.type) === "alert" ? "bad" : toneOf(a.type) === "warning" ? "warn" : "info"}`}>{a.type}</span>
+                                      {a.is_current ? <span className="pill ok">Aktif</span> : null}
+                                    </div>
+                                    <div className="ann-tl-title">{a.title_bm || a.title_en || "—"}</div>
+                                    {a.title_en && a.title_en !== a.title_bm ? <div className="ann-tl-sub">{a.title_en}</div> : null}
+                                  </div>
+                                  <div className="ann-tl-actions">
+                                  <button
+                                    type="button"
+                                    className="ann-reuse"
+                                    title="Salin isi ke penyunting"
+                                    onClick={() =>
+                                      editBanner("personal", {
+                                        type: toneOf(a.type) as BannerItem["type"],
+                                        title_bm: a.title_bm,
+                                        message_bm: a.message_bm,
+                                        title_en: a.title_en,
+                                        message_en: a.message_en,
+                                      })
+                                    }
+                                  >
+                                    <RotateCcw size={14} /> Guna semula
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`ann-del ${confirmDeleteId === a.id ? "armed" : ""}`}
+                                    disabled={a.is_current || deletingId === a.id}
+                                    title={a.is_current ? "Pengumuman ini masih aktif. Matikan banner dahulu." : "Padam dari sejarah"}
+                                    onClick={() => void deleteAnnouncement(a.id)}
+                                  >
+                                    {deletingId === a.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                                    {confirmDeleteId === a.id ? "Sahkan padam?" : "Padam"}
+                                  </button>
+                                  </div>
+                                </li>
+                              ))}
+                            </ol>
+                          )}
+                        </section>
                       </div>
-
-                      <div className="form-group">
-                        <label className="form-label">Tajuk (EN)</label>
-                        <input
-                          className="field"
-                          maxLength={120}
-                          value={item.title_en}
-                          onChange={(e) =>
-                            editBanner(scope.id, { title_en: e.target.value })
-                          }
-                          placeholder="Notice title in English"
-                        />
-                      </div>
-
-                      <div className="form-group">
-                        <label className="form-label">Mesej (EN)</label>
-                        <textarea
-                          className="field"
-                          maxLength={600}
-                          rows={3}
-                          value={item.message_en}
-                          onChange={(e) =>
-                            editBanner(scope.id, { message_en: e.target.value })
-                          }
-                          placeholder="Full message in English"
-                        />
-                      </div>
-
-                      <div className="metric-footer">
-                        <span className="pulse-dot" />
-                        <span>
-                          {item.enabled
-                            ? `Aktif · jenis ${item.type}`
-                            : "Tidak dipaparkan kepada pengguna"}
-                        </span>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           )}
 

@@ -1856,3 +1856,24 @@ class MedicationDoseLog(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     medication: Mapped["Medication"] = relationship(back_populates="dose_logs")
+
+
+class Announcement(Base):
+    """A notice published from Mastermind's "Notis & Pengumuman".
+
+    The live notice itself stays in user_settings (adminportal.notice_banners).
+    Each distinct notice saved with the banner switched on is also written here,
+    so users keep a dated history behind the bell on the home screen.
+    """
+    __tablename__ = "announcements"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    type: Mapped[str] = mapped_column(String(20), nullable=False, default="info")  # info | warning | alert
+    title_bm: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    message_bm: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    title_en: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    message_en: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_by: Mapped[Optional[str]] = mapped_column(String(16), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    # Deleted from Mastermind: hidden everywhere, kept for the record.
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

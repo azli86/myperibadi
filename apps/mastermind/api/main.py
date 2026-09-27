@@ -736,6 +736,23 @@ async def get_notice_banners(actor: dict = Depends(admin)):
     return await _budget_api_call("GET", "/adminportal/notice-banners", actor["email"])
 
 
+@app.get("/announcements")
+async def list_announcement_history(actor: dict = Depends(admin)):
+    """Every notice published so far, newest first (history kept by the budget API)."""
+    return await _budget_api_call("GET", "/adminportal/announcements", actor["email"])
+
+
+@app.delete("/announcements/{announcement_id}")
+async def delete_announcement_history(
+    announcement_id: int,
+    actor: dict = Depends(admin),
+    db: AsyncSession = Depends(db_session),
+):
+    data = await _budget_api_call("DELETE", f"/adminportal/announcements/{announcement_id}", actor["email"])
+    await _audit(db, actor, "announcement_delete", "announcement", str(announcement_id), "deleted from history")
+    return data
+
+
 @app.patch("/notice-banners")
 async def update_notice_banners(
     payload: NoticeBannerSettings,

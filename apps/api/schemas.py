@@ -298,6 +298,20 @@ class NoticeBannerItem(BaseModel):
 class NoticeBannerSettings(BaseModel):
     personal: NoticeBannerItem = Field(default_factory=NoticeBannerItem)
 
+class AnnouncementResponse(BaseModel):
+    id: int
+    type: str
+    title_bm: str = ""
+    message_bm: str = ""
+    title_en: str = ""
+    message_en: str = ""
+    created_at: datetime
+    # True for the notice that is switched on in Mastermind right now.
+    is_current: bool = False
+
+    class Config:
+        from_attributes = True
+
 class TransactionItemCreate(BaseModel):
     name: str = Field(min_length=1, max_length=190)
     quantity: float = Field(gt=0)
