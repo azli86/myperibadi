@@ -5,7 +5,8 @@ Two additions:
 1. Tickets stuck in new/in_progress die after a week of silence. Tickets #3 and
    #4 sat untouched for 22 days before a human closed them.
 
-2. A customer who gets an admin reply sees a popup on the dashboard, once.
+2. A customer who gets an admin reply sees a popup on the home screen, once.
+   Both home screens carry it: the full dashboard and the light PWA home.
    Repeat popups are the failure mode here, so the read marker matters as much
    as the popup itself. Reopening it would have hit every dashboard load from
    20 Aug onward.
@@ -17,9 +18,10 @@ from pathlib import Path
 API = Path(__file__).resolve().parents[1]
 MAIN = (API / "main.py").read_text(encoding="utf-8")
 MODELS = (API / "models.py").read_text(encoding="utf-8")
-DASHBOARD = (
-    API.parents[0] / "web" / "src" / "app" / "[sessionId]" / "page.tsx"
-).read_text(encoding="utf-8")
+HOME_DIR = API.parents[0] / "web" / "src" / "app" / "[sessionId]"
+DASHBOARD = (HOME_DIR / "DashboardHome.tsx").read_text(encoding="utf-8")
+PWA_HOME = (HOME_DIR / "PwaHome.tsx").read_text(encoding="utf-8")
+HOMES = {"DashboardHome": DASHBOARD, "PwaHome": PWA_HOME}
 
 
 def test_ticket_carries_a_read_marker():
@@ -67,16 +69,18 @@ def test_mark_read_endpoint_checks_ownership():
 
 
 def test_dashboard_asks_once_and_marks_read_on_confirm():
-    assert 'fetch("/api/support/tickets/unread"' in DASHBOARD
-    assert "/read`" in DASHBOARD, "confirming the popup must mark the ticket read"
-    assert "}, [])" in DASHBOARD.split("support/tickets/unread")[1][:1600], \
-        "an effect that reruns on every render would pop the alert repeatedly"
+    for name, src in HOMES.items():
+        assert 'fetch("/api/support/tickets/unread"' in src, name
+        assert "/read`" in src, f"{name}: confirming the popup must mark the ticket read"
+        assert "}, [])" in src.split("support/tickets/unread")[1][:1800], \
+            f"{name}: an effect that reruns on every render would pop the alert repeatedly"
 
 
 def test_dashboard_popup_uses_the_cookie_guard():
-    block = DASHBOARD[DASHBOARD.index("support/tickets/unread") - 700:]
-    block = block[: block.index("catch {")]
-    assert "isCookieAuthSentinel(token)" in block, "Bearer __cookie_auth__ earns a 401"
+    for name, src in HOMES.items():
+        block = src[src.index("support/tickets/unread") - 700:]
+        block = block[: block.index("catch {")]
+        assert "isCookieAuthSentinel(token)" in block, f"{name}: Bearer __cookie_auth__ earns a 401"
 
 
 if __name__ == "__main__":
