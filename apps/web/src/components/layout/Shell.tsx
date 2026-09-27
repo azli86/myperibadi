@@ -122,6 +122,7 @@ import { fetchApiJson, readApiCache, writeApiCache, invalidateApiCache } from "@
 import Turnstile from "@/components/auth/Turnstile"
 import BadgeOverviewModal from "@/components/badges/BadgeOverviewModal";
 import Calculator from "@/components/calculator/Calculator";
+import { PullToRefreshIndicator, PULL_REFRESH_THRESHOLD } from "@/components/layout/PullToRefreshIndicator";
 import { DesktopAnnouncementBell } from "@/components/announcements/DesktopAnnouncementBell";
 import { CatPlayground } from "@/components/dashboard/CatPlayground";
 import {
@@ -3072,7 +3073,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       setPullDistance(0);
       return;
     }
-    setPullDistance(Math.min(120, Math.pow(delta, 0.92)));
+    const next = Math.min(120, Math.pow(delta, 0.92));
+    // One light tick as the pull crosses the release point, where supported.
+    if (pullDistance < PULL_REFRESH_THRESHOLD && next >= PULL_REFRESH_THRESHOLD) {
+      try {
+        navigator.vibrate?.(8);
+      } catch {}
+    }
+    setPullDistance(next);
   };
 
   const onTouchEnd = () => {
@@ -3080,7 +3088,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       setStartY(null);
       return;
     }
-    if (pullDistance >= 80) {
+    if (pullDistance >= PULL_REFRESH_THRESHOLD) {
       void handleManualRefresh();
     }
     setPullDistance(0);
@@ -3532,44 +3540,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 ),
           )}
         >
-          {/* Pull to refresh indicator (radial progress ring + arrow) */}
+          {/* Pull to refresh indicator */}
           {pullRefreshEnabled && !isChatFullscreen && !isMapFullscreen && (
-            <div
-              style={{
-                transform: `translateY(${Math.min(pullDistance, 110) * 0.3}px)`,
-                opacity: Math.min(pullDistance / 60, 1),
-              }}
-              className="pointer-events-none absolute left-0 right-0 top-0 z-50 flex justify-center pt-[calc(env(safe-area-inset-top,0px)+1rem)] md:pt-6"
-            >
-              <div className="relative h-12 w-12">
-                <svg viewBox="0 0 48 48" className={cn("-rotate-90", isRefreshing && "animate-[ptrspin_0.9s_linear_infinite]")}>
-                  <defs>
-                    <linearGradient id="ptr-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#6366f1" />
-                      <stop offset="100%" stopColor="#06b6d4" />
-                    </linearGradient>
-                  </defs>
-                  <circle cx="24" cy="24" r="20" fill="none" strokeWidth="3.5" stroke={isLight ? "rgba(15,23,42,0.12)" : "rgba(255,255,255,0.12)"} />
-                  <circle
-                    cx="24"
-                    cy="24"
-                    r="20"
-                    fill="none"
-                    strokeWidth="3.5"
-                    strokeLinecap="round"
-                    stroke="url(#ptr-grad)"
-                    strokeDasharray={2 * Math.PI * 20}
-                    strokeDashoffset={isRefreshing ? 0 : 2 * Math.PI * 20 * (1 - Math.min(pullDistance / 110, 1))}
-                    className="transition-[stroke-dashoffset,stroke] duration-100"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  {isRefreshing ? (
-                    <Loader2 size={18} className="animate-spin" style={{ color: "var(--text)" }} />
-                  ) : null}
-                </div>
-              </div>
-            </div>
+            <PullToRefreshIndicator pullDistance={pullDistance} refreshing={isRefreshing} lang={lang} />
           )}
 
           {showMobileHeader && (

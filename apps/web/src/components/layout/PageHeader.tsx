@@ -41,6 +41,7 @@ export function MobilePageHeader({
   return (
     <>
       <div
+        data-mobile-page-header
         ref={headerRef}
         className={cn(
           // Above the shell's safe-area strip (z-110): that strip is an opaque
