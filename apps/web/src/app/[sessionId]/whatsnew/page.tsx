@@ -25,6 +25,49 @@ export default function ChangelogPage() {
   const entries: ChangelogEntry[] = isBm
     ? [
         {
+          version: "v2026.09.27",
+          date: "27 Sep 2026",
+          title: "Home Baharu, Loceng Pengumuman & Rupa Segar",
+          items: [
+            "Home baharu untuk telefon: jumlah baki di kiri, butang mata sebelah amaun, dan tekan amaun (atau \"Balance Info ›\") untuk graf bulanan & harian.",
+            "Dompet utama dipapar di home ikut warna dompet sendiri. Tekan untuk buka semua dompet, tekan lama & seret untuk susun semula. 12 pilihan warna dompet baharu.",
+            "Loceng pengumuman menggantikan banner: sejarah pengumuman dengan tab Semua / Info / Amaran / Penting, dan halaman baca penuh.",
+            "Semua popup sheet kini satu rupa yang sama, lebih bersih.",
+            "Tarik untuk segar semula (pull to refresh) kini ada di semua halaman, dengan logo MyPeribadi.",
+            "Topbar halaman baharu: tajuk besar yang mengecil bila skrol.",
+            "Dark mode: kad hero di halaman seperti Bajet, Hutang, Pinjaman dan Langganan kini cerah supaya lebih jelas.",
+            "Halaman Kategori dan Request & Bantuan direka semula — senarai lebih kemas, jumlah bulan ini untuk setiap kategori.",
+            "Butiran transaksi dibuka lebih pantas dan senarai transaksi dimuat 10 demi 10. App juga dimuat lebih laju selepas kali pertama.",
+          ],
+        },
+        {
+          version: "v2026.09.20",
+          date: "20 Sep 2026",
+          title: "Bajet Dibawa ke Bulan Depan, Nota Transaksi & Event",
+          items: [
+            "Bajet bulan ini kini dibawa ke bulan seterusnya secara automatik.",
+            "Command bajet boleh kenal kategori melalui keyword, dan keyword kini dipadan tepat supaya kategori yang betul dipilih.",
+            "Nota transaksi kini dipapar dalam senarai transaksi dan senarai event.",
+            "Halaman Event direka semula: foto dan jumlah belanja di atas, transaksi dikumpul ikut kategori, tanda/nyahtanda transaksi tanpa hilang baris.",
+            "Langganan kini dikumpul ikut tarikh due, dengan kedudukan setiap kitaran bayaran.",
+            "Butiran transaksi direka semula: nama peniaga dan amaun di atas, gaya resit untuk senarai item.",
+          ],
+        },
+        {
+          version: "v2026.09.07",
+          date: "7 Sep 2026",
+          title: "Kesihatan, Cukai, Penyesuaian Bank & Suara",
+          items: [
+            "Kesihatan (Beta): rekod BMI dan larian dengan run tracker serta peta.",
+            "Cukai: pautkan transaksi kepada pelepasan cukai terus dari butiran transaksi, dengan amaran pendapatan berganda.",
+            "Penyesuaian Bank: pilih dompet, muat naik penyata bank, dan sistem baca transaksinya untuk dipadan.",
+            "Transaksi suara: sebut amaun dalam BM atau English, semak dalam sheet sebelum simpan.",
+            "Pilih Halaman Utama dalam Tetapan — app terus buka ke skrin pilihan anda (contoh Chat).",
+            "Chat kini papar format WhatsApp/Telegram (*tebal*, _condong_, ~coret~, `kod`) dan boleh lampir gambar dari kamera atau galeri.",
+            "Kongsi screenshot atau notifikasi bank ke app — ia masuk terus ke chat untuk dibaca bot.",
+          ],
+        },
+        {
           version: "v2026.08.12",
           date: "12 Ogos 2026",
           title: "Barang Saya (Inventori Peribadi)",
@@ -162,6 +205,49 @@ export default function ChangelogPage() {
         },
       ]
     : [
+        {
+          version: "v2026.09.27",
+          date: "27 September 2026",
+          title: "New Home, Announcement Bell & a Fresh Look",
+          items: [
+            "A new home for phones: total balance on the left, the eye button beside the amount, and tap the amount (or \"Balance Info ›\") for monthly and daily charts.",
+            "Your top wallet shows on the home in its own colour. Tap it for all wallets; press and hold to drag them into a new order. Twelve new wallet colours.",
+            "An announcement bell replaces the banner: announcement history with All / Info / Warning / Alert tabs and a full reading page.",
+            "Every popup sheet now shares one cleaner look.",
+            "Pull to refresh now works on every page, with the MyPeribadi logo.",
+            "A new page top bar: a large title that shrinks as you scroll.",
+            "Dark mode: hero cards on pages such as Budget, Debt, Loan and Subscription are now light so they stand out.",
+            "Categories and Support & Requests are redesigned, with tidier lists and this month's amount for each category.",
+            "Transaction details open faster and the transaction list loads 10 at a time. The app also loads quicker after the first visit.",
+          ],
+        },
+        {
+          version: "v2026.09.20",
+          date: "20 September 2026",
+          title: "Budgets Carry Over, Transaction Notes & Events",
+          items: [
+            "This month's budgets now carry over to the next month automatically.",
+            "Budget commands recognise categories by keyword, and keywords now match exactly so the right category is picked.",
+            "Transaction notes now show on the transaction list and event lists.",
+            "Events are redesigned: photo and money spent up top, transactions grouped by category, and tick/untick without losing rows.",
+            "Subscriptions are grouped by what is due, showing where each billing cycle stands.",
+            "Transaction details are redesigned: merchant and amount up top, with a receipt-style item list.",
+          ],
+        },
+        {
+          version: "v2026.09.07",
+          date: "7 September 2026",
+          title: "Health, Tax, Bank Reconciliation & Voice",
+          items: [
+            "Health (Beta): track BMI and runs with a run tracker and map.",
+            "Tax: link a transaction to a tax relief straight from its details, with a duplicate-income warning.",
+            "Bank Reconciliation: pick a wallet, upload a bank statement, and its transactions are read for matching.",
+            "Voice transactions: say the amount in Malay or English and review it in a sheet before saving.",
+            "Choose your Main Page in Settings — the app opens straight to the screen you pick (e.g. Chat).",
+            "Chat now renders WhatsApp/Telegram formatting (*bold*, _italic_, ~strike~, `code`) and can attach photos from the camera or gallery.",
+            "Share a screenshot or bank notification to the app and it lands in chat for the bot to read.",
+          ],
+        },
         {
           version: "v2026.08.12",
           date: "12 August 2026",

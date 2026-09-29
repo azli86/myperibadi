@@ -579,6 +579,171 @@ export default function SettingsPage() {
     },
   ]
 
+  // ─── Profile hero, laid out like a social media profile ───
+  // Cover (the user's own photo, blurred, or a warm gradient), the avatar
+  // overlapping it, Edit Profile on the right, name + handle, the bot persona
+  // as the bio, and a followers-style stats line. Phone and desktop share it;
+  // only the sizes and what the buttons open differ.
+  const renderProfileHero = (desktop: boolean) => {
+    const displayName = showProfileSkeleton ? "…" : profile?.name || tr("Pengguna", "User")
+    const cycleLabel = cycleMode === "category" ? tr("Gaji", "Salary") : `H-${cycleStartDay}`
+    const openAvatar = () => {
+      if (desktop) setAvatarSheetOpen(true)
+      else if (profile?.avatar_url) setAvatarPreviewOpen(true)
+      else setActiveMobileSheet("profile")
+    }
+    const openProfile = () => (desktop ? handleSelectTab("profile") : setActiveMobileSheet("profile"))
+    const openEmail = () => (desktop ? handleSelectTab("email") : setActiveMobileSheet("email"))
+    const openAccounts = () => (desktop ? handleSelectTab("accounts") : setActiveMobileSheet("accounts"))
+    const openCycle = () => (desktop ? handleSelectTab("cycle") : setActiveMobileSheet("cycleReset"))
+    const avatarSize = desktop ? 128 : 88
+
+    return (
+      <section
+        id={desktop ? "p-profile" : undefined}
+        className={cn(
+          "overflow-hidden bg-[var(--card)] shadow-[var(--shadow-card)]",
+          desktop ? "scroll-mt-24 rounded-[1.75rem]" : "rounded-[1.5rem]"
+        )}
+      >
+        {/* Cover */}
+        <div className={cn("relative w-full overflow-hidden", desktop ? "h-48" : "h-28")}>
+          {profile?.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={profile.avatar_url}
+              alt=""
+              aria-hidden
+              className="absolute inset-0 h-full w-full scale-125 object-cover opacity-90 blur-2xl saturate-150"
+            />
+          ) : null}
+          <div
+            className={cn(
+              "absolute inset-0",
+              profile?.avatar_url
+                ? "bg-gradient-to-b from-black/0 via-black/5 to-black/25"
+                : "bg-[radial-gradient(120%_140%_at_0%_0%,#fdba74_0%,transparent_55%),radial-gradient(120%_140%_at_100%_0%,#fda4af_0%,transparent_50%),linear-gradient(135deg,#f97316_0%,#ea580c_45%,#9a3412_100%)]"
+            )}
+          />
+          <button
+            type="button"
+            onClick={() => setAvatarSheetOpen(true)}
+            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-md transition hover:bg-black/50 active:scale-90"
+            aria-label={tr("Tukar gambar profil", "Change profile photo")}
+            title={tr("Tukar gambar profil", "Change profile photo")}
+          >
+            <Camera size={16} />
+          </button>
+        </div>
+
+        <div className={desktop ? "px-7 pb-7" : "px-4 pb-5"}>
+          {/* Avatar over the cover + actions on the right */}
+          <div className="flex items-end justify-between gap-3">
+            <button
+              type="button"
+              onClick={openAvatar}
+              className="relative shrink-0 rounded-full ring-4 ring-[var(--card)] transition active:scale-95"
+              style={{ marginTop: -(avatarSize / 2) }}
+              title={desktop ? tr("Tukar gambar profil", "Change profile photo") : tr("Papar gambar penuh", "View full image")}
+            >
+              <UserAvatar name={name || profile?.name} size={avatarSize} src={profile?.avatar_url} className="rounded-full object-cover" />
+              <span
+                className={cn(
+                  "absolute bottom-1 right-1 rounded-full bg-emerald-500 ring-[3px] ring-[var(--card)]",
+                  desktop ? "h-5 w-5" : "h-4 w-4"
+                )}
+                title={tr("Aktif", "Active")}
+              />
+            </button>
+
+            <div className="flex items-center gap-2 pt-3">
+              <button
+                type="button"
+                onClick={openEmail}
+                aria-label={tr("Tukar E-mel", "Change Email")}
+                title={tr("Tukar E-mel", "Change Email")}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--divider)] text-[var(--text)] transition hover:bg-[var(--surface-tint)] active:scale-90"
+              >
+                <MailCheck size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={openProfile}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[var(--text)] px-4 text-xs font-black text-[var(--bg)] transition active:scale-95"
+              >
+                <PencilLine size={14} />
+                {tr("Edit Profil", "Edit Profile")}
+              </button>
+            </div>
+          </div>
+
+          {/* Name & handle */}
+          <div className="mt-3">
+            <div className="flex items-center gap-1.5">
+              <h2 className={cn("truncate font-black tracking-tight text-[var(--text)]", desktop ? "text-[1.75rem]" : "text-xl")}>{displayName}</h2>
+              <CheckCircle2
+                size={desktop ? 22 : 18}
+                className="shrink-0 fill-orange-500 text-[var(--card)]"
+                aria-label={tr("Disahkan", "Verified")}
+              />
+            </div>
+            <p className={cn("mt-0.5 truncate font-medium text-[var(--muted)]", desktop ? "text-sm" : "text-[0.8125rem]")}>
+              {profile?.email || "—"}
+              {profile?.id ? <span className="ml-1.5 font-mono text-[0.75em] opacity-80">· {profile.id}</span> : null}
+            </p>
+          </div>
+
+          {/* Bio: the bot persona */}
+          <p className={cn("mt-3 leading-relaxed text-[var(--text)]", desktop ? "max-w-2xl text-[0.9375rem]" : "text-sm")}>
+            <Bot size={desktop ? 16 : 15} className="-mt-0.5 mr-1.5 inline text-orange-600 dark:text-orange-400" />
+            {profile?.bot_personality ? (
+              <>
+                <span className="font-semibold">{tr("Persona bot:", "Bot persona:")}</span> {profile.bot_personality}
+              </>
+            ) : (
+              <span className="text-[var(--muted)]">
+                {tr(
+                  "Personaliti Mesra — nada AI kewangan anda di WhatsApp & Telegram.",
+                  "Friendly Tone — your financial AI's voice on WhatsApp & Telegram."
+                )}
+              </span>
+            )}
+          </p>
+
+          {/* Meta line */}
+          <div className={cn("mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 font-medium text-[var(--muted)]", desktop ? "text-sm" : "text-xs")}>
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarDays size={14} />
+              {cycleMode === "category"
+                ? tr("Bajet reset ikut gaji", "Budget resets on salary")
+                : tr(`Bajet reset setiap ${cycleStartDay} hb`, `Budget resets on day ${cycleStartDay}`)}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldCheck size={14} />
+              {profile?.auth_provider === "google" ? "Google" : tr("E-mel", "Email")}
+            </span>
+          </div>
+
+          {/* Followers-style stats */}
+          <div className={cn("mt-4 flex flex-wrap items-center gap-x-5 gap-y-2", desktop ? "text-sm" : "text-[0.8125rem]")}>
+            <button type="button" onClick={openAccounts} className="transition hover:underline active:opacity-70">
+              <span className="font-black tabular-nums text-[var(--text)]">{accounts.length || 1}</span>{" "}
+              <span className="text-[var(--muted)]">{tr("Akaun", "Accounts")}</span>
+            </button>
+            <button type="button" onClick={openCycle} className="transition hover:underline active:opacity-70">
+              <span className="font-black text-[var(--text)]">{cycleLabel}</span>{" "}
+              <span className="text-[var(--muted)]">{tr("Kitaran", "Cycle")}</span>
+            </button>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              <span className="font-black text-emerald-600 dark:text-emerald-400">{tr("Aktif", "Active")}</span>
+            </span>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <div className="space-y-6 pb-24 md:space-y-0 md:pb-8">
       <AvatarPickerSheet
@@ -634,134 +799,7 @@ export default function SettingsPage() {
           }
         />
 
-        {/* ─── Social Media Style Mobile Profile Card ─── */}
-        <section className="px-1 pt-1">
-          <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-xs">
-            {/* Cover Banner with Ambient Mesh Gradient */}
-            <div className="relative h-20 w-full bg-gradient-to-r from-emerald-600/20 via-teal-500/20 to-indigo-600/20" />
-
-            {/* Profile Content Body */}
-            <div className="px-4 pb-4">
-              {/* Row: Avatar (overlapping banner) + Social Stats */}
-              <div className="flex items-end justify-between">
-                {/* Avatar with Story-style Gradient Ring & Camera Action */}
-                <div className="-mt-10 relative shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (profile?.avatar_url) setAvatarPreviewOpen(true)
-                      else setActiveMobileSheet("profile")
-                    }}
-                    className="group relative block rounded-full active:scale-95 transition"
-                    title={tr("Papar gambar penuh", "View full image")}
-                  >
-                    <UserAvatar
-                      name={name || profile?.name}
-                      size={74}
-                      src={profile?.avatar_url}
-                      className="rounded-full object-cover"
-                    />
-                  </button>
-                </div>
-
-                {/* Social Quick Stats */}
-                <div className="flex flex-1 items-center justify-around pl-3 pb-1">
-                  <button
-                    type="button"
-                    onClick={() => setActiveMobileSheet("accounts")}
-                    className="flex flex-col items-center text-center transition active:scale-95"
-                  >
-                    <span className="text-sm font-black text-[var(--text)]">{accounts.length || 1}</span>
-                    <span className="text-[0.62rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      {tr("Akaun", "Accounts")}
-                    </span>
-                  </button>
-                  <div className="h-5 w-px bg-[var(--divider)]" />
-                  <button
-                    type="button"
-                    onClick={() => setActiveMobileSheet("cycleReset")}
-                    className="flex flex-col items-center text-center transition active:scale-95"
-                  >
-                    <span className="text-sm font-black text-[var(--text)]">
-                      {cycleMode === "category" ? tr("Gaji", "Salary") : `H-${cycleStartDay}`}
-                    </span>
-                    <span className="text-[0.62rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      {tr("Kitaran", "Cycle")}
-                    </span>
-                  </button>
-                  <div className="h-5 w-px bg-[var(--divider)]" />
-                  <div className="flex flex-col items-center text-center">
-                    <span className="inline-flex items-center gap-1 text-sm font-black text-emerald-600 dark:text-emerald-400">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <span>{tr("Aktif", "Active")}</span>
-                    </span>
-                    <span className="text-[0.62rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      {tr("Status", "Status")}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Name & Handle (Email) */}
-              <div className="mt-3">
-                <div className="flex items-center gap-1.5">
-                  <h2 className="text-lg font-black tracking-tight text-[var(--text)]">
-                    {showProfileSkeleton ? "..." : profile?.name || tr("Pengguna", "User")}
-                  </h2>
-                  <span className="text-emerald-500" title={tr("Disahkan", "Verified")}>
-                    <ShieldCheck size={16} />
-                  </span>
-                </div>
-                <p className="mt-0.5 text-xs font-medium text-[var(--muted)] truncate">
-                  {profile?.email || "—"}
-                </p>
-              </div>
-
-              {/* Social Bio Box: AI Companion & Bot Personality */}
-              <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/60 p-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-[0.65rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                    <Bot size={12} className="text-emerald-500" />
-                    <span>{tr("Personaliti Bot AI", "AI Bot Persona")}</span>
-                  </div>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-2 py-0.5 text-[0.65rem] font-bold text-[var(--text)] shadow-2xs">
-                    <Sparkles size={10} className="text-amber-500" />
-                    <span className="truncate max-w-[130px]">
-                      {profile?.bot_personality || tr("Personaliti Mesra", "Friendly Tone")}
-                    </span>
-                  </span>
-                </div>
-                <p className="mt-1 text-[0.72rem] text-[var(--muted)] leading-relaxed">
-                  {tr(
-                    "Gaya interaksi & nada maklum balas AI kewangan anda di WhatsApp & Telegram.",
-                    "Your financial AI companion's response tone on WhatsApp & Telegram."
-                  )}
-                </p>
-              </div>
-
-              {/* Action Buttons (Social Media Profile actions) */}
-              <div className="mt-3.5 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveMobileSheet("profile")}
-                  className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-tint)] py-2 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95 shadow-2xs"
-                >
-                  <PencilLine size={13} />
-                  <span>{tr("Edit Profil", "Edit Profile")}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveMobileSheet("email")}
-                  className="flex items-center justify-center gap-1.5 rounded-xl border border-[var(--border-strong)] bg-[var(--surface-tint)] py-2 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-95 shadow-2xs"
-                >
-                  <MailCheck size={13} />
-                  <span>{tr("Tukar E-mel", "Change Email")}</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
+        <section className="px-1 pt-1">{renderProfileHero(false)}</section>
 
         {/* ─── Group 1: Keutamaan & Paparan (Preferences) ─── */}
         <section className="px-1 space-y-2">
@@ -978,90 +1016,7 @@ export default function SettingsPage() {
         />
 
         <DesktopPageBody className="space-y-6 pt-4">
-          {/* ─── Profile Hero (standalone full width, above portal card) ─── */}
-              <section id="p-profile" className="scroll-mt-24 overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-                {/* Cover Banner with Ambient Mesh Gradient */}
-                <div className="relative h-28 w-full bg-gradient-to-r from-emerald-600/20 via-teal-500/20 to-indigo-600/20" />
-
-                <div className="px-6 pb-6">
-                  <div className="flex items-end justify-between">
-                    <div className="-mt-12 relative shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setAvatarSheetOpen(true)}
-                        className="group relative block rounded-full active:scale-95 transition"
-                        title={tr("Tukar gambar profil", "Change profile photo")}
-                      >
-                        <UserAvatar
-                          name={name || profile?.name}
-                          size={100}
-                          src={profile?.avatar_url}
-                          className="rounded-full object-cover"
-                        />
-                      </button>
-                    </div>
-
-                    <div className="flex flex-1 items-center justify-around pb-1 pl-6 max-w-xl">
-                      <div className="flex flex-col items-center text-center">
-                        <span className="text-lg font-black text-[var(--text)]">{accounts.length || 1}</span>
-                        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                          {tr("Akaun", "Accounts")}
-                        </span>
-                      </div>
-                      <div className="h-6 w-px bg-[var(--divider)]" />
-                      <div className="flex flex-col items-center text-center">
-                        <span className="text-lg font-black text-[var(--text)]">
-                          {cycleMode === "category" ? tr("Gaji", "Salary") : `H-${cycleStartDay}`}
-                        </span>
-                        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                          {tr("Kitaran", "Cycle")}
-                        </span>
-                      </div>
-                      <div className="h-6 w-px bg-[var(--divider)]" />
-                      <div className="flex flex-col items-center text-center">
-                        <span className="inline-flex items-center gap-1.5 text-lg font-black text-emerald-600 dark:text-emerald-400">
-                          <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                          <span className="text-sm">{tr("Aktif", "Active")}</span>
-                        </span>
-                        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                          {tr("Status", "Status")}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center gap-2">
-                    <h2 className="text-2xl font-black tracking-tight text-[var(--text)]">
-                      {showProfileSkeleton ? "..." : profile?.name || tr("Pengguna", "User")}
-                    </h2>
-                    <span className="text-emerald-500" title={tr("Disahkan", "Verified")}>
-                      <ShieldCheck size={18} />
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm font-medium text-[var(--muted)] truncate">{profile?.email || "—"}</p>
-
-                  <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/60 p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                        <Bot size={13} className="text-emerald-500" />
-                        <span>{tr("Personaliti Bot AI", "AI Bot Persona")}</span>
-                      </div>
-                      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-2.5 py-0.5 text-xs font-bold text-[var(--text)] shadow-2xs">
-                        <Sparkles size={11} className="text-amber-500" />
-                        <span className="truncate max-w-[200px]">
-                          {profile?.bot_personality || tr("Personaliti Mesra", "Friendly Tone")}
-                        </span>
-                      </span>
-                    </div>
-                    <p className="mt-1.5 text-[0.78rem] text-[var(--muted)] leading-relaxed">
-                      {tr(
-                        "Gaya interaksi & nada maklum balas AI kewangan anda di WhatsApp & Telegram.",
-                        "Your financial AI companion's response tone on WhatsApp & Telegram."
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </section>
+          {renderProfileHero(true)}
 
           {/* ─── Social Media Portal Layout: Left Menu + Right Content ─── */}
           <div className="grid grid-cols-1 md:grid-cols-[260px_minmax(0,1fr)] lg:grid-cols-[290px_minmax(0,1fr)] xl:grid-cols-[310px_minmax(0,1fr)] gap-6 items-start">

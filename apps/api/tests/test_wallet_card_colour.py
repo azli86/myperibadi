@@ -15,12 +15,17 @@ PAGE = (WEB / "[sessionId]" / "wallet-settings" / "page.tsx").read_text(encoding
 CSS = (WEB / "globals.css").read_text(encoding="utf-8")
 
 assert "color-mix(in srgb, ${accent.from}" not in PAGE, "no pale mix of the wallet colour"
-# Preview, list card, mobile deck and desktop deck (4), plus the two colour
-# pickers, whose swatches show the card gradient (2).
-assert PAGE.count("linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)") == 6, \
+# The create preview and the one "Moden" card the phone pile and the desktop
+# grid share (2), plus the two colour pickers, whose swatches show the card
+# gradient (2).
+assert PAGE.count("linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)") == 4, \
     "every card and swatch uses the full colour"
-assert PAGE.count("wallet-card-solid ") == 4
-assert PAGE.count('"--wallet-from": accent.from') == 4
+# The preview still re-points the tokens; the Moden card sets its white text
+# inline, since the light theme remaps the text-white class to var(--text).
+assert PAGE.count("wallet-card-solid ") == 1
+assert PAGE.count('"--wallet-from": accent.from') == 1
+moden = PAGE[PAGE.index("const renderModenCard"):PAGE.index("const emptyState")]
+assert 'color: "#ffffff"' in moden, "the Moden card's text is white on the wallet colour"
 
 block = CSS[CSS.index(".wallet-card-solid {"):]
 block = block[: block.index("}")]

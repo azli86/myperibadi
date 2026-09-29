@@ -41,6 +41,7 @@ import {
   DesktopPageAction,
   DesktopPageBody,
   DesktopPageHeader,
+  MobileIconButton,
   MobilePageHeader,
 } from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
@@ -595,531 +596,254 @@ export default function WalletSettingsPage() {
   const canContinueCreateWallet =
     createWalletStep !== 2 || (draft.label.trim().length > 0 && draft.name.trim().length > 0)
 
-  const heroBlock = (desktop = false) => (
-    <div
-      className={cn(
-        "wallet-hero relative overflow-hidden border border-[var(--border)] bg-[#1a1a1a] text-[#f5f5f5]",
-        desktop ? "rounded-2xl p-6" : "rounded-2xl p-5",
-      )}
-    >
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-      <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-      <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.04] blur-2xl" />
-
-      <div className="relative flex min-h-24 flex-col items-center justify-center text-center md:min-h-28">
-        <p className="text-[0.6875rem] font-bold uppercase tracking-[0.14em] text-[#cbd5e1]">
-          {tr("Jumlah Baki", "Total Balance")}
-        </p>
-        <div className="wallet-hero-amount mt-2 leading-none text-[#ffffff]">
-          {showDataSkeleton ? (
-            <AmountSkeleton className="h-7 w-32 bg-[rgba(255,255,255,0.12)]" />
-          ) : (
-            <MoneyAmount value={totalBalance} size={desktop ? "heroLg" : "hero"} className="text-[#ffffff]" currencyClassName="text-[#ffffff] opacity-55" />
-          )}
-        </div>
+  // ─── Total, in the home's plain style ───
+  const summaryBlock = (desktop = false) => (
+    <div className={desktop ? "" : "px-2"}>
+      <p className="text-sm font-semibold text-[var(--muted)]">
+        {tr(`Jumlah ${wallets.length} dompet`, `Total of ${wallets.length} wallet${wallets.length === 1 ? "" : "s"}`)}
+      </p>
+      <div className="mt-1 text-[var(--text)]">
+        {showDataSkeleton ? (
+          <AmountSkeleton className="h-11 w-44" />
+        ) : (
+          <p className={cn("font-black leading-none tabular-nums tracking-tight", desktop ? "text-[3.25rem]" : "text-[2.75rem]")}>
+            <span className="mr-1.5 align-top text-lg font-bold text-[var(--muted)]">RM</span>
+            {formatMoney(totalBalance)}
+          </p>
+        )}
       </div>
     </div>
   )
 
-  /** Same shape/layout as desktop dashboard wallet cards */
-  const renderWalletCard = (wallet: WalletItem) => {
+  const reconcileLink = (
+    <Link
+      href={`/${sessionId}/bank-reconciliation`}
+      className="flex items-center gap-3 rounded-[1.25rem] bg-[var(--card)] p-3.5 shadow-[var(--shadow-card)] transition active:scale-[0.99]"
+    >
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400">
+        <FileSpreadsheet size={19} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[0.9375rem] font-bold text-[var(--text)]">
+          {tr("Rekonsiliasi penyata bank", "Bank statement reconciliation")}
+        </span>
+        <span className="mt-0.5 block truncate text-[0.8125rem] font-medium text-[var(--muted)]">
+          {tr("Upload & padankan transaksi penyata", "Upload & match statement transactions")}
+        </span>
+      </span>
+      <ChevronRight size={18} className="shrink-0 text-[var(--muted)]" />
+    </Link>
+  )
+
+  /**
+   * A wallet card in the "Moden" look: the wallet's own colour, name and
+   * prefix chip on top, the balance large in the middle, and the record count
+   * with a round arrow at the foot. `stacked` is a card tucked behind another
+   * in the phone's pile: only its top strip shows, so that strip carries the
+   * name, type and balance instead.
+   */
+  const renderModenCard = (wallet: WalletItem, stacked = false) => {
     const accent = getWalletAccent(wallet)
     const walletName = wallet.label || wallet.name
     const walletType = walletTypeLabel(wallet.type, isBm)
+    const typeLine = `${walletType}${wallet.is_saving ? ` · ${tr("Simpanan", "Saving")}` : ""}`
+    const count = Number(wallet.transaction_count || 0)
+    // Inline colours: the light theme remaps the text-white class to var(--text).
+    const soft = "rgba(255,255,255,0.78)"
 
     return (
       <button
-        key={wallet.id}
         type="button"
         onClick={() => openWalletModal(wallet)}
-        className="wallet-card-solid group relative flex h-[196px] w-full flex-col overflow-hidden rounded-2xl border border-[var(--border)] p-5 pb-6 text-left shadow-sm transition hover:border-[var(--border-strong)] hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text)]/25"
+        aria-label={`${walletName} — ${tr("sunting dompet", "edit wallet")}`}
+        className="relative flex h-[184px] w-full flex-col justify-between overflow-hidden rounded-[1.75rem] p-5 text-left transition active:scale-[0.99]"
         style={{
           background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)`,
-                    ...({ "--wallet-from": accent.from } as React.CSSProperties),
+          color: "#ffffff",
+          boxShadow: stacked ? "0 -8px 20px -10px rgba(0,0,0,0.35)" : "0 18px 34px -18px rgba(0,0,0,0.55)",
         }}
       >
-        {wallet.image_url && (
+        <svg aria-hidden width="260" height="260" viewBox="0 0 260 260" className="pointer-events-none absolute -bottom-[110px] -right-[90px]" style={{ opacity: 0.16 }} fill="none" stroke="#ffffff" strokeWidth="2">
+          <circle cx="130" cy="130" r="50" />
+          <circle cx="130" cy="130" r="80" />
+          <circle cx="130" cy="130" r="110" />
+        </svg>
+
+        {stacked ? (
+          <div className="relative flex items-start justify-between gap-3">
+            <span className="flex min-w-0 items-center gap-2.5">
+              {wallet.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={wallet.image_url} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" style={{ boxShadow: "0 0 0 2px rgba(255,255,255,0.35)" }} />
+              ) : null}
+              <span className="min-w-0">
+                <span className="block truncate text-base font-black tracking-tight" style={{ color: "#ffffff" }}>{walletName}</span>
+                <span className="block truncate text-xs font-bold" style={{ color: soft }}>{typeLine}</span>
+              </span>
+            </span>
+            <span className="shrink-0 text-base font-black tabular-nums" style={{ color: "#ffffff" }}>
+              {formatCurrencyLabel(wallet.currency)} {formatMoney(wallet.balance)}
+            </span>
+          </div>
+        ) : (
+          <div className="relative flex items-center justify-between gap-3">
+            <span className="flex min-w-0 items-center gap-2">
+              {wallet.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={wallet.image_url} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" style={{ boxShadow: "0 0 0 2px rgba(255,255,255,0.35)" }} />
+              ) : null}
+              <span className="truncate text-base font-black tracking-tight" style={{ color: "#ffffff" }}>{walletName}</span>
+            </span>
+            <span className="flex shrink-0 items-center gap-1.5">
+              {wallet.is_bot_default ? (
+                <span className="rounded-xl px-2 py-1 text-[0.6875rem] font-black" style={{ background: "rgba(255,255,255,0.22)", color: "#ffffff" }} title="Bot">
+                  Bot
+                </span>
+              ) : null}
+              <span className="max-w-[7rem] truncate rounded-xl px-2.5 py-1 text-xs font-black uppercase" style={{ background: "rgba(0,0,0,0.16)", color: "#ffffff" }}>
+                {wallet.name}
+              </span>
+            </span>
+          </div>
+        )}
+
+        {stacked ? null : (
           <>
-            <img src={wallet.image_url} alt="" className="absolute -right-5 -top-8 h-[135%] w-[62%] rotate-[9deg] object-cover opacity-55 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_55%)]" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[var(--card)] from-30% via-[var(--card)] via-52% to-transparent to-90%" />
+            <div className="relative">
+              <p className="text-[0.8125rem] font-bold" style={{ color: soft }}>
+                {tr("Baki", "Balance")} · {typeLine}
+              </p>
+              <p className="mt-1 truncate text-[2.25rem] font-black leading-none tabular-nums tracking-tight" style={{ color: "#ffffff" }}>
+                <span className="mr-1.5 align-top text-base font-bold" style={{ color: soft }}>
+                  {formatCurrencyLabel(wallet.currency)}
+                </span>
+                {formatMoney(wallet.balance)}
+              </p>
+            </div>
+
+            <div className="relative flex items-center justify-between">
+              <span className="text-[0.8125rem] font-bold" style={{ color: soft }}>
+                {count > 0 ? `${count} ${tr("transaksi", "transactions")}` : tr("Tiada transaksi lagi", "No transactions yet")}
+              </span>
+              <span className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: "#09090b", color: "#fafafa" }}>
+                <ChevronRight size={16} strokeWidth={2.4} />
+              </span>
+            </div>
           </>
         )}
-        <div
-          className="absolute -right-8 -top-10 h-28 w-28 rounded-full opacity-10 blur-2xl"
-          style={{ backgroundColor: accent.color }}
-        />
-
-        <div className="relative flex items-start justify-between gap-3">
-          <div className="relative shrink-0">
-            <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm">
-              {wallet.image_url ? <img src={wallet.image_url} alt="" className="h-full w-full object-cover" /> : <Wallet size={19} />}
-            </div>
-            {wallet.is_bot_default ? (
-              <span
-                className="absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[0.5rem] font-black leading-none text-white shadow-sm ring-2 ring-[var(--card)]"
-                title="Bot"
-                aria-label="Bot"
-              >
-                B
-              </span>
-            ) : null}
-          </div>
-          <div className="min-w-0 text-right">
-            <p className="truncate text-sm font-black tracking-tight text-[var(--text)]">{walletName}</p>
-            <p className="mt-1 truncate text-[0.58rem] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
-              {walletType}
-              {wallet.is_saving ? ` · ${tr("Saving", "Saving")}` : ""}
-            </p>
-          </div>
-        </div>
-
-        <div className="relative mt-5">
-          <p className="text-[0.62rem] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
-            {tr("Baki", "Balance")}
-          </p>
-          <p className="mt-1 truncate text-[var(--text)]">
-            <MoneyAmount value={wallet.balance} currency={wallet.currency} size="lg" className="text-[var(--text)]" />
-          </p>
-        </div>
-
-        <div className="relative mt-auto flex items-center justify-between border-t border-[var(--border)] pt-3">
-          <span className="truncate text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-            Prefix: {wallet.name}
-            {wallet.transaction_count > 0 ? ` · ${wallet.transaction_count} ${tr("rekod", "txns")}` : ""}
-          </span>
-          <ChevronRight size={16} className="shrink-0 text-[var(--muted)] opacity-60 transition group-hover:opacity-100" />
-        </div>
       </button>
     )
   }
 
   const emptyState = (
-    <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center">
-      <Wallet size={36} className="mx-auto text-[var(--muted)]/40" />
-      <p className="mt-3 text-sm font-bold text-[var(--muted)]">
-        {tr("Belum ada dompet.", "No wallets yet.")}
-      </p>
+    <div className="flex flex-col items-center rounded-[1.5rem] bg-[var(--card)] px-6 py-12 text-center shadow-[var(--shadow-card)]">
+      <span className="flex h-14 w-14 items-center justify-center rounded-[1.1rem] bg-orange-500/10 text-orange-600 dark:text-orange-400">
+        <Wallet size={26} />
+      </span>
+      <p className="mt-4 text-base font-black text-[var(--text)]">{tr("Belum ada dompet", "No wallets yet")}</p>
       <button
         type="button"
         onClick={openCreateWalletModal}
-        className="mt-4 rounded-full bg-[var(--text)] px-4 py-2 text-[0.6875rem] font-black uppercase tracking-wider text-[var(--bg)] transition active:scale-95"
+        className="mt-5 inline-flex items-center gap-2 rounded-full bg-[var(--text)] px-5 py-2.5 text-xs font-black text-[var(--bg)] transition active:scale-95"
       >
-        <Plus size={14} className="mr-1 inline" />
+        <Plus size={14} strokeWidth={3} />
         {tr("Tambah Dompet", "Add Wallet")}
       </button>
     </div>
   )
 
+  const addWalletButton = (
+    <button
+      type="button"
+      onClick={openCreateWalletModal}
+      className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[1.5rem] border border-dashed border-[var(--divider)] text-sm font-bold text-[var(--muted)] transition hover:border-[var(--text-soft)] hover:text-[var(--text)] active:scale-[0.99]"
+    >
+      <Plus size={16} strokeWidth={2.5} />
+      {tr("Tambah Dompet", "Add Wallet")}
+    </button>
+  )
+
+  // Cards tucked behind show this much of their top.
+  const STACK_PEEK = 70
+
   const renderWalletCardsSection = (isMobile: boolean) => {
     if (showDataSkeleton) {
-      return (
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div
-              key={i}
-              style={{ marginTop: i === 0 ? 0 : "-128px" }}
-              className="h-[196px] animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-md"
-            />
+      return isMobile ? (
+        <div className="relative" style={{ height: STACK_PEEK * 2 + 184 }}>
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="skeleton-surface absolute inset-x-0 h-[184px] rounded-[1.75rem]" style={{ top: i * STACK_PEEK }} />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="skeleton-surface h-[184px] rounded-[1.75rem]" />
           ))}
         </div>
       )
     }
 
-    if (filteredWallets.length === 0) {
-      return emptyState
-    }
+    if (filteredWallets.length === 0) return emptyState
 
-    // ─── Mobile View: Vertical Stacked Deck ───
+    // ─── Phone: a pile, the first wallet in front at the foot ───
     if (isMobile) {
+      const pile = [...filteredWallets].reverse()
       return (
-        <div className="mx-auto w-full max-w-[440px] space-y-3">
-          {/* Deck Header Bar */}
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--surface-tint)] text-[var(--text)] shadow-xs">
-                <Layers size={14} className="text-indigo-400" />
+        <div className="space-y-4">
+          <section aria-label={tr("Senarai dompet", "Wallet list")} className="relative" style={{ height: (pile.length - 1) * STACK_PEEK + 184 }}>
+            {pile.map((wallet, index) => (
+              <div key={wallet.id} className="absolute inset-x-0" style={{ top: index * STACK_PEEK, zIndex: index + 1 }}>
+                {renderModenCard(wallet, index < pile.length - 1)}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black uppercase tracking-wider text-[var(--text)]">
-                  {tr("Koleksi Dompet", "Wallet Stack")}
-                </span>
-                <span className="rounded-full bg-[var(--surface-tint)] px-2 py-0.5 text-[0.625rem] font-bold text-[var(--muted)]">
-                  {filteredWallets.length} {tr("Kad", "Cards")}
-                </span>
-              </div>
-            </div>
-
-            <span className="text-[0.6875rem] font-semibold text-[var(--muted)]">
-              {focusedCardIndex !== null
-                ? tr("Ketik kad untuk sunting", "Tap card to edit")
-                : tr("Ketik/hover kad untuk lihat penuh", "Tap/hover card to reveal full")}
-            </span>
-          </div>
-
-          {/* Vertical Stacked Cards Deck */}
-          <div
-            onMouseLeave={() => setFocusedCardIndex(null)}
-            style={{
-              paddingBottom: focusedCardIndex !== null && focusedCardIndex < filteredWallets.length - 1 ? "158px" : "16px",
-              transition: "padding-bottom 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
-            }}
-            className="relative mx-auto w-full pt-1"
-          >
-            {filteredWallets.map((wallet, index) => {
-              const accent = getWalletAccent(wallet)
-              const walletName = wallet.label || wallet.name
-              const walletType = walletTypeLabel(wallet.type, isBm)
-              const isTopCard = index === 0
-              const isFocused = focusedCardIndex === index
-              const isBefore = focusedCardIndex !== null && index < focusedCardIndex
-              const isAfter = focusedCardIndex !== null && index > focusedCardIndex
-
-              let translateY = 0
-              let scale = 1
-              let zIndex = index + 1
-              let opacity = 1
-              let boxShadow = "0 -6px 22px rgba(0,0,0,0.18)"
-
-              if (isFocused) {
-                translateY = -34
-                scale = 1.025
-                zIndex = 40
-                opacity = 1
-                boxShadow = "0 24px 48px -10px rgba(0,0,0,0.52), 0 0 0 1.5px var(--border-strong)"
-              } else if (isBefore) {
-                translateY = -12
-                scale = 0.985
-                zIndex = index + 1
-                opacity = 0.88
-              } else if (isAfter) {
-                translateY = 152
-                scale = 0.985
-                zIndex = index + 1
-                opacity = 0.85
-              }
-
-              return (
-                <div
-                  key={wallet.id}
-                  onClick={() => {
-                    if (focusedCardIndex === index || filteredWallets.length === 1) {
-                      openWalletModal(wallet)
-                    } else {
-                      setFocusedCardIndex(index)
-                    }
-                  }}
-                  style={{
-                    marginTop: isTopCard ? 0 : "-145px",
-                    transform: `translateY(${translateY}px) scale(${scale})`,
-                    zIndex,
-                    opacity,
-                    boxShadow,
-                    background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)`,
-                    ...({ "--wallet-from": accent.from } as React.CSSProperties),
-                    transition: "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease, z-index 0.35s ease",
-                  }}
-                  className={cn(
-                    "wallet-card-solid group relative flex h-[218px] w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 p-5 pb-5 text-left select-none will-change-transform",
-                    isFocused && "border-[var(--border-strong)] ring-1 ring-white/25",
-                  )}
-                >
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-white/[0.12] via-transparent to-white/[0.04]" />
-                  {wallet.image_url && (
-                    <>
-                      <img src={wallet.image_url} alt="" className="absolute -right-5 -top-8 h-[135%] w-[62%] rotate-[9deg] object-cover opacity-50 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_55%)]" />
-                      <div className="absolute inset-0 bg-gradient-to-r from-[var(--card)] from-30% via-[var(--card)] via-52% to-transparent to-90%" />
-                    </>
-                  )}
-                  <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full opacity-15 blur-2xl" style={{ backgroundColor: accent.color }} />
-
-                  <div className="relative flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="relative shrink-0">
-                        <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm border border-[var(--border)]">
-                          {wallet.image_url ? <img src={wallet.image_url} alt="" className="h-full w-full object-cover" /> : <Wallet size={19} />}
-                        </div>
-                        {wallet.is_bot_default && (
-                          <span className="absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[0.5rem] font-black leading-none text-white shadow-sm ring-2 ring-[var(--card)]">
-                            B
-                          </span>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-black tracking-tight text-[var(--text)]">{walletName}</p>
-                        <p className="mt-0.5 truncate text-[0.58rem] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
-                          {walletType}
-                          {wallet.is_saving ? ` · ${tr("Saving", "Saving")}` : ""}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <div className="relative h-7 w-9 shrink-0 overflow-hidden rounded-md border border-amber-300/60 bg-gradient-to-br from-amber-200 via-amber-300 to-amber-500 shadow-inner">
-                        <div className="absolute inset-0 grid grid-cols-2 gap-0.5 p-0.5 opacity-35">
-                          <div className="border border-amber-950/60 rounded-[2px]" />
-                          <div className="border border-amber-950/60 rounded-[2px]" />
-                          <div className="border border-amber-950/60 rounded-[2px]" />
-                          <div className="border border-amber-950/60 rounded-[2px]" />
-                        </div>
-                      </div>
-                      <svg className="h-4 w-4 rotate-90 text-[var(--muted)]/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                        <path d="M5 12.55a11 11 0 0 1 14.08 0" />
-                        <path d="M1.42 9a16 16 0 0 1 21.16 0" />
-                        <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
-                      </svg>
-                    </div>
-                  </div>
-
-                  <div className="relative mt-4">
-                    <p className="text-[0.62rem] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
-                      {tr("Baki Semasa", "Current Balance")}
-                    </p>
-                    <p className="mt-1 truncate text-[var(--text)]">
-                      <MoneyAmount value={wallet.balance} currency={wallet.currency} size="lg" className="text-[var(--text)]" />
-                    </p>
-                  </div>
-
-                  <div className="relative mt-auto flex items-center justify-between border-t border-[var(--border)]/80 pt-3">
-                    <div className="flex items-center gap-1.5 font-mono text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      <span className="opacity-40">•••• ••••</span>
-                      <span className="text-[var(--text)]">{wallet.name}</span>
-                      {wallet.transaction_count > 0 ? (
-                        <span className="font-sans text-[0.6rem] font-semibold text-[var(--muted)]/70">
-                          ({wallet.transaction_count} {tr("rekod", "txns")})
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex items-center gap-1 text-[var(--muted)] opacity-70 group-hover:opacity-100 transition">
-                      <span className="text-[0.6rem] font-bold uppercase tracking-wider">{tr("Sunting", "Edit")}</span>
-                      <ChevronRight size={15} />
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Add Wallet Action */}
-          <button
-            type="button"
-            onClick={openCreateWalletModal}
-            className="mt-2 flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-tint)]/20 text-[var(--muted)] transition active:scale-[0.98] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
-          >
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-tint)]">
-              <Plus size={15} strokeWidth={2.5} />
-            </div>
-            <span className="text-xs font-black uppercase tracking-wider">{tr("Tambah Dompet", "Add Wallet")}</span>
-          </button>
+            ))}
+          </section>
+          <p className="text-center text-[0.8125rem] font-medium text-[var(--muted)]">
+            {tr("Tekan kad untuk sunting dompet", "Tap a card to edit the wallet")}
+          </p>
+          {addWalletButton}
         </div>
       )
     }
 
-    // ─── Desktop View: Horizontal Fanned Stack Deck ───
+    // ─── Desktop: every card in full ───
     return (
-      <div className="w-full space-y-4">
-        {/* Deck Header Bar */}
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--surface-tint)] text-[var(--text)] shadow-xs">
-              <Layers size={14} className="text-indigo-400" />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-wider text-[var(--text)]">
-                {tr("Koleksi Dompet", "Wallet Stack")}
-              </span>
-              <span className="rounded-full bg-[var(--surface-tint)] px-2 py-0.5 text-[0.625rem] font-bold text-[var(--muted)]">
-                {filteredWallets.length} {tr("Kad", "Cards")}
-              </span>
-            </div>
-          </div>
-
-          <span className="text-xs font-semibold text-[var(--muted)]">
-            {tr("Arahkan tetikus (hover) pada kad untuk lihat penuh", "Hover over any card to reveal full details")}
-          </span>
-        </div>
-
-        {/* Horizontal Stack Deck */}
-        <div
-          onMouseLeave={() => setFocusedCardIndex(null)}
-          className="flex items-center overflow-x-auto pt-8 pb-10 px-6 custom-scrollbar"
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
+        {filteredWallets.map((wallet) => (
+          <div key={wallet.id}>{renderModenCard(wallet)}</div>
+        ))}
+        <button
+          type="button"
+          onClick={openCreateWalletModal}
+          className="flex h-[184px] w-full flex-col items-center justify-center gap-2 rounded-[1.75rem] border border-dashed border-[var(--divider)] text-sm font-bold text-[var(--muted)] transition hover:border-[var(--text-soft)] hover:text-[var(--text)] active:scale-[0.99]"
         >
-          {filteredWallets.map((wallet, index) => {
-            const accent = getWalletAccent(wallet)
-            const walletName = wallet.label || wallet.name
-            const walletType = walletTypeLabel(wallet.type, isBm)
-            const isTopCard = index === 0
-            const isFocused = focusedCardIndex === index
-            const isBefore = focusedCardIndex !== null && index < focusedCardIndex
-            const isAfter = focusedCardIndex !== null && index > focusedCardIndex
-
-            let translateX = 0
-            let translateY = 0
-            let scale = 1
-            let zIndex = index + 1
-            let opacity = 1
-            let boxShadow = "0 8px 24px rgba(0,0,0,0.22)"
-
-            if (isFocused) {
-              translateY = -24
-              scale = 1.03
-              zIndex = 50
-              boxShadow = "0 28px 50px -12px rgba(0,0,0,0.55), 0 0 0 1.5px var(--border-strong)"
-            } else if (isBefore) {
-              translateX = -18
-              scale = 0.985
-              zIndex = index + 1
-              opacity = 0.88
-            } else if (isAfter) {
-              translateX = 196
-              scale = 0.985
-              zIndex = index + 1
-              opacity = 0.88
-            }
-
-            return (
-              <div
-                key={wallet.id}
-                onMouseEnter={() => setFocusedCardIndex(index)}
-                onClick={() => openWalletModal(wallet)}
-                style={{
-                  marginLeft: isTopCard ? 0 : "-190px",
-                  transform: `translate(${translateX}px, ${translateY}px) scale(${scale})`,
-                  zIndex,
-                  opacity,
-                  boxShadow,
-                  background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)`,
-                    ...({ "--wallet-from": accent.from } as React.CSSProperties),
-                  transition: "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease, z-index 0.35s ease",
-                }}
-                className={cn(
-                  "wallet-card-solid group relative flex h-[206px] w-[320px] shrink-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 p-5 pb-5 text-left select-none will-change-transform",
-                  isFocused && "border-[var(--border-strong)] ring-1 ring-white/25",
-                )}
-              >
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-white/[0.12] via-transparent to-white/[0.04]" />
-                {wallet.image_url && (
-                  <>
-                    <img src={wallet.image_url} alt="" className="absolute -right-5 -top-8 h-[135%] w-[62%] rotate-[9deg] object-cover opacity-50 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_55%)]" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-[var(--card)] from-30% via-[var(--card)] via-52% to-transparent to-90%" />
-                  </>
-                )}
-                <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full opacity-15 blur-2xl" style={{ backgroundColor: accent.color }} />
-
-                <div className="relative flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="relative shrink-0">
-                      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm border border-[var(--border)]">
-                        {wallet.image_url ? <img src={wallet.image_url} alt="" className="h-full w-full object-cover" /> : <Wallet size={18} />}
-                      </div>
-                      {wallet.is_bot_default && (
-                        <span className="absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[0.5rem] font-black leading-none text-white shadow-sm ring-2 ring-[var(--card)]">
-                          B
-                        </span>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-black tracking-tight text-[var(--text)]">{walletName}</p>
-                      <p className="mt-0.5 truncate text-[0.56rem] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
-                        {walletType}
-                        {wallet.is_saving ? ` · ${tr("Saving", "Saving")}` : ""}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <div className="relative h-6 w-8 shrink-0 overflow-hidden rounded-md border border-amber-300/60 bg-gradient-to-br from-amber-200 via-amber-300 to-amber-500 shadow-inner">
-                      <div className="absolute inset-0 grid grid-cols-2 gap-0.5 p-0.5 opacity-35">
-                        <div className="border border-amber-950/60 rounded-[2px]" />
-                        <div className="border border-amber-950/60 rounded-[2px]" />
-                        <div className="border border-amber-950/60 rounded-[2px]" />
-                        <div className="border border-amber-950/60 rounded-[2px]" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="relative mt-3.5">
-                  <p className="text-[0.58rem] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
-                    {tr("Baki Semasa", "Current Balance")}
-                  </p>
-                  <p className="mt-0.5 truncate text-[var(--text)]">
-                    <MoneyAmount value={wallet.balance} currency={wallet.currency} size="lg" className="text-[var(--text)]" />
-                  </p>
-                </div>
-
-                <div className="relative mt-auto flex items-center justify-between border-t border-[var(--border)]/80 pt-2.5">
-                  <div className="flex items-center gap-1.5 font-mono text-[0.62rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                    <span className="opacity-40">••••</span>
-                    <span className="text-[var(--text)]">{wallet.name}</span>
-                    {wallet.transaction_count > 0 ? (
-                      <span className="font-sans text-[0.58rem] font-semibold text-[var(--muted)]/70">
-                        ({wallet.transaction_count} {tr("rekod", "txns")})
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="flex items-center gap-1 text-[var(--muted)] opacity-70 group-hover:opacity-100 transition">
-                    <span className="text-[0.58rem] font-bold uppercase tracking-wider">{tr("Sunting", "Edit")}</span>
-                    <ChevronRight size={14} />
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--surface-tint-strong)]">
+            <Plus size={18} strokeWidth={2.5} />
+          </span>
+          {tr("Tambah Dompet", "Add Wallet")}
+        </button>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
+    <div className="pb-20 md:pb-0">
       {/* ─── Mobile ─── */}
-      <div className="space-y-5 md:hidden">
+      <div className="space-y-6 md:hidden">
         <MobilePageHeader
           title={tr("Dompet", "Wallets")}
           fallbackHref={`/${sessionId}/settings`}
           action={
-            <button
-              type="button"
-              onClick={openCreateWalletModal}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-3 py-2 text-xs font-bold uppercase tracking-wide text-[var(--bg)] transition active:scale-[0.98]"
-              aria-label={tr("Tambah Dompet", "Add Wallet")}
-            >
-              <Plus size={15} strokeWidth={2.5} />
-              {tr("Tambah", "Add")}
-            </button>
+            <MobileIconButton onClick={openCreateWalletModal} label={tr("Tambah Dompet", "Add Wallet")}>
+              <Plus strokeWidth={2.5} />
+            </MobileIconButton>
           }
         />
 
-        <section className="px-1">{heroBlock(false)}</section>
+        {summaryBlock(false)}
 
-        {/* Bank Reconciliation Quick Action */}
-        <section className="px-1">
-          <Link
-            href={`/${sessionId}/bank-reconciliation`}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent p-4 transition hover:border-indigo-500/50 active:scale-[0.99]"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500 text-white shadow-sm">
-                <FileSpreadsheet size={18} />
-              </div>
-              <div>
-                <p className="text-xs font-black uppercase tracking-wider text-[var(--text)]">
-                  {tr("Rekonsiliasi Penyata Bank", "Bank Statement Reconciliation")}
-                </p>
-                <p className="text-[0.6875rem] font-semibold text-[var(--muted)]">
-                  {tr("Upload & padankan transaksi penyata bank", "Upload & auto-match bank statements")}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1 text-xs font-bold text-indigo-400">
-              <ChevronRight size={16} />
-            </div>
-          </Link>
-        </section>
+        <section className="px-1">{renderWalletCardsSection(true)}</section>
 
-        <section className="px-1">
-          {renderWalletCardsSection(true)}
-        </section>
+        <section className="px-1">{reconcileLink}</section>
       </div>
 
       {/* ─── Desktop ─── */}
@@ -1128,52 +852,20 @@ export default function WalletSettingsPage() {
           title={tr("Papan Dompet", "Wallet Board")}
           homeHref={`/${sessionId}`}
           actions={
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/${sessionId}/bank-reconciliation`}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-2 text-xs font-bold text-indigo-400 transition hover:bg-indigo-500/20 active:scale-95"
-              >
-                <FileSpreadsheet size={15} />
-                <span>{tr("Rekonsiliasi Bank", "Bank Reconciliation")}</span>
-              </Link>
-              <DesktopPageAction onClick={openCreateWalletModal}>
-                <Plus strokeWidth={2.5} />
-                {tr("Tambah Dompet", "Add Wallet")}
-              </DesktopPageAction>
-            </div>
+            <DesktopPageAction onClick={openCreateWalletModal}>
+              <Plus strokeWidth={2.5} />
+              {tr("Tambah Dompet", "Add Wallet")}
+            </DesktopPageAction>
           }
         />
 
-        <DesktopPageBody className="space-y-5">
-          {heroBlock(true)}
-
-          {/* Desktop Banner */}
-          <Link
-            href={`/${sessionId}/bank-reconciliation`}
-            className="flex items-center justify-between gap-4 rounded-2xl border border-indigo-500/30 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent p-4 transition hover:border-indigo-500/50 active:scale-[0.99]"
-          >
-            <div className="flex items-center gap-3.5">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-500 text-white shadow-sm">
-                <FileSpreadsheet size={20} />
-              </div>
-              <div>
-                <p className="text-sm font-black text-[var(--text)]">
-                  {tr("Rekonsiliasi Penyata Bank", "Bank Statement Reconciliation")}
-                </p>
-                <p className="text-xs font-semibold text-[var(--muted)]">
-                  {tr("Upload fail CSV atau salin-tampal penyata untuk menyemak dan memadankan baki akaun bank anda secara automatik.", "Upload CSV or copy-paste statement text to auto-match and reconcile your bank accounts.")}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 rounded-xl bg-indigo-500 px-3.5 py-2 text-xs font-black text-white shadow-xs">
-              <span>{tr("Mula Semak", "Reconcile Now")}</span>
-              <ChevronRight size={15} />
-            </div>
-          </Link>
-
-          <div>
-            {renderWalletCardsSection(false)}
+        <DesktopPageBody className="space-y-7">
+          <div className="flex flex-wrap items-end justify-between gap-5">
+            {summaryBlock(true)}
+            <div className="w-full max-w-sm">{reconcileLink}</div>
           </div>
+
+          {renderWalletCardsSection(false)}
         </DesktopPageBody>
       </div>
 

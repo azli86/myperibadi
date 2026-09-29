@@ -70,9 +70,9 @@ const KIND_CONFIG = [
     descBm: "Fungsi baharu",
     descEn: "New feature",
     icon: Lightbulb,
-    badgeBg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-    borderActive: "border-amber-500/60 bg-amber-500/5",
-    iconBg: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+    badgeBg: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
+    borderActive: "border-violet-500/60 bg-violet-500/5",
+    iconBg: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
   },
   {
     key: "support",
@@ -81,9 +81,9 @@ const KIND_CONFIG = [
     descBm: "Pertanyaan akaun",
     descEn: "Account help",
     icon: LifeBuoy,
-    badgeBg: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
-    borderActive: "border-sky-500/60 bg-sky-500/5",
-    iconBg: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
+    badgeBg: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+    borderActive: "border-orange-500/60 bg-orange-500/5",
+    iconBg: "bg-orange-500/15 text-orange-600 dark:text-orange-400",
   },
   {
     key: "bug",
@@ -105,16 +105,16 @@ const PRIORITY_CONFIG: Record<
   low: {
     labelBm: "Rendah",
     labelEn: "Low",
-    dot: "bg-slate-400",
-    bg: "bg-slate-500/10 border-slate-500/20",
-    text: "text-slate-600 dark:text-slate-400",
+    dot: "bg-neutral-300 dark:bg-neutral-600",
+    bg: "bg-[var(--surface-tint-strong)] border-transparent",
+    text: "text-[var(--muted)]",
   },
   medium: {
     labelBm: "Biasa",
     labelEn: "Medium",
-    dot: "bg-blue-500",
-    bg: "bg-blue-500/10 border-blue-500/20",
-    text: "text-blue-600 dark:text-blue-400",
+    dot: "bg-neutral-500",
+    bg: "bg-[var(--surface-tint-strong)] border-transparent",
+    text: "text-[var(--text-soft)]",
   },
   high: {
     labelBm: "Tinggi",
@@ -139,8 +139,8 @@ const STATUS_CONFIG: Record<
   new: {
     labelBm: "Baru",
     labelEn: "New",
-    badge: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/25",
-    dot: "bg-sky-500",
+    badge: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/25",
+    dot: "bg-orange-500",
   },
   in_progress: {
     labelBm: "Dalam Proses",
@@ -456,82 +456,78 @@ export default function RequestPage() {
     }
   }
 
-  // Hero Card Component (matches loan/bnpl hero card design)
-  const renderHeroStats = (isDesktop = false) => (
-    <div className={cn("request-hero relative overflow-hidden rounded-2xl bg-[#1a1a1a] text-center text-white", isDesktop ? "p-6" : "p-5")}>
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-      <div className={cn("relative flex flex-col items-center justify-center", isDesktop ? "min-h-28" : "min-h-24")}>
-        <p className={cn("font-bold uppercase tracking-[0.14em] text-[#a3a3a3]", isDesktop ? "text-[0.7rem]" : "text-[0.625rem]")}>
-          {tr("Jumlah Permohonan & Tiket", "Total Requests & Tickets")}
-        </p>
-        <div className="mt-2 text-[#ffffff]">
-          {!loaded ? (
-            <div className={cn("animate-pulse rounded bg-white/10 mx-auto", isDesktop ? "h-10 w-40" : "h-7 w-32")} />
-          ) : (
-            <div className="flex items-baseline justify-center gap-2 font-black text-white">
-              <span className={cn("tracking-tight font-black", isDesktop ? "text-4xl" : "text-3xl")}>
-                {stats.total}
-              </span>
-              <span className={cn("font-bold text-white opacity-55 uppercase tracking-wider", isDesktop ? "text-sm" : "text-xs")}>
-                {tr("tiket", "tickets")} · {stats.inProgress} {tr("aktif", "active")} · {stats.resolved} {tr("selesai", "resolved")}
-              </span>
-            </div>
-          )}
-        </div>
+  const kindCounts = useMemo(() => {
+    const counts: Record<string, number> = { support: 0, bug: 0, feature: 0 }
+    for (const t of tickets) counts[t.kind] = (counts[t.kind] || 0) + 1
+    return counts
+  }, [tickets])
+
+  const listCardClass =
+    "overflow-hidden rounded-[1.25rem] bg-[var(--card)] shadow-[var(--shadow-card)] divide-y divide-[color-mix(in_srgb,var(--divider)_55%,transparent)]"
+
+  // ─── Summary, in the home's plain style ───
+  const renderSummary = () => (
+    <section className="px-2">
+      <p className="text-sm font-semibold text-[var(--muted)]">{tr("Tiket anda", "Your tickets")}</p>
+      {!loaded ? (
+        <div className="mt-1 h-10 w-24 animate-pulse rounded-lg bg-[var(--surface-tint-strong)]" />
+      ) : (
+        <p className="mt-0.5 text-[2.5rem] font-black leading-none tracking-tight tabular-nums text-[var(--text)]">{stats.total}</p>
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/10 px-2.5 py-1 text-xs font-bold text-orange-700 dark:text-orange-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-orange-500" />
+          {loaded ? stats.inProgress : "—"} {tr("aktif", "active")}
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+          <Check size={12} strokeWidth={3} />
+          {loaded ? stats.resolved : "—"} {tr("selesai", "resolved")}
+        </span>
       </div>
+    </section>
+  )
+
+  // ─── Support / Bug / Feature switch ───
+  const renderKindTabs = () => (
+    <div role="tablist" className="flex w-full rounded-full bg-[var(--surface-tint-strong)] p-1">
+      {(["support", "bug", "feature"] as const).map((key) => {
+        const meta = KIND_CONFIG.find((k) => k.key === key)!
+        const Icon = meta.icon
+        const isSelected = kindFilter === key
+        return (
+          <button
+            type="button"
+            role="tab"
+            aria-selected={isSelected}
+            key={key}
+            onClick={() => setKindFilter(key)}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-xs font-black transition active:scale-[0.98]",
+              isSelected ? "bg-[var(--card)] text-[var(--text)] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.18)]" : "text-[var(--muted)] hover:text-[var(--text)]"
+            )}
+          >
+            <Icon size={14} />
+            <span className="truncate">{key === "support" ? "Support" : key === "bug" ? "Bug" : "Feature"}</span>
+            <span className="tabular-nums text-[var(--muted)]">{kindCounts[key] || 0}</span>
+          </button>
+        )
+      })}
     </div>
   )
 
-  // Filter Pills & Search Bar with Category Tabs (Support, Bug, Feature)
-  const renderFilterControls = () => (
-    <div className="space-y-3">
-      {/* ── Main Category Tabs: Support, Bug, Feature ── */}
-      <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-[var(--surface-tint)] p-1.5 border border-[var(--border)]">
-        {[
-          { key: "support", labelBm: "Support", labelEn: "Support", icon: LifeBuoy, count: tickets.filter((t) => t.kind === "support").length },
-          { key: "bug", labelBm: "Bug", labelEn: "Bug", icon: Bug, count: tickets.filter((t) => t.kind === "bug").length },
-          { key: "feature", labelBm: "Feature", labelEn: "Feature", icon: Lightbulb, count: tickets.filter((t) => t.kind === "feature").length },
-        ].map((tab) => {
-          const isSelected = kindFilter === tab.key
-          const Icon = tab.icon
-          return (
-            <button
-              type="button"
-              key={tab.key}
-              onClick={() => setKindFilter(tab.key)}
-              className={cn(
-                "flex items-center justify-center gap-1.5 py-2.5 px-1.5 text-xs font-bold rounded-xl transition active:scale-[0.98]",
-                isSelected
-                  ? "bg-[var(--card)] text-[var(--text)] shadow-xs font-black border border-[var(--border)]/70"
-                  : "text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]/40"
-              )}
-            >
-              <Icon size={14} className={cn(isSelected ? "text-[var(--text)]" : "text-[var(--muted)]")} />
-              <span className="truncate">{tr(tab.labelBm, tab.labelEn)}</span>
-              <span
-                className={cn(
-                  "hidden sm:inline-flex rounded-full px-1.5 py-0.2 text-[0.625rem] font-black",
-                  isSelected
-                    ? "bg-[var(--surface-tint-strong)] text-[var(--text)]"
-                    : "bg-[var(--card)] text-[var(--muted)]"
-                )}
-              >
-                {tab.count}
-              </span>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* ── Status Pills ── */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-        {[
-          { key: "all", labelBm: "Semua", labelEn: "All", count: (kindFilter === "all" ? tickets : tickets.filter((t) => t.kind === kindFilter)).length },
-          { key: "new", labelBm: "Baru", labelEn: "New", count: (kindFilter === "all" ? tickets : tickets.filter((t) => t.kind === kindFilter)).filter((t) => t.status === "new").length },
-          { key: "in_progress", labelBm: "Dalam Proses", labelEn: "In Progress", count: (kindFilter === "all" ? tickets : tickets.filter((t) => t.kind === kindFilter)).filter((t) => t.status === "in_progress").length },
-          { key: "resolved", labelBm: "Selesai", labelEn: "Resolved", count: (kindFilter === "all" ? tickets : tickets.filter((t) => t.kind === kindFilter)).filter((t) => t.status === "resolved").length },
-          { key: "closed", labelBm: "Ditutup", labelEn: "Closed", count: (kindFilter === "all" ? tickets : tickets.filter((t) => t.kind === kindFilter)).filter((t) => t.status === "closed").length },
-        ].map((f) => {
+  // ─── Status chips ───
+  const renderStatusChips = () => {
+    const ofKind = kindFilter === "all" ? tickets : tickets.filter((t) => t.kind === kindFilter)
+    const chips = [
+      { key: "all", labelBm: "Semua", labelEn: "All", count: ofKind.length },
+      { key: "new", labelBm: "Baru", labelEn: "New", count: ofKind.filter((t) => t.status === "new").length },
+      { key: "in_progress", labelBm: "Dalam Proses", labelEn: "In Progress", count: ofKind.filter((t) => t.status === "in_progress").length },
+      { key: "resolved", labelBm: "Selesai", labelEn: "Resolved", count: ofKind.filter((t) => t.status === "resolved").length },
+      { key: "closed", labelBm: "Ditutup", labelEn: "Closed", count: ofKind.filter((t) => t.status === "closed").length },
+    ]
+    return (
+      <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 pb-1 scrollbar-none">
+        {chips.map((f) => {
           const isSelected = statusFilter === f.key
           return (
             <button
@@ -539,50 +535,53 @@ export default function RequestPage() {
               key={f.key}
               onClick={() => setStatusFilter(f.key)}
               className={cn(
-                "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold transition active:scale-95",
-                isSelected
-                  ? "bg-[var(--text)] text-[var(--bg)] shadow-xs"
-                  : "bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)]"
+                "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition active:scale-95",
+                isSelected ? "bg-[var(--text)] text-[var(--bg)]" : "bg-[var(--card)] text-[var(--muted)] shadow-[var(--shadow-card)] hover:text-[var(--text)]"
               )}
             >
               <span>{tr(f.labelBm, f.labelEn)}</span>
-              <span
-                className={cn(
-                  "rounded-full px-1.5 py-0.2 text-[0.625rem] font-black",
-                  isSelected ? "bg-[var(--bg)]/20 text-[var(--bg)]" : "bg-[var(--card)] text-[var(--muted)]"
-                )}
-              >
-                {f.count}
-              </span>
+              <span className={cn("tabular-nums", isSelected ? "opacity-60" : "")}>{f.count}</span>
             </button>
           )
         })}
       </div>
+    )
+  }
 
-      <div className="relative">
-        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)] pointer-events-none" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={tr("Cari tajuk permohonan atau mesej…", "Search request tickets…")}
-          className="w-full rounded-full border border-[var(--border)] bg-[var(--surface-tint)] pl-9 pr-4 py-2.5 text-xs font-medium text-[var(--text)] placeholder:text-[var(--muted)] outline-none focus:border-[var(--btn-primary-bg)]"
-        />
-      </div>
+  const renderSearch = () => (
+    <div className="relative w-full">
+      <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder={tr("Cari tajuk permohonan atau mesej…", "Search request tickets…")}
+        className="h-11 w-full rounded-full border-0 bg-[var(--card)] pl-10 pr-10 text-sm font-semibold text-[var(--text)] shadow-[var(--shadow-card)] outline-none transition placeholder:font-medium placeholder:text-[var(--muted)]/70 focus:ring-2 focus:ring-orange-500/30"
+      />
+      {searchQuery && (
+        <button
+          type="button"
+          onClick={() => setSearchQuery("")}
+          aria-label={tr("Kosongkan carian", "Clear search")}
+          className="absolute right-2.5 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--muted)] transition hover:text-[var(--text)]"
+        >
+          <X size={13} strokeWidth={2.5} />
+        </button>
+      )}
     </div>
   )
 
   const renderEmpty = () => (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 py-14 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--muted)] shadow-xs">
-        <Inbox size={32} />
+    <div className="flex flex-col items-center justify-center rounded-[1.25rem] bg-[var(--card)] px-6 py-12 text-center shadow-[var(--shadow-card)]">
+      <div className="grid h-14 w-14 place-items-center rounded-[1.1rem] bg-orange-500/10 text-orange-600 dark:text-orange-400">
+        <Inbox size={26} />
       </div>
-      <p className="text-sm font-bold text-[var(--text)]">
+      <p className="mt-4 text-base font-black text-[var(--text)]">
         {searchQuery || statusFilter !== "all"
           ? tr("Tiada tiket sepadan", "No matching tickets")
           : tr("Tiada permohonan dibuat lagi", "No requests submitted yet")}
       </p>
-      <p className="max-w-xs text-xs text-[var(--muted)]">
+      <p className="mt-1.5 max-w-xs text-xs font-medium leading-relaxed text-[var(--muted)]">
         {searchQuery || statusFilter !== "all"
           ? tr("Cuba ubah kata carian atau tetapan penapis anda.", "Try changing your search term or filter selection.")
           : tr("Permohonan atau laporan yang anda hantar akan dipaparkan di sini berserta jawapan admin.", "Tickets you submit will be tracked here along with admin feedback.")}
@@ -590,17 +589,129 @@ export default function RequestPage() {
       <button
         type="button"
         onClick={openCreateSheet}
-        className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-black text-white shadow-sm transition active:scale-95"
+        className="mt-5 inline-flex items-center gap-2 rounded-full bg-[var(--text)] px-5 py-2.5 text-xs font-black text-[var(--bg)] transition active:scale-95"
       >
-        <Plus size={15} />
+        <Plus size={14} strokeWidth={3} />
         <span>{tr("Permohonan Baru", "New Request")}</span>
       </button>
     </div>
   )
 
+  // ─── One ticket in the list (phone and desktop share it) ───
+  const renderTicketRow = (tk: Ticket) => {
+    const kindMeta = KIND_CONFIG.find((k) => k.key === tk.kind) || KIND_CONFIG[0]
+    const KindIcon = kindMeta.icon
+    const statusMeta = STATUS_CONFIG[tk.status] || STATUS_CONFIG.new
+    const priorityMeta = PRIORITY_CONFIG[tk.priority] || PRIORITY_CONFIG.medium
+    const isSupport = tk.kind === "support"
+    const isDone = tk.status === "resolved" || tk.status === "closed"
+
+    return (
+      <div
+        key={tk.id}
+        onClick={() => openTicketChat(tk)}
+        className={cn("flex items-start gap-3 px-4 py-3.5 transition-colors", isSupport && "cursor-pointer hover:bg-[var(--surface-tint)]/40 active:bg-[var(--surface-tint)]")}
+      >
+        <span className={cn("mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.95rem]", kindMeta.iconBg, isDone && "opacity-60")}>
+          <KindIcon size={19} />
+        </span>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className={cn("min-w-0 text-[0.9375rem] font-bold leading-snug tracking-tight text-[var(--text)] line-clamp-2", isDone && "text-[var(--text-soft)]")}>
+              {tk.title}
+            </h3>
+            <span className={cn("mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[0.625rem] font-black", statusMeta.badge)}>
+              <span className={cn("h-1.5 w-1.5 rounded-full", statusMeta.dot)} />
+              {tr(statusMeta.labelBm, statusMeta.labelEn)}
+            </span>
+          </div>
+
+          {tk.description ? <p className="mt-0.5 line-clamp-1 text-xs text-[var(--muted)]">{tk.description}</p> : null}
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.6875rem] font-medium text-[var(--muted)]">
+            <span className="font-mono">#{tk.id}</span>
+            <span aria-hidden>·</span>
+            <span>{tr(kindMeta.labelBm, kindMeta.labelEn)}</span>
+            <span aria-hidden>·</span>
+            <span className={cn("inline-flex items-center gap-1 font-bold", priorityMeta.text)}>
+              <span className={cn("h-1.5 w-1.5 rounded-full", priorityMeta.dot)} />
+              {tr(priorityMeta.labelBm, priorityMeta.labelEn)}
+            </span>
+            <span aria-hidden>·</span>
+            <span>{formatTimestamp(tk.created_at)}</span>
+          </div>
+
+          {/* Only support tickets have a chat; bug/feature show their status only. */}
+          {isSupport ? (
+            tk.admin_note ? (
+              <div className="mt-2.5 flex items-center gap-2 rounded-2xl bg-orange-500/10 px-3 py-2 text-xs">
+                <MessageSquare size={14} className="shrink-0 text-orange-600 dark:text-orange-400" />
+                <span className="min-w-0 flex-1 truncate text-[var(--text)]">
+                  <span className="font-bold text-orange-700 dark:text-orange-300">{tr("Admin: ", "Admin: ")}</span>
+                  {tk.admin_note}
+                </span>
+                <ChevronRight size={14} className="shrink-0 text-orange-600 dark:text-orange-400" />
+              </div>
+            ) : (
+              <span className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-[var(--text-soft)]">
+                <MessageSquare size={13} />
+                {tr("Buka chat tiket", "Open ticket chat")}
+                <ChevronRight size={13} />
+              </span>
+            )
+          ) : null}
+        </div>
+      </div>
+    )
+  }
+
+  const renderList = (skeletonRows: number) =>
+    !loaded ? (
+      <div className={listCardClass}>
+        {Array.from({ length: skeletonRows }).map((_, i) => (
+          <div key={i} className="flex items-start gap-3 px-4 py-3.5">
+            <div className="h-11 w-11 shrink-0 animate-pulse rounded-[0.95rem] bg-[var(--surface-tint-strong)]" />
+            <div className="flex-1 space-y-2 pt-1">
+              <div className="h-3.5 w-1/2 animate-pulse rounded bg-[var(--surface-tint-strong)]" />
+              <div className="h-3 w-3/4 animate-pulse rounded bg-[var(--surface-tint-strong)]" />
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : filteredTickets.length === 0 ? (
+      renderEmpty()
+    ) : (
+      <div className={listCardClass}>{filteredTickets.map((tk) => renderTicketRow(tk))}</div>
+    )
+
+  // ─── Desktop side panel ───
+  const renderSidePanel = () => (
+    <aside className="grid content-start gap-3 md:grid-cols-2 lg:sticky lg:top-20 lg:grid-cols-1">
+      <div className="rounded-[1.25rem] bg-[var(--card)] p-5 shadow-[var(--shadow-card)]">{renderSummary()}</div>
+      <div className="rounded-[1.25rem] bg-[var(--card)] p-5 shadow-[var(--shadow-card)]">
+        <p className="text-sm font-black text-[var(--text)]">{tr("Perlukan bantuan?", "Need a hand?")}</p>
+        <p className="mt-1 text-xs font-medium leading-relaxed text-[var(--muted)]">
+          {tr(
+            "Tiket Support ada chat terus dengan admin. Laporan Bug dan cadangan Feature dikemas kini melalui statusnya.",
+            "Support tickets come with a direct chat with admin. Bug reports and feature ideas are updated through their status."
+          )}
+        </p>
+        <button
+          type="button"
+          onClick={openCreateSheet}
+          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-4 py-2.5 text-xs font-black text-[var(--btn-primary-text)] transition active:scale-[0.98]"
+        >
+          <Plus size={14} strokeWidth={3} />
+          {tr("Permohonan Baru", "New Request")}
+        </button>
+      </div>
+    </aside>
+  )
+
   return (
-    <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
-      {/* ── Mobile Layout ── */}
+    <div className="pb-20 md:pb-0">
+      {/* ── Mobile ── */}
       <div className="space-y-4 md:hidden">
         <MobilePageHeader
           title={tr("Request & Bantuan", "Support & Requests")}
@@ -612,115 +723,18 @@ export default function RequestPage() {
           }
         />
 
-        <section className="px-1 space-y-4">
-          {renderHeroStats(false)}
-          {renderFilterControls()}
+        {renderSummary()}
 
-          {!loaded ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-28 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
-              ))}
-            </div>
-          ) : filteredTickets.length === 0 ? (
-            renderEmpty()
-          ) : (
-            /* Mobile Table-List Card Panel */
-            <div className="divide-y divide-[var(--border)]/60 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-xs">
-              {filteredTickets.map((tk) => {
-                const kindMeta = KIND_CONFIG.find((k) => k.key === tk.kind) || KIND_CONFIG[0]
-                const KindIcon = kindMeta.icon
-                const statusMeta = STATUS_CONFIG[tk.status] || STATUS_CONFIG.new
-                const priorityMeta = PRIORITY_CONFIG[tk.priority] || PRIORITY_CONFIG.medium
-                const isResolved = tk.status === "resolved"
+        <div className="space-y-3 px-1">
+          {renderKindTabs()}
+          {renderStatusChips()}
+          {renderSearch()}
+        </div>
 
-                return (
-                  <div
-                    key={tk.id}
-                    onClick={() => openTicketChat(tk)}
-                    className={cn(
-                      "p-4 transition-colors relative",
-                      tk.kind === "support" ? "cursor-pointer active:bg-[var(--surface-tint)]" : "",
-                      isResolved
-                        ? "bg-emerald-950/10 [background-image:repeating-linear-gradient(135deg,rgba(16,185,129,0.06)_0,rgba(16,185,129,0.06)_10px,transparent_10px,transparent_20px)]"
-                        : tk.kind === "support" ? "hover:bg-[var(--surface-tint)]/40" : ""
-                    )}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border", kindMeta.badgeBg)}>
-                        <KindIcon size={16} />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[0.65rem] font-bold text-[var(--muted)]">#{tk.id}</span>
-                            <span className="text-xs font-bold text-[var(--text)]">
-                              {tr(kindMeta.labelBm, kindMeta.labelEn)}
-                            </span>
-                          </div>
-
-                          <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.2 text-[0.6rem] font-black uppercase tracking-wider border", statusMeta.badge)}>
-                            <span className={cn("h-1.5 w-1.5 rounded-full", statusMeta.dot)} />
-                            <span>{tr(statusMeta.labelBm, statusMeta.labelEn)}</span>
-                          </span>
-                        </div>
-
-                        <h3 className="mt-1 text-sm font-black text-[var(--text)] leading-snug">
-                          {tk.title}
-                        </h3>
-
-                        {tk.description && (
-                          <p className="mt-1 text-xs text-[var(--muted)] leading-relaxed line-clamp-2">
-                            {tk.description}
-                          </p>
-                        )}
-
-                        <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-[var(--border)]/40 pt-2">
-                          <span className={cn("inline-flex items-center gap-1 rounded-md px-1.5 py-0.2 text-[0.6rem] font-bold border", priorityMeta.bg, priorityMeta.text)}>
-                            <span className={cn("h-1 w-1 rounded-full", priorityMeta.dot)} />
-                            <span>{tr(priorityMeta.labelBm, priorityMeta.labelEn)}</span>
-                          </span>
-
-                          <div className="flex items-center gap-1 text-[0.65rem] text-[var(--muted)]">
-                            <Clock size={10} />
-                            <span>{formatTimestamp(tk.created_at)}</span>
-                          </div>
-                        </div>
-
-                        {/* Only support tickets show a chat trigger; bug/feature are display-only (status only). */}
-                        {tk.kind === "support" ? (
-                          tk.admin_note ? (
-                            <div className="mt-2.5 flex items-center justify-between gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 text-xs font-bold text-sky-600 dark:text-sky-400">
-                              <div className="flex items-center gap-1.5 truncate">
-                                <MessageSquare size={13} className="shrink-0" />
-                                <span className="truncate">{tr("Balasan Admin: ", "Admin Reply: ")}{tk.admin_note}</span>
-                              </div>
-                              <span className="shrink-0 text-[0.65rem] font-bold underline flex items-center gap-0.5">
-                                {tr("Chat", "Chat")}
-                                <ChevronRight size={12} />
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="mt-2.5 flex items-center justify-end">
-                              <span className="inline-flex items-center gap-1 text-[0.68rem] font-bold text-[var(--muted)] hover:text-[var(--text)]">
-                                <MessageSquare size={12} />
-                                <span>{tr("Buka Chat Tiket →", "Open Ticket Chat →")}</span>
-                              </span>
-                            </div>
-                          )
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </section>
+        <section className="px-1">{renderList(3)}</section>
       </div>
 
-      {/* ── Desktop Layout ── */}
+      {/* ── Desktop ── */}
       <div className="hidden md:block">
         <DesktopPageHeader
           title={tr("Pusat Request & Tiket", "Request & Support Hub")}
@@ -735,7 +749,7 @@ export default function RequestPage() {
                 type="button"
                 onClick={() => void loadMine(true)}
                 disabled={refreshing}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-xs font-semibold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)] active:scale-[0.98] disabled:opacity-50"
+                className="inline-flex h-8 items-center gap-1.5 rounded-full bg-[var(--card)] px-3 text-xs font-bold text-[var(--text)] shadow-[var(--shadow-card)] transition hover:bg-[var(--surface-tint)] active:scale-[0.98] disabled:opacity-50"
               >
                 <RefreshCw size={13} className={cn(refreshing && "animate-spin")} />
                 <span>{tr("Segarkan", "Refresh")}</span>
@@ -748,141 +762,18 @@ export default function RequestPage() {
           }
         />
 
-        <DesktopPageBody className="space-y-6">
-          {renderHeroStats(true)}
-          {renderFilterControls()}
-
-          {/* Desktop Table Container */}
-          {!loaded ? (
-            <div className="space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-16 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
-              ))}
-            </div>
-          ) : filteredTickets.length === 0 ? (
-            renderEmpty()
-          ) : (
-            <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-[var(--border)] bg-[var(--surface-tint)]/60 text-[0.68rem] font-black uppercase tracking-wider text-[var(--muted)]">
-                      <th className="py-3.5 pl-5 pr-3">{tr("Tiket & Butiran", "Ticket & Details")}</th>
-                      <th className="py-3.5 px-3 text-center">{tr("Jenis", "Type")}</th>
-                      <th className="py-3.5 px-3 text-center">{tr("Keutamaan", "Priority")}</th>
-                      <th className="py-3.5 px-3 text-center">{tr("Status", "Status")}</th>
-                      <th className="py-3.5 px-3">{tr("Tarikh", "Date")}</th>
-                      <th className="py-3.5 pr-5 pl-3 text-right">{tr("Tindakan / Chat", "Action / Chat")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--border)]/60">
-                    {filteredTickets.map((tk) => {
-                      const kindMeta = KIND_CONFIG.find((k) => k.key === tk.kind) || KIND_CONFIG[0]
-                      const KindIcon = kindMeta.icon
-                      const statusMeta = STATUS_CONFIG[tk.status] || STATUS_CONFIG.new
-                      const priorityMeta = PRIORITY_CONFIG[tk.priority] || PRIORITY_CONFIG.medium
-                      const isResolved = tk.status === "resolved"
-
-                      return (
-                        <tr
-                          key={tk.id}
-                          onClick={() => openTicketChat(tk)}
-                          className={cn(
-                            "transition-colors",
-                            tk.kind === "support" ? "cursor-pointer" : "",
-                            isResolved
-                              ? "bg-emerald-950/10 [background-image:repeating-linear-gradient(135deg,rgba(16,185,129,0.06)_0,rgba(16,185,129,0.06)_10px,transparent_10px,transparent_20px)] hover:bg-emerald-950/20"
-                              : tk.kind === "support" ? "hover:bg-[var(--surface-tint)]/50" : ""
-                          )}
-                        >
-                          {/* 1. Ticket Title & Details */}
-                          <td className="py-4 pl-5 pr-3 align-top max-w-sm">
-                            <div className="flex items-start gap-3">
-                              <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border mt-0.5", kindMeta.badgeBg)}>
-                                <KindIcon size={14} />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[0.65rem] font-bold text-[var(--muted)]">#{tk.id}</span>
-                                  <span className="font-black text-sm text-[var(--text)] leading-snug">
-                                    {tk.title}
-                                  </span>
-                                </div>
-                                {tk.description && (
-                                  <p className="mt-1 text-xs text-[var(--muted)] line-clamp-1 leading-relaxed">
-                                    {tk.description}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* 2. Type Badge */}
-                          <td className="py-4 px-3 align-middle text-center">
-                            <span className={cn("inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.68rem] font-bold border", kindMeta.badgeBg)}>
-                              <KindIcon size={11} />
-                              <span>{tr(kindMeta.labelBm, kindMeta.labelEn)}</span>
-                            </span>
-                          </td>
-
-                          {/* 3. Priority Badge */}
-                          <td className="py-4 px-3 align-middle text-center">
-                            <span className={cn("inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[0.68rem] font-bold border", priorityMeta.bg, priorityMeta.text)}>
-                              <span className={cn("h-1.5 w-1.5 rounded-full", priorityMeta.dot)} />
-                              <span>{tr(priorityMeta.labelBm, priorityMeta.labelEn)}</span>
-                            </span>
-                          </td>
-
-                          {/* 4. Status Badge */}
-                          <td className="py-4 px-3 align-middle text-center">
-                            <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.68rem] font-black uppercase tracking-wider border", statusMeta.badge)}>
-                              <span className={cn("h-1.5 w-1.5 rounded-full", statusMeta.dot)} />
-                              <span>{tr(statusMeta.labelBm, statusMeta.labelEn)}</span>
-                            </span>
-                          </td>
-
-                          {/* 5. Date */}
-                          <td className="py-4 px-3 align-middle text-[0.72rem] text-[var(--muted)] whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <Clock size={11} className="shrink-0" />
-                              <span>{formatTimestamp(tk.created_at)}</span>
-                            </div>
-                          </td>
-
-                          {/* 6. Admin Feedback / Chat Action (only for support tickets; bug/feature are status-only) */}
-                          <td className="py-4 pr-5 pl-3 align-middle text-right whitespace-nowrap">
-                            {tk.kind === "support" ? (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  openTicketChat(tk)
-                                }}
-                                className={cn(
-                                  "inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition active:scale-95",
-                                  tk.admin_note
-                                    ? "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400 hover:bg-sky-500/20"
-                                    : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] hover:bg-[var(--surface-tint-strong)]"
-                                )}
-                              >
-                                <MessageSquare size={13} />
-                                <span>{tk.admin_note ? tr("Chat Balasan", "Reply Chat") : tr("Buka Chat", "Open Chat")}</span>
-                                <ChevronRight size={13} />
-                              </button>
-                            ) : (
-                              <span className="text-[0.65rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                                {tr("—", "—")}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+        <DesktopPageBody>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+            <div className="lg:order-2">{renderSidePanel()}</div>
+            <div className="min-w-0 space-y-4 lg:order-1">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="w-full max-w-[22rem]">{renderKindTabs()}</div>
+                <div className="min-w-[16rem] flex-1">{renderSearch()}</div>
               </div>
+              {renderStatusChips()}
+              {renderList(4)}
             </div>
-          )}
+          </div>
         </DesktopPageBody>
       </div>
 
@@ -936,7 +827,7 @@ export default function RequestPage() {
                               className={cn(
                                 "flex flex-col items-start p-2.5 sm:p-3 rounded-2xl border text-left transition-all relative overflow-hidden",
                                 isSelected
-                                  ? `${item.borderActive} ring-1 ring-emerald-500/40 shadow-xs`
+                                  ? `${item.borderActive} shadow-xs`
                                   : "border-[var(--border)] bg-[var(--surface-tint)] hover:bg-[var(--surface-tint-strong)]"
                               )}
                             >
@@ -1089,7 +980,7 @@ export default function RequestPage() {
                 {/* ── Chat Header ── */}
                 <div className="flex items-center justify-between border-b border-[var(--border)] bg-[var(--card)] px-4 py-3.5 sm:px-5">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-sky-500/30 bg-sky-500/10 text-sky-500">
+                    <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400">
                       <Headphones size={20} />
                       <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[var(--card)] bg-emerald-500" />
                     </div>
@@ -1168,7 +1059,7 @@ export default function RequestPage() {
                               key={msg.id}
                               className="flex flex-col items-start space-y-1"
                             >
-                              <div className="flex items-center gap-1.5 pl-1 text-[0.65rem] font-bold text-sky-600 dark:text-sky-400">
+                              <div className="flex items-center gap-1.5 pl-1 text-[0.65rem] font-bold text-orange-600 dark:text-orange-400">
                                 <ShieldCheck size={13} />
                                 <span>{tr("Admin / Sokongan", "Admin Support")}</span>
                                 {msg.timestamp ? (
@@ -1177,7 +1068,7 @@ export default function RequestPage() {
                                   </span>
                                 ) : null}
                               </div>
-                              <div className="max-w-[85%] rounded-2xl rounded-tl-xs border border-sky-500/30 bg-sky-500/10 p-3.5 shadow-sm text-xs leading-relaxed text-[var(--text)]">
+                              <div className="max-w-[85%] rounded-2xl rounded-tl-xs bg-[var(--surface-tint-strong)] p-3.5 shadow-sm text-xs leading-relaxed text-[var(--text)]">
                                 <p className="whitespace-pre-wrap font-medium leading-relaxed">
                                   {msg.text}
                                 </p>
@@ -1205,11 +1096,11 @@ export default function RequestPage() {
                       </>
                     ) : selectedTicket.admin_note ? (
                       <div className="flex flex-col items-start space-y-1 pt-1">
-                        <div className="flex items-center gap-1.5 pl-1 text-[0.65rem] font-bold text-sky-600 dark:text-sky-400">
+                        <div className="flex items-center gap-1.5 pl-1 text-[0.65rem] font-bold text-orange-600 dark:text-orange-400">
                           <ShieldCheck size={13} />
                           <span>{tr("Admin / Sokongan", "Admin Support")}</span>
                         </div>
-                        <div className="max-w-[85%] rounded-2xl rounded-tl-xs border border-sky-500/30 bg-sky-500/10 p-3.5 shadow-sm text-xs leading-relaxed text-[var(--text)]">
+                        <div className="max-w-[85%] rounded-2xl rounded-tl-xs bg-[var(--surface-tint-strong)] p-3.5 shadow-sm text-xs leading-relaxed text-[var(--text)]">
                           <p className="whitespace-pre-wrap font-medium leading-relaxed">
                             {selectedTicket.admin_note}
                           </p>

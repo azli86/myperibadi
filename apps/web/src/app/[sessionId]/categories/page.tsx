@@ -986,10 +986,14 @@ export default function CategoriesPage() {
     return ""
   })()
 
-  // ─── Material 3 Category Card Component ───
-  function Material3CategoryCard({
+  // ─── Category row ───
+  // One line of a list: tinted icon, name, this month's amount and keyword
+  // count, and a thin bar for its share of the month. Group and order controls
+  // sit on the right as quiet round buttons.
+  const kindMonthTotal = activeKindTab === "expense" ? stats.monthSpend : stats.monthIncome
+
+  function CategoryRow({
     category,
-    groupName,
     onClick,
     onOpenMainGroup,
     onMoveUp,
@@ -998,7 +1002,6 @@ export default function CategoriesPage() {
     isMember = false,
   }: {
     category: Category
-    groupName?: string
     onClick: () => void
     onOpenMainGroup: () => void
     onMoveUp?: () => void
@@ -1008,80 +1011,53 @@ export default function CategoriesPage() {
   }) {
     const isExp = category.kind === "expense"
     const amount = category.amountMonth || 0
+    const share = kindMonthTotal > 0 ? Math.min(100, (amount / kindMonthTotal) * 100) : 0
 
     return (
-      <div
-        className={cn(
-          "group relative flex items-center justify-between gap-3 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-3.5 shadow-2xs transition-all hover:border-[var(--border-strong)] hover:shadow-xs active:scale-[0.99]",
-          isMember && "bg-[var(--surface-tint)]/20"
-        )}
-      >
-        {/* Main Clickable Area */}
-        <button
-          type="button"
-          onClick={onClick}
-          className="flex min-w-0 flex-1 items-center gap-3.5 text-left"
-        >
-          {/* M3 Elevated Squircle Icon */}
-          <div className="relative shrink-0">
-            <div
-              className={cn(
-                "flex h-12 w-12 items-center justify-center rounded-2xl border text-[var(--text)] transition-transform duration-200 group-hover:scale-105 shadow-2xs",
-                isExp
-                  ? "border-rose-500/20 bg-rose-500/10 text-rose-500 dark:bg-rose-500/15"
-                  : "border-emerald-500/20 bg-emerald-500/10 text-emerald-500 dark:bg-emerald-500/15"
-              )}
-            >
-              <CategoryIconGlyph iconName={category.icon_name} categoryName={category.name} kind={category.kind} size={22} />
-            </div>
-            {/* Status dot */}
-            <span
-              className={cn(
-                "absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-[var(--card)]",
-                isExp ? "bg-rose-500" : "bg-emerald-500"
-              )}
-            />
-          </div>
+      <div className="flex items-center gap-2 px-3.5 py-3 transition-colors hover:bg-[var(--surface-tint)]/40">
+        <button type="button" onClick={onClick} className="flex min-w-0 flex-1 items-center gap-3 text-left active:opacity-70">
+          <span
+            className={cn(
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.95rem]",
+              isExp ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+            )}
+          >
+            <CategoryIconGlyph iconName={category.icon_name} categoryName={category.name} kind={category.kind} size={21} />
+          </span>
 
-          {/* Category Info */}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="truncate text-sm font-black tracking-tight text-[var(--text)]">{category.name}</p>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-1.5">
+              <span className="truncate text-[0.9375rem] font-bold tracking-tight text-[var(--text)]">{category.name}</span>
               {category.system_code === "monthly_salary" && (
-                <span className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[8px] font-black uppercase text-[var(--muted)]">
+                <span className="shrink-0 rounded-full bg-[var(--surface-tint-strong)] px-1.5 py-px text-[0.5625rem] font-black uppercase tracking-wide text-[var(--muted)]">
                   System
                 </span>
               )}
-            </div>
-
-            {/* Chips Row: Group / Keywords / Amount */}
-            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              {groupName && (
-                <span className="inline-flex items-center gap-1 rounded-lg border border-blue-500/25 bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold text-blue-600 dark:text-blue-400">
-                  <FolderTree size={10} />
-                  <span className="truncate max-w-[100px]">{groupName}</span>
-                </span>
-              )}
-
-              <span className="inline-flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--surface-tint)] px-2 py-0.5 text-[10px] font-bold text-[var(--muted)]">
-                <Hash size={10} />
-                <span>
-                  {category.keywordCount} {lang === "EN" ? "kw" : "kw"}
-                </span>
+            </span>
+            <span className="mt-0.5 flex items-center gap-1.5 text-xs font-medium text-[var(--muted)]">
+              {amount > 0 ? (
+                <>
+                  <MoneyAmount value={amount} digits={0} size="xs" className="!text-xs font-bold text-[var(--text-soft)]" currencyClassName="!text-[0.65rem]" />
+                  <span aria-hidden>·</span>
+                </>
+              ) : null}
+              <span className="inline-flex items-center gap-0.5">
+                <Hash size={11} />
+                {category.keywordCount} keyword
               </span>
-
-              {amount > 0 && (
-                <span className="inline-flex items-center rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-black text-emerald-600 dark:text-emerald-400">
-                  <MoneyAmount value={amount} digits={0} size="xs" />
-                </span>
-              )}
-            </div>
-          </div>
+            </span>
+            {share > 0 ? (
+              <span className="mt-1.5 block h-1 w-full max-w-[12rem] overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
+                <span
+                  className={cn("block h-full rounded-full", isExp ? "bg-rose-500/70" : "bg-emerald-500/70")}
+                  style={{ width: `${Math.max(share, 3)}%` }}
+                />
+              </span>
+            ) : null}
+          </span>
         </button>
 
-        {/* Action Controls */}
-        <div className="flex shrink-0 items-center gap-1">
-          {/* Assign / Change Group button */}
+        <div className="flex shrink-0 items-center">
           <button
             type="button"
             onClick={(e) => {
@@ -1090,12 +1066,11 @@ export default function CategoriesPage() {
             }}
             title={lang === "EN" ? "Assign Group" : "Pilih Kumpulan"}
             aria-label={lang === "EN" ? "Assign Group" : "Pilih Kumpulan"}
-            className="flex h-8 w-8 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)] transition active:scale-95 shadow-2xs"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] active:scale-90"
           >
-            <FolderTree size={14} />
+            <FolderTree size={15} />
           </button>
 
-          {/* Remove from group if member, else reorder */}
           {isMember && onRemoveFromGroup ? (
             <button
               type="button"
@@ -1104,60 +1079,63 @@ export default function CategoriesPage() {
                 onRemoveFromGroup()
               }}
               title={lang === "EN" ? "Remove from group" : "Buang dari kumpulan"}
-              className="flex h-8 w-8 items-center justify-center rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-500 transition hover:bg-rose-500/20 active:scale-95 shadow-2xs"
+              aria-label={lang === "EN" ? "Remove from group" : "Buang dari kumpulan"}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-rose-500/10 hover:text-rose-500 active:scale-90"
             >
-              <X size={14} />
+              <X size={15} />
             </button>
           ) : (
-            (onMoveUp || onMoveDown) && (
-              <div className="flex items-center gap-0.5">
-                {onMoveUp && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onMoveUp()
-                    }}
-                    title={lang === "EN" ? "Move up" : "Naik"}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--muted)] hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] transition active:scale-90"
-                  >
-                    <MoveUp size={13} />
-                  </button>
-                )}
-                {onMoveDown && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onMoveDown()
-                    }}
-                    title={lang === "EN" ? "Move down" : "Turun"}
-                    className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--muted)] hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] transition active:scale-90"
-                  >
-                    <MoveDown size={13} />
-                  </button>
-                )}
-              </div>
-            )
+            <>
+              {onMoveUp && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onMoveUp()
+                  }}
+                  title={lang === "EN" ? "Move up" : "Naik"}
+                  aria-label={lang === "EN" ? "Move up" : "Naik"}
+                  className="flex h-8 w-7 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] active:scale-90"
+                >
+                  <MoveUp size={14} />
+                </button>
+              )}
+              {onMoveDown && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onMoveDown()
+                  }}
+                  title={lang === "EN" ? "Move down" : "Turun"}
+                  aria-label={lang === "EN" ? "Move down" : "Turun"}
+                  className="flex h-8 w-7 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] active:scale-90"
+                >
+                  <MoveDown size={14} />
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
     )
   }
 
-  // ─── Material 3 Group Container ───
+  const listCardClass =
+    "overflow-hidden rounded-[1.25rem] bg-[var(--card)] shadow-[var(--shadow-card)] divide-y divide-[color-mix(in_srgb,var(--divider)_55%,transparent)]"
+
+  // ─── Group (folder) ───
   const renderGroupCard = (g: Group) => {
     const members = orderedMembers(g)
       .map((m) => catById.get(m))
       .filter((cc): cc is Category => !!cc)
     const collapsed = !collapsedGroupIds.has(g.id)
+    const groupTotal = members.reduce((sum, c) => sum + (c.amountMonth || 0), 0)
+    const groupAction =
+      "flex h-8 w-8 items-center justify-center rounded-full text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] active:scale-90"
 
     return (
-      <div
-        key={g.id}
-        className="overflow-hidden rounded-3xl border border-blue-500/30 bg-gradient-to-b from-blue-500/[0.08] to-blue-500/[0.02] p-3.5 transition shadow-2xs dark:border-blue-400/25 dark:from-blue-950/40 dark:to-blue-950/15"
-      >
-        {/* Group Header */}
+      <section key={g.id} className={listCardClass}>
         <div
           role="button"
           tabIndex={0}
@@ -1169,58 +1147,54 @@ export default function CategoriesPage() {
             }
           }}
           aria-expanded={!collapsed}
-          className="flex cursor-pointer items-center justify-between gap-2.5 px-1 py-1"
+          className="flex cursor-pointer items-center gap-2 px-3.5 py-3"
         >
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-blue-500/30 bg-blue-500/15 text-blue-600 dark:text-blue-400 shadow-2xs">
-              <FolderTree size={18} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <p className="truncate text-xs font-black uppercase tracking-wider text-[var(--text)]">{g.name}</p>
-                <span className="inline-flex items-center rounded-md border border-blue-500/25 bg-blue-500/10 px-1.5 py-0.5 text-[8px] font-black uppercase text-blue-600 dark:text-blue-400">
-                  Folder
-                </span>
-              </div>
-
-              {/* Overlapping circular category icons stack (Bulat bertindih) */}
-              <div className="mt-1 flex items-center gap-2">
-                {members.length > 0 ? (
-                  <div className="flex items-center -space-x-2 overflow-hidden py-0.5">
-                    {members.slice(0, 5).map((c, idx) => (
-                      <div
-                        key={c.id}
-                        title={c.name}
-                        style={{ zIndex: 10 - idx }}
-                        className={cn(
-                          "relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-[var(--card)] shadow-2xs transition-transform hover:scale-110",
-                          c.kind === "expense"
-                            ? "bg-rose-500/20 text-rose-600 dark:text-rose-400"
-                            : "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
-                        )}
-                      >
-                        <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind={c.kind} size={12} />
-                      </div>
-                    ))}
-                    {members.length > 5 && (
-                      <div
-                        style={{ zIndex: 4 }}
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-[var(--card)] bg-[var(--text)] text-[8px] font-black text-[var(--bg)] shadow-2xs"
-                      >
-                        +{members.length - 5}
-                      </div>
-                    )}
-                  </div>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.95rem] bg-orange-500/10 text-orange-600 dark:text-orange-400">
+            <FolderTree size={19} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[0.9375rem] font-black tracking-tight text-[var(--text)]">{g.name}</p>
+            <div className="mt-0.5 flex items-center gap-2">
+              {members.length > 0 ? (
+                <div className="flex items-center -space-x-1.5">
+                  {members.slice(0, 4).map((c, idx) => (
+                    <span
+                      key={c.id}
+                      title={c.name}
+                      style={{ zIndex: 10 - idx }}
+                      className={cn(
+                        "relative flex h-5 w-5 shrink-0 items-center justify-center rounded-full ring-2 ring-[var(--card)]",
+                        c.kind === "expense"
+                          ? "bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400"
+                          : "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400"
+                      )}
+                    >
+                      <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind={c.kind} size={10} />
+                    </span>
+                  ))}
+                  {members.length > 4 && (
+                    <span
+                      style={{ zIndex: 4 }}
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--text)] text-[0.5rem] font-black text-[var(--bg)] ring-2 ring-[var(--card)]"
+                    >
+                      +{members.length - 4}
+                    </span>
+                  )}
+                </div>
+              ) : null}
+              <span className="truncate text-xs font-medium text-[var(--muted)]">
+                {members.length} {lang === "EN" ? "categories" : "kategori"}
+                {groupTotal > 0 ? (
+                  <>
+                    {" · "}
+                    <MoneyAmount value={groupTotal} digits={0} size="xs" className="!text-xs font-bold text-[var(--text-soft)]" currencyClassName="!text-[0.65rem]" />
+                  </>
                 ) : null}
-
-                <span className="text-[10px] font-bold text-blue-600/80 dark:text-blue-400/80">
-                  {members.length} {lang === "EN" ? "categories" : "kategori"}
-                </span>
-              </div>
+              </span>
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center">
             <button
               type="button"
               onClick={(e) => {
@@ -1228,9 +1202,10 @@ export default function CategoriesPage() {
                 openRenameGroup(g)
               }}
               title={lang === "EN" ? "Rename group" : "Tukar nama"}
-              className="flex h-7 w-7 items-center justify-center rounded-xl text-[var(--muted)] hover:bg-blue-500/15 hover:text-blue-600 dark:hover:text-blue-400 transition active:scale-95"
+              aria-label={lang === "EN" ? "Rename group" : "Tukar nama"}
+              className={groupAction}
             >
-              <Pencil size={13} />
+              <Pencil size={14} />
             </button>
             <button
               type="button"
@@ -1239,9 +1214,10 @@ export default function CategoriesPage() {
                 moveGroup(g.id, -1)
               }}
               title={lang === "EN" ? "Move group up" : "Naik"}
-              className="flex h-7 w-7 items-center justify-center rounded-xl text-[var(--muted)] hover:bg-blue-500/15 hover:text-blue-600 dark:hover:text-blue-400 transition active:scale-95"
+              aria-label={lang === "EN" ? "Move group up" : "Naik"}
+              className={cn(groupAction, "hidden w-7 sm:flex")}
             >
-              <MoveUp size={13} />
+              <MoveUp size={14} />
             </button>
             <button
               type="button"
@@ -1250,9 +1226,10 @@ export default function CategoriesPage() {
                 moveGroup(g.id, 1)
               }}
               title={lang === "EN" ? "Move group down" : "Turun"}
-              className="flex h-7 w-7 items-center justify-center rounded-xl text-[var(--muted)] hover:bg-blue-500/15 hover:text-blue-600 dark:hover:text-blue-400 transition active:scale-95"
+              aria-label={lang === "EN" ? "Move group down" : "Turun"}
+              className={cn(groupAction, "hidden w-7 sm:flex")}
             >
-              <MoveDown size={13} />
+              <MoveDown size={14} />
             </button>
             <button
               type="button"
@@ -1263,50 +1240,45 @@ export default function CategoriesPage() {
                 }
               }}
               title={lang === "EN" ? "Delete group" : "Padam kumpulan"}
-              className="flex h-7 w-7 items-center justify-center rounded-xl text-[var(--muted)] hover:bg-rose-500/15 hover:text-rose-500 transition active:scale-95"
+              aria-label={lang === "EN" ? "Delete group" : "Padam kumpulan"}
+              className={cn(groupAction, "hover:bg-rose-500/10 hover:text-rose-500")}
             >
-              <Trash2 size={13} />
+              <Trash2 size={14} />
             </button>
-            <div className="pl-1 text-blue-600/80 dark:text-blue-400/80">
-              <ChevronDown
-                size={16}
-                className={cn("transition-transform duration-200", collapsed && "-rotate-90")}
-              />
-            </div>
+            <ChevronDown
+              size={17}
+              className={cn("ml-0.5 text-[var(--muted)] transition-transform duration-200", collapsed && "-rotate-90")}
+            />
           </div>
         </div>
 
-        {/* Group Members List */}
-        {!collapsed && (
-          <div className="mt-2.5 space-y-2">
-            {members.length > 0 ? (
-              members.map((c) => (
-                <Material3CategoryCard
-                  key={`mem-${c.id}`}
+        {!collapsed &&
+          (members.length > 0 ? (
+            members.map((c) => (
+              <div key={`mem-${c.id}`} className="bg-[var(--surface-tint)]/30 pl-3">
+                <CategoryRow
                   category={c}
-                  groupName={g.name}
                   isMember={true}
                   onClick={() => openCategoryDetail(c.id)}
                   onOpenMainGroup={() => setMainGroupCategory(c)}
                   onRemoveFromGroup={() => removeFromGroup(g.id, c.id)}
                 />
-              ))
-            ) : (
-              <p className="rounded-2xl border border-dashed border-blue-500/25 bg-blue-500/[0.03] py-3 px-4 text-center text-xs font-semibold text-[var(--muted)]">
-                {lang === "EN"
-                  ? "No categories in this group. Tap the group icon on any card to assign."
-                  : "Tiada kategori dalam kumpulan ini. Tekan ikon folder pada mana-mana kad untuk masukkan."}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+              </div>
+            ))
+          ) : (
+            <p className="px-4 py-3.5 text-center text-xs font-medium text-[var(--muted)]">
+              {lang === "EN"
+                ? "No categories in this group. Tap the folder icon on any category to assign."
+                : "Tiada kategori dalam kumpulan ini. Tekan ikon folder pada mana-mana kategori untuk masukkan."}
+            </p>
+          ))}
+      </section>
     )
   }
 
-  // ─── Material 3 Segmented Toggle (Belanja / Pendapatan) ───
+  // ─── Belanja / Pendapatan switch ───
   const kindTabs = (
-    <div className="flex w-full gap-1.5 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-1.5 shadow-2xs">
+    <div role="tablist" className="flex w-full rounded-full bg-[var(--surface-tint-strong)] p-1">
       {(["expense", "income"] as const).map((kind) => {
         const active = activeKindTab === kind
         const count = kind === "expense" ? stats.expenseCount : stats.incomeCount
@@ -1320,43 +1292,28 @@ export default function CategoriesPage() {
             aria-selected={active}
             onClick={() => setActiveKindTab(kind)}
             className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-2xl py-2.5 px-3 text-xs font-black transition-all active:scale-[0.98]",
-              active
-                ? isExp
-                  ? "border border-rose-500/30 bg-rose-500/15 text-rose-600 dark:text-rose-400 shadow-2xs"
-                  : "border border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shadow-2xs"
-                : "text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint)]"
+              "flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-black transition-all active:scale-[0.98]",
+              active ? "bg-[var(--card)] text-[var(--text)] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.18)]" : "text-[var(--muted)] hover:text-[var(--text)]"
             )}
           >
-            {isExp ? <TrendingDown size={15} /> : <TrendingUp size={15} />}
+            <span className={cn("h-1.5 w-1.5 rounded-full", isExp ? "bg-rose-500" : "bg-emerald-500", !active && "opacity-50")} />
             <span>{isExp ? t.expense : t.income}</span>
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[10px] font-black",
-                active
-                  ? isExp
-                    ? "bg-rose-500 text-white"
-                    : "bg-emerald-500 text-white"
-                  : "bg-[var(--surface-tint)] text-[var(--muted)]"
-              )}
-            >
-              {count}
-            </span>
+            <span className="tabular-nums text-[var(--muted)]">{count}</span>
           </button>
         )
       })}
     </div>
   )
 
-  // ─── Search Bar ───
+  // ─── Search ───
   const searchField = (
     <div className="relative w-full">
-      <Search size={15} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
+      <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
       <input
         type="search"
         placeholder={t.searchCategory}
         aria-label={t.searchCategory}
-        className="h-11 w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] pl-10 pr-9 text-sm font-semibold text-[var(--text)] outline-none transition placeholder:font-medium placeholder:text-[var(--muted)]/60 focus:border-[var(--border-strong)] focus:bg-[var(--surface-tint-strong)] shadow-2xs"
+        className="h-11 w-full rounded-full border-0 bg-[var(--card)] pl-10 pr-10 text-sm font-semibold text-[var(--text)] shadow-[var(--shadow-card)] outline-none transition placeholder:font-medium placeholder:text-[var(--muted)]/70 focus:ring-2 focus:ring-orange-500/30"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
       />
@@ -1365,7 +1322,7 @@ export default function CategoriesPage() {
           type="button"
           onClick={() => setSearchQuery("")}
           aria-label={lang === "EN" ? "Clear search" : "Kosongkan carian"}
-          className="absolute right-2.5 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full bg-[var(--surface-tint)] text-[var(--muted)] transition hover:text-[var(--text)]"
+          className="absolute right-2.5 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--muted)] transition hover:text-[var(--text)]"
         >
           <X size={13} strokeWidth={2.5} />
         </button>
@@ -1373,36 +1330,49 @@ export default function CategoriesPage() {
     </div>
   )
 
-  // ─── Stats Summary Strip ───
-  const summaryStrip = (
-    <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-[11px] font-bold text-[var(--muted)]">
-      <div className="flex items-center gap-3">
-        <span className="inline-flex items-center gap-1.5">
-          <FolderTree size={13} className="text-[var(--text)]" />
-          <span>
-            {showDataSkeleton ? "—" : stats.total} {lang === "EN" ? "Total" : "Jumlah"}
-          </span>
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <Hash size={13} className="text-[var(--text)]" />
-          <span>
-            {showDataSkeleton ? "—" : stats.keywordTotal} {lang === "EN" ? "Keywords" : "Keyword"}
-          </span>
-        </span>
+  // ─── This month, for the tab on show ───
+  const monthSummary = (
+    <section className="px-2">
+      <p className="text-sm font-semibold text-[var(--muted)]">
+        {activeKindTab === "expense"
+          ? lang === "EN" ? "Spent this month" : "Belanja bulan ini"
+          : lang === "EN" ? "Received this month" : "Pendapatan bulan ini"}
+      </p>
+      <div className="mt-1 text-[var(--text)]">
+        {showDataSkeleton ? (
+          <div className="h-9 w-40 animate-pulse rounded-lg bg-[var(--surface-tint-strong)]" />
+        ) : (
+          <MoneyAmount value={kindMonthTotal} digits={2} size="hero" className="!text-[2.25rem] font-black" />
+        )}
       </div>
+      <p className="mt-1.5 text-xs font-medium text-[var(--muted)]">
+        {showDataSkeleton ? "—" : `${activeKindTab === "expense" ? stats.expenseCount : stats.incomeCount} ${lang === "EN" ? "categories" : "kategori"} · ${stats.keywordTotal} keyword ${lang === "EN" ? "in total" : "keseluruhan"}`}
+      </p>
+    </section>
+  )
 
-      <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2.5 py-0.5 text-[10px] font-black uppercase text-[var(--text)]">
-        <Tag size={11} />
-        {tabCategories.length} {lang === "EN" ? "Shown" : "Dipapar"}
-      </span>
+  // ─── List toolbar: count + new group ───
+  const listToolbar = (
+    <div className="flex items-center justify-between gap-2 px-1">
+      <p className="text-xs font-bold text-[var(--muted)]">
+        {tabCategories.length} {lang === "EN" ? "shown" : "dipapar"}
+      </p>
+      <button
+        type="button"
+        onClick={openCreateGroup}
+        className="inline-flex items-center gap-1.5 rounded-full bg-[var(--card)] px-3.5 py-1.5 text-xs font-bold text-[var(--text)] shadow-[var(--shadow-card)] transition hover:bg-[var(--surface-tint)] active:scale-95"
+      >
+        <FolderTree size={13} />
+        <span>{lang === "EN" ? "New Group" : "Kumpulan Baru"}</span>
+      </button>
     </div>
   )
 
   // ─── Empty State ───
   const emptyState = (
-    <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-14 text-center">
-      <div className="grid h-16 w-16 place-items-center rounded-3xl bg-[var(--surface-tint)] shadow-2xs">
-        <FolderTree size={30} className="text-[var(--muted)]" />
+    <div className="flex flex-col items-center justify-center rounded-[1.25rem] bg-[var(--card)] px-6 py-12 text-center shadow-[var(--shadow-card)]">
+      <div className="grid h-14 w-14 place-items-center rounded-[1.1rem] bg-orange-500/10 text-orange-600 dark:text-orange-400">
+        {searchQuery ? <Search size={24} /> : <Tag size={24} />}
       </div>
       <p className="mt-4 text-base font-black text-[var(--text)]">
         {searchQuery ? (lang === "EN" ? "No matches found" : "Tiada padanan") : t.noCategories}
@@ -1419,7 +1389,7 @@ export default function CategoriesPage() {
       <button
         type="button"
         onClick={searchQuery ? () => setSearchQuery("") : openAddCategory}
-        className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[var(--text)] px-5 py-2.5 text-xs font-black uppercase tracking-wider text-[var(--bg)] shadow-md transition active:scale-95"
+        className="mt-5 inline-flex items-center gap-2 rounded-full bg-[var(--text)] px-5 py-2.5 text-xs font-black text-[var(--bg)] transition active:scale-95"
       >
         {searchQuery ? (
           <>
@@ -1436,65 +1406,94 @@ export default function CategoriesPage() {
     </div>
   )
 
-  // ─── Categories List Body ───
+  // ─── Categories list ───
   const listBody = showDataSkeleton ? (
-    <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-3">
+    <div className={listCardClass}>
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="h-20 animate-pulse rounded-3xl border border-[var(--border)] bg-[var(--card)]" />
+        <div key={i} className="flex items-center gap-3 px-3.5 py-3">
+          <div className="h-11 w-11 shrink-0 animate-pulse rounded-[0.95rem] bg-[var(--surface-tint-strong)]" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3.5 w-1/3 animate-pulse rounded bg-[var(--surface-tint-strong)]" />
+            <div className="h-3 w-1/2 animate-pulse rounded bg-[var(--surface-tint-strong)]" />
+          </div>
+        </div>
       ))}
     </div>
   ) : tabCategories.length === 0 ? (
     emptyState
   ) : (
     <div className="space-y-3">
-      {/* Group Create Header Button */}
-      <div className="flex items-center justify-between gap-2 px-1">
-        <p className="text-[11px] font-bold text-[var(--muted)]">
-          {lang === "EN" ? "Organized in folders & standalone" : "Tersusun dalam folder & kategori bebas"}
-        </p>
-        <button
-          type="button"
-          onClick={openCreateGroup}
-          className="inline-flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs font-bold text-[var(--text)] hover:bg-[var(--surface-tint)] transition active:scale-95 shadow-2xs"
-        >
-          <Plus size={13} />
-          <span>{lang === "EN" ? "New Group" : "Kumpulan Baru"}</span>
-        </button>
-      </div>
+      {listToolbar}
 
-      {/* Render Groups and Standalone Cards */}
-      <div className="space-y-2.5">
-        {orderedGroups.map((g) => renderGroupCard(g))}
-        {standaloneEntries.map((e) => (
-          <Material3CategoryCard
-            key={`cat-${e.id}`}
-            category={e.c}
-            onClick={() => openCategoryDetail(e.id)}
-            onOpenMainGroup={() => setMainGroupCategory(e.c)}
-            onMoveUp={() => moveItem(e.id, -1)}
-            onMoveDown={() => moveItem(e.id, 1)}
-          />
-        ))}
+      {orderedGroups.map((g) => renderGroupCard(g))}
 
-        {/* Inline Add Category Tile */}
-        <button
-          type="button"
-          onClick={openAddCategory}
-          className="flex w-full items-center justify-center gap-2 rounded-3xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-4 text-xs font-black uppercase tracking-wider text-[var(--muted)] hover:text-[var(--text)] hover:border-[var(--border-strong)] transition active:scale-[0.98]"
-        >
-          <Plus size={16} strokeWidth={2.5} />
-          <span>{t.addCategory}</span>
-        </button>
-      </div>
+      {standaloneEntries.length > 0 && (
+        <div className={listCardClass}>
+          {standaloneEntries.map((e) => (
+            <CategoryRow
+              key={`cat-${e.id}`}
+              category={e.c}
+              onClick={() => openCategoryDetail(e.id)}
+              onOpenMainGroup={() => setMainGroupCategory(e.c)}
+              onMoveUp={() => moveItem(e.id, -1)}
+              onMoveDown={() => moveItem(e.id, 1)}
+            />
+          ))}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={openAddCategory}
+        className="flex w-full items-center justify-center gap-2 rounded-[1.25rem] border border-dashed border-[var(--divider)] p-3.5 text-sm font-bold text-[var(--muted)] transition hover:border-[var(--text-soft)] hover:text-[var(--text)] active:scale-[0.99]"
+      >
+        <Plus size={16} strokeWidth={2.5} />
+        <span>{t.addCategory}</span>
+      </button>
     </div>
   )
+
+  // ─── Desktop side panel: both kinds at a glance ───
+  const kindTile = (kind: "expense" | "income") => {
+    const isExp = kind === "expense"
+    const active = activeKindTab === kind
+    return (
+      <button
+        type="button"
+        onClick={() => setActiveKindTab(kind)}
+        className={cn(
+          "flex w-full flex-col rounded-[1.25rem] bg-[var(--card)] p-4 text-left shadow-[var(--shadow-card)] ring-2 transition active:scale-[0.99]",
+          active ? (isExp ? "ring-rose-500/40" : "ring-emerald-500/40") : "ring-transparent hover:ring-[var(--divider)]"
+        )}
+      >
+        <span className="flex items-center justify-between">
+          <span className="flex items-center gap-2 text-sm font-bold text-[var(--text)]">
+            <span
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-[0.7rem]",
+                isExp ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              )}
+            >
+              {isExp ? <TrendingDown size={16} /> : <TrendingUp size={16} />}
+            </span>
+            {isExp ? t.expense : t.income}
+          </span>
+          <span className="text-xs font-bold tabular-nums text-[var(--muted)]">
+            {isExp ? stats.expenseCount : stats.incomeCount} {lang === "EN" ? "categories" : "kategori"}
+          </span>
+        </span>
+        <span className="mt-3 text-xs font-semibold text-[var(--muted)]">{lang === "EN" ? "This month" : "Bulan ini"}</span>
+        <MoneyAmount value={isExp ? stats.monthSpend : stats.monthIncome} digits={2} size="md" className="font-black text-[var(--text)]" />
+      </button>
+    )
+  }
 
   if (!mounted) return null
 
   return (
     <>
-      <div className="space-y-4 pb-20 md:space-y-0 md:pb-8">
-        {/* ─── Mobile View (Material 3 Expressive) ─── */}
+      <div className="pb-20 md:pb-8">
+        {/* ─── Mobile ─── */}
         <div className="space-y-4 md:hidden">
           <MobilePageHeader
             title={t.categories_title}
@@ -1506,18 +1505,17 @@ export default function CategoriesPage() {
             }
           />
 
-          {/* Quick Controls Section */}
+          {monthSummary}
+
           <div className="space-y-3 px-1">
             {kindTabs}
             {searchField}
-            {summaryStrip}
           </div>
 
-          {/* List Section */}
           <section className="px-1">{listBody}</section>
         </div>
 
-        {/* ─── Desktop View ─── */}
+        {/* ─── Desktop ─── */}
         <div className="hidden md:block">
           <DesktopPageHeader
             title={t.categories_title}
@@ -1530,98 +1528,43 @@ export default function CategoriesPage() {
             }
           />
 
-          <DesktopPageBody className="space-y-5">
-            <p className="text-sm font-medium text-[var(--muted)]">{subtitle}</p>
+          <DesktopPageBody>
+            <p className="mb-5 text-sm font-medium text-[var(--muted)]">{subtitle}</p>
 
-            {/* Top 3 Metric Tiles for Desktop */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              {/* Expense Tile */}
-              <button
-                type="button"
-                onClick={() => setActiveKindTab("expense")}
-                className={cn(
-                  "flex flex-col rounded-3xl border p-4 text-left transition-all active:scale-[0.99]",
-                  activeKindTab === "expense"
-                    ? "border-rose-500/40 bg-rose-500/10 shadow-sm"
-                    : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--border-strong)]"
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-rose-500">{t.expense}</span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/15 text-rose-500">
-                    <TrendingDown size={16} />
-                  </div>
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+              <aside className="grid content-start gap-3 md:grid-cols-3 lg:order-2 lg:sticky lg:top-20 lg:grid-cols-1">
+                {kindTile("expense")}
+                {kindTile("income")}
+                <div className="flex flex-col rounded-[1.25rem] bg-[var(--card)] p-4 shadow-[var(--shadow-card)]">
+                  <span className="flex items-center gap-2 text-sm font-bold text-[var(--text)]">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-[0.7rem] bg-orange-500/10 text-orange-600 dark:text-orange-400">
+                      <Sparkles size={16} />
+                    </span>
+                    Auto-Matching
+                  </span>
+                  <span className="mt-3 flex items-baseline gap-1.5">
+                    <span className="text-xl font-black tabular-nums text-[var(--text)]">{stats.keywordTotal}</span>
+                    <span className="text-xs font-semibold text-[var(--muted)]">{lang === "EN" ? "keywords active" : "keyword aktif"}</span>
+                  </span>
+                  <p className="mt-1 text-xs font-medium leading-relaxed text-[var(--muted)]">
+                    {lang === "EN" ? "Instant classification for bot & receipts" : "Klasifikasi automatik dari bot WhatsApp & resit"}
+                  </p>
                 </div>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-[var(--text)]">{stats.expenseCount}</span>
-                  <span className="text-xs font-semibold text-[var(--muted)]">{lang === "EN" ? "categories" : "kategori"}</span>
-                </div>
-                <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[var(--muted)]">
-                  <span>{lang === "EN" ? "Monthly:" : "Bulanan:"}</span>
-                  <MoneyAmount value={stats.monthSpend} digits={0} size="sm" className="text-[var(--text)]" />
-                </div>
-              </button>
+              </aside>
 
-              {/* Income Tile */}
-              <button
-                type="button"
-                onClick={() => setActiveKindTab("income")}
-                className={cn(
-                  "flex flex-col rounded-3xl border p-4 text-left transition-all active:scale-[0.99]",
-                  activeKindTab === "income"
-                    ? "border-emerald-500/40 bg-emerald-500/10 shadow-sm"
-                    : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--border-strong)]"
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-emerald-500">{t.income}</span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-500">
-                    <TrendingUp size={16} />
-                  </div>
+              <div className="min-w-0 space-y-4 lg:order-1">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="w-full max-w-[18rem]">{kindTabs}</div>
+                  <div className="min-w-[16rem] flex-1">{searchField}</div>
                 </div>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-[var(--text)]">{stats.incomeCount}</span>
-                  <span className="text-xs font-semibold text-[var(--muted)]">{lang === "EN" ? "categories" : "kategori"}</span>
-                </div>
-                <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-[var(--muted)]">
-                  <span>{lang === "EN" ? "Monthly:" : "Bulanan:"}</span>
-                  <MoneyAmount value={stats.monthIncome} digits={0} size="sm" className="text-[var(--text)]" />
-                </div>
-              </button>
-
-              {/* Keyword Matching Info Tile */}
-              <div className="flex flex-col rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">Auto-Matching</span>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)]">
-                    <Sparkles size={16} />
-                  </div>
-                </div>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-[var(--text)]">{stats.keywordTotal}</span>
-                  <span className="text-xs font-semibold text-[var(--muted)]">{lang === "EN" ? "keywords active" : "keyword aktif"}</span>
-                </div>
-                <p className="mt-1 text-[11px] font-medium text-[var(--muted)]">
-                  {lang === "EN" ? "Instant classification for bot & receipts" : "Klasifikasi automatik dari bot WhatsApp & resit"}
-                </p>
+                {listBody}
               </div>
             </div>
-
-            {/* Filter & Search Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
-              <div className="w-full max-w-xs">{kindTabs}</div>
-              <div className="flex min-w-[280px] max-w-sm flex-1 items-center gap-2">
-                {searchField}
-              </div>
-            </div>
-
-            {/* Main Content */}
-            {listBody}
           </DesktopPageBody>
         </div>
       </div>
 
-      {/* ─── Material 3 Bottom Sheets & Modals ─── */}
+      {/* ─── Sheets & Modals ─── */}
 
       {/* 1. Category Detail / Edit Sheet */}
       {mounted && modal

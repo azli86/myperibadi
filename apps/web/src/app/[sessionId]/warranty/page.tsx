@@ -476,7 +476,7 @@ export default function WarrantyListPage() {
       {/* ── MOBILE VIEW ── */}
       <div className="md:hidden px-1 pb-24 pt-1 space-y-4">
         {/* Mobile Hero Card (Monochrome) */}
-        <section className="relative overflow-hidden rounded-2xl border border-white/15 bg-[#1a1a1a] p-5 text-[#f5f5f5] shadow-sm">
+        <section className="warranty-hero relative overflow-hidden rounded-2xl border border-white/15 bg-[#1a1a1a] p-5 text-[#f5f5f5] shadow-sm">
           <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
           <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
           <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
@@ -691,7 +691,7 @@ export default function WarrantyListPage() {
       <div className="hidden md:block">
         <DesktopPageBody className="space-y-5">
           {/* Desktop Hero */}
-          <section className="relative overflow-hidden rounded-2xl border border-white/15 bg-[#1a1a1a] p-6 text-[#f5f5f5] shadow-sm">
+          <section className="warranty-hero relative overflow-hidden rounded-2xl border border-white/15 bg-[#1a1a1a] p-6 text-[#f5f5f5] shadow-sm">
             <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
             <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
             <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
