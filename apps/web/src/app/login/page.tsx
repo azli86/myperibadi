@@ -234,9 +234,13 @@ export default function LoginPage() {
 
   return (
     <div className={styles.screen}>
-      <div className={styles.mesh} aria-hidden>
-        <i />
-      </div>
+      {/* Phone: the logo sits in a top bar with the controls; on desktop it is in the colour block. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={resolvedTheme === "light" ? "/logoweb.png" : "/logowebdark.png"}
+        alt="MyPeribadi"
+        className="absolute left-6 top-[calc(env(safe-area-inset-top,0px)+1rem)] z-50 h-9 w-auto object-contain min-[900px]:hidden"
+      />
 
       {/* Theme and language */}
       <div className="absolute right-4 top-[calc(env(safe-area-inset-top,0px)+1rem)] z-50 flex items-center gap-2">
@@ -263,9 +267,9 @@ export default function LoginPage() {
             <span className={`${styles.line} ${styles.lineShort}`} />
           </span>
         </div>
-        <div className="relative z-10 flex h-full flex-col justify-between p-6 pt-[calc(env(safe-area-inset-top,0px)+1.25rem)] md:p-10">
+        <div className="relative z-10 flex h-full flex-col justify-end p-6 min-[900px]:justify-between min-[900px]:p-10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={resolvedTheme === "light" ? "/logoweb.png" : "/logowebdark.png"} alt="MyPeribadi" className="h-9 w-auto self-start object-contain" />
+          <img src={resolvedTheme === "light" ? "/logoweb.png" : "/logowebdark.png"} alt="MyPeribadi" className="hidden h-9 w-auto self-start object-contain min-[900px]:block" />
           <div className="max-w-md pb-2 md:pb-6">
             <p className="max-w-[16rem] text-[1.5rem] font-black leading-[1.05] tracking-tight sm:max-w-none sm:text-[1.75rem] md:text-5xl">
               {isBm ? "Duit anda, lebih teratur." : "Your money, better organised."}
