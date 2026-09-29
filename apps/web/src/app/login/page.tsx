@@ -9,7 +9,7 @@ import ThemeToggle from "@/components/theme/ThemeToggle"
 import Turnstile from "@/components/auth/Turnstile"
 import { useTheme } from "@/components/theme/ThemeProvider"
 import { isThemeMode } from "@/lib/theme"
-import styles from "../auth-page.module.css"
+import styles from "./login-page.module.css"
 import {
   ensureSessionId,
   getAccessToken,
@@ -228,40 +228,83 @@ export default function LoginPage() {
     }
   }
 
+  const isBm = lang === "BM"
+  const ghostButton =
+    "flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-base font-bold text-[var(--l-muted)] transition hover:text-[var(--l-text)] active:scale-[0.98]"
+
   return (
-    <div className={`${styles.screen} fixed inset-0 flex flex-col justify-center overflow-hidden px-6 bg-[var(--auth-bg)] text-[var(--auth-text)] font-sans selection:bg-[var(--auth-tint)]`}>
-      {/* Subtle top controls */}
-      <div className="flex justify-end gap-4 opacity-[var(--auth-control-opacity)] hover:opacity-[var(--auth-control-opacity-hover)] transition-opacity absolute top-6 right-6 z-50">
-        <ThemeToggle compact className="bg-transparent border-none p-0" />
-        <button onClick={() => setLang(lang === "EN" ? "BM" : "EN")} className="text-[0.625rem] font-black uppercase tracking-widest px-2 py-1 rounded-md border border-[var(--auth-control-border)] text-[var(--auth-control-text)]">
+    <div className={styles.screen}>
+      <div className={styles.mesh} aria-hidden>
+        <i />
+      </div>
+
+      {/* Theme and language */}
+      <div className="absolute right-4 top-[calc(env(safe-area-inset-top,0px)+1rem)] z-50 flex items-center gap-2">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--l-field)] backdrop-blur">
+          <ThemeToggle compact className="bg-transparent border-none p-0" />
+        </span>
+        <button
+          type="button"
+          onClick={() => setLang(lang === "EN" ? "BM" : "EN")}
+          className="h-9 rounded-full bg-[var(--l-field)] px-3 text-[0.6875rem] font-black uppercase tracking-widest text-[var(--l-text)] backdrop-blur"
+        >
           {lang}
         </button>
       </div>
 
-      <div className="w-full max-w-sm mx-auto max-h-full overflow-hidden">
-        <h1 className="text-5xl font-black tracking-tight mb-12">
-          {lang === "BM" ? "Log masuk" : "Sign in"}
-        </h1>
-
-        {error && (
-          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-sm text-red-500 font-bold mb-4 animate-in fade-in slide-in-from-top-2">
-            {error}
+      {/* Colour area: three wallet-style cards stacked over the mesh */}
+      <section className={styles.hero}>
+        <div className={styles.cards} aria-hidden>
+          <span className={`${styles.card} ${styles.cardA}`} />
+          <span className={`${styles.card} ${styles.cardB}`} />
+          <span className={`${styles.card} ${styles.cardC}`}>
+            <span className={styles.chip} />
+            <span className={styles.line} />
+            <span className={`${styles.line} ${styles.lineShort}`} />
+          </span>
+        </div>
+        <div className="relative z-10 flex h-full flex-col justify-between p-6 pt-[calc(env(safe-area-inset-top,0px)+1.25rem)] md:p-10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={resolvedTheme === "light" ? "/logoweb.png" : "/logowebdark.png"} alt="MyPeribadi" className="h-9 w-auto self-start object-contain" />
+          <div className="max-w-md pb-2 md:pb-6">
+            <p className="max-w-[16rem] text-[1.5rem] font-black leading-[1.05] tracking-tight sm:max-w-none sm:text-[1.75rem] md:text-5xl">
+              {isBm ? "Duit anda, lebih teratur." : "Your money, better organised."}
+            </p>
+            <p className="mt-2.5 hidden text-base font-medium text-[var(--l-muted)] sm:block">
+              {isBm
+                ? "Rekod melalui WhatsApp, Telegram atau web. Semuanya di satu tempat."
+                : "Record from WhatsApp, Telegram or the web. Everything in one place."}
+            </p>
           </div>
-        )}
+        </div>
+      </section>
 
-        {showLoginForm ? (
-          <>
-            <button
-              type="button"
-              onClick={() => { setShowLoginForm(false); setError("") }}
-              className="flex items-center gap-2 text-[var(--auth-muted)] text-sm font-bold hover:text-[var(--auth-text)] transition-colors mb-6"
-            >
-              <ArrowLeft size={16} strokeWidth={2.5} />
-              {lang === "BM" ? "Kembali" : "Back"}
-            </button>
+      {/* Sign-in panel */}
+      <section className={styles.panel}>
+        <div className="mx-auto w-full max-w-sm">
+          <h1 className="text-[2rem] font-black tracking-tight md:text-4xl">{isBm ? "Log masuk" : "Sign in"}</h1>
+          <p className="mb-6 mt-1.5 text-sm font-medium text-[var(--l-muted)]">
+            {isBm ? "Selamat kembali. Teruskan urus kewangan anda." : "Welcome back. Carry on with your money."}
+          </p>
 
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="relative">
+          {error && (
+            <div className="mb-4 rounded-2xl bg-red-500/10 p-4 text-sm font-bold text-red-500 animate-in fade-in slide-in-from-top-2">
+              {error}
+            </div>
+          )}
+
+          {showLoginForm ? (
+            <>
+              <button
+                type="button"
+                onClick={() => { setShowLoginForm(false); setError("") }}
+                className="mb-5 flex items-center gap-2 text-sm font-bold text-[var(--l-muted)] transition-colors hover:text-[var(--l-text)]"
+              >
+                <ArrowLeft size={16} strokeWidth={2.5} />
+                {isBm ? "Kembali" : "Back"}
+              </button>
+
+              <form onSubmit={handleLogin} className="space-y-3">
                 <input
                   type="email"
                   autoComplete="email"
@@ -269,91 +312,92 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className={`${styles.input} w-full bg-[var(--auth-card)] border-none rounded-2xl p-4 md:p-5 text-lg font-medium focus:ring-1 focus:ring-[var(--auth-border-strong)] transition-all outline-none`}
+                  className={styles.field}
                 />
-              </div>
 
-              <div className="relative group">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  placeholder={lang === "BM" ? "Kata laluan" : "Password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className={`${styles.input} w-full bg-[var(--auth-card)] border-none rounded-2xl p-4 md:p-5 text-lg font-medium focus:ring-1 focus:ring-[var(--auth-border-strong)] transition-all outline-none pr-14`}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-5 top-1/2 -translate-y-1/2 text-[var(--auth-muted)] hover:text-[var(--auth-text)] transition-colors"
-                >
-                  {showPassword ? <EyeOff size={22} strokeWidth={2} /> : <Eye size={22} strokeWidth={2} />}
-                </button>
-              </div>
-
-              <div className="flex justify-end -mb-1">
-                <Link
-                  href="/forgot-password"
-                  className="text-[var(--auth-muted)] text-xs font-bold hover:text-[var(--auth-text)] transition-colors"
-                >
-                  {lang === "BM" ? "Lupa kata laluan?" : "Forgot password?"}
-                </Link>
-              </div>
-
-              {showTurnstile && TURNSTILE_SITE_KEY ? (
-                <div className="pt-1 pb-1">
-                  <Turnstile 
-                    sitekey={TURNSTILE_SITE_KEY} 
-                    onVerify={setTurnstileToken} 
-                    theme={resolvedTheme}
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    placeholder={isBm ? "Kata laluan" : "Password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className={`${styles.field} pr-12`}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? (isBm ? "Sembunyi kata laluan" : "Hide password") : (isBm ? "Tunjuk kata laluan" : "Show password")}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--l-muted)] transition-colors hover:text-[var(--l-text)]"
+                  >
+                    {showPassword ? <EyeOff size={20} strokeWidth={2} /> : <Eye size={20} strokeWidth={2} />}
+                  </button>
                 </div>
-              ) : null}
 
-              <div className="pt-2">
+                <div className="flex justify-end">
+                  <Link href="/forgot-password" className="text-xs font-bold text-[var(--l-muted)] transition-colors hover:text-[var(--l-text)]">
+                    {isBm ? "Lupa kata laluan?" : "Forgot password?"}
+                  </Link>
+                </div>
+
+                {showTurnstile && TURNSTILE_SITE_KEY ? (
+                  <div className="py-1">
+                    <Turnstile sitekey={TURNSTILE_SITE_KEY} onVerify={setTurnstileToken} theme={resolvedTheme} />
+                  </div>
+                ) : null}
+
                 <button
                   type="submit"
                   disabled={loading || success}
-                  className="w-full py-4 bg-[var(--auth-button-bg)] text-[var(--auth-button-text)] rounded-full font-bold text-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-[var(--l-button-bg)] py-4 text-base font-black text-[var(--l-button-text)] transition hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {loading ? <Loader2 className="animate-spin" size={20} /> : (lang === "BM" ? "Log masuk" : "Sign in")}
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : isBm ? "Log masuk" : "Sign in"}
                 </button>
-              </div>
-            </form>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={googleLoading || success}
-              className="w-full py-4 bg-white text-gray-800 rounded-full font-bold text-lg hover:bg-gray-100 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-sm border border-gray-200"
-            >
-              {googleLoading ? (
-                <>
-                  <Loader2 className="animate-spin" size={20} />
-                  {lang === "BM" ? "Sedang log masuk..." : "Signing in..."}
-                </>
-              ) : (
-                <>
-                  <svg width="20" height="20" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-                  {lang === "BM" ? "Log masuk dengan Google" : "Sign in with Google"}
-                </>
-              )}
-            </button>
+              </form>
+            </>
+          ) : (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={googleLoading || success}
+                className="flex w-full items-center justify-center gap-3 rounded-full bg-white py-4 text-base font-bold text-gray-900 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)] transition hover:bg-gray-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {googleLoading ? (
+                  <>
+                    <Loader2 className="animate-spin" size={20} />
+                    {isBm ? "Sedang log masuk..." : "Signing in..."}
+                  </>
+                ) : (
+                  <>
+                    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                    {isBm ? "Log masuk dengan Google" : "Sign in with Google"}
+                  </>
+                )}
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setShowLoginForm(true)}
-              className="w-full py-4 mt-4 bg-transparent text-[var(--auth-muted)] rounded-full font-bold text-base hover:text-[var(--auth-text)] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            >
-              <Mail size={18} strokeWidth={2} />
-              {lang === "BM" ? "Log masuk dengan emel" : "Sign in with email"}
-            </button>
-          </>
-        )}
-      </div>
+              <div className="flex items-center gap-3 py-1 text-xs font-bold text-[var(--l-muted)]">
+                <span className="h-px flex-1 bg-[var(--l-line)]" />
+                {isBm ? "atau" : "or"}
+                <span className="h-px flex-1 bg-[var(--l-line)]" />
+              </div>
+
+              <button type="button" onClick={() => setShowLoginForm(true)} className={`${ghostButton} bg-[var(--l-field)] text-[var(--l-text)]`}>
+                <Mail size={18} strokeWidth={2} />
+                {isBm ? "Log masuk dengan emel" : "Sign in with email"}
+              </button>
+            </div>
+          )}
+
+          <p className="mt-6 text-center text-sm font-medium text-[var(--l-muted)]">
+            {isBm ? "Belum ada akaun?" : "No account yet?"}{" "}
+            <Link href="/register" className="font-black text-[var(--l-text)] underline-offset-4 hover:underline">
+              {isBm ? "Daftar" : "Register"}
+            </Link>
+          </p>
+        </div>
+      </section>
     </div>
   )
 }

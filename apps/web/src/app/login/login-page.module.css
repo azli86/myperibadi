@@ -1,0 +1,220 @@
+/* Login: a three-colour mesh in the logo's colours (cyan, blue, navy; pale in
+   the light theme, deep in the dark one) behind a colour area and a frosted
+   form panel. */
+
+.screen {
+  --l-base: #050820;
+  --l-a: #0a3f96;
+  --l-b: #087aa8;
+  --l-c: #16206e;
+  --l-a2: #1f6fe0;
+  --l-b2: #12c4ec;
+  --l-c2: #3446b8;
+  --l-hero: rgba(5, 8, 32, 0.4);
+  --l-text: #eef4ff;
+  --l-muted: #9fb0d0;
+  --l-panel: rgba(6, 10, 34, 0.74);
+  --l-field: rgba(255, 255, 255, 0.08);
+  --l-field-focus: rgba(255, 255, 255, 0.14);
+  --l-line: rgba(255, 255, 255, 0.14);
+  --l-button-bg: #eef4ff;
+  --l-button-text: #050820;
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  /* On a phone the whole screen scrolls, so a short screen or the keyboard
+     never pushes the form out of reach. */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--l-base);
+  color: var(--l-text);
+}
+
+:global(html[data-theme="light"]) .screen {
+  --l-base: #eef5ff;
+  --l-a: #7fe6fb;
+  --l-b: #8fb4ff;
+  --l-c: #b3bdf0;
+  --l-a2: #d5f7fd;
+  --l-b2: #d4e2ff;
+  --l-c2: #e6e9fb;
+  --l-hero: rgba(238, 245, 255, 0.4);
+  --l-text: #0a1230;
+  --l-muted: #52607e;
+  --l-panel: rgba(255, 255, 255, 0.74);
+  --l-field: rgba(10, 18, 48, 0.06);
+  --l-field-focus: rgba(10, 18, 48, 0.1);
+  --l-line: rgba(10, 18, 48, 0.12);
+  --l-button-bg: #0a1230;
+  --l-button-text: #ffffff;
+}
+
+/* Three soft colour fields that drift slowly. */
+.mesh {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.mesh::before,
+.mesh::after,
+.mesh > i {
+  content: "";
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: 0.85;
+}
+.mesh::before {
+  width: 62vmax;
+  height: 62vmax;
+  left: -18vmax;
+  top: -20vmax;
+  background: var(--l-a);
+  animation: drift-a 22s ease-in-out infinite alternate;
+}
+.mesh::after {
+  width: 56vmax;
+  height: 56vmax;
+  right: -20vmax;
+  top: 6vmax;
+  background: var(--l-b);
+  animation: drift-b 26s ease-in-out infinite alternate;
+}
+.mesh > i {
+  width: 58vmax;
+  height: 58vmax;
+  left: 10vmax;
+  bottom: -30vmax;
+  background: var(--l-c);
+  animation: drift-c 30s ease-in-out infinite alternate;
+}
+@keyframes drift-a { to { transform: translate3d(8vmax, 6vmax, 0) scale(1.08); } }
+@keyframes drift-b { to { transform: translate3d(-7vmax, 8vmax, 0) scale(0.94); } }
+@keyframes drift-c { to { transform: translate3d(6vmax, -6vmax, 0) scale(1.1); } }
+@media (prefers-reduced-motion: reduce) {
+  .mesh::before, .mesh::after, .mesh > i { animation: none; }
+}
+
+/* Phone: a short colour area on top, the form straight under it. */
+.hero {
+  position: relative;
+  flex: 0 0 auto;
+  height: 30vh;
+  height: 30dvh;
+  min-height: 14.5rem;
+  max-height: 20rem;
+  overflow: hidden;
+}
+/* Three cards stacked and tilted, in the three mesh colours. */
+.cards {
+  position: absolute;
+  right: -2.2rem;
+  top: 3.6rem;
+  width: 9.5rem;
+  height: 6.3rem;
+  transform: rotate(-8deg);
+}
+.card {
+  position: absolute;
+  inset: 0;
+  border-radius: 1.5rem;
+  box-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+.cardA { background: var(--l-a); background: linear-gradient(135deg, var(--l-a), var(--l-a2)); transform: translate(-1.6rem, -2.2rem) rotate(-6deg); opacity: 0.9; }
+.cardB { background: var(--l-b); background: linear-gradient(135deg, var(--l-b), var(--l-b2)); transform: translate(-0.8rem, -1.1rem) rotate(-2deg); opacity: 0.95; }
+.cardC {
+  background: var(--l-c);
+  background: linear-gradient(135deg, var(--l-c), var(--l-c2));
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  padding: 1.1rem;
+}
+.chip { position: absolute; left: 1.1rem; top: 1.1rem; width: 2.2rem; height: 1.6rem; border-radius: 0.45rem; background: rgba(255, 255, 255, 0.55); }
+.line { display: block; height: 0.5rem; width: 70%; border-radius: 9999px; background: rgba(255, 255, 255, 0.55); }
+.lineShort { width: 40%; }
+
+.panel {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  margin: -1.5rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+  border-radius: 2rem;
+  padding: 1.5rem 1.4rem 1.6rem;
+  background: var(--l-panel);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid var(--l-line);
+  box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.5);
+}
+
+.field {
+  width: 100%;
+  border: 0;
+  border-radius: 1rem;
+  padding: 1rem 1.1rem;
+  font-size: 16px;
+  font-weight: 500;
+  background: var(--l-field);
+  color: var(--l-text) !important;
+  -webkit-text-fill-color: var(--l-text) !important;
+  caret-color: var(--l-text);
+  outline: none;
+  transition: background 0.15s ease;
+}
+.field:focus { background: var(--l-field-focus); }
+.field::placeholder {
+  color: var(--l-muted) !important;
+  -webkit-text-fill-color: var(--l-muted) !important;
+}
+.field:-webkit-autofill,
+.field:-webkit-autofill:hover,
+.field:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--l-text) !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--l-field-focus) inset !important;
+  transition: background-color 9999s ease-out 0s;
+}
+
+/* Desktop: the colour area becomes a rounded block beside the form. */
+@media (min-width: 900px) {
+  .screen {
+    flex-direction: row;
+    padding: 1.25rem;
+    gap: 1.25rem;
+    overflow: hidden;
+  }
+  .hero {
+    flex: 1 1 0;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    border-radius: 2rem;
+    background: var(--l-hero);
+    border: 1px solid var(--l-line);
+  }
+  .cards {
+    right: 3.5rem;
+    top: 6rem;
+    width: 22rem;
+    height: 14rem;
+    transform: rotate(-8deg) scale(1.1);
+  }
+  .panel {
+    flex: 0 0 min(30rem, 42vw);
+    margin: 0;
+    box-shadow: none;
+    max-height: none;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-radius: 2rem;
+    border: 1px solid var(--l-line);
+    padding: 3rem;
+  }
+}
