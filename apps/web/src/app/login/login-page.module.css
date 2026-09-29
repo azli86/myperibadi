@@ -20,6 +20,8 @@
   --l-line: rgba(255, 255, 255, 0.14);
   --l-button-bg: #eef4ff;
   --l-button-text: #050820;
+  --l-card: #18181b;
+  --l-card-line: #27272a;
   position: fixed;
   inset: 0;
   display: flex;
@@ -52,6 +54,8 @@
   --l-line: rgba(10, 18, 48, 0.12);
   --l-button-bg: #0a1230;
   --l-button-text: #ffffff;
+  --l-card: #ffffff;
+  --l-card-line: #e4e4e7;
 }
 
 /* Phone: the colour area and the form form one block, centred on the screen.
@@ -171,4 +175,117 @@
     border: 1px solid var(--l-line);
     padding: 3rem;
   }
+}
+
+/* ── Phone: a modern app's welcome screen, then an email step ──
+   Welcome: the card illustration large in the middle, a big headline under it,
+   and the sign-in buttons at the foot of the screen, in thumb reach.
+   Email: the illustration steps aside and the form starts at the top, so
+   opening it never pushes anything down. */
+@media (max-width: 899.98px) {
+  .screen {
+    min-height: 100dvh;
+  }
+  .hero {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-top: 0;
+  }
+  .cards {
+    position: relative;
+    right: auto;
+    top: auto;
+    align-self: center;
+    width: 14.5rem;
+    height: 9.25rem;
+    margin: 2.25rem auto 0;
+    transform: rotate(-8deg);
+  }
+  .heroText {
+    height: auto;
+    justify-content: flex-start;
+    padding: 2.75rem 1.5rem 0.5rem;
+  }
+  .heroText p:first-child {
+    max-width: 18rem;
+    font-size: 2rem;
+  }
+  .panel {
+    margin-bottom: 0;
+    padding: 1.25rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
+  .screen[data-step="welcome"] .intro {
+    display: none;
+  }
+  .screen[data-step="email"] .hero {
+    display: none;
+  }
+  .screen[data-step="email"] .panel {
+    padding-top: 0.75rem;
+  }
+}
+
+/* ── Phone welcome: the "Login Moden" screen ──
+   Shown only on a phone before the email step; the colour block and the form
+   panel take over for the email step and on desktop. */
+.mWelcome {
+  display: none;
+}
+@media (max-width: 899.98px) {
+  .screen[data-step="welcome"] .mWelcome {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    padding: 0 1.5rem calc(1.75rem + env(safe-area-inset-bottom, 0px));
+  }
+  .hero {
+    display: none;
+  }
+  .screen[data-step="welcome"] .panel {
+    display: none;
+  }
+}
+
+/* ── Phone email step ── */
+.mEmail {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  padding: 0.25rem 1.5rem calc(1.75rem + env(safe-area-inset-bottom, 0px));
+}
+.mField {
+  width: 100%;
+  height: 3.5rem;
+  box-sizing: border-box;
+  border: 1px solid var(--l-card-line);
+  border-radius: 1rem;
+  padding: 0 1rem 0 3rem;
+  font-size: 16px;
+  font-weight: 500;
+  background: var(--l-card);
+  color: var(--l-text) !important;
+  -webkit-text-fill-color: var(--l-text) !important;
+  caret-color: #0878f8;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.mField:focus {
+  border-color: #0878f8;
+  box-shadow: 0 0 0 3px rgba(8, 120, 248, 0.22);
+}
+.mField::placeholder {
+  color: var(--l-muted) !important;
+  -webkit-text-fill-color: var(--l-muted) !important;
+  opacity: 0.7;
+}
+.mField:-webkit-autofill,
+.mField:-webkit-autofill:hover,
+.mField:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--l-text) !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--l-card) inset !important;
+  transition: background-color 9999s ease-out 0s;
 }
