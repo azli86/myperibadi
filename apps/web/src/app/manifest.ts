@@ -17,8 +17,12 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const headerStore = await headers()
   // Chrome sends this OS color-scheme client hint when opted in via Accept-CH.
   const osPrefers = headerStore.get("sec-ch-prefers-color-scheme")
-  const effectiveTheme =
-    themeCookie === "light" || themeCookie === "dark"
+  // The theme the page actually applied (?t= on the manifest link, passed on by
+  // the middleware) wins: it is right even when the fetch carries no cookies.
+  const pageHint = headerStore.get("x-theme-hint")
+  const effectiveTheme = isResolved(pageHint)
+    ? pageHint
+    : themeCookie === "light" || themeCookie === "dark"
       ? themeCookie
       : isResolved(osPrefers)
         ? osPrefers

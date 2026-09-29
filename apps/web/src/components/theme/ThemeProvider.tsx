@@ -150,7 +150,9 @@ function applyTheme(theme: ThemeMode, resolvedTheme: ResolvedTheme) {
 
   const manifest = document.querySelector('link[rel="manifest"]')
   if (manifest) {
-    manifest.setAttribute("href", `/manifest.webmanifest?t=${resolvedTheme}-${pwaThemeColor.replace("#", "")}`)
+    // Send the theme cookie with the manifest fetch too, not only the ?t= hint.
+    manifest.setAttribute("crossorigin", "use-credentials")
+    manifest.setAttribute("href", `/manifest.webmanifest?v=2026-09-29&t=${resolvedTheme}-${pwaThemeColor.replace("#", "")}`)
   }
 
   if (typeof window !== "undefined" && typeof (window as any).AndroidApp?.onThemeChange === "function") {
