@@ -21,11 +21,21 @@ assert "opacity: refreshing ? 1 :" in IND, "the indicator must stay visible whil
 # 2.
 assert "export const PULL_REFRESH_THRESHOLD = 80" in IND
 assert "const progress = Math.min(pullDistance / PULL_REFRESH_THRESHOLD, 1)" in IND
-assert "if (pullDistance >= PULL_REFRESH_THRESHOLD) {" in SHELL, "the release point and the ring share one number"
+HOOK = (WEB.parents[1] / "hooks" / "usePullToRefresh.ts").read_text(encoding="utf-8")
+assert "const fire = distanceRef.current >= PULL_REFRESH_THRESHOLD" in HOOK, "the release point and the ring share one number"
 assert "pullDistance >= 80" not in SHELL
-# Same pages as before.
-assert "const pullRefreshEnabled = pathname === `/${sessionId}` || pathname === `/${sessionId}/transactions`;" in SHELL
-assert "<PullToRefreshIndicator pullDistance={pullDistance} refreshing={isRefreshing} lang={lang} />" in SHELL
+
+# Every page now, through the shared hook, except where a downward pull
+# means something else (full-screen chat, the map pages) and under the PIN lock.
+assert "const pullRefreshEnabled = !isChatFullscreen && !isMapPage && !pinLockRequired;" in SHELL
+assert "pathname === `/${sessionId}/map-analysis`" in SHELL
+assert "usePullToRefresh({ enabled: pullRefreshEnabled, onRefresh: handleManualRefresh })" in SHELL
+assert "{...pullToRefresh.handlers}" in SHELL
+# The refresh remounts the page, so pages need no hook of their own.
+assert "key={refreshKey}" in SHELL and "setRefreshKey((prev) => prev + 1);" in SHELL
+# Guards that keep a pull from meaning refresh everywhere.
+for guard in ('[data-prevent-pull-refresh="true"]', "[data-swipe-sheet]", '[role="dialog"]', "el.scrollTop > 0", "root.scrollTop > 4", "dx > dy * 0.6"):
+    assert guard in HOOK, f"missing guard: {guard}"
 
 # 3. On pages with the fixed MobilePageHeader (z-120, e.g. transactions) the
 # badge sat behind the bar. It is fixed above it and drops in under its edge.

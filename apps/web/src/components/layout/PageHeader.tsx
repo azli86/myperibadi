@@ -5,7 +5,12 @@ import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-/** Shared mobile header — same visual language as desktop top bar. */
+/**
+ * Shared mobile top bar. At the top of the page it is a large title resting on
+ * the page itself; once the page scrolls the title shrinks. The bar's height never changes: only a transform and an opacity
+ * animate, so nothing is laid out again while the finger is scrolling (a
+ * changing height made the page shake under the finger on phones).
+ */
 export function MobilePageHeader({
   title,
   fallbackHref,
@@ -25,6 +30,8 @@ export function MobilePageHeader({
 }) {
   const headerRef = useRef<HTMLDivElement>(null)
   const [spacer, setSpacer] = useState(0)
+  const [compact, setCompact] = useState(false)
+  const compactRef = useRef(false)
 
   // Fixed header leaves the flow — keep an in-flow spacer the same height so
   // page content is never covered and the header is truly pinned to the top.
@@ -38,32 +45,67 @@ export function MobilePageHeader({
     return () => ro.disconnect()
   }, [])
 
+  // Phones scroll the window; larger screens scroll the Shell's <main>.
+  useLayoutEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const main = el.closest("main")
+    const read = () => {
+      const y = Math.max(window.scrollY || document.documentElement.scrollTop || 0, main?.scrollTop || 0)
+      // A little hysteresis so the bar does not flicker around the edge.
+      const next = compactRef.current ? y > 4 : y > 24
+      if (next !== compactRef.current) {
+        compactRef.current = next
+        setCompact(next)
+      }
+    }
+    read()
+    window.addEventListener("scroll", read, { passive: true })
+    main?.addEventListener("scroll", read, { passive: true })
+    return () => {
+      window.removeEventListener("scroll", read)
+      main?.removeEventListener("scroll", read)
+    }
+  }, [])
+
   return (
     <>
       <div
         data-mobile-page-header
+        data-compact={compact ? "true" : undefined}
         ref={headerRef}
         className={cn(
           // Above the shell's safe-area strip (z-110): that strip is an opaque
           // --bg bar as tall as the iOS inset, and at z-40 it painted over this
           // header — which is why the action vanished on notched iPhones but
           // survived on Android, where the inset reports 0.
-          "fixed inset-x-0 top-0 z-[120] bg-[var(--page-bg)] px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top,0px))]",
+          "fixed inset-x-0 top-0 z-[120] bg-[var(--page-bg)] px-4 pb-2.5 pt-[calc(0.5rem+env(safe-area-inset-top,0px))]",
           className,
         )}
       >
-        <div className={cn("flex items-center gap-2.5 pt-0.5", alignLeft ? "justify-start" : "justify-between")}>
+        <div className={cn("flex min-h-12 items-center gap-3", alignLeft ? "justify-start" : "justify-between")}>
           <div className={cn("flex min-w-0 items-center gap-2", !alignLeft && "flex-1")}>
-            <h1 className="truncate text-left text-[30px] font-black leading-[1.05] tracking-tight text-[var(--text)]">
+            <h1
+              className={cn(
+                "origin-left truncate text-left text-[1.875rem] font-black leading-[1.1] tracking-tight text-[var(--text)] transition-transform duration-200 ease-out will-change-transform",
+                compact && "scale-[0.7]",
+              )}
+            >
               {title}
             </h1>
             {beta && (
-              <span className="shrink-0 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide text-[var(--muted)]">
+              <span
+                className={cn(
+                  "shrink-0 rounded-full bg-[var(--text)] px-2 py-0.5 text-[0.5625rem] font-black uppercase tracking-[0.12em] text-[var(--bg)] transition-opacity duration-200",
+                  // The shrunk title keeps its full layout width, so the pill would float away from it.
+                  compact && "opacity-0",
+                )}
+              >
                 Beta
               </span>
             )}
           </div>
-          <div className={cn("flex shrink-0 items-center gap-1.5", !alignLeft && "justify-end")}>
+          <div className={cn("flex shrink-0 items-center gap-2", !alignLeft && "justify-end")}>
             {action ?? <span className="h-10 w-10" aria-hidden />}
           </div>
         </div>
@@ -74,7 +116,7 @@ export function MobilePageHeader({
   )
 }
 
-/** Mobile header action — matches desktop accent CTA. */
+/** Round top-bar action: accent fill, 40px target, like the home's buttons. */
 export function MobileIconButton({
   children,
   onClick,
@@ -95,9 +137,9 @@ export function MobileIconButton({
       disabled={disabled}
       aria-label={label}
       className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-sm shadow-black/10 transition active:scale-95",
+        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-[0_6px_16px_-8px_rgba(0,0,0,0.45)] transition active:scale-90",
         "disabled:pointer-events-none disabled:opacity-50",
-        "[&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0",
+        "[&_svg]:h-[1.125rem] [&_svg]:w-[1.125rem] [&_svg]:shrink-0",
         className,
       )}
     >

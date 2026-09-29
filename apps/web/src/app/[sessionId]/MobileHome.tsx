@@ -3,9 +3,10 @@
 import { getWalletAccent as walletAccent } from "@/lib/wallet-accents"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import { createPortal } from "react-dom"
-import { ArrowLeftRight, Bell, ChevronRight, Eye, EyeClosed, Wallet, X } from "lucide-react"
+import { ArrowLeftRight, Bell, CalendarDays, ChevronRight, Eye, EyeClosed, Plus, Wallet, X } from "lucide-react"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { fetchApiJson, readApiCache } from "@/lib/api-cache"
 import { categoryCycleMonthBounds, cycleMonthBounds } from "@/lib/cycle"
@@ -15,6 +16,9 @@ import { cn, getTodayDateInTimeZone } from "@/lib/utils"
 import { formatCurrencyLabel } from "@/components/ui/MoneyAmount"
 import { useAnnouncements } from "@/lib/announcements"
 import { AnnouncementList } from "@/components/announcements/AnnouncementList"
+
+// The record form loads the first time Rekod is tapped.
+const RecordSheet = dynamic(() => import("./RecordSheet"), { ssr: false })
 
 // The chart library comes with the popup, and only once the balance is tapped.
 const MobileHomeCharts = dynamic(() => import("./MobileHomeCharts"), {
@@ -138,6 +142,8 @@ export function MobileHome({
   const [wallets, setWallets] = useState<WalletRow[] | null>(null)
   const [showAmounts, setShowAmounts] = useState(true)
   const [walletsOpen, setWalletsOpen] = useState(false)
+  const [recordOpen, setRecordOpen] = useState(false)
+  const router = useRouter()
   const [chartsOpen, setChartsOpen] = useState(false)
 
   // ── Announcement bell ── history of notices published from Mastermind, in a
@@ -191,16 +197,6 @@ export function MobileHome({
   }
   // The Shell shows the same notice as a banner on the home route; the bell
   // replaces it here, so ask for the banner to stay hidden while this is up.
-  // The flag on <html> covers the first render after login, when the Shell
-  // mounts alongside this and its listener is not attached yet.
-  useEffect(() => {
-    document.documentElement.dataset.noticeInline = "hidden"
-    window.dispatchEvent(new CustomEvent("portal:notice-banner-inline", { detail: { hidden: true } }))
-    return () => {
-      delete document.documentElement.dataset.noticeInline
-      window.dispatchEvent(new CustomEvent("portal:notice-banner-inline", { detail: { hidden: false } }))
-    }
-  }, [])
   const handoffRef = useRef(onNeedsFullDashboard)
   handoffRef.current = onNeedsFullDashboard
 
@@ -538,7 +534,14 @@ export function MobileHome({
 
 
   return (
-    <div className="px-1 pb-24 pt-1 text-[0.8125rem]">
+    <div className="relative isolate px-1 pb-24 pt-1 text-[0.8125rem]">
+      {/* Three-colour wash behind the top; transparent under the status bar. */}
+      <div className="home-mesh" aria-hidden>
+        <span />
+        <span />
+        <span />
+      </div>
+
       {/* ── Balance ── option A: no hero card, the number sits on the page. */}
       <section className="px-2 pb-5 pt-2">
         <div className="flex items-center justify-between gap-3">
@@ -560,9 +563,7 @@ export function MobileHome({
           </button>
         </div>
 
-        <p className="mt-5 text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-[var(--muted)]">
-          {tr("Jumlah Baki", "Total Balance")}
-        </p>
+        <p className="mt-5 text-sm font-semibold text-[var(--muted)]">{tr("Jumlah Baki", "Total Balance")}</p>
         {/* The eye sits right after the number it hides. */}
         <div className="mt-1 flex min-w-0 items-center gap-1.5">
           {/* Tapping the balance opens the old dashboard's expense charts popup. */}
@@ -593,6 +594,17 @@ export function MobileHome({
             {showAmounts ? <Eye size={20} /> : <EyeClosed size={20} />}
           </button>
         </div>
+        {/* A visible way into the charts; tapping the number opens them too. */}
+        <button
+          type="button"
+          onClick={() => setChartsOpen(true)}
+          disabled={stats == null}
+          aria-haspopup="dialog"
+          className="-ml-1 -mt-1.5 inline-flex min-h-8 items-center gap-0.5 rounded-full px-1 text-sm font-semibold text-[var(--text-soft)] transition active:opacity-70 disabled:opacity-40"
+        >
+          {tr("Info Baki", "Balance Info")}
+          <ChevronRight size={16} strokeWidth={2.4} aria-hidden />
+        </button>
 
         {/* This cycle's money in and out, computed as the dashboard hero does. */}
         <div className="mt-3.5 flex flex-wrap gap-2">
@@ -607,6 +619,35 @@ export function MobileHome({
               <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: chip.dot }} />
               {chip.label} {chip.value == null ? skeleton("h-3 w-12") : money(chip.value, 0)}
             </span>
+          ))}
+        </div>
+
+        {/* Quick actions. Record opens the simple record sheet; Transfer starts
+            a `pindah` command in chat (the bot runs wallet transfers); Event
+            opens the events page; Wallets opens the all-wallets sheet below. */}
+        <div role="group" aria-label={tr("Tindakan pantas", "Quick actions")} className="mt-6 grid grid-cols-4 gap-2">
+          {[
+            { key: "add", label: tr("Rekod", "Record"), icon: <Plus size={22} strokeWidth={2} />, onClick: () => setRecordOpen(true), accent: true },
+            { key: "transfer", label: tr("Pindah", "Transfer"), icon: <ArrowLeftRight size={21} strokeWidth={2} />, onClick: () => router.push(`/${sessionId}/chat?draft=${encodeURIComponent("pindah ")}`) },
+            { key: "event", label: tr("Event", "Events"), icon: <CalendarDays size={21} strokeWidth={2} />, onClick: () => router.push(`/${sessionId}/event`) },
+            { key: "wallets", label: tr("Dompet", "Wallets"), icon: <Wallet size={21} strokeWidth={2} />, onClick: () => setWalletsOpen(true) },
+          ].map((action) => (
+            <button
+              key={action.key}
+              type="button"
+              onClick={action.onClick}
+              className="group flex min-w-0 flex-col items-center gap-2 text-xs font-bold text-[var(--text)]"
+            >
+              <span
+                className={cn(
+                  "flex h-[3.625rem] w-[3.625rem] items-center justify-center rounded-[1.375rem] transition group-active:scale-90",
+                  action.accent ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "bg-[var(--card)] text-[var(--text)] shadow-[var(--shadow-card)]"
+                )}
+              >
+                {action.icon}
+              </span>
+              <span className="truncate">{action.label}</span>
+            </button>
           ))}
         </div>
 
@@ -644,80 +685,76 @@ export function MobileHome({
             const w = homeWallet
             const accent = walletAccent(w)
             const count = Number(w.transaction_count || 0)
+            // The next wallet peeks out behind, a stack you can open.
+            const next = heroWallets && heroWallets.length > 1 ? heroWallets[1] : null
+            const nextAccent = next ? walletAccent(next) : null
             return (
-              <button
-                type="button"
-                onClick={() => setWalletsOpen(true)}
-                aria-label={tr("Lihat semua dompet", "See all wallets")}
-                className="group relative flex h-[196px] w-full flex-col overflow-hidden rounded-2xl p-5 pb-6 text-left shadow-[0_14px_30px_-16px_rgba(0,0,0,0.55)] transition active:scale-[0.98]"
-                // The wallet's own colour from its settings, at full strength.
-                // Text colours are set inline: the light theme remaps the
-                // text-white class to var(--text), which would turn them dark.
-                style={{ background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)`, color: "#ffffff" }}
-              >
-                {w.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={w.image_url}
-                    alt=""
-                    className="absolute -right-5 -top-8 h-[135%] w-[62%] rotate-[9deg] object-cover opacity-45 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_55%)]"
-                  />
-                ) : null}
-                {/* Keeps the left side, where the text sits, readable over any picture. */}
-                <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.08) 55%, transparent 85%)" }} />
-                <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full" style={{ background: "rgba(255,255,255,0.14)" }} />
+              <div className="relative pt-3">
+                <div
+                  aria-hidden
+                  className="absolute left-[18px] right-[18px] top-0 h-[60px] rounded-[1.5rem]"
+                  style={{ background: nextAccent ? nextAccent.from : "var(--surface-tint-strong)", opacity: nextAccent ? 0.55 : 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setWalletsOpen(true)}
+                  aria-label={tr("Lihat semua dompet", "See all wallets")}
+                  className="relative flex h-[184px] w-full flex-col justify-between overflow-hidden rounded-[1.75rem] p-5 text-left shadow-[0_18px_34px_-18px_rgba(0,0,0,0.55)] transition active:scale-[0.98]"
+                  // The wallet's own colour from its settings, at full strength.
+                  // Text colours are set inline: the light theme remaps the
+                  // text-white class to var(--text), which would turn them dark.
+                  style={{ background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)`, color: "#ffffff" }}
+                >
+                  <svg aria-hidden width="260" height="260" viewBox="0 0 260 260" className="pointer-events-none absolute -bottom-[110px] -right-[90px]" style={{ opacity: 0.16 }} fill="none" stroke="#ffffff" strokeWidth="2">
+                    <circle cx="130" cy="130" r="50" />
+                    <circle cx="130" cy="130" r="80" />
+                    <circle cx="130" cy="130" r="110" />
+                  </svg>
 
-                <div className="relative flex items-start justify-between gap-3">
-                  <div className="relative shrink-0">
-                    <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full shadow-sm" style={{ background: "rgba(255,255,255,0.2)", color: "#ffffff" }}>
+                  <div className="relative flex items-center justify-between gap-3">
+                    <span className="flex min-w-0 items-center gap-2">
                       {w.image_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={w.image_url} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <Wallet size={19} />
-                      )}
-                    </div>
-                    {w.is_bot_default ? (
-                      <span
-                        className="absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[0.5rem] font-black leading-none shadow-sm"
-                        style={{ color: "#ffffff", boxShadow: `0 0 0 2px ${accent.from}` }}
-                        title="Bot"
-                        aria-label="Bot"
-                      >
-                        B
+                        <img src={w.image_url} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" style={{ boxShadow: "0 0 0 2px rgba(255,255,255,0.35)" }} />
+                      ) : null}
+                      <span className="truncate text-base font-black tracking-tight" style={{ color: "#ffffff" }}>
+                        {w.label || w.name}
                       </span>
-                    ) : null}
-                  </div>
-                  <div className="min-w-0 text-right">
-                    <p className="truncate text-sm font-black tracking-tight" style={{ color: "#ffffff" }}>
-                      {w.label || w.name}
-                    </p>
-                    <p className="mt-1 truncate text-[0.58rem] font-black uppercase tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.75)" }}>
-                      {walletKind(w, isBm)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="relative mt-5">
-                  <p className="text-[0.62rem] font-bold uppercase tracking-[0.16em]" style={{ color: "rgba(255,255,255,0.75)" }}>
-                    {tr("Baki", "Balance")}
-                  </p>
-                  <p className="mt-1 truncate text-2xl font-black tabular-nums tracking-tight" style={{ color: "#ffffff" }}>
-                    <span className="mr-1 text-sm font-bold" style={{ color: "rgba(255,255,255,0.75)" }}>
-                      {formatCurrencyLabel(w.currency)}
                     </span>
-                    {showAmounts ? num(w.balance) : hidden}
-                  </p>
-                </div>
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      {w.is_bot_default ? (
+                        <span className="rounded-xl px-2 py-1 text-[0.6875rem] font-black" style={{ background: "rgba(255,255,255,0.22)", color: "#ffffff" }} title="Bot">
+                          Bot
+                        </span>
+                      ) : null}
+                      <span className="max-w-[7rem] truncate rounded-xl px-2.5 py-1 text-xs font-black uppercase" style={{ background: "rgba(0,0,0,0.16)", color: "#ffffff" }}>
+                        {w.name}
+                      </span>
+                    </span>
+                  </div>
 
-                <div className="relative mt-auto flex items-center justify-between pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.22)" }}>
-                  <span className="truncate text-[0.65rem] font-bold uppercase tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.8)" }}>
-                    Prefix: {w.name}
-                    {count > 0 ? ` · ${count} ${tr("rekod", "txns")}` : ""}
-                  </span>
-                  <ChevronRight size={16} className="shrink-0" style={{ color: "rgba(255,255,255,0.8)" }} />
-                </div>
-              </button>
+                  <div className="relative">
+                    <p className="text-[0.8125rem] font-bold" style={{ color: "rgba(255,255,255,0.75)" }}>
+                      {tr("Baki", "Balance")} · {walletKind(w, isBm)}
+                    </p>
+                    <p className="mt-1 truncate text-[2.25rem] font-black leading-none tabular-nums tracking-tight" style={{ color: "#ffffff" }}>
+                      <span className="mr-1.5 align-top text-base font-bold" style={{ color: "rgba(255,255,255,0.75)" }}>
+                        {formatCurrencyLabel(w.currency)}
+                      </span>
+                      {showAmounts ? num(w.balance) : hidden}
+                    </p>
+                  </div>
+
+                  <div className="relative flex items-center justify-between">
+                    <span className="text-[0.8125rem] font-bold" style={{ color: "rgba(255,255,255,0.8)" }}>
+                      {count > 0 ? `${count} ${tr("transaksi", "transactions")}` : tr("Tiada transaksi lagi", "No transactions yet")}
+                    </span>
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full" style={{ background: "#09090b", color: "#fafafa" }}>
+                      <ChevronRight size={16} strokeWidth={2.4} />
+                    </span>
+                  </div>
+                </button>
+              </div>
             )
           })()
         )}
@@ -735,12 +772,13 @@ export function MobileHome({
           </Link>
         </div>
 
-        <div className="overflow-hidden rounded-[1.5rem] bg-[var(--card)] px-1 pb-1 shadow-[var(--shadow-card)]">
+        {/* No card: the rows sit on the page, as the wallet card above does. */}
+        <div>
           {activity == null ? (
             <div>
               {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-3 px-3 py-3">
-                  <span className="skeleton-surface h-10 w-10 shrink-0 rounded-2xl" />
+                <div key={i} className="flex min-h-[60px] items-center gap-3 px-2">
+                  <span className="skeleton-surface h-11 w-11 shrink-0 rounded-2xl" />
                   <span className="flex-1 space-y-2">
                     <span className="skeleton-surface block h-3.5 w-32 rounded-full" />
                     <span className="skeleton-surface block h-3 w-20 rounded-full" />
@@ -749,13 +787,13 @@ export function MobileHome({
               ))}
             </div>
           ) : activity.length === 0 ? (
-            <p className="px-5 py-10 text-center text-sm font-semibold text-[var(--muted)]">
+            <p className="px-2 py-10 text-center text-sm font-semibold text-[var(--muted)]">
               {tr("Belum ada transaksi. Tekan + untuk rekod yang pertama.", "No transactions yet. Tap + to record your first.")}
             </p>
           ) : (
             activity.map((group) => (
               <div key={group.date}>
-                <p className="flex items-center justify-between px-3 pb-0.5 pt-3 text-[0.65rem] font-extrabold uppercase tracking-[0.12em] text-[var(--muted)]">
+                <p className="flex items-center justify-between px-2 pb-1 pt-3 text-xs font-semibold text-[var(--muted)]">
                   <span>{group.label}</span>
                   <span className="tabular-nums">
                     {group.net === 0 ? "" : `${group.net > 0 ? "+" : "−"}${money(Math.abs(group.net))}`}
@@ -769,9 +807,9 @@ export function MobileHome({
                       <li key={tx.id}>
                         <Link
                           href={`/${sessionId}/transactions/${tx.reference_id || tx.id}`}
-                          className="flex items-center gap-3 rounded-2xl px-3 py-2.5 transition active:bg-[var(--surface-tint-strong)]"
+                          className="flex min-h-[60px] items-center gap-3 rounded-2xl px-2 py-1.5 transition active:bg-[var(--surface-tint-strong)]"
                         >
-                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint-strong)] text-[var(--text-soft)]">
+                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--card)] text-[var(--text)] shadow-[var(--shadow-card)]">
                             {isTransfer ? (
                               <ArrowLeftRight size={17} />
                             ) : (
@@ -784,20 +822,20 @@ export function MobileHome({
                             )}
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm font-bold text-[var(--text)]">
+                            <span className="block truncate text-[0.9375rem] font-semibold text-[var(--text)]">
                               {tx.vendor_or_source || tx.category_name || tr("Transaksi", "Transaction")}
                             </span>
-                            <span className="mt-0.5 block truncate text-xs font-medium text-[var(--muted)]">
+                            <span className="mt-0.5 block truncate text-[0.8125rem] font-medium text-[var(--muted)]">
                               {[isTransfer ? tr("Pindahan", "Transfer") : tx.category_name, tx.wallet_name].filter(Boolean).join(" · ")}
                             </span>
                           </span>
                           <span
                             className={cn(
-                              "shrink-0 text-sm font-black tabular-nums",
+                              "shrink-0 text-[0.9375rem] font-bold tabular-nums",
                               isTransfer
                                 ? "text-[var(--muted)]"
                                 : isIncome
-                                  ? "text-emerald-700 dark:text-emerald-400"
+                                  ? "text-[var(--income)]"
                                   : "text-[var(--text)]"
                             )}
                           >
@@ -813,6 +851,17 @@ export function MobileHome({
           )}
         </div>
       </section>
+
+      {recordOpen ? (
+        <RecordSheet
+          open={recordOpen}
+          onClose={() => setRecordOpen(false)}
+          onSaved={() => void load()}
+          wallets={heroWallets || []}
+          lang={lang}
+          timezone={timezone}
+        />
+      ) : null}
 
       <AppSheet open={chartsOpen} onClose={() => setChartsOpen(false)} id="mobile-home-charts" title={tr("Graf Perbelanjaan", "Expense Charts")} size="xl">
         <MobileHomeCharts transactions={transactions || []} lang={lang} timezone={timezone} />
@@ -856,7 +905,7 @@ export function MobileHome({
                                 onPointerUp={endDeckRow}
                                 onPointerCancel={cancelDeckRow}
                                 onContextMenu={(e) => e.preventDefault()}
-                                className="wallet-card-solid relative flex cursor-grab touch-none select-none items-center gap-3 overflow-hidden rounded-[1.25rem] px-4 py-3.5 active:cursor-grabbing"
+                                className="wallet-card-solid relative flex min-h-[84px] cursor-grab touch-none select-none items-center gap-3 overflow-hidden rounded-[1.5rem] px-4 py-4 active:cursor-grabbing"
                                 style={{
                                   background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)`,
                                   ...({ "--wallet-from": accent.from } as React.CSSProperties),
@@ -866,7 +915,11 @@ export function MobileHome({
                                     : { transition: "transform 120ms ease" }),
                                 }}
                               >
-                                <span aria-hidden className="absolute -right-6 -top-8 h-20 w-20 rounded-full" style={{ background: "rgba(255,255,255,0.14)" }} />
+                                <svg aria-hidden width="160" height="160" viewBox="0 0 160 160" className="pointer-events-none absolute -bottom-[70px] -right-[50px]" style={{ opacity: 0.14 }} fill="none" stroke="currentColor" strokeWidth="2">
+                                  <circle cx="80" cy="80" r="30" />
+                                  <circle cx="80" cy="80" r="50" />
+                                  <circle cx="80" cy="80" r="70" />
+                                </svg>
                                 <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)]">
                                   {w.image_url ? (
                                     // eslint-disable-next-line @next/next/no-img-element
@@ -886,12 +939,13 @@ export function MobileHome({
                                   ) : null}
                                 </span>
                                 <span className="relative min-w-0 flex-1">
-                                  <span className="block truncate text-sm font-black tracking-tight text-[var(--text)]">{w.label || w.name}</span>
-                                  <span className="mt-0.5 block truncate text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-[var(--muted)]">
-                                    {[w.name, walletKind(w, isBm)].filter(Boolean).join(" · ")}
+                                  <span className="block truncate text-[0.9375rem] font-black tracking-tight text-[var(--text)]">{w.label || w.name}</span>
+                                  <span className="mt-1 flex min-w-0 items-center gap-1.5">
+                                    <span className="max-w-[6rem] truncate rounded-lg bg-black/15 px-1.5 py-0.5 text-[0.625rem] font-black uppercase text-[var(--text)]">{w.name}</span>
+                                    <span className="truncate text-[0.6875rem] font-semibold text-[var(--muted)]">{walletKind(w, isBm)}</span>
                                   </span>
                                 </span>
-                                <span className="relative shrink-0 text-right text-base font-black tabular-nums tracking-tight text-[var(--text)]">
+                                <span className="relative shrink-0 text-right text-lg font-black tabular-nums tracking-tight text-[var(--text)]">
                                   <span className="mr-1 text-[0.65rem] font-bold text-[var(--muted)]">{formatCurrencyLabel(w.currency)}</span>
                                   {showAmounts ? num(w.balance) : hidden}
                                 </span>
@@ -951,6 +1005,7 @@ export function MobileHome({
 
                 <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
                   <AnnouncementList
+                    palette="home"
                     items={notices}
                     lang={lang}
                     sessionId={sessionId}

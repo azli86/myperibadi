@@ -1,7 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, useSyncExternalStore } from "react";
 import Link from "next/link";
 import {
   usePathname,
@@ -122,7 +122,8 @@ import { fetchApiJson, readApiCache, writeApiCache, invalidateApiCache } from "@
 import Turnstile from "@/components/auth/Turnstile"
 import BadgeOverviewModal from "@/components/badges/BadgeOverviewModal";
 import Calculator from "@/components/calculator/Calculator";
-import { PullToRefreshIndicator, PULL_REFRESH_THRESHOLD } from "@/components/layout/PullToRefreshIndicator";
+import { PullToRefreshIndicator } from "@/components/layout/PullToRefreshIndicator";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { DesktopAnnouncementBell } from "@/components/announcements/DesktopAnnouncementBell";
 import { CatPlayground } from "@/components/dashboard/CatPlayground";
 import {
@@ -152,17 +153,6 @@ type MobileHeaderMeta = {
   eyebrow: string;
   icon: LucideIcon;
   backHref: string | null;
-};
-
-type NoticeBannerItem = {
-  enabled: boolean;
-  type: "info" | "warning" | "alert";
-  title_bm?: string;
-  message_bm?: string;
-  title_en?: string;
-  message_en?: string;
-  title?: string;
-  message?: string;
 };
 
 
@@ -886,11 +876,18 @@ function getMobileHeaderMeta(
 }
 
 import { useAvatar } from "@/lib/avatar-cache"
+// A page shown inside another page's iframe (the transaction detail panel on
+// the transactions list). The parent already runs the Shell's live updates and
+// data load, so the framed copy skips them and opens faster.
+const noopSubscribe = () => () => {};
+const isEmbeddedFrame = () => window.self !== window.top;
+
 export default function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "";
   const pathSegments = pathname.split("/").filter(Boolean);
   const hideGlobalCalculator = pathname.includes("/chat");
-  useRealtime({ enabled: Boolean(pathSegments[0]) });
+  const embedded = useSyncExternalStore(noopSubscribe, isEmbeddedFrame, () => false);
+  useRealtime({ enabled: Boolean(pathSegments[0]) && !embedded });
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -905,81 +902,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     Boolean(sessionId) &&
     (pathname === `/${sessionId}` || pathname === `/${sessionId}/`);
   const isLight = resolvedTheme === "light";
-  const [noticeBanners, setNoticeBanners] = useState<{ personal?: NoticeBannerItem } | null>(null);
-  // The phone home shows the notice behind its bell instead, so it asks for the
-  // inline banner to stay hidden while it is on screen.
-  const [noticeInlineHidden, setNoticeInlineHidden] = useState(false);
-  useEffect(() => {
-    // After login the Shell mounts in the same commit as the phone home, and
-    // React runs the child's effects first, so the home's event fires before
-    // this listener exists. The home also leaves a flag on <html>; read it
-    // here so the order of mounting no longer matters.
-    if (document.documentElement.dataset.noticeInline === "hidden") setNoticeInlineHidden(true);
-    const onInline = (event: Event) => {
-      setNoticeInlineHidden(Boolean((event as CustomEvent<{ hidden?: boolean }>).detail?.hidden));
-    };
-    window.addEventListener("portal:notice-banner-inline", onInline as EventListener);
-    return () => window.removeEventListener("portal:notice-banner-inline", onInline as EventListener);
-  }, []);
   const menuTitle = lang === "BM" ? "Menu Utama" : "Main Menu";
-
-  useEffect(() => {
-    if (!sessionId) return;
-    let cancelled = false;
-    // Reset stale banner state so an enabled banner from the previous
-    // fetch cannot render while the fresh fetch is still in flight.
-    setNoticeBanners(null);
-    async function loadNoticeBanners() {
-      try {
-        const token = getAccessToken();
-        if (!token) return; // no valid session -> don't emit 401 noise
-        const res = await fetch("/api/notice-banners", { credentials: "include", headers: authHeaders(token), cache: "no-store" });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled) setNoticeBanners(data);
-      } catch {}
-    }
-    void loadNoticeBanners();
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void loadNoticeBanners();
-    };
-    const onFocus = () => { void loadNoticeBanners(); };
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisible);
-    const intervalId = window.setInterval(() => { void loadNoticeBanners(); }, 30000);
-    return () => {
-      cancelled = true;
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisible);
-      window.clearInterval(intervalId);
-    };
-  }, [sessionId, pathname]);
-
-  const activeNoticeBanner = noticeBanners?.personal;
-  const noticeTitle = activeNoticeBanner
-    ? (lang === "BM"
-        ? (activeNoticeBanner.title_bm || activeNoticeBanner.title_en || activeNoticeBanner.title || "")
-        : (activeNoticeBanner.title_en || activeNoticeBanner.title_bm || activeNoticeBanner.title || "")).trim()
-    : "";
-  const noticeMessage = activeNoticeBanner
-    ? (lang === "BM"
-        ? (activeNoticeBanner.message_bm || activeNoticeBanner.message_en || activeNoticeBanner.message || "")
-        : (activeNoticeBanner.message_en || activeNoticeBanner.message_bm || activeNoticeBanner.message || "")).trim()
-    : "";
-  const showNoticeBanner = Boolean(activeNoticeBanner?.enabled && (noticeTitle || noticeMessage) && isPersonalDashboardHome && !noticeInlineHidden);
-  const noticeBannerNode = showNoticeBanner && activeNoticeBanner ? (
-    // Hidden from lg up: the desktop right rail carries the notice behind its
-    // bell instead. Tablets have no right rail, so they keep the banner.
-    <section className={cn("mb-4 rounded-2xl border px-4 py-3 text-sm shadow-[var(--shadow-soft)] lg:hidden", activeNoticeBanner.type === "alert" ? "border-rose-500/25 bg-rose-500/12 text-rose-700 dark:text-rose-200" : activeNoticeBanner.type === "warning" ? "border-amber-500/25 bg-amber-400/15 text-amber-800 dark:text-amber-200" : "border-sky-500/25 bg-sky-500/12 text-sky-700 dark:text-sky-200")}>
-      <div className="flex items-start gap-3">
-        {activeNoticeBanner.type === "alert" ? <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" /> : activeNoticeBanner.type === "warning" ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> : <Info className="mt-0.5 h-4 w-4 shrink-0" />}
-        <div className="min-w-0 flex-1">
-          {noticeTitle ? <p className="font-black leading-tight">{noticeTitle}</p> : null}
-          {noticeMessage ? <p className="mt-0.5 whitespace-pre-wrap text-xs font-semibold leading-5 opacity-90">{noticeMessage}</p> : null}
-        </div>
-      </div>
-    </section>
-  ) : null;
 
   const navigation = [
     { name: t.dashboard, href: `/${sessionId}`, icon: LayoutDashboard },
@@ -1547,11 +1470,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [hideMobileBottomNav, setHideMobileBottomNav] = useState(false);
   const [mobileBottomNavCenterIndex, setMobileBottomNavCenterIndex] =
     useState(0);
-  const [pullDistance, setPullDistance] = useState(0);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [startY, setStartY] = useState<number | null>(null);
-  const startXRef = useRef<number | null>(null);
   const [pinLockRequired, setPinLockRequired] = useState(false);
   const [pinUnlocking, setPinUnlocking] = useState(false);
   const [pinInput, setPinInput] = useState("");
@@ -2397,6 +2316,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         router.replace("/login");
       } else if (localSessionId && sessionId !== localSessionId) {
         router.replace(`/${localSessionId}`);
+      } else if (window.self !== window.top) {
+        // Framed page: the parent Shell has this data already.
       } else if (!token && refreshToken) {
         delayedFetchTimer = window.setTimeout(() => {
           void fetchData();
@@ -3015,91 +2936,21 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("mousedown", handler)
   }, [showAccountSwitcher, accountSwitcherRef])
 
+  // Pull to refresh re-fetches the Shell's own data and remounts the page
+  // (<main key={refreshKey}>), so every page loads fresh without its own hook.
   const handleManualRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await fetchData();
-      setRefreshKey((prev) => prev + 1);
-      window.dispatchEvent(new Event("refreshData"));
-      // Artificial delay for visual feedback
-      await new Promise((r) => setTimeout(r, 600));
-    } finally {
-      setIsRefreshing(false);
-    }
+    await fetchData();
+    setRefreshKey((prev) => prev + 1);
+    window.dispatchEvent(new Event("refreshData"));
+    // Artificial delay for visual feedback
+    await new Promise((r) => setTimeout(r, 600));
   };
 
-  const shouldIgnorePullToRefresh = (event: React.TouchEvent) => {
-    const target = event.target;
-    return (
-      target instanceof Element &&
-      Boolean(target.closest('[data-prevent-pull-refresh="true"]'))
-    );
-  };
-
-  // Pull-to-refresh: mobile dashboard + transactions — top-of-page vertical pull.
-  const pullRefreshEnabled = pathname === `/${sessionId}` || pathname === `/${sessionId}/transactions`;
-  const isAtScrollTop = () =>
-    (window.scrollY || document.documentElement.scrollTop || 0) <= 4;
-
-  const onTouchStart = (event: React.TouchEvent) => {
-    if (!pullRefreshEnabled || isRefreshing) {
-      setStartY(null);
-      return;
-    }
-    if (shouldIgnorePullToRefresh(event) || !isAtScrollTop()) {
-      setStartY(null);
-      return;
-    }
-    setStartY(event.touches[0]?.clientY ?? null);
-    startXRef.current = event.touches[0]?.clientX ?? null;
-    setPullDistance(0);
-  };
-
-  const onTouchMove = (event: React.TouchEvent) => {
-    if (startY === null || !pullRefreshEnabled) return;
-    const touch = event.touches[0];
-    const currentY = touch?.clientY ?? startY;
-    const delta = currentY - startY;
-    // Horizontal-ish drag (carousel/table scroll) must not arm refresh.
-    const dx = Math.abs((touch?.clientX ?? startXRef.current ?? 0) - (startXRef.current ?? 0));
-    if (delta <= 0) {
-      setPullDistance(0);
-      return;
-    }
-    // Deadzone: ignore micro-movements / taps with tiny finger drift.
-    if (delta < 10) {
-      setPullDistance(0);
-      return;
-    }
-    if (dx > 18 && dx > delta * 0.6) {
-      // Horizontal scroll intent — disarm refresh for this gesture.
-      setStartY(null);
-      startXRef.current = null;
-      setPullDistance(0);
-      return;
-    }
-    const next = Math.min(120, Math.pow(delta, 0.92));
-    // One light tick as the pull crosses the release point, where supported.
-    if (pullDistance < PULL_REFRESH_THRESHOLD && next >= PULL_REFRESH_THRESHOLD) {
-      try {
-        navigator.vibrate?.(8);
-      } catch {}
-    }
-    setPullDistance(next);
-  };
-
-  const onTouchEnd = () => {
-    if (startY === null) {
-      setStartY(null);
-      return;
-    }
-    if (pullDistance >= PULL_REFRESH_THRESHOLD) {
-      void handleManualRefresh();
-    }
-    setPullDistance(0);
-    setStartY(null);
-    startXRef.current = null;
-  };
+  // Every page, except where a downward pull means something else: the
+  // full-screen chat and the map pages (the pull pans the map).
+  const isMapPage = isMapFullscreen || pathname === `/${sessionId}/map-analysis`;
+  const pullRefreshEnabled = !isChatFullscreen && !isMapPage && !pinLockRequired;
+  const pullToRefresh = usePullToRefresh({ enabled: pullRefreshEnabled, onRefresh: handleManualRefresh });
 
   if (isAuthPage) {
     return (
@@ -3526,9 +3377,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <main
           key={refreshKey}
           ref={mainRef}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
+          {...pullToRefresh.handlers}
           className={cn(
             // overflow-x-clip avoids creating a sticky-blocking scrollport (unlike overflow-x-hidden)
             "relative w-full flex-1 overflow-visible overscroll-none lg:overflow-y-auto lg:overflow-x-clip",
@@ -3546,8 +3395,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           )}
         >
           {/* Pull to refresh indicator */}
-          {pullRefreshEnabled && !isChatFullscreen && !isMapFullscreen && (
-            <PullToRefreshIndicator pullDistance={pullDistance} refreshing={isRefreshing} lang={lang} />
+          {pullRefreshEnabled && (
+            <PullToRefreshIndicator pullDistance={pullToRefresh.pullDistance} refreshing={pullToRefresh.refreshing} lang={lang} />
           )}
 
           {showMobileHeader && (
@@ -3616,7 +3465,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             children
           ) : (
             <div className="portal-page-frame">
-              {noticeBannerNode}
               {children}
             </div>
           )}
@@ -3883,17 +3731,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               )}
               onClick={(event) => event.stopPropagation()}
             >
-              {/* ── Top Drag Indicator Bar & Close Button ── */}
-              <div className="relative flex items-center justify-between px-5 pt-3 pb-1">
-                <div className="w-9" />
-                <div className="h-1.5 w-12 rounded-full bg-[var(--border-strong)] opacity-60" />
+              {/* ── Title and close ── */}
+              <div className="flex items-center justify-between px-5 pb-1 pt-[calc(env(safe-area-inset-top,0px)+1rem)]">
+                <h2 className="text-2xl font-black tracking-tight text-[var(--text)]">{menuTitle}</h2>
                 <button
                   type="button"
                   onClick={requestMobileMenuClose}
-                  className="flex h-9 w-9 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] active:scale-95"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--text)] transition-all active:scale-90"
                   aria-label="Tutup menu"
                 >
-                  <X size={16} />
+                  <X size={18} />
                 </button>
               </div>
 
@@ -3998,72 +3845,69 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   </div>
                 </div>
 
-                {/* ── Quick Controls Toolbar: Lang, Theme, WhatsNew, Settings ── */}
-                <div className="mt-3.5 flex w-full items-stretch overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] shadow-2xs">
-                  {/* Language */}
+                {/* ── Quick controls: language, theme, what's new, settings ── */}
+                <div className="mt-3 grid grid-cols-4 gap-2">
                   <button
                     type="button"
                     onClick={() => setLang(lang === "EN" ? "BM" : "EN")}
-                    className="flex flex-1 flex-col items-center justify-center gap-1 border-r border-[var(--border)] py-2.5 text-center text-[var(--text)] transition-colors hover:bg-[var(--surface-tint-strong)] active:bg-[var(--surface-tint-strong)]"
+                    className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-[var(--surface-tint)] py-3 text-[var(--text)] transition active:scale-95 active:bg-[var(--surface-tint-strong)]"
                   >
-                    <Globe size={18} className="text-[var(--text)]" />
-                    <span className="text-[10px] font-black uppercase">{lang}</span>
+                    <Globe size={18} />
+                    <span className="text-[11px] font-bold">{lang}</span>
                   </button>
-
-                  {/* Theme Mode */}
-                  <div className="flex flex-1 flex-col items-center justify-center gap-1 border-r border-[var(--border)] py-2.5 text-center text-[var(--text)]">
+                  <div className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-[var(--surface-tint)] py-3 text-[var(--text)]">
                     <ThemeToggle
                       compact
                       inverted={!isLight}
                       className="h-[18px] w-[18px] bg-transparent border-0 shadow-none p-0"
                     />
-                    <span className="text-[10px] font-bold text-[var(--muted)]">{lang === "BM" ? "Tema" : "Theme"}</span>
+                    <span className="text-[11px] font-bold">{lang === "BM" ? "Tema" : "Theme"}</span>
                   </div>
-
-                  {/* What's New */}
                   <button
                     type="button"
                     onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/whatsnew`))}
-                    className="flex flex-1 flex-col items-center justify-center gap-1 border-r border-[var(--border)] py-2.5 text-center text-[var(--text)] transition-colors hover:bg-[var(--surface-tint-strong)] active:bg-[var(--surface-tint-strong)]"
+                    className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-[var(--surface-tint)] py-3 text-[var(--text)] transition active:scale-95 active:bg-[var(--surface-tint-strong)]"
                   >
-                    <ScrollText size={18} className="text-[var(--text)]" />
-                    <span className="truncate px-1 text-[10px] font-bold">WhatsNew</span>
+                    <ScrollText size={18} />
+                    <span className="truncate px-1 text-[11px] font-bold">{lang === "BM" ? "Baharu" : "What's new"}</span>
                   </button>
-
-                  {/* Settings */}
                   <button
                     type="button"
                     onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/settings`))}
-                    className="flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-center text-[var(--text)] transition-colors hover:bg-[var(--surface-tint-strong)] active:bg-[var(--surface-tint-strong)]"
+                    className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-[var(--surface-tint)] py-3 text-[var(--text)] transition active:scale-95 active:bg-[var(--surface-tint-strong)]"
                   >
-                    <Settings size={18} className="text-[var(--text)]" />
-                    <span className="text-[10px] font-bold">{lang === "BM" ? "Tetapan" : "Settings"}</span>
+                    <Settings size={18} />
+                    <span className="text-[11px] font-bold">{lang === "BM" ? "Tetapan" : "Settings"}</span>
                   </button>
                 </div>
               </div>
 
-              {/* ── Main Sheet Content: Grouped Cards ── */}
-              <div className="px-4 pb-12 space-y-3.5 pt-1">
-                {/* ── Cat playground: the same chip the old phone home had; its arena opens above this sheet ── */}
-                <div className="mt-3">
-                  <CatPlayground lang={lang === "BM" ? "BM" : "EN"} userKey={sessionId} compact presentation="chip" />
-                </div>
-
-                {/* ── Nav cards: one card per group, no headings ── */}
+              {/* ── Destinations: five named groups, one style ── */}
+              <div className="space-y-5 px-4 pb-12 pt-3">
                 {([
-                    [
+                  {
+                    title: lang === "BM" ? "Kewangan" : "Money",
+                    items: [
                       { name: t.budget, href: `/${sessionId}/budget`, icon: Wallet },
                       { name: t.walletSettings, href: `/${sessionId}/wallet-settings`, icon: CreditCard },
-                      { name: lang === "BM" ? "Rekonsiliasi" : "Reconcile", href: `/${sessionId}/bank-reconciliation`, icon: FileSpreadsheet, badge: "AI" },
-                      { name: lang === "BM" ? "Cukai" : "Tax", href: `/${sessionId}/tax`, icon: Landmark },
                       { name: t.categories, href: `/${sessionId}/categories`, icon: Grid2X2 },
+                      { name: lang === "BM" ? "Cukai" : "Tax", href: `/${sessionId}/tax`, icon: Landmark },
+                      { name: lang === "BM" ? "Rekonsiliasi" : "Reconcile", href: `/${sessionId}/bank-reconciliation`, icon: FileSpreadsheet, badge: "AI" },
+                    ],
+                  },
+                  {
+                    title: lang === "BM" ? "Bayaran & komitmen" : "Payments & commitments",
+                    items: [
                       { name: "Subscription", href: `/${sessionId}/subscription`, icon: CreditCard },
                       { name: "Loan", href: `/${sessionId}/loan`, icon: Landmark },
                       { name: "BNPL", href: `/${sessionId}/bnpl`, icon: CreditCard },
                       { name: "Split Bill", href: `/${sessionId}/split-bills`, icon: Users },
                       { name: t.debt, href: `/${sessionId}/debt`, icon: HandCoins },
                     ],
-                    [
+                  },
+                  {
+                    title: lang === "BM" ? "Peribadi" : "Personal",
+                    items: [
                       { name: lang === "BM" ? "Kenderaan" : "Vehicle", href: `/${sessionId}/vehicle`, icon: Car },
                       { name: lang === "BM" ? "Barang" : "Inventory", href: `/${sessionId}/inventory`, icon: Package },
                       { name: lang === "BM" ? "Waranti" : "Warranty", href: `/${sessionId}/warranty`, icon: Shield },
@@ -4071,20 +3915,30 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       { name: lang === "BM" ? "Kesihatan" : "Health", href: `/${sessionId}/health`, icon: Heart },
                       { name: lang === "BM" ? "Lencana" : "Badges", href: `/${sessionId}/badges`, icon: Award },
                     ],
-                    [
+                  },
+                  {
+                    title: lang === "BM" ? "Peta & tempat" : "Maps & places",
+                    items: [
+                      { name: lang === "BM" ? "Peta" : "Map", href: `/${sessionId}/map`, icon: MapPinned },
+                      { name: lang === "BM" ? "Tempat Saya" : "My Places", href: `/${sessionId}/places`, icon: MapPin },
+                      { name: lang === "BM" ? "Analisis" : "Analysis", href: `/${sessionId}/map-analysis`, icon: BarChart3 },
+                    ],
+                  },
+                  {
+                    title: lang === "BM" ? "Alat & bantuan" : "Tools & help",
+                    items: [
                       { name: lang === "BM" ? "Galeri" : "Gallery", href: `/${sessionId}/receipts`, icon: Images },
                       { name: lang === "BM" ? "Kalkulator" : "Calculator", action: "calculator", icon: CalculatorIcon },
                       { name: lang === "BM" ? "Command Bot" : "Bot Command", href: `/${sessionId}/bot-command`, icon: Bot },
                       { name: lang === "BM" ? "Request & Tiket" : "Request & Ticket", href: `/${sessionId}/request`, icon: Send },
                       { name: "Connector", href: `/${sessionId}/connector`, icon: Bot },
                     ],
-                ] as { name: string; href?: string; icon: typeof Wallet; badge?: string; action?: string }[][]).map((group, groupIndex) => (
-                  <section
-                    key={groupIndex}
-                    className={cn("rounded-3xl border border-[var(--border)] p-4 shadow-sm", "bg-[var(--card)]")}
-                  >
-                    <div className="grid grid-cols-4 gap-x-2 gap-y-4">
-                      {group.map((item) => {
+                  },
+                ] as { title: string; items: { name: string; href?: string; icon: typeof Wallet; badge?: string; action?: string }[] }[]).map((group) => (
+                  <section key={group.title} aria-label={group.title}>
+                    <h3 className="mb-2 px-2 text-xs font-bold text-[var(--muted)]">{group.title}</h3>
+                    <div className="grid grid-cols-4 gap-x-2 gap-y-4 rounded-[1.5rem] bg-[var(--card)] p-4 shadow-[var(--shadow-card)]">
+                      {group.items.map((item) => {
                         const isCurrent = Boolean(item.href) && pathname === item.href;
                         return (
                           <button
@@ -4104,35 +3958,31 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                                 router.push(item.href!);
                               });
                             }}
-                            className="group relative flex min-w-0 flex-col items-center gap-1.5 text-center transition-all duration-200 active:scale-90"
+                            className="group relative flex min-w-0 flex-col items-center gap-1.5 text-center transition-transform duration-150 active:scale-90"
                           >
-                            <div
+                            <span
                               className={cn(
-                                "relative flex h-14 w-14 items-center justify-center rounded-2xl border shadow-2xs transition-all duration-200 group-hover:scale-105",
+                                "relative flex h-12 w-12 items-center justify-center rounded-2xl transition-colors",
                                 isCurrent
-                                  ? "border-[var(--text)] bg-[var(--text)] text-[var(--bg)] shadow-sm ring-2 ring-[var(--text)]/20"
-                                  : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] group-hover:bg-[var(--surface-tint-strong)]"
+                                  ? "bg-[var(--text)] text-[var(--bg)]"
+                                  : "bg-[var(--surface-tint)] text-[var(--text)] group-active:bg-[var(--surface-tint-strong)]"
                               )}
                             >
-                              <item.icon
-                                size={26}
-                                strokeWidth={1.9}
-                                className="shrink-0 transition-transform group-hover:scale-110"
-                              />
+                              <item.icon size={22} strokeWidth={1.9} className="shrink-0" />
                               {item.badge && !isCurrent && (
-                                <span className="absolute -top-1 -right-1 flex h-4 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--text)] px-1 text-[8px] font-black text-[var(--bg)] shadow-xs">
+                                <span className="absolute -right-1.5 -top-1.5 flex h-4 items-center justify-center rounded-full bg-[var(--text)] px-1 text-[8px] font-black text-[var(--bg)]">
                                   {item.badge}
                                 </span>
                               )}
-                            </div>
-                            <p
+                            </span>
+                            <span
                               className={cn(
-                                "w-full line-clamp-2 px-0.5 text-[11px] font-bold leading-tight transition-colors",
-                                isCurrent ? "text-[var(--text)] font-black" : "text-[var(--text)]"
+                                "w-full line-clamp-2 px-0.5 text-[11px] leading-tight text-[var(--text)]",
+                                isCurrent ? "font-black" : "font-semibold"
                               )}
                             >
                               {item.name}
-                            </p>
+                            </span>
                           </button>
                         );
                       })}
@@ -4140,35 +3990,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   </section>
                 ))}
 
-                    {/* ── SheetCard 3: Peta & Lokasi (Maps & Places) ── */}
-                    <section className={cn("rounded-3xl border border-[var(--border)] p-3.5 shadow-sm", "bg-[var(--card)]")}>
-                      <div className="mb-2.5 flex items-center gap-2 text-[var(--text)]">
-                        <div className="flex h-5 w-5 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] text-[var(--text)]">
-                          <MapPinned size={12} strokeWidth={2.2} />
-                        </div>
-                        <span className="text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                          {lang === "BM" ? "Peta & Lokasi" : "Maps & Places"}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        {[
-                          { name: lang === "BM" ? "Peta" : "Map", href: `/${sessionId}/map`, icon: MapPinned },
-                          { name: lang === "BM" ? "Tempat Saya" : "My Places", href: `/${sessionId}/places`, icon: MapPin },
-                          { name: lang === "BM" ? "Analisis" : "Analysis", href: `/${sessionId}/map-analysis`, icon: BarChart3 },
-                        ].map((item) => (
-                          <button
-                            key={item.href}
-                            type="button"
-                            onClick={() => requestMobileMenuCloseThen(() => router.push(item.href))}
-                            className="flex min-w-0 flex-col items-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2.5 text-center text-[var(--text)] shadow-2xs transition-all hover:bg-[var(--surface-tint-strong)] active:scale-[0.96]"
-                          >
-                            <item.icon size={20} strokeWidth={1.9} />
-                            <span className="truncate text-xs font-bold">{item.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </section>
-
+                {/* The cat's arena opens above this sheet */}
+                <CatPlayground lang={lang === "BM" ? "BM" : "EN"} userKey={sessionId} compact presentation="chip" />
               </div>
             </aside>
           </div>

@@ -23,7 +23,7 @@ SHELL = (
 ).read_text(encoding="utf-8")
 
 TOP = SHELL[
-    SHELL.index("Profile Card: avatar left") : SHELL.index("Nav cards: one card per group")
+    SHELL.index("Profile Card: avatar left") : SHELL.index("Destinations: five named groups")
 ]
 
 
@@ -58,11 +58,10 @@ def test_the_switcher_is_a_bottom_sheet():
     assert "rounded-t-3xl" in TOP
 
 
-def test_the_toolbar_is_one_divided_bar():
-    assert "grid-cols-4" not in TOP, "the four separate tiles are gone"
-    assert "overflow-hidden rounded-2xl" in TOP, "one bar with the corners trimmed"
-    assert TOP.count("flex-1 flex-col items-center") == 4, "four equal segments"
-    assert TOP.count("border-r border-[var(--border)]") == 3, "dividers between, not after"
+def test_the_toolbar_is_four_plain_buttons():
+    assert 'mt-3 grid grid-cols-4 gap-2' in TOP, "four equal buttons in a row"
+    assert "border-r border-[var(--border)]" not in TOP, "no divided bar"
+    assert TOP.count("rounded-2xl bg-[var(--surface-tint)]") == 4, "four buttons in one style"
 
 
 def test_every_toolbar_segment_has_a_glyph_and_a_label():
@@ -71,10 +70,6 @@ def test_every_toolbar_segment_has_a_glyph_and_a_label():
     assert "ThemeToggle" in TOP
     assert 'lang === "BM" ? "Tema" : "Theme"' in TOP
     assert 'lang === "BM" ? "Tetapan" : "Settings"' in TOP
-
-
-def test_the_toolbar_is_no_longer_narrower_than_the_cards():
-    assert "max-w-[340px]" not in TOP, "the toolbar used to stop short of the nav cards"
 
 
 def test_the_four_controls_still_work():
@@ -89,8 +84,7 @@ if __name__ == "__main__":
     test_the_name_is_large()
     test_the_name_is_the_trigger_and_there_is_no_pill()
     test_the_switcher_is_a_bottom_sheet()
-    test_the_toolbar_is_one_divided_bar()
+    test_the_toolbar_is_four_plain_buttons()
     test_every_toolbar_segment_has_a_glyph_and_a_label()
-    test_the_toolbar_is_no_longer_narrower_than_the_cards()
     test_the_four_controls_still_work()
     print("sheet header OK")

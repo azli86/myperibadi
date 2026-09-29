@@ -61,15 +61,16 @@ assert 'title={tr("Semua Dompet", "All Wallets")}' in LITE
 
 # 6. The top right holds the announcement bell, not the avatar. It opens a
 # panel from the right with the history, a tab per type, and each title opens
-# the full announcement page. The Shell's inline banner yields to the bell.
+# the full announcement page.
 assert "UserAvatar" not in LITE, "the bell replaced the avatar"
 assert "useAnnouncements()" in LITE and "<AnnouncementList" in LITE
 assert '"translateX(100%)"' in LITE, "the panel slides in from the right"
 assert 'className="absolute inset-0 flex flex-col bg-[var(--page-bg)]' in LITE, "the panel opens full screen"
 assert 'useOverlayBackClose({ id: "mobile-home-notices"' in LITE
-assert '"portal:notice-banner-inline", { detail: { hidden: true } }' in LITE
 SHELL = (HOME_DIR.parents[1] / "components" / "layout" / "Shell.tsx").read_text(encoding="utf-8")
-assert "&& !noticeInlineHidden" in SHELL, "the Shell banner yields to the bell"
+# The Shell's inline notice banner is gone: announcements live behind the
+# bell. It re-fetched on every page change and every 30s, and blinked.
+assert "noticeBannerNode" not in SHELL and "/api/notice-banners" not in SHELL
 LIST = (HOME_DIR.parents[1] / "components" / "announcements" / "AnnouncementList.tsx").read_text(encoding="utf-8")
 for key in ('key: "info", label: "Info"', 'key: "warning", label: "Warning"', 'key: "alert", label: "Alert"'):
     assert key in LIST, f"missing tab {key}"
@@ -77,7 +78,7 @@ assert 'key: "all", label: tr("Semua", "All")' in LIST, "an All tab comes first"
 assert 'useState<Tab>("all")' in LIST, "the list opens on All"
 assert 'tr("Hari ini", "Today")' in LIST and 'tr("Semalam", "Yesterday")' in LIST, "grouped by day like recent activity"
 assert "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl" in LIST, "a large icon on the left"
-assert '? "bg-transparent text-[var(--muted)]"' in LIST and ": TONE_STYLE[t.key].tabActive" in LIST, \
+assert '? "bg-transparent text-[var(--muted)]"' in LIST and ": TONES[t.key].tabActive" in LIST, \
     "idle tabs are plain grey text; only the active one is a coloured pill"
 assert "text-[0.625rem] font-bold transition-colors" in LIST, "small tab text"
 assert 'tabActive: "bg-amber-400 text-amber-950"' in LIST, "white on amber is under 3:1"
@@ -93,33 +94,38 @@ assert 'message.split(/\\n\\s*\\n/)[0]' in LIST, "only the first paragraph is te
 # the dashboard banner is hidden from lg up (tablets, with no rail, keep it).
 assert "<DesktopAnnouncementBell sessionId={sessionId} lang={lang} />" in SHELL
 assert SHELL.index('{lang === "BM" ? "Tetapan" : "Settings"}</span>') < SHELL.index("<DesktopAnnouncementBell"), "the bell follows Settings"
-assert "shadow-[var(--shadow-soft)] lg:hidden" in SHELL, "the dashboard banner yields to the rail bell on desktop"
 
 # 9. Tapping the balance opens the old dashboard's expense charts popup
 # straight away (no small chart cards); its chart library loads only then.
 assert "miniCharts" not in LITE, "no small chart cards on the phone home"
-assert LITE.count("onClick={() => setChartsOpen(true)}") == 1, "the balance opens the popup"
+assert LITE.count("onClick={() => setChartsOpen(true)}") == 2, "the balance and the Balance Info link open the popup"
+assert 'tr("Info Baki", "Balance Info")' in LITE
 assert 'dynamic(() => import("./MobileHomeCharts")' in LITE and "ssr: false" in LITE
 CHARTS = (HOME_DIR / "MobileHomeCharts.tsx").read_text(encoding="utf-8")
 assert 'from "react-chartjs-2"' in CHARTS, "the popup keeps the old bar charts"
-
-# 10. After login the Shell mounts in the same commit as this home, and child
-# effects run first, so the "hide the banner" event fired before the Shell was
-# listening: the banner showed on first login and vanished after a refresh.
-# A flag on <html> now carries it regardless of mount order.
-assert 'document.documentElement.dataset.noticeInline = "hidden"' in LITE
-assert 'if (document.documentElement.dataset.noticeInline === "hidden") setNoticeInlineHidden(true);' in SHELL
 
 # 11. The phone home is the only home on phones: no ?home= override, and the
 # old dashboard's phone layout is gone from DashboardHome.
 assert "home=" not in PAGE and 'get("home")' not in PAGE, "no ?home= override"
 assert "MOBILE VIEW (md:hidden)" not in DASH and "showMobileWalletDeck" not in DASH
 
-# 12. The cat widget from the old phone home lives in the menu sheet, above
-# the nav cards, and its arena opens above that sheet (z-500).
-menu = SHELL[SHELL.index("Quick Controls Toolbar"):SHELL.index("Nav cards: one card per group")]
+# 12. The cat widget from the old phone home lives in the menu sheet, after
+# the nav groups, and its arena opens above that sheet (z-500).
+menu = SHELL[SHELL.index("Destinations: five named groups"):SHELL.index("{showAddModal && (")]
 assert 'presentation="chip"' in menu and "<CatPlayground" in menu
 CAT = (HOME_DIR.parents[1] / "components" / "dashboard" / "CatPlayground.tsx").read_text(encoding="utf-8")
 assert "fixed inset-0 z-[600]" in CAT, "the arena must open above the z-500 menu sheet"
+
+# 13. The phone home follows the app theme (its own fixed palette was tried
+# and rolled back), and carries no blue: the charts and the bell's Info tone
+# use orange.
+assert not (HOME_DIR / "mobile-home-palette.ts").exists()
+assert "root.style.setProperty" not in LITE and "theme-color" not in LITE
+import re as _re
+BLUE = r"#(2563eb|93c5fd|60a5fa|3b82f6|0ea5e9|0284c7|06b6d4|0369a1)"
+home_tones = LIST[LIST.index("const HOME_TONE_STYLE"):LIST.index("/**", LIST.index("const HOME_TONE_STYLE"))]
+assert not _re.search(BLUE, CHARTS, _re.I), "blue in the charts"
+assert "sky" not in home_tones, "the home's Info tone is not sky"
+assert 'palette="home"' in LITE
 
 print("mobile home OK")

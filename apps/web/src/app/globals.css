@@ -3512,3 +3512,159 @@ div:has(> .app-sheet-panel) {
   line-height: 1.2 !important;
   min-height: 2.25rem;
 }
+
+/* ── Page heroes take the primary button's colours ──
+   The heroes are drawn as dark cards, which sink into the dark theme. There
+   they use the primary button's grey and its dark text instead, so a hero
+   always matches the buttons (the light theme's button is near-black, which is
+   what the heroes already are). The text colours are set on every descendant,
+   because each page hard-codes its own light text; chips and borders drawn in
+   translucent white become translucent black. */
+html[data-theme="dark"] :is(
+  .balance-hero,
+  .budget-hero,
+  .debt-hero,
+  .wallet-hero,
+  .loan-detail-hero,
+  .subscription-hero,
+  .inventory-hero,
+  .bnpl-hero,
+  .splitbill-hero,
+  .request-hero,
+  .map-analysis-hero,
+  .event-hero,
+  .vehicle-hero-card,
+  .warranty-hero
+) {
+  background: var(--btn-primary-bg) !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  color: var(--btn-primary-text) !important;
+  box-shadow: none !important;
+}
+html[data-theme="dark"] :is(
+  .balance-hero,
+  .budget-hero,
+  .debt-hero,
+  .wallet-hero,
+  .loan-detail-hero,
+  .subscription-hero,
+  .inventory-hero,
+  .bnpl-hero,
+  .splitbill-hero,
+  .request-hero,
+  .map-analysis-hero,
+  .event-hero,
+  .vehicle-hero-card,
+  .warranty-hero
+) :is(p, span, h1, h2, h3, h4, div, a, button, svg, strong, small, label, li) {
+  color: var(--btn-primary-text) !important;
+}
+html[data-theme="dark"] :is(
+  .balance-hero,
+  .budget-hero,
+  .debt-hero,
+  .wallet-hero,
+  .loan-detail-hero,
+  .subscription-hero,
+  .inventory-hero,
+  .bnpl-hero,
+  .splitbill-hero,
+  .request-hero,
+  .map-analysis-hero,
+  .event-hero,
+  .vehicle-hero-card,
+  .warranty-hero
+) :is([class*="bg-white/"], [class*="bg-[rgba(255,255,255"]) {
+  background-color: rgba(13, 13, 13, 0.1) !important;
+}
+html[data-theme="dark"] :is(
+  .balance-hero,
+  .budget-hero,
+  .debt-hero,
+  .wallet-hero,
+  .loan-detail-hero,
+  .subscription-hero,
+  .inventory-hero,
+  .bnpl-hero,
+  .splitbill-hero,
+  .request-hero,
+  .map-analysis-hero,
+  .event-hero,
+  .vehicle-hero-card,
+  .warranty-hero
+) :is([class*="border-white"], [class*="ring-white"]) {
+  border-color: rgba(13, 13, 13, 0.16) !important;
+}
+/* Solid buttons inside a hero flip: dark on the grey card, their text grey. */
+html[data-theme="dark"] :is(
+  .balance-hero,
+  .budget-hero,
+  .debt-hero,
+  .wallet-hero,
+  .loan-detail-hero,
+  .subscription-hero,
+  .inventory-hero,
+  .bnpl-hero,
+  .splitbill-hero,
+  .request-hero,
+  .map-analysis-hero,
+  .event-hero,
+  .vehicle-hero-card,
+  .warranty-hero
+) :is(.hero-cta-primary, .debt-hero-btn, [class*="bg-[var(--btn-primary-bg)]"], [class*="bg-[var(--accent2)]"]) {
+  background: var(--btn-primary-text) !important;
+  color: var(--btn-primary-bg) !important;
+}
+html[data-theme="dark"] :is(
+  .balance-hero,
+  .budget-hero,
+  .debt-hero,
+  .wallet-hero,
+  .loan-detail-hero,
+  .subscription-hero,
+  .inventory-hero,
+  .bnpl-hero,
+  .splitbill-hero,
+  .request-hero,
+  .map-analysis-hero,
+  .event-hero,
+  .vehicle-hero-card,
+  .warranty-hero
+) :is(.hero-cta-primary, .debt-hero-btn, [class*="bg-[var(--btn-primary-bg)]"], [class*="bg-[var(--accent2)]"]) * {
+  color: var(--btn-primary-bg) !important;
+}
+/* The shimmering total is text-clipped gradient: give it a dark gradient. */
+html[data-theme="dark"] .balance-hero .balance-hero-amount {
+  background-image: linear-gradient(90deg, #0d0d0d 0%, #0d0d0d 100%) !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── Phone home: a three-colour wash (the logo's cyan, blue and navy) behind the top ──
+   The status bar's colour is one fixed value per theme and cannot follow a
+   gradient, so the wash starts transparent under it and only fades in a
+   little lower down: the top of the screen always matches the status bar. */
+.home-mesh {
+  position: absolute;
+  left: -1rem;
+  right: -1rem;
+  top: -0.35rem;
+  height: 27rem;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: -1;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6rem, #000 52%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 6rem, #000 52%, transparent 100%);
+}
+.home-mesh > span {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(56px);
+}
+.home-mesh > span:nth-child(1) { left: -22%; top: 4%; width: 22rem; height: 22rem; background: #7fe6fb; opacity: 0.8; }
+.home-mesh > span:nth-child(2) { right: -26%; top: 10%; width: 21rem; height: 21rem; background: #8fb4ff; opacity: 0.85; }
+.home-mesh > span:nth-child(3) { left: 18%; top: 44%; width: 20rem; height: 16rem; background: #b3bdf0; opacity: 0.8; }
+html[data-theme="dark"] .home-mesh > span:nth-child(1) { background: #0a3f96; opacity: 0.65; }
+html[data-theme="dark"] .home-mesh > span:nth-child(2) { background: #087aa8; opacity: 0.5; }
+html[data-theme="dark"] .home-mesh > span:nth-child(3) { background: #16206e; opacity: 0.7; }

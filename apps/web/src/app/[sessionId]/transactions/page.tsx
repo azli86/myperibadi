@@ -937,13 +937,21 @@ const currentCycleKeyStr = useMemo(
  }
 
  const [currentPage, setCurrentPage] = useState(1)
- const [mobileVisibleCount, setMobileVisibleCount] = useState(20)
+ // Phones draw the first 10 rows, then 10 more each time the list nears its end.
+ const MOBILE_PAGE = 10
+ const [mobileVisibleCount, setMobileVisibleCount] = useState(MOBILE_PAGE)
+ // More rows load only when the user scrolls near the end (or taps the
+ // button there). An IntersectionObserver fired as soon as the page opened,
+ // because a short list leaves the marker on screen, and kept adding pages
+ // until the screen filled, so it looked like everything loaded at once.
+ const mobileRequestedCountRef = useRef(0)
  const mobileLoadMoreRef = useRef<HTMLDivElement | null>(null)
  const itemsPerPage = 20
 
  useEffect(() => {
  setCurrentPage(1)
- setMobileVisibleCount(20)
+ setMobileVisibleCount(MOBILE_PAGE)
+ mobileRequestedCountRef.current = 0
  }, [searchQuery, selectedMonth, selectedType, selectedCategory, selectedWallet, startDate, endDate])
 
  useEffect(() => {
@@ -1367,23 +1375,22 @@ const currentCycleKeyStr = useMemo(
  () => buildGroupedTransactions(mobileVisibleTxns),
  [langT.noDate, mobileVisibleTxns],
  )
+ const loadMoreMobile = () => {
+ // One page per list size: a burst of scroll events adds a single page.
+ if (mobileRequestedCountRef.current === mobileVisibleCount) return
+ mobileRequestedCountRef.current = mobileVisibleCount
+ setMobileVisibleCount((prev) => Math.min(prev + MOBILE_PAGE, filteredTxns.length))
+ }
  useEffect(() => {
  if (typeof window === "undefined") return
- const target = mobileLoadMoreRef.current
- if (!target) return
  if (mobileVisibleCount >= filteredTxns.length) return
-
- const observer = new IntersectionObserver(
- (entries) => {
- const entry = entries[0]
- if (!entry?.isIntersecting) return
- setMobileVisibleCount((prev) => Math.min(prev + 20, filteredTxns.length))
- },
- { root: null, rootMargin: "160px 0px", threshold: 0.01 }
- )
-
- observer.observe(target)
- return () => observer.disconnect()
+ const onScroll = () => {
+ const marker = mobileLoadMoreRef.current
+ if (marker && marker.getBoundingClientRect().top < window.innerHeight + 80) loadMoreMobile()
+ }
+ window.addEventListener("scroll", onScroll, { passive: true })
+ return () => window.removeEventListener("scroll", onScroll)
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [filteredTxns.length, mobileVisibleCount])
 
  return (
@@ -2573,10 +2580,15 @@ const currentCycleKeyStr = useMemo(
  <div className="flex flex-col items-center gap-2 py-2 md:hidden">
  {mobileVisibleCount < filteredTxns.length ? (
  <>
- <div ref={mobileLoadMoreRef} className="h-4 w-full" />
- <p className="text-[0.625rem] font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
- {lang === "EN" ? "Loading more" : "Memuat lagi"}
- </p>
+ <div ref={mobileLoadMoreRef} className="h-1 w-full" />
+ <button
+ type="button"
+ onClick={loadMoreMobile}
+ className="mx-auto flex min-h-11 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] px-5 text-xs font-bold text-[var(--text)] transition active:scale-95"
+ >
+ {lang === "EN" ? `Show ${MOBILE_PAGE} more` : `Lihat ${MOBILE_PAGE} lagi`}
+ <span className="ml-1.5 tabular-nums text-[var(--muted)]">({filteredTxns.length - mobileVisibleCount})</span>
+ </button>
  </>
  ) : filteredTxns.length > 0 ? (
  <p className="text-[0.625rem] font-semibold uppercase tracking-[0.26em] text-[var(--muted)]">END</p>

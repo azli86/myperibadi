@@ -108,8 +108,8 @@ export default function MobileHomeCharts({ transactions, lang, timezone }: { tra
                 datasets: [
                   {
                     data: monthly.map((r) => r.total),
-                    // This month in a strong blue, the rest lighter.
-                    backgroundColor: monthly.map((_, i) => (i === month - 1 ? "#2563eb" : "#93c5fd")),
+                    // This month in a strong orange, the rest lighter; no blue on the phone home.
+                    backgroundColor: monthly.map((_, i) => (i === month - 1 ? "#ea580c" : "rgba(234,88,12,0.35)")),
                     borderRadius: 8,
                     borderSkipped: false,
                     maxBarThickness: 30,

@@ -34,6 +34,19 @@ export const TONE_STYLE = {
   },
 } as const
 
+// Tones on the phone home: the app's own, except Info, which takes orange
+// instead of sky because the home carries no blue.
+const HOME_TONE_STYLE = {
+  ...TONE_STYLE,
+  info: {
+    ...TONE_STYLE.info,
+    cls: "bg-orange-500/12 text-orange-700 dark:text-orange-300",
+    bar: "bg-orange-500",
+    tab: "text-orange-700 dark:text-orange-300",
+    tabActive: "bg-orange-600 text-white",
+  },
+} as const
+
 /**
  * Announcement history with an All tab and a tab per type (Info, Warning,
  * Alert), grouped by day the way the home screen's recent activity is.
@@ -45,6 +58,7 @@ export function AnnouncementList({
   sessionId,
   newAbove = Infinity,
   onNavigate,
+  palette = "app",
 }: {
   items: Announcement[] | null
   lang: string
@@ -52,7 +66,10 @@ export function AnnouncementList({
   /** Notices with an id above this are marked new. */
   newAbove?: number
   onNavigate?: () => void
+  /** "home": the phone home's tones (Info in orange, not sky). */
+  palette?: "app" | "home"
 }) {
+  const TONES = palette === "home" ? HOME_TONE_STYLE : TONE_STYLE
   const isBm = lang === "BM"
   const tr = (bm: string, en: string) => (isBm ? bm : en)
   const [tab, setTab] = useState<Tab>("all")
@@ -131,7 +148,7 @@ export function AnnouncementList({
                   ? "bg-transparent text-[var(--muted)]"
                   : t.key === "all"
                     ? "bg-[var(--text)] text-[var(--bg)]"
-                    : TONE_STYLE[t.key].tabActive
+                    : TONES[t.key].tabActive
               )}
             >
               {t.label}
@@ -170,7 +187,7 @@ export function AnnouncementList({
                   // A teaser, not the notice: its first paragraph on one line.
                   // The full text is on the announcement page.
                   const teaser = message.split(/\n\s*\n/)[0].replace(/\s+/g, " ").trim()
-                  const tone = TONE_STYLE[announcementTone(n.type, lang).key]
+                  const tone = TONES[announcementTone(n.type, lang).key]
                   const isNew = n.id > newAbove
                   return (
                     <li key={n.id}>
@@ -193,7 +210,12 @@ export function AnnouncementList({
                             <span aria-hidden>·</span>
                             <span className="text-[var(--text-soft)]">{tr("Baca penuh", "Read more")}</span>
                             {n.is_current ? (
-                              <span className="rounded-full bg-emerald-500/12 px-1.5 py-0.5 text-[0.6rem] font-extrabold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                              <span
+                          className={cn(
+                            "rounded-full px-1.5 py-0.5 text-[0.6rem] font-extrabold uppercase tracking-wider",
+                            "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300"
+                          )}
+                        >
                                 {tr("Aktif", "Live")}
                               </span>
                             ) : null}
