@@ -79,11 +79,11 @@ export function MobilePageHeader({
           // --bg bar as tall as the iOS inset, and at z-40 it painted over this
           // header — which is why the action vanished on notched iPhones but
           // survived on Android, where the inset reports 0.
-          "fixed inset-x-0 top-0 z-[120] bg-[var(--page-bg)] px-4 pb-2.5 pt-[calc(0.5rem+env(safe-area-inset-top,0px))]",
+          "fixed inset-x-0 top-0 z-[120] bg-[var(--page-bg)] px-4 pb-1 pt-[calc(0.25rem+env(safe-area-inset-top,0px))]",
           className,
         )}
       >
-        <div className={cn("flex min-h-12 items-center gap-3", alignLeft ? "justify-start" : "justify-between")}>
+        <div className={cn("flex min-h-10 items-center gap-3", alignLeft ? "justify-start" : "justify-between")}>
           <div className={cn("flex min-w-0 items-center gap-2", !alignLeft && "flex-1")}>
             <h1
               className={cn(
@@ -110,8 +110,15 @@ export function MobilePageHeader({
           </div>
         </div>
       </div>
-      {/* In-flow spacer so the fixed header never covers page content */}
-      <div aria-hidden className="w-full" style={{ height: spacer }} />
+      {/* In-flow spacer so the fixed header never covers page content. The
+          header's height already includes the status-bar inset, and the
+          Shell's <main> pads its top by that inset + 0.35rem too; pull the
+          spacer up by the same amount so the gap is not counted twice. */}
+      <div
+        aria-hidden
+        className="w-full"
+        style={{ height: spacer, marginTop: "calc(-0.35rem - env(safe-area-inset-top, 0px))" }}
+      />
     </>
   )
 }

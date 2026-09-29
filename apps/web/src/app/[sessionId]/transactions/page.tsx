@@ -1399,7 +1399,6 @@ const currentCycleKeyStr = useMemo(
  {/* Mobile header */}
  <div className="md:hidden">
  <MobilePageHeader
- className="border-b border-[color:var(--border)] pb-4"
  title={lang === "EN" ? "Transactions" : "Transaksi"}
  fallbackHref={`/${sessionId}`}
  action={

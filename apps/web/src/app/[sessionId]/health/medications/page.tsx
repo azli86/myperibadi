@@ -268,7 +268,6 @@ export default function HealthMedicationsPage() {
     <div className="min-h-screen bg-[var(--page-bg)]">
       <div className="md:hidden">
         <MobilePageHeader
-          className="border-b border-[color:var(--border)] pb-4"
           title={isBm ? "Ubat" : "Medications"}
           fallbackHref={`/${sessionId}/health`}
           action={

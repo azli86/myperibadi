@@ -645,7 +645,6 @@ export default function InventoryPage() {
       {/* ── HEADER PRESERVED UNTOUCHED ── */}
       <div className="md:hidden">
         <MobilePageHeader
-          className="border-b border-[color:var(--border)] pb-4"
           title={tr("Barang Saya", "My Inventory")}
           fallbackHref={`/${sessionId}`}
           action={

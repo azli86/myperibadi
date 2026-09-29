@@ -147,7 +147,6 @@ export default function HealthHistoryPage() {
     <div className="min-h-screen bg-[var(--page-bg)]">
       <div className="md:hidden">
         <MobilePageHeader
-          className="border-b border-[color:var(--border)] pb-4"
           title={isBm ? "Sejarah" : "History"}
           fallbackHref={`/${sessionId}/health`}
         />

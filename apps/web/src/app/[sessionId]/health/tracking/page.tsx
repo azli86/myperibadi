@@ -1433,7 +1433,6 @@ export default function HealthTrackingPage() {
       {/* ── MOBILE WORKSPACE (ATHLETIC RUN TRACKER & RUN HISTORY) ── */}
       <div className="md:hidden flex flex-col flex-1">
         <MobilePageHeader
-          className="border-b border-[color:var(--border)] pb-4"
           title="RunTracker"
           fallbackHref={`/${sessionId}/health`}
           action={

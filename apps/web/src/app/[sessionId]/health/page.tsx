@@ -239,7 +239,6 @@ export default function HealthDashboardPage() {
     <div className="min-h-screen bg-[var(--page-bg)]">
       <div className="md:hidden">
         <MobilePageHeader
-          className="border-b border-[color:var(--border)] pb-4"
           title={isBm ? "Kesihatan" : "Health"}
           beta
           fallbackHref={`/${sessionId}`}
