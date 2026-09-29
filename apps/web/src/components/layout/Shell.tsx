@@ -3333,7 +3333,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         )}
       >
         {/* Global Status Bar Background for iOS immersive mode */}
-        <div className="fixed top-0 left-0 right-0 h-[env(safe-area-inset-top,0px)] z-[110] bg-[var(--bg)] pointer-events-none" />
+        <div className={cn("fixed top-0 left-0 right-0 h-[env(safe-area-inset-top,0px)] z-[110] pointer-events-none", isLight ? "bg-[var(--bg)]" : "bg-black")} />
         {/* Verify email banner — notice-banner style, follows theme & announcement format */}
         {emailVerifiedKnown && !emailVerified && !isAuthPage && !pinLockRequired && (() => {
           const remaining = Math.max(0, Math.ceil((verifyCooldownUntil - Date.now()) / 1000))
@@ -3762,12 +3762,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         <h3 className="min-w-0 flex-1 self-center text-[clamp(17px,6.5vw,24px)] font-black leading-[1.1] tracking-tight text-[var(--text)] [overflow-wrap:anywhere]">
                           {displayName}
                         </h3>
-                        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
-                          <Check size={13} strokeWidth={4} />
-                        </span>
-                        <span className="mt-0.5 inline-flex shrink-0 items-center rounded-md border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.5 text-[10px] font-black uppercase text-[var(--text)]">
-                          PRO
-                        </span>
                       </button>
 
                   {showMobileSheetAccountSwitcher && (
@@ -3843,6 +3837,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   )}
                 </div>
                   </div>
+                </div>
+
+                {/* ── Cat, under the name card; its arena opens above this sheet ── */}
+                <div className="mt-3">
+                  <CatPlayground lang={lang === "BM" ? "BM" : "EN"} userKey={sessionId} compact presentation="chip" />
                 </div>
 
                 {/* ── Quick controls: language, theme, what's new, settings ── */}
@@ -3989,9 +3988,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                     </div>
                   </section>
                 ))}
-
-                {/* The cat's arena opens above this sheet */}
-                <CatPlayground lang={lang === "BM" ? "BM" : "EN"} userKey={sessionId} compact presentation="chip" />
               </div>
             </aside>
           </div>

@@ -109,9 +109,9 @@ assert 'from "react-chartjs-2"' in CHARTS, "the popup keeps the old bar charts"
 assert "home=" not in PAGE and 'get("home")' not in PAGE, "no ?home= override"
 assert "MOBILE VIEW (md:hidden)" not in DASH and "showMobileWalletDeck" not in DASH
 
-# 12. The cat widget from the old phone home lives in the menu sheet, after
-# the nav groups, and its arena opens above that sheet (z-500).
-menu = SHELL[SHELL.index("Destinations: five named groups"):SHELL.index("{showAddModal && (")]
+# 12. The cat widget from the old phone home lives in the menu sheet, under
+# the name card, and its arena opens above that sheet (z-500).
+menu = SHELL[SHELL.index("Profile Card: avatar left"):SHELL.index("Quick controls: language, theme")]
 assert 'presentation="chip"' in menu and "<CatPlayground" in menu
 CAT = (HOME_DIR.parents[1] / "components" / "dashboard" / "CatPlayground.tsx").read_text(encoding="utf-8")
 assert "fixed inset-0 z-[600]" in CAT, "the arena must open above the z-500 menu sheet"

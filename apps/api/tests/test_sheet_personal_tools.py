@@ -91,8 +91,10 @@ def test_the_ai_badge_is_kept():
     assert 'badge: "AI"' in BLOCK, "the AI tag on Reconcile must survive"
 
 
-def test_the_cat_chip_closes_the_menu():
-    assert '<CatPlayground' in BLOCK and 'presentation="chip"' in BLOCK
+def test_the_cat_sits_under_the_name_card_not_in_the_groups():
+    assert '<CatPlayground' not in BLOCK
+    top = SHELL[SHELL.index("Profile Card: avatar left") : SHELL.index("Quick controls: language, theme")]
+    assert '<CatPlayground' in top and 'presentation="chip"' in top
 
 
 def test_every_target_page_exists():
@@ -110,6 +112,6 @@ if __name__ == "__main__":
     test_no_destination_is_listed_twice()
     test_the_calculator_still_opens_a_panel()
     test_the_ai_badge_is_kept()
-    test_the_cat_chip_closes_the_menu()
+    test_the_cat_sits_under_the_name_card_not_in_the_groups()
     test_every_target_page_exists()
     print("sheet nav groups OK")
