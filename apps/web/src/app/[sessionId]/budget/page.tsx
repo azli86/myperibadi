@@ -16,8 +16,6 @@ import {
   Loader2,
   Wallet,
   X,
-  BadgeCheck,
-  TrendingDown,
 } from "lucide-react"
 import { useParams } from "next/navigation"
 import { CategoryIconGlyph } from "@/lib/category-icons"
@@ -439,8 +437,8 @@ export default function BudgetPage() {
         tone: "muted" as const,
         label: tr("Kosong", "Unset"),
         bar: "bg-[var(--muted)]",
-        soft: "bg-[var(--surface-tint)] text-[var(--muted)]",
-        icon: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
+        soft: "bg-[var(--home-line)] text-[var(--muted)]",
+        icon: "border border-[var(--home-line)] text-[var(--muted)]",
       }
     }
     if (item.status === "over_budget") {
@@ -450,7 +448,7 @@ export default function BudgetPage() {
         label: tr("Lebih", "Over"),
         bar: "bg-rose-500",
         soft: "bg-rose-500/15 text-rose-500",
-        icon: "border-rose-500/20 bg-rose-500/10 text-rose-500",
+        icon: "bg-rose-500/12 text-rose-500",
       }
     }
     if (item.status === "warning") {
@@ -460,16 +458,16 @@ export default function BudgetPage() {
         label: tr("Hampir", "Near"),
         bar: "bg-amber-500",
         soft: "bg-amber-500/15 text-amber-500",
-        icon: "border-amber-500/20 bg-amber-500/10 text-amber-500",
+        icon: "bg-amber-500/12 text-amber-500",
       }
     }
     return {
       hasBudget: true as const,
       tone: "emerald" as const,
       label: tr("Baik", "Good"),
-      bar: "bg-[var(--btn-primary-bg)]",
-      soft: "bg-[var(--btn-primary-bg)]/15 text-emerald-500",
-      icon: "border-emerald-500/20 bg-[var(--btn-primary-bg)]/10 text-emerald-500",
+      bar: "bg-[#0878F8]",
+      soft: "bg-[#0878F8]/15 text-[#2f8cf9]",
+      icon: "bg-[#0878F8]/12 text-[#2f8cf9]",
     }
   }
 
@@ -532,15 +530,15 @@ export default function BudgetPage() {
       type="button"
       onClick={copyFromPreviousMonth}
       disabled={copying}
-      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 text-[0.55rem] font-black uppercase tracking-[0.1em] text-[var(--muted)] transition active:scale-[0.97] disabled:opacity-50"
+      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[var(--home-line)] bg-[var(--home-card)] px-3.5 text-xs font-semibold text-[var(--text)] transition active:scale-[0.97] disabled:opacity-50"
     >
-      <Copy size={13} strokeWidth={2.5} />
-      {copying ? tr("Menyalin", "Copying") : tr("Salin bulan lepas", "Copy last month")}
+      <Copy size={14} strokeWidth={2} />
+      {copying ? tr("Menyalin…", "Copying…") : tr("Salin bulan lepas", "Copy last month")}
     </button>
   )
 
   const filterToggle = (
-    <div className="inline-flex max-w-full overflow-x-auto rounded-full border border-[var(--border)] bg-[var(--surface-tint)]/40 p-0.5">
+    <div className="-mx-1 flex max-w-full gap-1.5 overflow-x-auto px-1 pb-0.5 scrollbar-none">
       {(
         [
           { key: "all" as const, label: tr("Semua", "All"), count: counts.all },
@@ -554,19 +552,21 @@ export default function BudgetPage() {
           type="button"
           onClick={() => setFilterTab(chip.key)}
           className={cn(
-            "shrink-0 rounded-full px-3 py-1.5 text-[0.55rem] font-black uppercase tracking-[0.1em] transition",
-            filterTab === chip.key ? "bg-[var(--text)] text-[var(--bg)]" : "text-[var(--muted)]",
+            "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold transition active:scale-[0.97]",
+            filterTab === chip.key
+              ? "bg-[var(--text)] text-[var(--bg)]"
+              : "border border-[var(--home-line)] bg-[var(--home-card)] text-[var(--text)]",
           )}
         >
           {chip.label}
-          <span className="ml-1 opacity-70">({chip.count})</span>
+          <span className="tabular-nums opacity-60">{chip.count}</span>
         </button>
       ))}
     </div>
   )
 
   const viewToggle = (
-    <div className="inline-flex rounded-full border border-[var(--border)] bg-[var(--surface-tint)]/40 p-0.5">
+    <div className="inline-flex rounded-full border border-[var(--home-line)] bg-[var(--home-card)] p-0.5">
       {(
         [
           { key: "grid" as const, icon: LayoutGrid, label: "Grid" },
@@ -585,8 +585,9 @@ export default function BudgetPage() {
               active ? "bg-[var(--text)] text-[var(--bg)]" : "text-[var(--muted)]",
             )}
             aria-label={view.label}
+            aria-pressed={active}
           >
-            <Icon size={14} />
+            <Icon size={15} />
           </button>
         )
       })}
@@ -617,10 +618,11 @@ export default function BudgetPage() {
         <button
           type="button"
           onClick={() => openNativeMonthPicker(true)}
-          className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--btn-primary-bg)] text-white shadow-sm shadow-black/10 [&_svg]:h-4 [&_svg]:w-4"
+          className="flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-[var(--home-line)] bg-[var(--home-card)] px-3.5 text-xs font-semibold text-[var(--text)] transition active:scale-95"
           aria-label={tr("Pilih bulan", "Select month")}
         >
-          <Calendar strokeWidth={2.5} />
+          <Calendar size={15} strokeWidth={2} />
+          {monthPickerLabel}
         </button>
         <input
           ref={monthInputCompactRef}
@@ -651,6 +653,8 @@ export default function BudgetPage() {
       </div>
     )
 
+  // One category, as a row: icon, name and status, then spent of budget with a
+  // bar, then what is left.
   const renderCard = (item: BudgetItem, compact = false) => {
     const meta = statusMeta(item)
     const progressWidth = meta.hasBudget ? clamp(item.progress_percent, 4, 100) : 0
@@ -661,79 +665,47 @@ export default function BudgetPage() {
         type="button"
         onClick={() => openBudgetModal(item.category_id)}
         className={cn(
-          "group w-full overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] text-left transition active:scale-[0.985]",
-          compact && "hover:border-[color-mix(in_srgb,var(--accent2)_30%,var(--border))]",
+          "w-full rounded-[1.25rem] border border-[var(--home-line)] bg-[var(--home-card)] text-left transition active:scale-[0.985]",
           compact ? "p-4" : "p-3.5",
         )}
       >
-        <div className="flex items-start gap-3">
-          <div
-            className={cn(
-              "flex shrink-0 items-center justify-center rounded-2xl border",
-              compact ? "h-12 w-12" : "h-11 w-11",
-              meta.icon,
-            )}
-          >
-            <CategoryIconGlyph
-              iconName={item.category_icon_name}
-              categoryName={item.category_name}
-              kind="expense"
-              size={compact ? 20 : 18}
-            />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className={cn("truncate font-black leading-tight text-[var(--text)]", compact ? "text-base" : "text-sm")}>
-                  {item.category_name}
-                </p>
-                <p className="mt-0.5 text-[11px] font-semibold text-[var(--muted)]">
-                  {meta.hasBudget
-                    ? `${item.progress_percent.toFixed(0)}% ${tr("diguna", "used")}`
-                    : tr("Belum set bajet", "No budget set")}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <span className={cn("rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em]", meta.soft)}>
-                  {meta.label}
-                </span>
-                {!compact && <ChevronRight size={14} className="text-[var(--muted)]" />}
-              </div>
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        <div className="flex items-center gap-3">
+          <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl", meta.icon)}>
+            <CategoryIconGlyph iconName={item.category_icon_name} categoryName={item.category_name} kind="expense" size={19} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center justify-between gap-2">
+              <span className="truncate text-[0.9375rem] font-bold text-[var(--text)]">{item.category_name}</span>
+              <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold", meta.soft)}>{meta.label}</span>
+            </span>
+            <span className="mt-0.5 block text-xs font-medium text-[var(--muted)]">
               {meta.hasBudget ? (
                 <>
-                  <span className="inline-flex items-center rounded-full bg-[var(--surface-tint)] px-2.5 py-1 text-[var(--text)]">
-                    <MoneyAmount value={item.budget_amount} digits={0} size="xs" className="text-[var(--text)]" />
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2.5 py-1 text-[var(--muted)]">
-                    <MoneyAmount value={item.used_amount} digits={0} size="xs" className="text-[var(--muted)]" currencyClassName="text-[var(--muted)] opacity-55" />
-                    <span className="text-[10px] font-semibold">{tr("belanja", "spent")}</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[var(--surface-tint)] px-2.5 py-1 text-[var(--text)]">
-                    <span className="text-[10px] font-semibold text-[var(--muted)]">
-                      {item.remaining_amount < 0 ? tr("Lebih", "Over") : tr("Baki", "Left")}
-                    </span>
-                    <MoneyAmount value={Math.abs(item.remaining_amount)} digits={0} size="xs" className="text-[var(--text)]" />
-                  </span>
+                  <MoneyAmount value={item.used_amount} digits={0} size="xs" className="!text-xs font-semibold text-[var(--text)]" currencyClassName="!text-[0.625rem]" />{" "}
+                  {tr("daripada", "of")}{" "}
+                  <MoneyAmount value={item.budget_amount} digits={0} size="xs" className="!text-xs text-[var(--muted)]" currencyClassName="!text-[0.625rem]" />
                 </>
               ) : (
-                <span className="text-[10px] font-semibold text-[var(--muted)]">
-                  {tr("Tekan untuk set", "Tap to set")}
-                </span>
+                tr("Belum set bajet · tekan untuk set", "No budget yet · tap to set")
               )}
-            </div>
-
-            {meta.hasBudget && (
-              <div className="mt-3">
-                <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
-                  <div className={cn("h-full rounded-full transition-all", meta.bar)} style={{ width: `${progressWidth}%` }} />
-                </div>
-              </div>
-            )}
-          </div>
+            </span>
+          </span>
         </div>
+
+        {meta.hasBudget ? (
+          <div className="mt-3">
+            <div className="h-2 overflow-hidden rounded-full bg-[var(--home-line)]">
+              <div className={cn("h-full rounded-full transition-all", meta.bar)} style={{ width: `${progressWidth}%` }} />
+            </div>
+            <div className="mt-1.5 flex items-center justify-between text-xs font-medium text-[var(--muted)]">
+              <span className="tabular-nums">{item.progress_percent.toFixed(0)}% {tr("diguna", "used")}</span>
+              <span>
+                {item.remaining_amount < 0 ? tr("Lebih", "Over") : tr("Baki", "Left")}{" "}
+                <MoneyAmount value={Math.abs(item.remaining_amount)} digits={0} size="xs" className="!text-xs font-semibold text-[var(--text)]" currencyClassName="!text-[0.625rem]" />
+              </span>
+            </div>
+          </div>
+        ) : null}
       </button>
     )
   }
@@ -746,230 +718,138 @@ export default function BudgetPage() {
         key={item.category_id}
         type="button"
         onClick={() => openBudgetModal(item.category_id)}
-        className="relative overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-3.5 text-left transition active:scale-[0.98]"
+        className="flex flex-col rounded-[1.25rem] border border-[var(--home-line)] bg-[var(--home-card)] p-3.5 text-left transition active:scale-[0.98]"
       >
-        <span
-          aria-hidden
-          className={cn(
-            "absolute inset-x-0 top-0 h-1",
-            meta.tone === "rose" ? "bg-rose-500" : meta.tone === "amber" ? "bg-amber-500" : meta.tone === "emerald" ? "bg-[var(--btn-primary-bg)]" : "bg-[var(--border)]",
-          )}
-        />
-        <div className="flex items-start gap-2.5">
-          <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border", meta.icon)}>
+        <span className="flex items-start justify-between gap-2">
+          <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl", meta.icon)}>
             <CategoryIconGlyph iconName={item.category_icon_name} categoryName={item.category_name} kind="expense" size={18} />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="line-clamp-2 text-xs font-black leading-tight text-[var(--text)]">{item.category_name}</p>
-            <span className={cn("mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase", meta.soft)}>
-              {meta.label}
-            </span>
-          </div>
-        </div>
-        <div className="mt-3 space-y-1.5">
-          <div className="flex items-center justify-between gap-2 text-[10px] font-semibold">
-            <span className="text-[var(--muted)]">{tr("Bajet", "Budget")}</span>
-            <span className="truncate text-[var(--text)]">
-              {showDataSkeleton && meta.hasBudget ? (
-                <AmountSkeleton className="h-3 w-14" />
-              ) : meta.hasBudget ? (
-                <MoneyAmount value={item.budget_amount} digits={0} size="xs" className="text-[var(--text)]" />
+          </span>
+          <span className={cn("rounded-full px-2 py-0.5 text-[0.625rem] font-semibold", meta.soft)}>{meta.label}</span>
+        </span>
+        <span className="mt-2.5 line-clamp-2 text-[0.8125rem] font-bold leading-tight text-[var(--text)]">{item.category_name}</span>
+        {meta.hasBudget ? (
+          <>
+            <span className="mt-2 block truncate text-[var(--text)]">
+              {showDataSkeleton ? (
+                <AmountSkeleton className="h-4 w-16" />
               ) : (
-                "—"
+                <MoneyAmount value={Math.abs(item.remaining_amount)} digits={0} size="xs" prefix={item.remaining_amount < 0 ? "-" : ""} className="!text-[1.0625rem] font-bold text-[var(--text)]" currencyClassName="!text-[0.6875rem]" />
               )}
             </span>
-          </div>
-          <div className="flex items-center justify-between gap-2 text-[10px] font-semibold">
-            <span className="text-[var(--muted)]">{tr("Belanja", "Spent")}</span>
-            <span className="truncate text-[var(--text)]">
-              {showDataSkeleton && meta.hasBudget ? (
-                <AmountSkeleton className="h-3 w-14" />
-              ) : meta.hasBudget ? (
-                <MoneyAmount value={item.used_amount} digits={0} size="xs" className="text-[var(--text)]" />
-              ) : (
-                "—"
-              )}
+            <span className="text-[0.6875rem] font-medium text-[var(--muted)]">
+              {item.remaining_amount < 0 ? tr("lebih bajet", "over budget") : tr("baki", "left")}
             </span>
-          </div>
-          {meta.hasBudget ? (
-            <>
-              <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
-                <div className={cn("h-full rounded-full", meta.bar)} style={{ width: `${progressWidth}%` }} />
-              </div>
-              <p className="truncate text-[10px] font-semibold text-[var(--muted)]">
-                {item.remaining_amount >= 0 ? tr("Baki", "Left") : tr("Lebih", "Over")}{" "}
-                <MoneyAmount value={Math.abs(item.remaining_amount)} digits={0} size="xs" className="text-[var(--text)]" />
-              </p>
-            </>
-          ) : (
-            <p className="text-[10px] font-semibold text-[var(--muted)]">{tr("Tekan untuk set", "Tap to set")}</p>
-          )}
-        </div>
+            <span className="mt-2.5 block h-1.5 overflow-hidden rounded-full bg-[var(--home-line)]">
+              <span className={cn("block h-full rounded-full", meta.bar)} style={{ width: `${progressWidth}%` }} />
+            </span>
+          </>
+        ) : (
+          <span className="mt-2 text-[0.6875rem] font-medium text-[var(--muted)]">{tr("Tekan untuk set", "Tap to set")}</span>
+        )}
       </button>
     )
   }
 
+  // The summary, as the home's balance card: an outlined card over a blue circle.
   const heroBlock = (desktop = false) => (
-    <div
-      className={cn(
-        "budget-hero relative overflow-hidden border border-[var(--border)] bg-[#1a1a1a] text-[#f5f5f5]",
-        desktop ? "rounded-2xl p-6" : "rounded-2xl p-5",
-      )}
-    >
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-      <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-      <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
-
-      <div className={cn("relative", desktop && "flex items-center gap-5")}>
-        <div className={cn(desktop && "min-w-[10rem] shrink-0")}>
-          <div className="flex flex-wrap items-center gap-2">
-            <p className={cn(
-              "font-bold uppercase tracking-[0.14em] text-[#a3a3a3]",
-              desktop ? "text-[0.7rem]" : "text-[0.625rem]",
-            )}>
-              {tr("Baki Bajet", "Budget Remaining")}
-            </p>
-            <span
-              className={cn(
-                "rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em]",
-                summaryStatus === "over_budget"
-                  ? "bg-rose-500/25 text-[#fecdd3]"
-                  : summaryStatus === "warning"
-                    ? "bg-amber-500/25 text-[#fde68a]"
-                    : "bg-[var(--btn-primary-bg)]/20 text-[#e5e5e5]",
-              )}
-            >
-              {summaryStatus === "over_budget"
-                ? tr("Lebih", "Over")
-                : summaryStatus === "warning"
-                  ? tr("Hampir", "Near")
-                  : tr("Sihat", "Healthy")}
-            </span>
-          </div>
-          <p className="budget-hero-amount mt-2 leading-none text-[#ffffff]">
-            {showDataSkeleton ? (
-              <AmountSkeleton className={cn("bg-white/10", desktop ? "h-10 w-40" : "h-7 w-32")} />
-            ) : (
-              <MoneyAmount
-                value={Math.abs(summary.remaining_amount)}
-                size={desktop ? "heroLg" : "hero"}
-                prefix={summary.remaining_amount < 0 ? "- " : ""}
-                className="text-[#ffffff]"
-                currencyClassName="text-[#ffffff] opacity-55"
-              />
-            )}
-          </p>
-          <div className="mt-4 max-w-md">
-            <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold text-[#a3a3a3]">
-              <span>{tr("Penggunaan bulanan", "Monthly usage")}</span>
-              <span className="tabular-nums text-[#e5e5e5]">{summary.overall_progress_percent.toFixed(0)}%</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-white/10">
-              <div
+    <div className={cn("relative", desktop ? "pr-6 pt-4" : "pt-3")}>
+      <div aria-hidden className={cn("absolute rounded-full bg-[#0878F8]", desktop ? "-right-2 -top-2 h-48 w-48" : "-right-3 -top-1 h-40 w-40")} />
+      <div aria-hidden className={cn("absolute rounded-full border-[1.5px] border-white opacity-35", desktop ? "right-10 top-10 h-24 w-24" : "right-6 top-8 h-20 w-20")} />
+      <div className={cn(
+        "relative rounded-[1.5rem] border border-[var(--home-line)] bg-[var(--home-card)] shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)]",
+        desktop ? "p-6" : "p-5",
+      )}>
+        <div className={cn(desktop && "flex items-end gap-8")}>
+          <div className={cn(desktop && "min-w-[16rem] shrink-0")}>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[0.8125rem] font-medium text-[var(--muted)]">
+                {tr("Baki bajet", "Budget left")} · {monthMeta.label}
+              </p>
+              <span
                 className={cn(
-                  "h-full rounded-full transition-all",
+                  "rounded-full px-2.5 py-0.5 text-[0.6875rem] font-semibold",
                   summaryStatus === "over_budget"
-                    ? "bg-gradient-to-r from-rose-400 to-rose-500"
+                    ? "bg-rose-500/15 text-rose-500"
                     : summaryStatus === "warning"
-                      ? "bg-gradient-to-r from-amber-400 to-orange-500"
-                      : "bg-gradient-to-r from-emerald-400 to-teal-500",
+                      ? "bg-amber-500/15 text-amber-500"
+                      : "bg-[#0878F8]/15 text-[#2f8cf9]",
                 )}
-                style={{ width: `${clamp(summary.overall_progress_percent, 2, 100)}%` }}
-              />
+              >
+                {summaryStatus === "over_budget" ? tr("Lebih", "Over") : summaryStatus === "warning" ? tr("Hampir", "Near") : tr("Sihat", "Healthy")}
+              </span>
+            </div>
+            <p className="mt-2 leading-none tabular-nums text-[var(--text)]">
+              {showDataSkeleton ? (
+                <AmountSkeleton className="h-11 w-44" />
+              ) : (
+                <>
+                  <span className="mr-1.5 align-top text-[1.0625rem] font-semibold text-[var(--muted)]">
+                    {summary.remaining_amount < 0 ? "-RM" : "RM"}
+                  </span>
+                  <span className={cn("font-bold tracking-[-0.03em]", desktop ? "text-[3rem]" : "text-[2.6rem]")}>
+                    {Math.abs(summary.remaining_amount).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </>
+              )}
+            </p>
+            <div className="mt-4">
+              <div className="h-2 overflow-hidden rounded-full bg-[var(--home-line)]">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all",
+                    summaryStatus === "over_budget" ? "bg-rose-500" : summaryStatus === "warning" ? "bg-amber-500" : "bg-[#0878F8]",
+                  )}
+                  style={{ width: `${clamp(summary.overall_progress_percent, 2, 100)}%` }}
+                />
+              </div>
+              <div className="mt-1.5 flex items-center justify-between text-xs font-medium text-[var(--muted)]">
+                <span>{tr("Penggunaan bulan ini", "Used this month")}</span>
+                <span className="tabular-nums font-semibold text-[var(--text)]">{summary.overall_progress_percent.toFixed(0)}%</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className={cn(
-          "grid grid-cols-2",
-          desktop ? "min-w-0 flex-1 gap-3 lg:grid-cols-4" : "mt-5 gap-2.5",
-        )}>
-          {[
-            {
-              label: tr("Pendapatan", "Income"),
-              value: summary.cycle_income,
-              icon: <Wallet size={desktop ? 16 : 12} className="text-emerald-400" />,
-              color: "text-emerald-300",
-              isMoney: true,
-            },
-            {
-              label: summary.unallocated_amount < 0 ? tr("Terlebih Agih", "Overallocated") : tr("Belum Diagih", "Unallocated"),
-              value: Math.abs(summary.unallocated_amount),
-              icon: summary.unallocated_amount < 0 ? <AlertTriangle size={desktop ? 16 : 12} className="text-rose-400" /> : <BadgeCheck size={desktop ? 16 : 12} className="text-[#b3b3b3]" />,
-              color: summary.unallocated_amount < 0 ? "text-[#fecdd3]" : "text-[#e5e5e5]",
-              isMoney: true,
-            },
-            {
-              label: tr("Bajet", "Budget"),
-              value: summary.total_budget,
-              icon: <Wallet size={desktop ? 16 : 12} className="text-[#b3b3b3]" />,
-              color: "text-[#e5e5e5]",
-              isMoney: true,
-            },
-            {
-              label: tr("Belanja", "Spent"),
-              value: summary.total_used,
-              icon: <TrendingDown size={desktop ? 16 : 12} className="text-[#fda4af]" />,
-              color: "text-[#fecdd3]",
-              isMoney: true,
-            },
-
-          ].map((item) => (
-            <div
-              key={item.label}
-              className={cn(
-                "bg-white/[0.06]",
-                desktop ? "rounded-2xl p-4" : "rounded-[1.15rem] p-3",
-              )}
-            >
-              <div className={cn("flex items-center", desktop ? "gap-2" : "gap-1.5")}>
-                {item.icon}
-                <p className={cn(
-                  "font-bold uppercase text-[#a3a3a3]",
-                  desktop ? "text-[0.6rem] tracking-[0.12em]" : "text-[0.5rem] tracking-[0.1em]",
-                )}>
-                  {item.label}
+          <div className={cn("grid grid-cols-2 gap-2", desktop ? "min-w-0 flex-1 lg:grid-cols-4" : "mt-4")}>
+            {[
+              { label: tr("Pendapatan", "Income"), value: summary.cycle_income, dot: "var(--income)" },
+              { label: tr("Belanja", "Spent"), value: summary.total_used, dot: "var(--expense)" },
+              { label: tr("Bajet", "Budget"), value: summary.total_budget, dot: "#0878F8" },
+              {
+                label: summary.unallocated_amount < 0 ? tr("Terlebih agih", "Overallocated") : tr("Belum diagih", "Unallocated"),
+                value: Math.abs(summary.unallocated_amount),
+                dot: summary.unallocated_amount < 0 ? "#f43f5e" : "var(--muted)",
+              },
+            ].map((stat) => (
+              <div key={stat.label} className="rounded-2xl border border-[var(--home-line)] px-3 py-2.5">
+                <p className="flex items-center gap-1.5 text-[0.6875rem] font-medium text-[var(--muted)]">
+                  <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: stat.dot }} />
+                  {stat.label}
+                </p>
+                <p className="mt-1 text-[var(--text)]">
+                  {showDataSkeleton ? (
+                    <AmountSkeleton className="h-4 w-16" />
+                  ) : (
+                    <MoneyAmount value={Number(stat.value || 0)} digits={0} size="xs" className="!text-[0.9375rem] font-bold text-[var(--text)]" currencyClassName="!text-[0.6875rem]" />
+                  )}
                 </p>
               </div>
-              <p className={cn(desktop ? "mt-3 leading-none" : "mt-2", item.color)}>
-                {showDataSkeleton ? (
-                  <AmountSkeleton className={cn("bg-white/10", desktop ? "h-6 w-16" : "h-4 w-12")} />
-                ) : item.isMoney ? (
-                  <MoneyAmount
-                    value={Number(item.value || 0)}
-                    digits={0}
-                    size={desktop ? "md" : "xs"}
-                    className={item.color}
-                    currencyClassName={cn(item.color, "opacity-55")}
-                  />
-                ) : (
-                  <span className={cn(
-                    "font-semibold tabular-nums tracking-tight",
-                    desktop ? "text-xl" : "text-sm",
-                  )}>
-                    {item.value}
-                  </span>
-                )}
-              </p>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
   )
 
   const emptyState = (
-    <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 px-6 py-12 text-center">
-      <Wallet size={36} className="mx-auto text-[var(--muted)]/40" />
-      <p className="mt-3 text-sm font-bold text-[var(--muted)]">
-        {items.length === 0
-          ? tr("Belum ada kategori.", "No categories yet.")
-          : tr("Tiada item dalam penapis ini.", "No items in this filter.")}
+    <div className="flex flex-col items-center rounded-[1.5rem] border border-[var(--home-line)] bg-[var(--home-card)] px-6 py-12 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-[1.1rem] bg-[#0878F8]/12 text-[#2f8cf9]">
+        <Wallet size={24} />
+      </span>
+      <p className="mt-4 text-[0.9375rem] font-bold text-[var(--text)]">
+        {items.length === 0 ? tr("Belum ada kategori", "No categories yet") : tr("Tiada item dalam penapis ini", "Nothing in this filter")}
       </p>
       {items.length === 0 && (
-        <p className="mt-1 text-[11px] font-medium text-[var(--muted)]/80">
-          {tr("Tambah kategori perbelanjaan dulu.", "Add expense categories first.")}
-        </p>
+        <p className="mt-1 text-xs font-medium text-[var(--muted)]">{tr("Tambah kategori perbelanjaan dulu.", "Add expense categories first.")}</p>
       )}
     </div>
   )
@@ -980,7 +860,7 @@ export default function BudgetPage() {
       ? "bg-rose-500"
       : activeModalItem?.status === "warning"
         ? "bg-amber-500"
-        : "bg-[var(--btn-primary-bg)]"
+        : "bg-[#0878F8]"
   const modalStatusLabel =
     activeModalItem?.status === "over_budget"
       ? tr("Lebih", "Over")
@@ -989,7 +869,7 @@ export default function BudgetPage() {
         : tr("Selamat", "Healthy")
 
   return (
-    <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
+    <div className="moden-surface space-y-4 pb-20 md:space-y-0 md:pb-0">
       {/* ─── Mobile ─── */}
       <div className="space-y-5 md:hidden">
         <MobilePageHeader
@@ -997,17 +877,16 @@ export default function BudgetPage() {
           fallbackHref={`/${sessionId}`}
           action={monthPicker(true)}
         />
-        <p className="px-1 text-center text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-          {monthPickerLabel}
-        </p>
-
         <section className="px-1">{heroBlock(false)}</section>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+        <div className="space-y-2.5 px-1">
           {filterToggle}
-          <div className="flex shrink-0 items-center gap-2">
-            {copyBudgetButton}
-            {viewToggle}
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-[1.125rem] font-bold tracking-tight text-[var(--text)]">{tr("Kategori", "Categories")}</h2>
+            <div className="flex shrink-0 items-center gap-2">
+              {copyBudgetButton}
+              {viewToggle}
+            </div>
           </div>
         </div>
 
@@ -1016,13 +895,13 @@ export default function BudgetPage() {
             mobileBudgetView === "grid" ? (
               <div className="grid grid-cols-2 gap-2.5">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-36 animate-pulse rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)]" />
+                  <div key={i} className="skeleton-surface h-36 rounded-[1.25rem]" />
                 ))}
               </div>
             ) : (
               <div className="space-y-3">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-24 animate-pulse rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)]" />
+                  <div key={i} className="skeleton-surface h-24 rounded-[1.25rem]" />
                 ))}
               </div>
             )
@@ -1047,7 +926,7 @@ export default function BudgetPage() {
         <DesktopPageBody className="space-y-5">
         {heroBlock(true)}
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           {filterToggle}
           <div className="flex shrink-0 items-center gap-2">
             {copyBudgetButton}
@@ -1059,13 +938,13 @@ export default function BudgetPage() {
           mobileBudgetView === "grid" ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-40 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
+                <div key={i} className="skeleton-surface h-40 rounded-[1.25rem]" />
               ))}
             </div>
           ) : (
             <div className="space-y-3">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-20 animate-pulse rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)]" />
+                <div key={i} className="skeleton-surface h-20 rounded-[1.25rem]" />
               ))}
             </div>
           )
@@ -1136,7 +1015,7 @@ export default function BudgetPage() {
                                 ? "bg-rose-500/15 text-rose-500"
                                 : activeModalItem.status === "warning"
                                   ? "bg-amber-500/15 text-amber-500"
-                                  : "bg-[var(--btn-primary-bg)]/15 text-emerald-500",
+                                  : "bg-[#0878F8]/15 text-[#2f8cf9]",
                             )}
                           >
                             {modalStatusLabel}

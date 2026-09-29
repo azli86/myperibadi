@@ -3726,18 +3726,18 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           >
             <aside
               className={cn(
-                "app-sheet-panel relative flex h-[100dvh] max-h-none w-full flex-col overflow-y-auto overflow-x-hidden rounded-none overscroll-contain pb-[calc(3rem+env(safe-area-inset-bottom,0px))]",
+                "app-sheet-panel moden-surface relative flex h-[100dvh] max-h-none w-full flex-col overflow-y-auto overflow-x-hidden rounded-none overscroll-contain pb-[calc(3rem+env(safe-area-inset-bottom,0px))]",
                 mobileSheetClass
               )}
               onClick={(event) => event.stopPropagation()}
             >
               {/* ── Title and close ── */}
               <div className="flex items-center justify-between px-5 pb-1 pt-[calc(env(safe-area-inset-top,0px)+1rem)]">
-                <h2 className="text-2xl font-black tracking-tight text-[var(--text)]">{menuTitle}</h2>
+                <h2 className="text-[1.75rem] font-bold tracking-[-0.03em] text-[var(--text)]">{menuTitle}</h2>
                 <button
                   type="button"
                   onClick={requestMobileMenuClose}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--text)] transition-all active:scale-90"
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--home-line)] bg-[var(--home-card)] text-[var(--text)] transition-all active:scale-90"
                   aria-label="Tutup menu"
                 >
                   <X size={18} />
@@ -3745,8 +3745,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               </div>
 
               {/* ── Profile Card: avatar left, name and account right ── */}
-              <div className="px-4 pt-1 pb-3">
-                <div className="sidebar-avatar-card w-full rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/60 p-3.5">
+              <div className="relative px-4 pb-3 pt-3">
+                <div aria-hidden className="absolute right-2 top-0 h-28 w-28 rounded-full bg-[#0878F8]" />
+                <div aria-hidden className="absolute right-9 top-6 h-14 w-14 rounded-full border-[1.5px] border-white opacity-35" />
+                <div className="sidebar-avatar-card relative w-full rounded-[1.5rem] border border-[var(--home-line)] bg-[var(--home-card)] p-4 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)]">
                   <div className="flex items-center gap-3">
                     <div className="shrink-0">
                       <UserAvatar name={displayName || activeEmail} size={56} src={avatarSrc} />
@@ -3849,12 +3851,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   <button
                     type="button"
                     onClick={() => setLang(lang === "EN" ? "BM" : "EN")}
-                    className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-[var(--surface-tint)] py-3 text-[var(--text)] transition active:scale-95 active:bg-[var(--surface-tint-strong)]"
+                    className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-[var(--home-line)] bg-[var(--home-card)] py-3 text-[var(--text)] transition active:scale-95"
                   >
                     <Globe size={18} />
                     <span className="text-[11px] font-bold">{lang}</span>
                   </button>
-                  <div className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-[var(--surface-tint)] py-3 text-[var(--text)]">
+                  <div className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-[var(--home-line)] bg-[var(--home-card)] py-3 text-[var(--text)]">
                     <ThemeToggle
                       compact
                       inverted={!isLight}
@@ -3865,7 +3867,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   <button
                     type="button"
                     onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/whatsnew`))}
-                    className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-[var(--surface-tint)] py-3 text-[var(--text)] transition active:scale-95 active:bg-[var(--surface-tint-strong)]"
+                    className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-[var(--home-line)] bg-[var(--home-card)] py-3 text-[var(--text)] transition active:scale-95"
                   >
                     <ScrollText size={18} />
                     <span className="truncate px-1 text-[11px] font-bold">{lang === "BM" ? "Baharu" : "What's new"}</span>
@@ -3873,7 +3875,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   <button
                     type="button"
                     onClick={() => requestMobileMenuCloseThen(() => router.push(`/${sessionId}/settings`))}
-                    className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-[var(--surface-tint)] py-3 text-[var(--text)] transition active:scale-95 active:bg-[var(--surface-tint-strong)]"
+                    className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-[var(--home-line)] bg-[var(--home-card)] py-3 text-[var(--text)] transition active:scale-95"
                   >
                     <Settings size={18} />
                     <span className="text-[11px] font-bold">{lang === "BM" ? "Tetapan" : "Settings"}</span>
@@ -3935,8 +3937,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   },
                 ] as { title: string; items: { name: string; href?: string; icon: typeof Wallet; badge?: string; action?: string }[] }[]).map((group) => (
                   <section key={group.title} aria-label={group.title}>
-                    <h3 className="mb-2 px-2 text-xs font-bold text-[var(--muted)]">{group.title}</h3>
-                    <div className="grid grid-cols-4 gap-x-2 gap-y-4 rounded-[1.5rem] bg-[var(--card)] p-4 shadow-[var(--shadow-card)]">
+                    <h3 className="mb-2 px-2 text-[0.8125rem] font-semibold text-[var(--muted)]">{group.title}</h3>
+                    <div className="grid grid-cols-4 gap-x-2 gap-y-4 rounded-[1.5rem] border border-[var(--home-line)] bg-[var(--home-card)] p-4">
                       {group.items.map((item) => {
                         const isCurrent = Boolean(item.href) && pathname === item.href;
                         return (
@@ -3963,9 +3965,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                               className={cn(
                                 "relative flex h-12 w-12 items-center justify-center rounded-2xl transition-colors",
                                 isCurrent
-                                  ? "bg-[var(--text)] text-[var(--bg)]"
-                                  : "bg-[var(--surface-tint)] text-[var(--text)] group-active:bg-[var(--surface-tint-strong)]"
+                                  ? "bg-[#0878F8]"
+                                  : "border border-[var(--home-line)] text-[var(--text)] group-active:bg-[var(--home-line)]"
                               )}
+                              // Inline: some themes remap the text-white class.
+                              style={isCurrent ? { color: "#ffffff" } : undefined}
                             >
                               <item.icon size={22} strokeWidth={1.9} className="shrink-0" />
                               {item.badge && !isCurrent && (
