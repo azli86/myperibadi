@@ -42,10 +42,13 @@ const securityHeaders = [
     key: "Accept-CH",
     value: "Sec-CH-Prefers-Color-Scheme",
   },
-  {
-    key: "Cache-Control",
-    value: "no-store, no-cache, must-revalidate, proxy-revalidate",
-  },
+  // No Cache-Control here: these headers go on every path, and a global
+  // no-store overrode Next's immutable caching of /_next/static, so phones
+  // re-downloaded all of the app's JavaScript on every open. Pages get
+  // no-store from middleware.ts; the rules in headers() cover the rest.
+  // /api is proxied to the backend and Next does not put a Cache-Control from
+  // here on proxied responses (it never did), so any header there belongs in
+  // the FastAPI app.
   {
     key: "Vary",
     value: "Sec-CH-Prefers-Color-Scheme",
@@ -63,6 +66,17 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   async headers() {
     return [
+      // Build output: file names carry a content hash, so a new build ships new
+      // names and these can be kept for a year.
+      {
+        source: "/_next/static/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+      // Generated per theme, so it must not be kept.
+      {
+        source: "/manifest.webmanifest",
+        headers: [{ key: "Cache-Control", value: "no-store, no-cache, must-revalidate, proxy-revalidate" }],
+      },
       {
         source: "/sw.js",
         headers: [
