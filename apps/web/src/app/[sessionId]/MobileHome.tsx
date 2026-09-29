@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import { createPortal } from "react-dom"
-import { ArrowLeftRight, Bell, CalendarDays, ChevronRight, Eye, EyeClosed, Plus, Wallet, X } from "lucide-react"
+import { ArrowLeftRight, Bell, CalendarDays, ChevronRight, Eye, EyeClosed, LayoutGrid, Plus, Wallet, X } from "lucide-react"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { fetchApiJson, readApiCache } from "@/lib/api-cache"
 import { categoryCycleMonthBounds, cycleMonthBounds } from "@/lib/cycle"
@@ -534,129 +534,127 @@ export function MobileHome({
 
 
   return (
-    <div className="relative isolate px-1 pb-24 pt-1 text-[0.8125rem]">
-      {/* Three-colour wash behind the top; transparent under the status bar. */}
-      <div className="home-mesh" aria-hidden>
-        <span />
-        <span />
-        <span />
-      </div>
-
-      {/* ── Balance ── option A: no hero card, the number sits on the page. */}
-      <section className="px-2 pb-5 pt-2">
-        <div className="flex items-center justify-between gap-3">
-          <p className="min-w-0 truncate text-sm font-bold text-[var(--muted)]">
-            {firstName ? tr(`Hai, ${firstName}`, `Hi, ${firstName}`) : tr("Selamat datang", "Welcome")}
+    <div className="home-moden relative isolate px-1 pb-24 pt-1 text-[0.8125rem]">
+      {/* ── Greeting and bell ── */}
+      <header className="flex items-center justify-between gap-3 px-2 pt-1">
+        <div className="min-w-0">
+          <p className="text-[0.8125rem] font-medium text-[var(--muted)]">{tr("Hai,", "Hi,")}</p>
+          <p className="truncate text-[1.125rem] font-bold tracking-tight text-[var(--text)]">
+            {firstName || tr("Selamat datang", "Welcome")}
           </p>
-          <button
-            type="button"
-            onClick={openBell}
-            aria-expanded={bellOpen}
-            aria-haspopup="dialog"
-            aria-label={unread ? tr("Pengumuman baru", "New announcement") : tr("Pengumuman", "Announcements")}
-            className="relative -mr-2 flex h-11 w-11 items-center justify-center rounded-full text-[var(--text)] transition active:scale-90"
-          >
-            <Bell size={22} />
-            {unread ? (
-              <span aria-hidden className="absolute right-2.5 top-2 h-2.5 w-2.5 rounded-full bg-rose-500" style={{ boxShadow: "0 0 0 2px var(--page-bg)" }} />
-            ) : null}
-          </button>
         </div>
+        <button
+          type="button"
+          onClick={openBell}
+          aria-expanded={bellOpen}
+          aria-haspopup="dialog"
+          aria-label={unread ? tr("Pengumuman baru", "New announcement") : tr("Pengumuman", "Announcements")}
+          className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--home-line)] bg-[var(--home-card)] text-[var(--text)] transition active:scale-90"
+        >
+          <Bell size={20} strokeWidth={1.9} />
+          {unread ? (
+            <span aria-hidden className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-rose-500" style={{ boxShadow: "0 0 0 2px var(--home-card)" }} />
+          ) : null}
+        </button>
+      </header>
 
-        <p className="mt-5 text-sm font-semibold text-[var(--muted)]">{tr("Jumlah Baki", "Total Balance")}</p>
-        {/* The eye sits right after the number it hides. */}
-        <div className="mt-1 flex min-w-0 items-center gap-1.5">
-          {/* Tapping the balance opens the old dashboard's expense charts popup. */}
+      {/* ── Balance card over a blue circle, as on the login screen ── */}
+      <section className="relative mt-5 px-1 pb-2 pt-3">
+        <div aria-hidden className="absolute -right-3 -top-1 h-40 w-40 rounded-full bg-[#0878F8]" />
+        <div aria-hidden className="absolute right-6 top-8 h-20 w-20 rounded-full border-[1.5px] border-white opacity-35" />
+        <div className="relative rounded-[1.5rem] border border-[var(--home-line)] bg-[var(--home-card)] p-5 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)]">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[0.8125rem] font-medium text-[var(--muted)]">{tr("Jumlah baki", "Total balance")}</p>
+            <button
+              type="button"
+              onClick={toggleAmounts}
+              aria-label={showAmounts ? tr("Sembunyikan jumlah", "Hide amounts") : tr("Tunjuk jumlah", "Show amounts")}
+              aria-pressed={!showAmounts}
+              className="-mr-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--home-line)] text-[var(--muted)] transition active:scale-90"
+            >
+              {showAmounts ? <Eye size={16} strokeWidth={1.9} /> : <EyeClosed size={16} strokeWidth={1.9} />}
+            </button>
+          </div>
+
+          {/* Tapping the balance opens the expense charts. */}
           <button
             type="button"
             onClick={() => setChartsOpen(true)}
             disabled={stats == null}
             aria-haspopup="dialog"
             aria-label={tr("Lihat graf perbelanjaan", "See spending charts")}
-            className="min-w-0 truncate text-left font-black leading-none tracking-tight tabular-nums text-[var(--text)] transition active:opacity-70"
+            className="mt-2 block min-w-0 max-w-full truncate text-left leading-none tabular-nums text-[var(--text)] transition active:opacity-70"
           >
             {stats == null ? (
-              skeleton("h-10 w-48")
+              skeleton("h-11 w-48")
             ) : (
               <>
-                <span className="mr-1.5 align-top text-base font-bold text-[var(--muted)]">RM</span>
-                <span className="text-[2.7rem]">{showAmounts ? num(stats.balance) : hidden}</span>
+                <span className="mr-1.5 align-top text-[1.0625rem] font-semibold text-[var(--muted)]">RM</span>
+                <span className="text-[2.75rem] font-bold tracking-[-0.03em]">{showAmounts ? num(stats.balance) : hidden}</span>
               </>
             )}
           </button>
-          <button
-            type="button"
-            onClick={toggleAmounts}
-            aria-label={showAmounts ? tr("Sembunyikan jumlah", "Hide amounts") : tr("Tunjuk jumlah", "Show amounts")}
-            aria-pressed={!showAmounts}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--muted)] transition active:scale-90"
-          >
-            {showAmounts ? <Eye size={20} /> : <EyeClosed size={20} />}
-          </button>
-        </div>
-        {/* A visible way into the charts; tapping the number opens them too. */}
-        <button
-          type="button"
-          onClick={() => setChartsOpen(true)}
-          disabled={stats == null}
-          aria-haspopup="dialog"
-          className="-ml-1 -mt-1.5 inline-flex min-h-8 items-center gap-0.5 rounded-full px-1 text-sm font-semibold text-[var(--text-soft)] transition active:opacity-70 disabled:opacity-40"
-        >
-          {tr("Info Baki", "Balance Info")}
-          <ChevronRight size={16} strokeWidth={2.4} aria-hidden />
-        </button>
 
-        {/* This cycle's money in and out, computed as the dashboard hero does. */}
-        <div className="mt-3.5 flex flex-wrap gap-2">
-          {[
-            { key: "in", label: tr("Masuk", "In"), value: month?.income, dot: "var(--income)" },
-            { key: "out", label: tr("Keluar", "Out"), value: month?.expense, dot: "var(--expense)" },
-          ].map((chip) => (
-            <span
-              key={chip.key}
-              className="inline-flex items-center gap-1.5 rounded-full bg-[var(--card)] px-3 py-1.5 text-xs font-extrabold tabular-nums text-[var(--text)] shadow-[var(--shadow-card)]"
-            >
-              <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: chip.dot }} />
-              {chip.label} {chip.value == null ? skeleton("h-3 w-12") : money(chip.value, 0)}
-            </span>
-          ))}
-        </div>
-
-        {/* Quick actions. Record opens the simple record sheet; Transfer starts
-            a `pindah` command in chat (the bot runs wallet transfers); Event
-            opens the events page; Wallets opens the all-wallets sheet below. */}
-        <div role="group" aria-label={tr("Tindakan pantas", "Quick actions")} className="mt-6 grid grid-cols-4 gap-2">
-          {[
-            { key: "add", label: tr("Rekod", "Record"), icon: <Plus size={22} strokeWidth={2} />, onClick: () => setRecordOpen(true), accent: true },
-            { key: "transfer", label: tr("Pindah", "Transfer"), icon: <ArrowLeftRight size={21} strokeWidth={2} />, onClick: () => router.push(`/${sessionId}/chat?draft=${encodeURIComponent("pindah ")}`) },
-            { key: "event", label: tr("Event", "Events"), icon: <CalendarDays size={21} strokeWidth={2} />, onClick: () => router.push(`/${sessionId}/event`) },
-            { key: "wallets", label: tr("Dompet", "Wallets"), icon: <Wallet size={21} strokeWidth={2} />, onClick: () => setWalletsOpen(true) },
-          ].map((action) => (
-            <button
-              key={action.key}
-              type="button"
-              onClick={action.onClick}
-              className="group flex min-w-0 flex-col items-center gap-2 text-xs font-bold text-[var(--text)]"
-            >
+          {/* This cycle's money in and out, and the way into the charts. */}
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {[
+              { key: "in", label: tr("masuk", "in"), value: month?.income, dot: "var(--income)" },
+              { key: "out", label: tr("keluar", "out"), value: month?.expense, dot: "var(--expense)" },
+            ].map((chip) => (
               <span
-                className={cn(
-                  "flex h-[3.625rem] w-[3.625rem] items-center justify-center rounded-[1.375rem] transition group-active:scale-90",
-                  action.accent ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "bg-[var(--card)] text-[var(--text)] shadow-[var(--shadow-card)]"
-                )}
+                key={chip.key}
+                className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[var(--home-line)] px-3 text-xs font-semibold tabular-nums text-[var(--text)]"
               >
-                {action.icon}
+                <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: chip.dot }} />
+                {chip.value == null ? skeleton("h-3 w-12") : money(chip.value, 0)} {chip.label}
               </span>
-              <span className="truncate">{action.label}</span>
+            ))}
+            <button
+              type="button"
+              onClick={() => setChartsOpen(true)}
+              disabled={stats == null}
+              aria-haspopup="dialog"
+              className="ml-auto inline-flex h-8 items-center gap-0.5 text-xs font-semibold text-[var(--text)] underline decoration-[#0878F8] decoration-2 underline-offset-4 disabled:opacity-40"
+            >
+              {tr("Info baki", "Balance info")}
             </button>
-          ))}
+          </div>
         </div>
-
       </section>
+
+      {/* ── Quick actions: one blue, the rest outlined ── */}
+      <div role="group" aria-label={tr("Tindakan pantas", "Quick actions")} className="mb-6 mt-5 grid grid-cols-4 gap-2 px-1">
+        {[
+          { key: "add", label: tr("Rekod", "Record"), icon: <Plus size={22} strokeWidth={2} />, onClick: () => setRecordOpen(true), accent: true },
+          { key: "categories", label: tr("Kategori", "Categories"), icon: <LayoutGrid size={21} strokeWidth={1.9} />, onClick: () => router.push(`/${sessionId}/categories`) },
+          { key: "event", label: tr("Event", "Events"), icon: <CalendarDays size={21} strokeWidth={1.9} />, onClick: () => router.push(`/${sessionId}/event`) },
+          { key: "wallets", label: tr("Dompet", "Wallets"), icon: <Wallet size={21} strokeWidth={1.9} />, onClick: () => setWalletsOpen(true) },
+        ].map((action) => (
+          <button
+            key={action.key}
+            type="button"
+            onClick={action.onClick}
+            className="group flex min-w-0 flex-col items-center gap-2 text-xs font-semibold text-[var(--text)]"
+          >
+            <span
+              className={cn(
+                "flex h-[3.625rem] w-[3.625rem] items-center justify-center rounded-[1.375rem] transition group-active:scale-90",
+                action.accent ? "bg-[#0878F8] shadow-[0_12px_24px_-12px_rgba(8,120,248,0.8)]" : "border border-[var(--home-line)] bg-[var(--home-card)] text-[var(--text)]"
+              )}
+              // Inline: some themes remap the text-white class.
+              style={action.accent ? { color: "#ffffff" } : undefined}
+            >
+              {action.icon}
+            </span>
+            <span className="truncate">{action.label}</span>
+          </button>
+        ))}
+      </div>
 
       {/* ── Wallet ── the top wallet in the user's dashboard order, drawn as the wallet page draws its cards. */}
       <section aria-labelledby="mobile-wallets-heading">
         <div className="mb-2 flex items-center justify-between px-2">
-          <h2 id="mobile-wallets-heading" className="text-base font-black text-[var(--text)]">
+          <h2 id="mobile-wallets-heading" className="text-[1.125rem] font-bold tracking-tight text-[var(--text)]">
             {tr("Dompet", "Wallet")}
           </h2>
           <button
@@ -717,7 +715,7 @@ export function MobileHome({
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={w.image_url} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" style={{ boxShadow: "0 0 0 2px rgba(255,255,255,0.35)" }} />
                       ) : null}
-                      <span className="truncate text-base font-black tracking-tight" style={{ color: "#ffffff" }}>
+                      <span className="truncate text-[1.0625rem] font-bold tracking-tight" style={{ color: "#ffffff" }}>
                         {w.label || w.name}
                       </span>
                     </span>
@@ -737,7 +735,7 @@ export function MobileHome({
                     <p className="text-[0.8125rem] font-bold" style={{ color: "rgba(255,255,255,0.75)" }}>
                       {tr("Baki", "Balance")} · {walletKind(w, isBm)}
                     </p>
-                    <p className="mt-1 truncate text-[2.25rem] font-black leading-none tabular-nums tracking-tight" style={{ color: "#ffffff" }}>
+                    <p className="mt-1 truncate text-[2.3rem] font-bold leading-none tabular-nums tracking-[-0.02em]" style={{ color: "#ffffff" }}>
                       <span className="mr-1.5 align-top text-base font-bold" style={{ color: "rgba(255,255,255,0.75)" }}>
                         {formatCurrencyLabel(w.currency)}
                       </span>
@@ -763,7 +761,7 @@ export function MobileHome({
       {/* ── Current activity ── the latest transactions, by day, with each day's net. */}
       <section aria-labelledby="mobile-activity-heading" className="mt-5">
         <div className="mb-2 flex items-center justify-between px-2">
-          <h2 id="mobile-activity-heading" className="text-base font-black text-[var(--text)]">
+          <h2 id="mobile-activity-heading" className="text-[1.125rem] font-bold tracking-tight text-[var(--text)]">
             {tr("Aktiviti Terkini", "Recent Activity")}
           </h2>
           <Link href={`/${sessionId}/transactions`} className="-mr-1 flex min-h-10 items-center gap-0.5 px-1 text-xs font-bold text-[var(--muted)]">
@@ -809,7 +807,7 @@ export function MobileHome({
                           href={`/${sessionId}/transactions/${tx.reference_id || tx.id}`}
                           className="flex min-h-[60px] items-center gap-3 rounded-2xl px-2 py-1.5 transition active:bg-[var(--surface-tint-strong)]"
                         >
-                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--card)] text-[var(--text)] shadow-[var(--shadow-card)]">
+                          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--home-line)] bg-[var(--home-card)] text-[var(--text)]">
                             {isTransfer ? (
                               <ArrowLeftRight size={17} />
                             ) : (

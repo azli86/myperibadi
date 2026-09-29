@@ -383,17 +383,6 @@ export default function ChatPage() {
   const commandQuery = isSlashCommandInput ? slashCommandText.slice(1).trim().toLowerCase() : ""
   const sharedToken = searchParams.get(SHARED_CHAT_TOKEN_QUERY_KEY) || ""
 
-  // `?draft=` fills the composer once (the home's "Pindah" quick action
-  // starts a `pindah ` command), then leaves the URL clean.
-  const draftParam = searchParams.get("draft")
-  useEffect(() => {
-    if (!draftParam) return
-    setInput(draftParam)
-    const url = new URL(window.location.href)
-    url.searchParams.delete("draft")
-    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash)
-  }, [draftParam])
-
   const menuItems = useMemo<ChatMenuItem[]>(() => [
     { name: lang === "EN" ? "Dashboard" : "Dashboard", href: `/${sessionId}`, subtitle: lang === "EN" ? "Balance and activity" : "Baki dan aktiviti", icon: LayoutDashboard },
     { name: lang === "EN" ? "Transactions" : "Transaksi", href: `/${sessionId}/transactions`, subtitle: lang === "EN" ? "Income and expense records" : "Rekod masuk dan keluar", icon: Receipt },
