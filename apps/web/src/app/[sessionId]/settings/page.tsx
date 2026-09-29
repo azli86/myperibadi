@@ -606,87 +606,51 @@ export default function SettingsPage() {
           desktop ? "scroll-mt-24 rounded-[1.75rem]" : "rounded-[1.5rem]"
         )}
       >
-        {/* Cover */}
-        <div className={cn("relative w-full overflow-hidden", desktop ? "h-48" : "h-28")}>
-          {profile?.avatar_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={profile.avatar_url}
-              alt=""
-              aria-hidden
-              className="absolute inset-0 h-full w-full scale-125 object-cover opacity-90 blur-2xl saturate-150"
-            />
-          ) : null}
-          <div
-            className={cn(
-              "absolute inset-0",
-              profile?.avatar_url
-                ? "bg-gradient-to-b from-black/0 via-black/5 to-black/25"
-                : "bg-[radial-gradient(120%_140%_at_0%_0%,#fdba74_0%,transparent_55%),radial-gradient(120%_140%_at_100%_0%,#fda4af_0%,transparent_50%),linear-gradient(135deg,#f97316_0%,#ea580c_45%,#9a3412_100%)]"
-            )}
-          />
-          <button
-            type="button"
-            onClick={() => setAvatarSheetOpen(true)}
-            className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur-md transition hover:bg-black/50 active:scale-90"
-            aria-label={tr("Tukar gambar profil", "Change profile photo")}
-            title={tr("Tukar gambar profil", "Change profile photo")}
-          >
-            <Camera size={16} />
-          </button>
-        </div>
-
-        <div className={desktop ? "px-7 pb-7" : "px-4 pb-5"}>
-          {/* Avatar over the cover + actions on the right */}
-          <div className="flex items-end justify-between gap-3">
-            <button
-              type="button"
-              onClick={openAvatar}
-              className="relative shrink-0 rounded-full ring-4 ring-[var(--card)] transition active:scale-95"
-              style={{ marginTop: -(avatarSize / 2) }}
-              title={desktop ? tr("Tukar gambar profil", "Change profile photo") : tr("Papar gambar penuh", "View full image")}
-            >
-              <UserAvatar name={name || profile?.name} size={avatarSize} src={profile?.avatar_url} className="rounded-full object-cover" />
-              <span
-                className={cn(
-                  "absolute bottom-1 right-1 rounded-full bg-emerald-500 ring-[3px] ring-[var(--card)]",
-                  desktop ? "h-5 w-5" : "h-4 w-4"
-                )}
-                title={tr("Aktif", "Active")}
-              />
-            </button>
-
-            <div className="flex items-center gap-2 pt-3">
+        <div className={desktop ? "p-7" : "p-4 pb-5"}>
+          {/* Avatar (with a camera badge to change it) and the three stats beside it */}
+          <div className="flex items-center gap-4">
+            <div className="relative shrink-0">
               <button
                 type="button"
-                onClick={openEmail}
-                aria-label={tr("Tukar E-mel", "Change Email")}
-                title={tr("Tukar E-mel", "Change Email")}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--divider)] text-[var(--text)] transition hover:bg-[var(--surface-tint)] active:scale-90"
+                onClick={openAvatar}
+                className="block rounded-full transition active:scale-95"
+                title={desktop ? tr("Tukar gambar profil", "Change profile photo") : tr("Papar gambar penuh", "View full image")}
               >
-                <MailCheck size={16} />
+                <UserAvatar name={name || profile?.name} size={avatarSize} src={profile?.avatar_url} className="rounded-full object-cover" />
               </button>
               <button
                 type="button"
-                onClick={openProfile}
-                className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[var(--text)] px-4 text-xs font-black text-[var(--bg)] transition active:scale-95"
+                onClick={() => setAvatarSheetOpen(true)}
+                aria-label={tr("Tukar gambar profil", "Change profile photo")}
+                title={tr("Tukar gambar profil", "Change profile photo")}
+                className="absolute -bottom-0.5 -right-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)] ring-[3px] ring-[var(--card)] transition active:scale-90"
               >
-                <PencilLine size={14} />
-                {tr("Edit Profil", "Edit Profile")}
+                <Camera size={14} />
               </button>
+            </div>
+
+            <div className="grid min-w-0 flex-1 grid-cols-3 text-center">
+              <button type="button" onClick={openAccounts} className="flex flex-col items-center rounded-xl py-1.5 transition active:bg-[var(--surface-tint)]">
+                <span className={cn("font-black tabular-nums text-[var(--text)]", desktop ? "text-xl" : "text-lg")}>{accounts.length || 1}</span>
+                <span className="text-xs font-medium text-[var(--muted)]">{tr("Akaun", "Accounts")}</span>
+              </button>
+              <button type="button" onClick={openCycle} className="flex flex-col items-center rounded-xl py-1.5 transition active:bg-[var(--surface-tint)]">
+                <span className={cn("font-black text-[var(--text)]", desktop ? "text-xl" : "text-lg")}>{cycleLabel}</span>
+                <span className="text-xs font-medium text-[var(--muted)]">{tr("Kitaran", "Cycle")}</span>
+              </button>
+              <div className="flex flex-col items-center py-1.5">
+                <span className={cn("inline-flex items-center gap-1.5 font-black text-[var(--text)]", desktop ? "text-xl" : "text-lg")}>
+                  <span className="h-2 w-2 rounded-full bg-[var(--income)]" />
+                  {tr("Aktif", "Active")}
+                </span>
+                <span className="text-xs font-medium text-[var(--muted)]">{tr("Status", "Status")}</span>
+              </div>
             </div>
           </div>
 
           {/* Name & handle */}
-          <div className="mt-3">
-            <div className="flex items-center gap-1.5">
-              <h2 className={cn("truncate font-black tracking-tight text-[var(--text)]", desktop ? "text-[1.75rem]" : "text-xl")}>{displayName}</h2>
-              <CheckCircle2
-                size={desktop ? 22 : 18}
-                className="shrink-0 fill-orange-500 text-[var(--card)]"
-                aria-label={tr("Disahkan", "Verified")}
-              />
-            </div>
+          <div className="mt-4">
+            <h2 className={cn("truncate font-black tracking-tight text-[var(--text)]", desktop ? "text-[1.75rem]" : "text-xl")}>{displayName}</h2>
             <p className={cn("mt-0.5 truncate font-medium text-[var(--muted)]", desktop ? "text-sm" : "text-[0.8125rem]")}>
               {profile?.email || "—"}
               {profile?.id ? <span className="ml-1.5 font-mono text-[0.75em] opacity-80">· {profile.id}</span> : null}
@@ -695,7 +659,7 @@ export default function SettingsPage() {
 
           {/* Bio: the bot persona */}
           <p className={cn("mt-3 leading-relaxed text-[var(--text)]", desktop ? "max-w-2xl text-[0.9375rem]" : "text-sm")}>
-            <Bot size={desktop ? 16 : 15} className="-mt-0.5 mr-1.5 inline text-orange-600 dark:text-orange-400" />
+            <Bot size={desktop ? 16 : 15} className="-mt-0.5 mr-1.5 inline text-[var(--text-soft)]" />
             {profile?.bot_personality ? (
               <>
                 <span className="font-semibold">{tr("Persona bot:", "Bot persona:")}</span> {profile.bot_personality}
@@ -724,20 +688,24 @@ export default function SettingsPage() {
             </span>
           </div>
 
-          {/* Followers-style stats */}
-          <div className={cn("mt-4 flex flex-wrap items-center gap-x-5 gap-y-2", desktop ? "text-sm" : "text-[0.8125rem]")}>
-            <button type="button" onClick={openAccounts} className="transition hover:underline active:opacity-70">
-              <span className="font-black tabular-nums text-[var(--text)]">{accounts.length || 1}</span>{" "}
-              <span className="text-[var(--muted)]">{tr("Akaun", "Accounts")}</span>
+          {/* Two equal actions, full width, in one quiet style */}
+          <div className={cn("mt-4 grid grid-cols-2 gap-2", desktop && "max-w-md")}>
+            <button
+              type="button"
+              onClick={openProfile}
+              className="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[var(--surface-tint-strong)] text-sm font-bold text-[var(--text)] transition active:scale-[0.98]"
+            >
+              <PencilLine size={15} />
+              {tr("Edit profil", "Edit profile")}
             </button>
-            <button type="button" onClick={openCycle} className="transition hover:underline active:opacity-70">
-              <span className="font-black text-[var(--text)]">{cycleLabel}</span>{" "}
-              <span className="text-[var(--muted)]">{tr("Kitaran", "Cycle")}</span>
+            <button
+              type="button"
+              onClick={openEmail}
+              className="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[var(--surface-tint-strong)] text-sm font-bold text-[var(--text)] transition active:scale-[0.98]"
+            >
+              <MailCheck size={15} />
+              {tr("Tukar e-mel", "Change email")}
             </button>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <span className="font-black text-emerald-600 dark:text-emerald-400">{tr("Aktif", "Active")}</span>
-            </span>
           </div>
         </div>
       </section>
