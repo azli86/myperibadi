@@ -64,6 +64,7 @@ function getTransactionCategoryLabel(tx: TransactionDetail, fallback: string) {
 
 const ATTACHMENT_PREVIEW_RETRY_DELAYS_MS = [500, 1200, 2500]
 const ATTACHMENT_POLL_DELAYS_MS = [700, 1500, 3000, 5000]
+const RECENT_UPLOAD_WINDOW_MS = 5 * 60 * 1000
 const RECEIPT_BRAND_NAME = "MyPeribadi"
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -557,6 +558,31 @@ export default function TransactionDetailPage() {
     void preloadImagePreviews(attachments)
   }
 
+  // One lookup, then keep polling only for a transaction saved in the last few
+  // minutes, whose receipt upload may still be finishing.
+  const loadMissingAttachments = async (
+    fetchId: number,
+    transactionKey: string,
+    data: { id: number; created_at?: string | null },
+    token: string
+  ) => {
+    try {
+      const attachments = await fetchTransactionAttachments(transactionKey, token)
+      if (attachments.length) {
+        applyResolvedAttachments(fetchId, data.id, attachments)
+        return
+      }
+    } catch (err) {
+      if ((err as Error).message === "TX_NOT_FOUND") return
+      console.error("Attachment load error:", err)
+    }
+    // The API sends naive UTC timestamps; read them as UTC, not local time.
+    const created = data.created_at || ""
+    const createdMs = created ? Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(created) ? created : `${created}Z`) : NaN
+    if (Number.isFinite(createdMs) && Date.now() - createdMs > RECENT_UPLOAD_WINDOW_MS) return
+    void pollForAttachments(fetchId, transactionKey, data.id, token)
+  }
+
   const pollForAttachments = async (
     fetchId: number,
     transactionKey: string,
@@ -620,19 +646,17 @@ export default function TransactionDetailPage() {
         const data = await res.json()
         if (activeFetchIdRef.current !== fetchId) return
 
-        let attachments = Array.isArray(data.attachments) ? data.attachments : []
-        if (!attachments.length) {
-          attachments = await fetchTransactionAttachments(txnId, token || "")
-        }
-        if (activeFetchIdRef.current !== fetchId) return
+        const attachments = Array.isArray(data.attachments) ? data.attachments : []
 
+        // Show the transaction straight away; attachments missing from the
+        // payload are looked up after, without holding the page back.
         setTxn({ ...data, attachments })
         void fetchSplitForTxn(data.id)
         clearAttachmentUrls(new Set(attachments.map((att: { id: number }) => att.id)))
         void preloadImagePreviews(attachments)
         if (!attachments.length) {
           const transactionKey = data.reference_id || txnId
-          void pollForAttachments(fetchId, transactionKey, data.id, token || "")
+          void loadMissingAttachments(fetchId, transactionKey, data, token || "")
         }
         setLinkedSubscriptionId(data.subscription_id ? String(data.subscription_id) : "")
         setEditForm({
