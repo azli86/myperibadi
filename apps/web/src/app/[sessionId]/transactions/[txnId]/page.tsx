@@ -1683,14 +1683,14 @@ export default function TransactionDetailPage() {
                     ? "?tab=fuel"
                     : ""
               }`}
-              className="mt-3 flex items-center gap-3 rounded-[1.25rem] bg-[var(--card)] p-3.5 shadow-[var(--shadow-card)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
+              className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--accent2)]">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#0878F8]" style={{ color: "#ffffff" }}>
                 <Car size={18} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
-                  {lang === "BM" ? "Dari Kenderaan" : "From Vehicle"}
+                <span className="block text-[0.75rem] font-medium text-[var(--muted)]">
+                  {lang === "BM" ? "Dari kenderaan" : "From vehicle"}
                 </span>
                 <span className="mt-0.5 block truncate text-sm font-bold text-[var(--text)]">
                   {vehicleLink.vehicle_name || "Vehicle"}
@@ -1712,13 +1712,13 @@ export default function TransactionDetailPage() {
             splitBill ? (
               <Link
                 href={`/${sessionId}/split-bills`}
-                className="mt-3 flex items-center gap-3 rounded-[1.25rem] bg-[var(--card)] p-3.5 shadow-[var(--shadow-card)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
+                className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--accent)]">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#0878F8]" style={{ color: "#ffffff" }}>
                   <Users size={18} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+                  <span className="block text-[0.75rem] font-medium text-[var(--muted)]">
                     {lang === "BM" ? "Split Bill" : "Split Bill"}
                   </span>
                   <span className="mt-0.5 block truncate text-sm font-bold text-[var(--text)]">{splitBill.title}</span>
@@ -1735,17 +1735,17 @@ export default function TransactionDetailPage() {
             ) : (
               <Link
                 href={`/${sessionId}/split-bills?create=1&txn=${txn?.id}`}
-                className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-dashed border-[var(--divider)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
+                className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-dashed border-[var(--border-strong)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)]">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#0878F8]/30 bg-[#0878F8]/10 text-[#0878F8]">
                   <Users size={18} />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+                  <span className="block text-[0.75rem] font-medium text-[var(--muted)]">
                     {lang === "BM" ? "Split Bill" : "Split Bill"}
                   </span>
                   <span className="mt-0.5 block text-sm font-bold text-[var(--text)]">
-                    {lang === "BM" ? "Buat Split Bill" : "Create Split Bill"}
+                    {lang === "BM" ? "Buat split bill" : "Create split bill"}
                   </span>
                   <span className="mt-0.5 block text-xs font-semibold text-[var(--muted)]">
                     {lang === "BM" ? "Bahagi bil dengan rakan" : "Split this bill with friends"}
@@ -1762,13 +1762,13 @@ export default function TransactionDetailPage() {
               type="button"
               onClick={addTxnToInventory}
               disabled={invAdding}
-              className="mt-3 flex w-full items-center gap-3 rounded-[1.25rem] border border-dashed border-[var(--divider)] bg-[var(--card)] p-3.5 text-left transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30 disabled:opacity-50"
+              className="mt-3 flex w-full items-center gap-3 rounded-[1.25rem] border border-dashed border-[var(--border-strong)] bg-[var(--card)] p-3.5 text-left transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30 disabled:opacity-50"
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#0878F8]/30 bg-[#0878F8]/10 text-[#0878F8]">
                 {invAdding ? <Loader2 size={18} className="animate-spin" /> : <Package size={18} />}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
+                <span className="block text-[0.75rem] font-medium text-[var(--muted)]">
                   {lang === "BM" ? "Barang Saya" : "My Inventory"}
                 </span>
                 <span className="mt-0.5 block text-sm font-bold text-[var(--text)]">
@@ -1782,7 +1782,7 @@ export default function TransactionDetailPage() {
             </button>
           ) : invAdded ? (
             <div className="mt-3 flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3.5">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#0878F8]/30 bg-[#0878F8]/10 text-[#0878F8]">
                 <Package size={18} />
               </span>
               <span className="min-w-0 flex-1">

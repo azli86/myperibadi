@@ -20,9 +20,9 @@ export type TxnDetailsListProps = {
 function Row({ label, value, leading, children }: { label: string; value?: string; leading?: React.ReactNode; children?: React.ReactNode }) {
   return (
     <div className="flex min-h-12 items-center justify-between gap-4 py-2.5">
-      <span className="shrink-0 text-sm font-medium text-[var(--muted)]">{label}</span>
+      <span className="shrink-0 text-[0.8125rem] font-medium text-[var(--muted)]">{label}</span>
       {children ?? (
-        <span className="flex min-w-0 items-center justify-end gap-2 text-right text-sm font-bold text-[var(--text)]">
+        <span className="flex min-w-0 items-center justify-end gap-2 text-right text-sm font-semibold text-[var(--text)]">
           {leading}
           <span className="min-w-0 [overflow-wrap:anywhere]">{value}</span>
         </span>
@@ -46,14 +46,13 @@ export default function TxnDetailsList({
   const isWalletTransfer = Boolean(txn.is_wallet_transfer)
 
   return (
-    <div className="rounded-[1.5rem] bg-[var(--card)] px-5 pb-3 pt-4 shadow-[var(--shadow-card)] md:px-6">
-      <h3 className="text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-[var(--muted)]">
-        {isBm ? "Maklumat Transaksi" : "Transaction Info"}
+    <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] px-5 pb-3 pt-4 md:px-6">
+      <h3 className="text-[0.8125rem] font-semibold text-[var(--muted)]">
+        {isBm ? "Maklumat transaksi" : "Transaction info"}
       </h3>
-      {/* --divider, not --border: --border is transparent in every theme. */}
       <div className="mt-1 divide-y divide-[var(--divider)]">
         {merchantLabel && (
-          <Row label={isBm ? "Peniaga / Penerangan" : "Merchant / Description"} value={merchantLabel} />
+          <Row label={isBm ? "Peniaga / penerangan" : "Merchant / description"} value={merchantLabel} />
         )}
         <Row
           label={isBm ? "Kategori" : "Category"}
@@ -76,7 +75,7 @@ export default function TxnDetailsList({
         />
         <Row label={isBm ? "Tarikh" : "Date"} value={transactionDateLabel} />
         <Row label={isBm ? "Status" : "Status"} value={statusLabel} />
-        <Row label={isBm ? "Cara Simpan" : "Saved Via"} value={sourceChannelLabel} />
+        <Row label={isBm ? "Cara simpan" : "Saved via"} value={sourceChannelLabel} />
         <Row
           label={isBm ? "Wallet" : "Wallet"}
           value={walletLabel}
@@ -97,16 +96,16 @@ export default function TxnDetailsList({
           }
         />
         {txn.linked_loan_name && (
-          <Row label={isBm ? "Pinjaman Dikait" : "Linked Loan"} value={txn.linked_loan_name} />
+          <Row label={isBm ? "Pinjaman dikait" : "Linked loan"} value={txn.linked_loan_name} />
         )}
         {txn.linked_subscription_name && (
-          <Row label={isBm ? "Langganan Dikait" : "Linked Subscription"} value={txn.linked_subscription_name} />
+          <Row label={isBm ? "Langganan dikait" : "Linked subscription"} value={txn.linked_subscription_name} />
         )}
       </div>
 
       {displayNotes && (
-        <div className="mb-2 mt-2 rounded-2xl bg-[var(--surface-tint-strong)] p-3.5">
-          <p className="text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-[var(--muted)]">
+        <div className="mb-2 mt-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3.5">
+          <p className="text-[0.8125rem] font-semibold text-[var(--muted)]">
             {isBm ? "Nota" : "Notes"}
           </p>
           <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--text)]">

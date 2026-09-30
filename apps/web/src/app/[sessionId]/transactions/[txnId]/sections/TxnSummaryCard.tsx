@@ -18,8 +18,8 @@ export type TxnSummaryCardProps = {
   actions?: React.ReactNode
 }
 
-// The top of the transaction page, in the same plain style as the phone home:
-// no card, everything centred on the page, the amount as the largest thing.
+// The top of the transaction page in the Moden look: an outlined card over a
+// blue circle, the amount as the largest thing, and round actions under it.
 export default function TxnSummaryCard({
   txn,
   title,
@@ -40,44 +40,72 @@ export default function TxnSummaryCard({
       ? "Pindahan wallet"
       : "Wallet transfer"
     : txn.category_name || (isBm ? "Tiada Kategori" : "No Category")
+  const typeLabel = isTransfer
+    ? isBm ? "Pindahan" : "Transfer"
+    : isIncome
+      ? isBm ? "Pendapatan" : "Income"
+      : isBm ? "Perbelanjaan" : "Expense"
 
   return (
-    <section className="flex flex-col items-center px-3 pb-2 pt-4 text-center md:pt-6">
-      <span className="flex h-16 w-16 items-center justify-center rounded-[1.4rem] bg-[var(--card)] text-[var(--text-soft)] shadow-[var(--shadow-card)]">
-        {isTransfer ? (
-          <ArrowLeftRight size={26} />
-        ) : txn.category_icon_name || txn.category_name ? (
-          <CategoryIconGlyph iconName={txn.category_icon_name} categoryName={txn.category_name || undefined} kind={isIncome ? "income" : "expense"} size={28} />
-        ) : (
-          <Banknote size={26} />
-        )}
-      </span>
+    <section className="pt-2 md:pt-4">
+      <div className="relative px-1 pt-3">
+        <div aria-hidden className="absolute -right-2 -top-1 h-36 w-36 rounded-full bg-[#0878F8] md:-right-4 md:-top-4 md:h-52 md:w-52" />
+        <div aria-hidden className="absolute right-6 top-7 h-16 w-16 rounded-full border-[1.5px] border-white opacity-35 md:right-6 md:top-8 md:h-24 md:w-24" />
+        <div className="relative rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)] md:p-7">
+          <div className="flex items-start gap-3">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text-soft)]">
+              {isTransfer ? (
+                <ArrowLeftRight size={22} />
+              ) : txn.category_icon_name || txn.category_name ? (
+                <CategoryIconGlyph iconName={txn.category_icon_name} categoryName={txn.category_name || undefined} kind={isIncome ? "income" : "expense"} size={24} />
+              ) : (
+                <Banknote size={22} />
+              )}
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-[1.0625rem] font-bold leading-tight text-[var(--text)] [overflow-wrap:anywhere] md:text-xl">
+                {title}
+              </h2>
+              <p className="mt-1 text-[0.8125rem] font-medium text-[var(--muted)]">{categoryName}</p>
+            </div>
+          </div>
 
-      <h2 className="mt-3 max-w-full text-lg font-black leading-tight tracking-tight text-[var(--text)] [overflow-wrap:anywhere] md:text-xl">
-        {title}
-      </h2>
-      <p className="mt-1 text-xs font-bold text-[var(--muted)]">{categoryName}</p>
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-1 text-[0.6875rem] font-semibold text-[var(--text-soft)]">
+              <span className={cn("h-1.5 w-1.5 rounded-full", isTransfer ? "bg-[#0878F8]" : isIncome ? "bg-emerald-500" : "bg-rose-500")} />
+              {typeLabel}
+            </span>
+            {txn.is_refund || txn.has_been_refunded ? (
+              <span
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-[0.6875rem] font-semibold",
+                  txn.is_refund ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : badgeClass
+                )}
+              >
+                {txn.is_refund ? "Refund" : isBm ? "Direfund" : "Refunded"}
+              </span>
+            ) : null}
+          </div>
 
-      <p className={cn("mt-4 font-black leading-none tabular-nums tracking-tight", amountClass)}>
-        <span className="mr-1 align-top text-lg font-bold opacity-70 md:text-xl">{sign}RM</span>
-        <span className="text-[2.75rem] md:text-6xl">{formattedAmount}</span>
-      </p>
+          <p className={cn("mt-3 flex items-start font-bold leading-none tabular-nums tracking-tight", amountClass)}>
+            <span className="mr-1.5 mt-1 text-sm font-semibold opacity-70 md:text-base">{sign}RM</span>
+            <span style={{ fontSize: "clamp(2.25rem, 11vw, 3.5rem)" }}>{formattedAmount}</span>
+          </p>
 
-      <p className="mt-3 text-xs font-semibold text-[var(--text-soft)]">{transactionDateLabel}</p>
-      <p className="mt-1 font-mono text-[0.6875rem] font-semibold text-[var(--muted)]">{receiptNumber}</p>
+          <div className="mt-6 grid grid-cols-2 gap-2.5">
+            <div className="min-w-0 rounded-2xl border border-[var(--border)] px-3.5 py-3">
+              <p className="text-[0.6875rem] font-medium text-[var(--muted)]">{isBm ? "Tarikh" : "Date"}</p>
+              <p className="mt-1 text-[0.8125rem] font-semibold leading-snug text-[var(--text)]">{transactionDateLabel}</p>
+            </div>
+            <div className="min-w-0 rounded-2xl border border-[var(--border)] px-3.5 py-3">
+              <p className="text-[0.6875rem] font-medium text-[var(--muted)]">{isBm ? "Rujukan" : "Reference"}</p>
+              <p className="mt-1 truncate font-mono text-[0.75rem] font-semibold text-[var(--text)]">{receiptNumber}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      {txn.is_refund || txn.has_been_refunded ? (
-        <span
-          className={cn(
-            "mt-3 rounded-full border px-2.5 py-0.5 text-[0.625rem] font-extrabold uppercase tracking-[0.08em]",
-            txn.is_refund ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" : badgeClass
-          )}
-        >
-          {txn.is_refund ? "Refund" : isBm ? "Direfund" : "Refunded"}
-        </span>
-      ) : null}
-
-      {actions ? <div className="mt-6 flex w-full max-w-sm items-start justify-center gap-3">{actions}</div> : null}
+      {actions ? <div className="mx-auto mt-5 flex w-full max-w-sm items-start justify-center gap-3 md:hidden">{actions}</div> : null}
     </section>
   )
 }
@@ -105,7 +133,7 @@ export function TxnActionButton({
     >
       <span
         className={cn(
-          "flex h-12 w-12 items-center justify-center rounded-full bg-[var(--card)] shadow-[var(--shadow-card)] transition group-active:scale-95",
+          "flex h-12 w-12 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] transition group-active:scale-95",
           tone === "positive"
             ? "text-emerald-700 dark:text-emerald-400"
             : tone === "danger"
@@ -115,7 +143,7 @@ export function TxnActionButton({
       >
         {icon}
       </span>
-      <span className="text-[0.6875rem] font-bold text-[var(--text-soft)]">{label}</span>
+      <span className="text-[0.6875rem] font-semibold text-[var(--text-soft)]">{label}</span>
     </button>
   )
 }

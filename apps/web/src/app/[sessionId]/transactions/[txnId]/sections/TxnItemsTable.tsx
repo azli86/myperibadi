@@ -27,9 +27,9 @@ export default function TxnItemsTable({
   const count = receiptItems.length
 
   return (
-    <div className="rounded-[1.5rem] bg-[var(--card)] px-5 pb-4 pt-4 shadow-[var(--shadow-card)] md:px-6">
+    <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] px-5 pb-4 pt-4 md:px-6">
       <div className="flex items-baseline justify-between">
-        <h3 className="text-[0.65rem] font-extrabold uppercase tracking-[0.14em] text-[var(--muted)]">
+        <h3 className="text-[0.8125rem] font-semibold text-[var(--muted)]">
           {isBm ? "Item" : "Items"}
         </h3>
         <span className="text-[0.6875rem] font-semibold tabular-nums text-[var(--muted)]">
@@ -54,9 +54,9 @@ export default function TxnItemsTable({
         ))}
       </ul>
 
-      <div className="mt-2 flex items-baseline justify-between border-t-2 border-dashed border-[var(--divider)] pt-3">
-        <span className="text-sm font-black text-[var(--text)]">{isBm ? "Jumlah" : "Total"}</span>
-        <span className="text-lg font-black tabular-nums text-[var(--text)]">
+      <div className="mt-2 flex items-baseline justify-between border-t border-dashed border-[var(--border)] pt-3">
+        <span className="text-sm font-semibold text-[var(--text)]">{isBm ? "Jumlah" : "Total"}</span>
+        <span className="text-xl font-bold tabular-nums text-[var(--text)]">
           {showDataSkeleton ? (
             <AmountSkeleton className="h-4 w-24" />
           ) : (

@@ -35,7 +35,8 @@ export default function TxnHeader({
               type="button"
               onClick={onDownloadReceipt}
               disabled={downloading}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-3 py-2 text-xs font-bold uppercase tracking-wide text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-40"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#0878F8] px-3.5 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-40"
+              style={{ color: "#ffffff" }}
               aria-label={isBm ? "Muat turun resit" : "Download receipt"}
             >
               {downloading ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
