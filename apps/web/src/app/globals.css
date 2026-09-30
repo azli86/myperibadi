@@ -76,7 +76,7 @@
   --bg2: #161616;
   --bg-tertiary: #1f1f1f;
   --bg-elevation: #262626;
-  --card: #1a1a1a;
+  --card: #18181b;
   --card2: #202020;
   --card3: #0b0b0b;
   --card-active: #262626;
@@ -2087,7 +2087,7 @@ html[data-theme="light"] .purple-chrome [class~="text-indigo-100/75"] {
   .portal-desktop-sidebar {
     --bg: #0d0d0d;
   --bg2: var(--bg);
-    --card: #1a1a1a;
+    --card: #18181b;
     --card2: #202020;
   --card3: var(--bg);
     --sidebar: #0d0d0d;
@@ -3735,15 +3735,10 @@ html[data-theme="light"] .portal-personal-shell :is(
 }
 
 /* ── Phone home: the "Login Moden" look ──
-   Cards and outlined controls share one surface and one hairline, in both
-   themes, so the home reads like the login screen. */
+   Cards and outlined controls share one surface and one hairline. They follow
+   the global card and border tokens, so they match every other page. */
 .home-moden,
 .moden-surface {
-  --home-card: #18181b;
-  --home-line: #27272a;
-}
-html[data-theme="light"] .home-moden,
-html[data-theme="light"] .moden-surface {
-  --home-card: #ffffff;
-  --home-line: #e4e4e7;
+  --home-card: var(--card);
+  --home-line: var(--border);
 }
