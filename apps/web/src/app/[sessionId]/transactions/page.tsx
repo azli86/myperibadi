@@ -379,16 +379,14 @@ function SwipeableTransactionItem({
         <button
           type="button"
           onClick={handleClick}
-          className="flex w-full items-start gap-2.5 px-4 py-4 text-left transition active:opacity-80 select-none"
+          className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition active:bg-[var(--surface-tint)] select-none"
         >
           <div
             className={cn(
-              "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center transition-transform active:scale-95",
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)]",
               isTransferTransaction(tx)
                 ? (isLight ? TRANSFER_LIGHT_TEXT : TRANSFER_DARK_TEXT)
-                : tx.type === "income"
-                ? (isLight ? "text-emerald-500" : "text-emerald-400/80")
-                : (isLight ? "text-rose-500" : "text-rose-400/80"),
+                : "text-[var(--text)]",
             )}
           >
             {tx.category_name || tx.category_icon_name ? (
@@ -409,11 +407,11 @@ function SwipeableTransactionItem({
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[0.86rem] font-bold text-[var(--text)]">
-              {getTransactionCategoryLabel(tx, langT.uncategorized)}
-            </p>
-            <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
+            <p className="truncate text-[0.9375rem] font-semibold text-[var(--text)]">
               {splitWalletTaggedDescription(tx.vendor_or_source || "", tx.wallet_name).title || tx.vendor_or_source || langT.noDescription}
+            </p>
+            <p className="mt-0.5 truncate text-[0.8125rem] font-medium text-[var(--muted)]">
+              {getTransactionCategoryLabel(tx, langT.uncategorized)}
             </p>
             {tx.notes ? (
               <div className="mt-1 flex items-start gap-1 text-[0.625rem] font-medium text-[var(--muted)]">
@@ -422,7 +420,7 @@ function SwipeableTransactionItem({
               </div>
             ) : null}
             <div className="mt-0.5">
-              <span className={cn("text-[0.5625rem] font-medium", isLight ? "text-slate-500" : "text-[var(--muted)]/60")}>
+              <span className="text-[0.6875rem] font-medium text-[var(--muted)]">
                 {(() => {
                   try {
                     if (tx.txn_time) {
@@ -449,12 +447,12 @@ function SwipeableTransactionItem({
 
           <div
             className={cn(
-              "shrink-0 text-right text-[0.86rem] font-medium tabular-nums",
+              "shrink-0 text-right text-[0.9375rem] font-bold tabular-nums",
               isTransferTransaction(tx)
                 ? (isLight ? TRANSFER_LIGHT_TEXT : TRANSFER_DARK_TEXT)
                 : tx.type === "income"
-                ? (isLight ? "text-emerald-500" : "text-emerald-400/80")
-                : (isLight ? "text-rose-500" : "text-rose-400/80"),
+                ? "text-[var(--income)]"
+                : "text-[var(--text)]",
             )}
           >
             {showDataSkeleton ? <AmountSkeleton className="h-3 w-20" /> : getTransactionAmountLabel(tx)}
@@ -1997,46 +1995,36 @@ const currentCycleKeyStr = useMemo(
   </div>
   )}
 
-  {/* Mobile Summary — compact 3-up strip (radius via global --card-radius-lg) */}
+  {/* Mobile summary, in the Moden look: an outlined card over a blue circle */}
   {!showGraphMode && (
-  <div className="md:hidden">
-  <div className="modern-card overflow-hidden !shadow-[var(--shadow-soft)]">
-  <div className="grid grid-cols-3 divide-x divide-[var(--border)]">
-  <div className="px-2.5 py-3 text-center">
-  <p className="text-[0.55rem] font-bold uppercase tracking-wider text-emerald-400/90">
-  {langT.income}
+  <div className="relative px-1 pt-2 md:hidden">
+  <div aria-hidden className="absolute -right-2 -top-1 h-36 w-36 rounded-full bg-[#0878F8]" />
+  <div aria-hidden className="absolute right-6 top-7 h-16 w-16 rounded-full border-[1.5px] border-white opacity-35" />
+  <div className="relative rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)]">
+  <p className="text-[0.8125rem] font-medium text-[var(--muted)]">{lang === "EN" ? "Balance" : "Baki"}</p>
+  <p className="mt-1.5 leading-none tabular-nums text-[var(--text)]">
+  {showDataSkeleton ? (
+  <AmountSkeleton className="h-10 w-44" />
+  ) : (
+  <>
+  <span className="mr-1.5 align-top text-[1.0625rem] font-semibold text-[var(--muted)]">RM</span>
+  <span className="text-[2.5rem] font-bold tracking-[-0.03em]">{formatCurrencyAmount(statsSnapshot.balance)}</span>
+  </>
+  )}
   </p>
-  <p className={cn("mt-1.5 text-[0.8rem] font-black tabular-nums leading-none", isLight ? "text-emerald-600" : "text-emerald-400")}>
-  {showDataSkeleton ? <AmountSkeleton className="mx-auto h-3.5 w-14" /> : <>{formatCurrencyAmount(displayIncome)}</>}
-  </p>
-  </div>
-  <div className="px-2.5 py-3 text-center">
-  <p className="text-[0.55rem] font-bold uppercase tracking-wider text-rose-400/90">
-  {langT.expense}
-  </p>
-  <p className={cn("mt-1.5 text-[0.8rem] font-black tabular-nums leading-none", isLight ? "text-rose-600" : "text-rose-400")}>
-  {showDataSkeleton ? <AmountSkeleton className="mx-auto h-3.5 w-14" /> : <>{formatCurrencyAmount(displayExpense)}</>}
-  </p>
-  </div>
-  <div className="px-2.5 py-3 text-center">
-  <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-  {lang === "EN" ? "Balance" : "Baki"}
-  </p>
-  <p className="mt-1.5 text-[0.8rem] font-black tabular-nums leading-none text-[var(--text)]">
-  {showDataSkeleton ? <AmountSkeleton className="mx-auto h-3.5 w-14" /> : <>{formatCurrencyAmount(statsSnapshot.balance)}</>}
-  </p>
-  </div>
-  </div>
-  <div className="flex items-center justify-between gap-2 border-t border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2">
-  <span className="text-[0.6rem] font-semibold text-[var(--muted)]">
-  {lang === "EN" ? "Filtered net" : "Bersih tapisan"}
+  <div className="mt-4 flex flex-wrap items-center gap-2">
+  <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[var(--border)] px-3 text-xs font-semibold tabular-nums text-[var(--text)]">
+  <span aria-hidden className="h-2 w-2 rounded-full bg-[var(--income)]" />
+  {showDataSkeleton ? <AmountSkeleton className="h-3 w-12" /> : <>RM {formatCurrencyAmount(displayIncome)}</>} {lang === "EN" ? "in" : "masuk"}
   </span>
-  <span className={cn(
-  "text-[0.7rem] font-bold tabular-nums",
-  filteredNetFlow >= 0
-  ? (isLight ? "text-emerald-600" : "text-emerald-400")
-  : (isLight ? "text-rose-600" : "text-rose-400")
-  )}>
+  <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[var(--border)] px-3 text-xs font-semibold tabular-nums text-[var(--text)]">
+  <span aria-hidden className="h-2 w-2 rounded-full bg-[var(--expense)]" />
+  {showDataSkeleton ? <AmountSkeleton className="h-3 w-12" /> : <>RM {formatCurrencyAmount(displayExpense)}</>} {lang === "EN" ? "out" : "keluar"}
+  </span>
+  </div>
+  <div className="mt-3.5 flex items-center justify-between border-t border-[var(--border)] pt-3 text-xs font-medium text-[var(--muted)]">
+  <span>{lang === "EN" ? "Filtered net" : "Bersih tapisan"}</span>
+  <span className={cn("font-semibold tabular-nums", filteredNetFlow >= 0 ? "text-[var(--income)]" : "text-[var(--text)]")}>
   {showDataSkeleton ? (
   <AmountSkeleton className="h-3 w-16" />
   ) : (
@@ -2319,8 +2307,8 @@ const currentCycleKeyStr = useMemo(
   </div>
  ) : (
  <>
-  <div className="hidden overflow-hidden rounded-xl border border-[color:var(--border)] bg-[var(--card)] md:block">
-  <div className="grid grid-cols-[2.1fr_1fr_1.45fr_1.05fr] border-b border-[color:var(--border)] bg-[var(--surface-tint)] px-5 py-3 text-[0.625rem] font-semibold text-[var(--muted)] uppercase tracking-wider">
+  <div className="hidden overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] md:block">
+  <div className="grid grid-cols-[2.1fr_1fr_1.45fr_1.05fr] border-b border-[var(--border)] px-5 py-3 text-xs font-medium text-[var(--muted)]">
  <div>{lang === "EN" ? "Description" : "Keterangan"}</div>
  <div>{lang === "EN" ? "Transaction ID" : "ID Transaksi"}</div>
  <div>{lang === "EN" ? "Categories" : "Kategori"}</div>
@@ -2351,9 +2339,9 @@ const currentCycleKeyStr = useMemo(
 
  return (
  <React.Fragment key={date}>
-  <div className="grid grid-cols-2 items-center border-b border-[color:var(--border)] px-5 py-2.5 bg-[var(--surface-tint)]">
+  <div className="grid grid-cols-2 items-center border-b border-[var(--border)] px-5 py-2.5">
   <div className="flex items-center gap-3">
-  <span className="text-lg font-bold leading-none text-[var(--text)] tabular-nums">
+  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0878F8] text-[0.9375rem] font-bold leading-none tabular-nums" style={{ color: "#ffffff" }}>
   {dayNumber}
   </span>
   <div>
@@ -2363,11 +2351,11 @@ const currentCycleKeyStr = useMemo(
   </div>
 
  <div className="flex items-center justify-end gap-4 text-xs font-bold tabular-nums text-right">
-  <span className={expenseTotal > 0 ? (isLight ? "text-rose-600" : "text-rose-300") : "text-[var(--muted)]"}>
+  <span className={expenseTotal > 0 ? "text-[var(--text)]" : "text-[var(--muted)]"}>
  {showDataSkeleton ? <AmountSkeleton className="h-3 w-20" /> : <>-RM {formatCurrencyAmount(expenseTotal)}</>}
  </span>
  {showIncomeRow && (
- <span className={isLight ? "text-emerald-600" : "text-emerald-300"}>
+ <span className="text-[var(--income)]">
  {showDataSkeleton ? <AmountSkeleton className="h-3 w-20" /> : <>+RM {formatCurrencyAmount(incomeTotal)}</>}
  </span>
  )}
@@ -2383,8 +2371,8 @@ const currentCycleKeyStr = useMemo(
  const rowTone = isTransferTransaction(tx)
  ? (isLight ? TRANSFER_LIGHT_TEXT : TRANSFER_DARK_TEXT)
  : tx.type === "income"
- ? (isLight ? "text-emerald-600" : "text-emerald-300")
- : (isLight ? "text-rose-600" : "text-rose-300")
+ ? "text-[var(--income)]"
+ : "text-[var(--text)]"
  const categoryPillClass = isTransferTransaction(tx)
  ? isLight ? "bg-amber-100 text-amber-700" : "bg-amber-400/15 text-amber-200"
  : tx.type === "income"
@@ -2420,10 +2408,10 @@ const currentCycleKeyStr = useMemo(
  key={`${date}-${tx.id}`}
  type="button"
  onClick={() => openTransaction(tx.reference_id || tx.id)}
- className="grid w-full grid-cols-[2.1fr_1fr_1.45fr_1.05fr] items-center border-b border-[color:var(--border)] px-5 py-4 text-left transition hover:bg-[var(--surface-tint)] active:opacity-80 last:border-b-0"
+ className="grid w-full grid-cols-[2.1fr_1fr_1.45fr_1.05fr] items-center border-b border-[var(--border)] px-5 py-3.5 text-left transition hover:bg-[var(--surface-tint)] active:opacity-80 last:border-b-0"
  >
  <div className="flex min-w-0 items-center gap-2.5">
- <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center", rowTone)}>
+ <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)]", rowTone)}>
  {tx.category_name || tx.category_icon_name ? (
  <CategoryIconGlyph
  iconName={tx.category_icon_name}
@@ -2441,7 +2429,7 @@ const currentCycleKeyStr = useMemo(
  )}
  </div>
  <div className="min-w-0">
- <p className="truncate text-xs font-semibold text-[var(--text)]">
+ <p className="truncate text-[0.8125rem] font-semibold text-[var(--text)]">
  {splitWalletTaggedDescription(tx.vendor_or_source || "", tx.wallet_name).title || tx.vendor_or_source || langT.noDescription}
  </p>
  <p className="mt-0.5 truncate text-[0.625rem] text-[var(--muted)]">{formattedDateTime}</p>
@@ -2464,7 +2452,7 @@ const currentCycleKeyStr = useMemo(
  </span>
  </div>
 
- <div className={cn("text-right text-xs font-bold tabular-nums", rowTone)}>
+ <div className={cn("text-right text-[0.8125rem] font-bold tabular-nums", rowTone)}>
  {showDataSkeleton ? <AmountSkeleton className="h-3 w-20" /> : getTransactionAmountLabel(tx)}
  <span
  className="mt-0.5 block truncate text-[0.625rem] font-medium text-[var(--muted)]"
@@ -2503,41 +2491,38 @@ const currentCycleKeyStr = useMemo(
  return (
  <div key={date} className="space-y-3">
  <div
-   className="w-full max-w-full overflow-hidden rounded-2xl border md:rounded-2xl"
+   className="w-full max-w-full overflow-hidden rounded-[1.5rem] border"
  style={{ backgroundColor: "var(--card)", borderColor: "var(--border)" }}
  >
   <div
-  className="sticky top-0 z-10 flex items-center justify-between gap-2 px-4 py-3 backdrop-blur-md"
-  style={{
-  borderBottom: "1px solid var(--border)",
-  backgroundColor: "var(--surface-tint)"
-  }}
+  className="flex items-center justify-between gap-2 px-4 pb-2.5 pt-3.5"
+  style={{ borderBottom: "1px solid var(--border)" }}
   >
   <div className="flex min-w-0 flex-1 items-center gap-3">
-  <div className="text-[1.8rem] font-black leading-none text-[var(--text)] tabular-nums">
+  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#0878F8] text-[1.25rem] font-bold leading-none tabular-nums" style={{ color: "#ffffff" }}>
   {dayNumber}
   </div>
   <div className="min-w-0">
-  <p className="truncate text-[0.82rem] font-bold text-[var(--text)] uppercase tracking-tight">
+  <p className="truncate text-[0.9375rem] font-bold text-[var(--text)]">
   {weekdayLabel}
   </p>
-  <p className="mt-0.5 text-[0.7rem] font-bold text-[var(--muted)] uppercase tracking-widest">{monthYearLabel}</p>
+  <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">{monthYearLabel}</p>
   </div>
   </div>
 
  <div className="grid shrink-0 grid-cols-1 gap-0.5 pl-2 text-right">
  <div
    className={cn(
- "text-[0.82rem] font-medium tabular-nums",
-  expenseTotal > 0 ? (isLight ? "text-rose-500" : "text-rose-400/80") : "text-[var(--muted)]",
+ "text-[0.8125rem] font-semibold tabular-nums",
+  expenseTotal > 0 ? "text-[var(--text)]" : "text-[var(--muted)]",
  )}
  >
  {showDataSkeleton ? <AmountSkeleton className="h-3 w-20" /> : <>-RM {formatCurrencyAmount(expenseTotal)}</>}
  </div>
  {showIncomeRow && (
  <div className={cn(
- "text-[0.82rem] font-medium tabular-nums",
- isLight ? "text-emerald-500" : "text-emerald-400/80"
+ "text-[0.8125rem] font-semibold tabular-nums",
+ "text-[var(--income)]"
  )}>
  {showDataSkeleton ? <AmountSkeleton className="h-3 w-20" /> : <>+RM {formatCurrencyAmount(incomeTotal)}</>}
  </div>
