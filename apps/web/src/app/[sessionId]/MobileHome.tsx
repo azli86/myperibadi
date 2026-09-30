@@ -703,6 +703,17 @@ export function MobileHome({
                   // text-white class to var(--text), which would turn them dark.
                   style={{ background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)`, color: "#ffffff" }}
                 >
+                  {/* The wallet's own picture, tilted into the right of the card. */}
+                  {w.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={w.image_url}
+                      alt=""
+                      aria-hidden
+                      className="pointer-events-none absolute -right-6 -top-8 h-[140%] w-[58%] rotate-[9deg] object-cover [mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.35)_30%,black_70%)]"
+                      style={{ opacity: 0.5 }}
+                    />
+                  ) : null}
                   <svg aria-hidden width="260" height="260" viewBox="0 0 260 260" className="pointer-events-none absolute -bottom-[110px] -right-[90px]" style={{ opacity: 0.16 }} fill="none" stroke="#ffffff" strokeWidth="2">
                     <circle cx="130" cy="130" r="50" />
                     <circle cx="130" cy="130" r="80" />
@@ -913,18 +924,31 @@ export function MobileHome({
                                     : { transition: "transform 120ms ease" }),
                                 }}
                               >
+                                {w.image_url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={w.image_url}
+                                    alt=""
+                                    aria-hidden
+                                    draggable={false}
+                                    className="pointer-events-none absolute -right-4 -top-6 h-[150%] w-[50%] rotate-[9deg] object-cover [mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.35)_35%,black_75%)]"
+                                    style={{ opacity: 0.4 }}
+                                  />
+                                ) : null}
                                 <svg aria-hidden width="160" height="160" viewBox="0 0 160 160" className="pointer-events-none absolute -bottom-[70px] -right-[50px]" style={{ opacity: 0.14 }} fill="none" stroke="currentColor" strokeWidth="2">
                                   <circle cx="80" cy="80" r="30" />
                                   <circle cx="80" cy="80" r="50" />
                                   <circle cx="80" cy="80" r="70" />
                                 </svg>
-                                <span className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[var(--icon-bg)] text-[var(--icon-fg)]">
-                                  {w.image_url ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={w.image_url} alt="" className="h-full w-full object-cover" />
-                                  ) : (
-                                    <Wallet size={17} strokeWidth={2.3} />
-                                  )}
+                                <span className="relative h-11 w-11 shrink-0">
+                                  <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
+                                    {w.image_url ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img src={w.image_url} alt="" className="h-full w-full object-cover" />
+                                    ) : (
+                                      <Wallet size={17} strokeWidth={2.3} />
+                                    )}
+                                  </span>
                                   {w.is_bot_default ? (
                                     <span
                                       className="absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[0.5rem] font-black leading-none"

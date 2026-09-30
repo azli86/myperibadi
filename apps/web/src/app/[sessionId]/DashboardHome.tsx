@@ -1425,6 +1425,17 @@ export default function Dashboard() {
                 // Inline colours: the light theme remaps the text-white class.
                 style={{ background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)`, color: "#ffffff" }}
               >
+                {/* The wallet's own picture, tilted into the right of the card. */}
+                {wallet.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={wallet.image_url}
+                    alt=""
+                    aria-hidden
+                    className="pointer-events-none absolute -right-6 -top-8 h-[140%] w-[58%] rotate-[9deg] object-cover [mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.35)_30%,black_70%)]"
+                    style={{ opacity: 0.5 }}
+                  />
+                ) : null}
                 <svg aria-hidden width="220" height="220" viewBox="0 0 260 260" className="pointer-events-none absolute -bottom-[95px] -right-[80px]" style={{ opacity: 0.16 }} fill="none" stroke="#ffffff" strokeWidth="2">
                   <circle cx="130" cy="130" r="50" />
                   <circle cx="130" cy="130" r="80" />

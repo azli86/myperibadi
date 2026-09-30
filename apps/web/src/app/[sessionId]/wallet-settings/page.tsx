@@ -663,6 +663,18 @@ export default function WalletSettingsPage() {
           boxShadow: stacked ? "0 -8px 20px -10px rgba(0,0,0,0.35)" : "0 18px 34px -18px rgba(0,0,0,0.55)",
         }}
       >
+        {/* The wallet's own picture, tilted into the right of the card and
+            fading out towards the text, as in the edit popup's preview. */}
+        {wallet.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={wallet.image_url}
+            alt=""
+            aria-hidden
+            className="pointer-events-none absolute -right-6 -top-8 h-[140%] w-[58%] rotate-[9deg] object-cover [mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.35)_30%,black_70%)]"
+            style={{ opacity: stacked ? 0.35 : 0.5 }}
+          />
+        ) : null}
         <svg aria-hidden width="260" height="260" viewBox="0 0 260 260" className="pointer-events-none absolute -bottom-[110px] -right-[90px]" style={{ opacity: 0.16 }} fill="none" stroke="#ffffff" strokeWidth="2">
           <circle cx="130" cy="130" r="50" />
           <circle cx="130" cy="130" r="80" />
