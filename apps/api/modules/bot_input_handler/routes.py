@@ -184,6 +184,7 @@ async def process_bot_input_route(
 
     ocr_forced_kind = None
     receipt_user_note = None
+    ocr_duplicate = False
 
     # ── Voice / audio: transcribe to text, then process as a normal message ──
     is_voice_media = audio_transcription_service.is_transcribable(media_mime_type)
@@ -337,6 +338,7 @@ async def process_bot_input_route(
                     )
                     dup_txn = dup_res.scalars().first()
                     if dup_txn:
+                        ocr_duplicate = True
                         dup_txn_date_display = dup_txn.txn_date.strftime("%d/%m/%Y")
                         dup_msg = (
                             f"⚠️ You already have a receipt on *{dup_txn_date_display}* for *{safe_description}* (*RM {draft.amount}*). "
@@ -581,6 +583,32 @@ async def process_bot_input_route(
                 "payload": media_payload,
             },
         )
+    # A receipt sent with a caption that already names the category (and
+    # wallet), e.g. "makan tng": answer the prompt with the caption at once,
+    # so the scan is saved in one go. The stashed media above is attached as
+    # the transaction is saved. Otherwise the prompt is asked as usual, and a
+    # likely duplicate always waits for the user to confirm or `batal`.
+    if (
+        category_prompt_pending
+        and ocr_summary
+        and not ocr_duplicate
+        and receipt_user_note
+        and not _inv_img
+        and await whatsapp_service.caption_names_category(db, user_id, receipt_user_note)
+    ):
+        confirm_reply, _confirm_txn = await whatsapp_service.process_whatsapp_message(
+            db,
+            user_id,
+            phone,
+            receipt_user_note,
+            source_channel=source_channel,
+            show_current_balance=show_current_balance,
+            show_expense_amount=show_expense_amount,
+            show_income_amount=show_income_amount,
+            allow_llm_fallback=False,
+        )
+        if confirm_reply:
+            replies = [ocr_summary, confirm_reply]
     print(
         f"[WA][debug] has_media={has_media} target_ref={target_txn_ref!r} norm={normalized_target_txn_ref!r} replies={len(replies)} cat_prompt_pending={category_prompt_pending} reply_preview={preview(''.join(replies))}",
         flush=True,

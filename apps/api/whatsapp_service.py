@@ -315,6 +315,47 @@ async def _split_reply_category_wallet(db, user_id: str, reply_text: str) -> Tup
     return (reply_text or ""), None
 
 
+async def caption_names_category(db, user_id: str, caption: str) -> bool:
+    """True when a receipt caption already answers the category prompt, e.g.
+    "makan", "makan tng" or "loanx akpk tng", so the scan can be saved at once.
+
+    Stricter than the prompt reply itself: a keyword must be the whole reply or
+    a whole word in it, so a loose caption such as "ni resit" never picks a
+    category by accident; the prompt is asked as usual instead."""
+    category_part, _wallet_id = await _split_reply_category_wallet(db, user_id, caption or "")
+    typed = normalize_message_text(category_part).strip().lower()
+    if not typed or typed.isdigit():
+        return False
+    if typed.startswith(("subx ", "loanx ")):
+        return True
+    user = await db.scalar(select(models.User).where(models.User.id == user_id))
+    if not user:
+        return False
+    names = (await db.execute(
+        select(models.Category.name).where(
+            models.Category.household_id == user.default_household_id,
+            models.Category.is_internal == False,
+        )
+    )).scalars().all()
+    if any(normalize_message_text(name or "").lower() == typed for name in names):
+        return True
+    keywords = (await db.execute(
+        select(models.CategoryKeyword.keyword)
+        .join(models.Category, models.CategoryKeyword.category_id == models.Category.id)
+        .where(
+            models.CategoryKeyword.is_active == True,
+            models.Category.is_internal == False,
+            models.Category.household_id == user.default_household_id,
+        )
+    )).scalars().all()
+    padded = f" {typed} "
+    for keyword in keywords:
+        kw = normalize_message_text(keyword or "").lower()
+        if kw and (kw == typed or f" {kw} " in padded):
+            return True
+    return False
+
+
 BOT_TRANSLATIONS = {
     "BM": {
         "welcome": "*Hai! Saya Budget by DigitalPort.*\nGuna saya untuk simpan belanja terus ke portal anda.\n\n*Command Asas:*\n-Makan 10 : Simpan RM10 (dompet default)\n-Makan 10 Cash : Simpan RM10 ke dompet Cash\n-transfer : Pindah duit\n-checkwallet : Semak baki dompet\n-category : Senarai kategori & keyword\n-summary : Ringkasan bulanan\n-list : 5 rekod terakhir\n\n*Command Budget:*\n-budget set makanan 600 : Set budget kategori\n-budget summary : Ringkasan budget bulanan\n\n*Command Backdate:*\n-grab 18.50 @05042026 : Rekod ikut tarikh (format @DDMMYYYY)\n\n*Bahasa:*\nlang en : Tukar ke English",

@@ -1693,7 +1693,17 @@ async function startSock(userId, pairingPhone = null, options = {}) {
               && queuedPayload.text
               && /^\s*(stuff|tambah\s+barang|tambah\s+stor)\b/i.test(queuedPayload.text)
             );
-            const skipTextCall = shouldSkipCaptionWebhook || isInventoryCaption;
+            // A receipt image or PDF with a caption goes in ONE call too, as
+            // Telegram does: the API reads the receipt and takes the caption
+            // as its category, wallet and note, so it can be saved at once.
+            const receiptMime = String(jobContext.mediaDescriptor?.mimeType || "").toLowerCase();
+            const isCaptionedReceipt = Boolean(
+              jobContext.mediaDescriptor
+              && queuedPayload.text
+              && !queuedPayload.is_reply_message
+              && (receiptMime.startsWith("image/") || receiptMime === "application/pdf")
+            );
+            const skipTextCall = shouldSkipCaptionWebhook || isInventoryCaption || isCaptionedReceipt;
             if (!skipTextCall && (queuedPayload.text || queuedPayload.latitude != null)) {
               const textRes = await postToWebhook(userId, phone, queuedPayload);
               await handleWebhookResponse({
@@ -1732,7 +1742,7 @@ async function startSock(userId, pairingPhone = null, options = {}) {
               jobContext,
               targetTxnRef,
               fallbackMessageId: jobContext.messageId,
-              includeContextText: isInventoryCaption,
+              includeContextText: isInventoryCaption || isCaptionedReceipt,
             });
           };
 
