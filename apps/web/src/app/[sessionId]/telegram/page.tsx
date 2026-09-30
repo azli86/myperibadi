@@ -248,37 +248,53 @@ export default function TelegramPage() {
         actions={desktopHeaderActions}
       />
 
-      <DesktopPageBody className="mt-4 flex flex-col gap-4 px-1 lg:mt-0 lg:gap-5 lg:px-0">
+      <DesktopPageBody className="mt-2 flex flex-col gap-4 px-1 lg:mt-0 lg:gap-5 lg:px-0">
+        {/* Status, in the Moden look: an outlined card over a blue circle */}
+        <div className="relative pr-2 pt-3">
+          <div aria-hidden className="absolute -right-1 -top-1 h-36 w-36 rounded-full bg-[#0878F8] md:h-48 md:w-48" />
+          <div aria-hidden className="absolute right-6 top-7 h-16 w-16 rounded-full border-[1.5px] border-white opacity-35 md:right-9 md:top-9 md:h-24 md:w-24" />
+          <div className="relative rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)] md:p-7">
+            <div className="flex items-center gap-2">
+              <p className="text-[0.8125rem] font-medium text-[var(--muted)]">Telegram</p>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-0.5 text-[0.6875rem] font-semibold text-[var(--text-soft)]">
+                <span className={cn("h-1.5 w-1.5 rounded-full", isConnected ? "bg-emerald-500" : "bg-[var(--muted)]")} />
+                {loading ? (isBM ? "Menyemak" : "Checking") : isConnected ? (isBM ? "Aktif" : "Live") : (isBM ? "Tidak aktif" : "Offline")}
+              </span>
+            </div>
+            <p className="mt-2 text-[1.75rem] font-bold leading-tight tracking-[-0.02em] text-[var(--text)] md:text-[2.5rem]">
+              {loading
+                ? (isBM ? "Menyemak…" : "Checking…")
+                : isConnected
+                  ? (isBM ? "Disambung" : "Connected")
+                  : (isBM ? "Belum disambung" : "Not connected")}
+            </p>
+            <p className="mt-1 max-w-md text-[0.8125rem] font-medium leading-relaxed text-[var(--muted)]">
+              {isConnected
+                ? (isBM ? "Hantar belanja dan pendapatan kepada bot dari Telegram." : "Send expenses and income to the bot from Telegram.")
+                : (isBM ? "Jana kod, kemudian hantar kod itu kepada bot untuk paut." : "Generate a code, then send it to the bot to link.")}
+            </p>
 
-        <div className="grid gap-3 md:grid-cols-2">
-          {/* Link status */}
-          <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]">
-                <Link2 size={18} />
+            <div className="mt-5 grid grid-cols-2 gap-2.5 md:max-w-lg">
+              <div className="min-w-0 rounded-2xl border border-[var(--border)] px-3.5 py-3">
+                <p className="text-[0.6875rem] font-medium text-[var(--muted)]">{isBM ? "Akaun" : "Account"}</p>
+                <p className="mt-1 truncate text-[1rem] font-bold text-[var(--text)]">{isConnected ? connectedName : "-"}</p>
               </div>
-              <div className="min-w-0">
-                <p className="text-base font-black text-[var(--text)]">
-                  {isBM ? "Status pautan" : "Link status"}
-                </p>
-                <p className="truncate text-sm font-semibold text-[var(--muted)]">
-                  {isConnected
-                    ? connectedName
-                    : isBM
-                      ? "Telegram belum dipautkan"
-                      : "Telegram is not linked yet"}
-                </p>
+              <div className="min-w-0 rounded-2xl border border-[var(--border)] px-3.5 py-3">
+                <p className="text-[0.6875rem] font-medium text-[var(--muted)]">Bot</p>
+                <p className="mt-1 truncate text-[1rem] font-bold text-[var(--text)]">@{botHandle}</p>
               </div>
             </div>
 
-            <div className="mt-4 space-y-2.5">
+            <div className="mt-4 grid grid-cols-2 gap-2 md:flex">
               <button
                 type="button"
                 onClick={openBot}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--text)] px-4 text-sm font-bold text-[var(--bg)] transition active:scale-[0.99]"
+                className="inline-flex h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-full [&>svg]:shrink-0 bg-[#0878F8] px-3 text-[0.8125rem] md:px-5 font-semibold transition hover:bg-[#0567d6] active:scale-[0.98]"
+                style={{ color: "#ffffff" }}
               >
                 <ExternalLink size={16} />
-                {isBM ? "Buka bot Telegram" : "Open Telegram bot"}
+                <span className="md:hidden">{isBM ? "Buka bot" : "Open bot"}</span>
+                <span className="hidden md:inline">{isBM ? "Buka bot Telegram" : "Open Telegram bot"}</span>
               </button>
               <button
                 type="button"
@@ -292,37 +308,39 @@ export default function TelegramPage() {
                     "success",
                   )
                 }}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 text-sm font-bold text-[var(--text)] transition active:scale-[0.99]"
+                className="inline-flex h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-full [&>svg]:shrink-0 border border-[var(--border)] bg-[var(--card)] px-3 text-[0.8125rem] md:px-5 font-semibold text-[var(--text)] transition hover:bg-[var(--surface-tint)] active:scale-[0.98]"
               >
                 <Copy size={16} />
                 {isBM ? "Salin nama bot" : "Copy bot name"}
               </button>
-              {!isConnected ? (
-                <p className="text-[11px] font-medium text-[var(--muted)]">
-                  {isBM
-                    ? "Jana kod di kad Kod sambungan di bawah, kemudian hantar kod itu ke bot."
-                    : "Generate a code in the Pairing code card below, then send it to the bot."}
-                </p>
-              ) : null}
             </div>
-          </section>
+          </div>
+        </div>
 
+        <div className="grid gap-4 md:grid-cols-2">
           {/* Pairing code */}
-          <section id="telegram-pair-code" className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
-            <p className="text-base font-black text-[var(--text)]">
-              {isBM ? "Kod sambungan" : "Pairing code"}
-            </p>
-            <p className="mt-1 text-sm font-semibold text-[var(--muted)]">
-              {isBM
-                ? "Hantar kod ini ke bot sebelum tamat tempoh."
-                : "Send this code to the bot before it expires."}
-            </p>
+          <section id="telegram-pair-code" className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 md:p-6">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0878F8]" style={{ color: "#ffffff" }}>
+                <Link2 size={18} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-base font-bold text-[var(--text)]">
+                  {isBM ? "Kod sambungan" : "Pairing code"}
+                </p>
+                <p className="text-[0.8125rem] font-medium text-[var(--muted)]">
+                  {isBM
+                    ? "Hantar kod ini ke bot sebelum tamat tempoh."
+                    : "Send this code to the bot before it expires."}
+                </p>
+              </div>
+            </div>
 
-            <div className="mt-4 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--bg)] px-4 py-5 text-center">
-              <p className="text-[2rem] font-black tracking-[0.2em] text-[var(--text)] md:text-[2.4rem]">
+            <div className="mt-4 rounded-[1.25rem] border border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)] px-4 py-6 text-center">
+              <p className="font-mono text-[2rem] font-bold tracking-[0.2em] text-[var(--text)] md:text-[2.4rem]">
                 {pairCode?.code || "------"}
               </p>
-              <p className="mt-2 text-[11px] font-bold text-[var(--muted)]">
+              <p className="mt-2 text-[0.75rem] font-medium text-[var(--muted)]">
                 {pairCode?.expires_at
                   ? `${isBM ? "Tamat" : "Expires"}: ${new Date(pairCode.expires_at).toLocaleString()}`
                   : isBM
@@ -335,7 +353,8 @@ export default function TelegramPage() {
               type="button"
               onClick={() => void (pairCode?.code ? copyCode() : requestPairCode())}
               disabled={working || loading}
-              className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--btn-primary-bg)] px-4 text-sm font-bold text-[var(--btn-primary-text)] transition active:scale-[0.99] disabled:opacity-50"
+              className="mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#0878F8] px-4 text-sm font-semibold transition hover:bg-[#0567d6] active:scale-[0.99] disabled:opacity-50"
+              style={{ color: "#ffffff" }}
             >
               {working ? (
                 <Loader2 size={16} className="animate-spin" />
@@ -352,40 +371,59 @@ export default function TelegramPage() {
                   ? "Jana kod"
                   : "Generate code"}
             </button>
+            {!isConnected ? (
+              <p className="mt-3 text-[0.75rem] font-medium text-[var(--muted)]">
+                {isBM
+                  ? "Jana kod, buka bot, kemudian hantar kod itu ke bot."
+                  : "Generate a code, open the bot, then send the code to it."}
+              </p>
+            ) : null}
+          </section>
+
+          {/* Commands */}
+          <section className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 md:p-6">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0878F8]/10 text-[#0878F8]">
+                <Send size={17} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-base font-bold text-[var(--text)]">
+                  {isBM ? "Command asas" : "Basic commands"}
+                </p>
+                <p className="text-[0.8125rem] font-medium text-[var(--muted)]">
+                  {isBM ? "Taip terus dalam chat bot." : "Type these straight into the bot chat."}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {["/start", "/help", "/summary", "makan nasi ayam 5"].map((cmd) => (
+                <code
+                  key={cmd}
+                  className="truncate rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-3.5 py-2.5 text-[0.8125rem] font-semibold text-[var(--text-soft)]"
+                >
+                  {cmd}
+                </code>
+              ))}
+              <div className="rounded-2xl border border-[var(--border)] px-3.5 py-2.5">
+                <p className="flex items-center gap-1.5 text-[0.6875rem] font-medium text-[var(--muted)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--expense)]" />
+                  {isBM ? "Tambah belanja" : "Add expense"}
+                </p>
+                <code className="mt-0.5 block text-[0.8125rem] font-bold text-[var(--text)]">/add expense</code>
+              </div>
+              <div className="rounded-2xl border border-[var(--border)] px-3.5 py-2.5">
+                <p className="flex items-center gap-1.5 text-[0.6875rem] font-medium text-[var(--muted)]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--income)]" />
+                  {isBM ? "Tambah pendapatan" : "Add income"}
+                </p>
+                <code className="mt-0.5 block text-[0.8125rem] font-bold text-[var(--text)]">/add income</code>
+              </div>
+            </div>
           </section>
         </div>
 
-        {/* Commands */}
-        <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
-          <p className="text-base font-black text-[var(--text)]">
-            {isBM ? "Command asas" : "Basic commands"}
-          </p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {["/start", "/help", "/summary", "makan nasi ayam 5"].map((cmd) => (
-              <code
-                key={cmd}
-                className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm font-semibold text-[var(--muted)]"
-              >
-                {cmd}
-              </code>
-            ))}
-            <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2.5">
-              <p className="text-[10px] font-bold text-rose-500">
-                {isBM ? "Tambah belanja" : "Add expense"}
-              </p>
-              <code className="mt-0.5 block text-sm font-black text-rose-500">/add expense</code>
-            </div>
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2.5">
-              <p className="text-[10px] font-bold text-emerald-600">
-                {isBM ? "Tambah pendapatan" : "Add income"}
-              </p>
-              <code className="mt-0.5 block text-sm font-black text-emerald-600">/add income</code>
-            </div>
-          </div>
-        </section>
-
         {feedback ? (
-          <p className="rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-sm font-bold text-[var(--text)]">
+          <p className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-3 text-[0.8125rem] font-semibold text-[var(--text-soft)]">
             {feedback}
           </p>
         ) : null}
