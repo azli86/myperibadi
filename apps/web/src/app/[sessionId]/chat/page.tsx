@@ -13,23 +13,16 @@ import {
   FileText,
   ShieldCheck,
   MapPin,
-  MessageSquare,
-  Menu,
-  LayoutDashboard,
   Receipt,
-  MapPinned,
-  HandCoins,
   Wallet,
-  CreditCard,
-  Grid2X2,
   Bot,
-  Settings,
   Mic,
   ImageOff,
   ChevronLeft,
   Trash2,
   Calculator as CalculatorIcon,
-  type LucideIcon,
+  SquareTerminal,
+  Search,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SmartImage } from "@/components/ui/SmartImage"
@@ -118,13 +111,6 @@ type CommandItem = {
   hintEN: string
 }
 
-type ChatMenuItem = {
-  name: string
-  href: string
-  subtitle: string
-  icon: LucideIcon
-}
-
 /**
  * Prefer WebM/Opus so every client (incl. Android WebView) hits the server's
  * ogg/webm→WAV conversion chain (EQ + trim). WebView defaults can pick
@@ -175,7 +161,10 @@ const QUICK_COMMANDS = ["summary", "list", "checkwallet", "budget summary", "lan
 const HERE_LOCATION_PATTERN = /(^|\s)@here\b/i
 const SUPPORTED_IMAGE_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf"]
 
-const IMAGE_PICKER_ACCEPT = `${SUPPORTED_IMAGE_MIME_TYPES.join(",")},.pdf`
+// Gallery takes pictures only: with PDF in the list, Android shows a Camera /
+// Files chooser first instead of opening the gallery. PDFs have their own button.
+const IMAGE_PICKER_ACCEPT = "image/*"
+const PDF_PICKER_ACCEPT = "application/pdf,.pdf"
 const SUPPORTED_IMAGE_EXTENSION = /\.(jpe?g|png|webp|pdf)$/i
 
 
@@ -328,6 +317,14 @@ export default function ChatPage() {
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false)
   const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [commandSearch, setCommandSearch] = useState("")
+  const commandSearchResults = useMemo(() => {
+    const q = commandSearch.trim().toLowerCase()
+    if (!q) return COMMAND_ITEMS
+    return COMMAND_ITEMS.filter((item) =>
+      [item.command, item.insert, item.labelBM, item.labelEN, item.hintBM, item.hintEN].join(" ").toLowerCase().includes(q)
+    )
+  }, [commandSearch])
   const [chatTextLevel, setChatTextLevel] = useState(1)
   const [sending, setSending] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
@@ -373,6 +370,7 @@ export default function ChatPage() {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const cameraInputRef = useRef<HTMLInputElement | null>(null)
   const galleryInputRef = useRef<HTMLInputElement | null>(null)
+  const pdfInputRef = useRef<HTMLInputElement>(null)
   const lastPickerOpenRef = useRef(0)
   const objectUrlsRef = useRef<string[]>([])
   const pendingTxnAttachRef = useRef<string | null>(null)
@@ -382,20 +380,6 @@ export default function ChatPage() {
   const isSlashCommandInput = slashCommandText.startsWith("/")
   const commandQuery = isSlashCommandInput ? slashCommandText.slice(1).trim().toLowerCase() : ""
   const sharedToken = searchParams.get(SHARED_CHAT_TOKEN_QUERY_KEY) || ""
-
-  const menuItems = useMemo<ChatMenuItem[]>(() => [
-    { name: lang === "EN" ? "Dashboard" : "Dashboard", href: `/${sessionId}`, subtitle: lang === "EN" ? "Balance and activity" : "Baki dan aktiviti", icon: LayoutDashboard },
-    { name: lang === "EN" ? "Transactions" : "Transaksi", href: `/${sessionId}/transactions`, subtitle: lang === "EN" ? "Income and expense records" : "Rekod masuk dan keluar", icon: Receipt },
-    { name: lang === "EN" ? "Map" : "Peta", href: `/${sessionId}/map`, subtitle: lang === "EN" ? "Transaction locations" : "Lokasi transaksi", icon: MapPinned },
-    { name: lang === "EN" ? "Debt" : "Hutang", href: `/${sessionId}/debt`, subtitle: lang === "EN" ? "IOU tracker" : "Tracker hutang", icon: HandCoins },
-    { name: lang === "EN" ? "Budget" : "Bajet", href: `/${sessionId}/budget`, subtitle: lang === "EN" ? "Monthly category budgets" : "Bajet kategori bulanan", icon: Wallet },
-    { name: lang === "EN" ? "Wallet" : "Wallet", href: `/${sessionId}/wallet-settings`, subtitle: lang === "EN" ? "Wallet balances" : "Baki wallet", icon: CreditCard },
-    { name: lang === "EN" ? "Categories" : "Kategori", href: `/${sessionId}/categories`, subtitle: lang === "EN" ? "Category and keyword rules" : "Kategori dan keyword", icon: Grid2X2 },
-    { name: lang === "EN" ? "Chat" : "Chat", href: `/${sessionId}/chat`, subtitle: lang === "EN" ? "Assistant chat" : "Chat assistant", icon: MessageSquare },
-    { name: lang === "EN" ? "WhatsApp" : "WhatsApp", href: `/${sessionId}/whatsapp`, subtitle: lang === "EN" ? "Bot connection" : "Sambungan bot", icon: Bot },
-    { name: lang === "EN" ? "Settings" : "Tetapan", href: `/${sessionId}/settings`, subtitle: lang === "EN" ? "Account and system" : "Akaun dan sistem", icon: Settings },
-    { name: lang === "EN" ? "Bot Command" : "Command Bot", href: `/${sessionId}/bot-command`, subtitle: lang === "EN" ? "WhatsApp & Telegram commands" : "Command WhatsApp & Telegram", icon: Bot },
-  ], [lang, sessionId])
 
   const commandSuggestions = useMemo(() => {
     if (!commandQuery) return COMMAND_ITEMS
@@ -792,14 +776,15 @@ export default function ChatPage() {
     }
   }, [sharedToken, lang])
 
-  const openAttachmentPicker = (source: "camera" | "gallery") => {
+  const openAttachmentPicker = (source: "camera" | "gallery" | "pdf") => {
     // A duplicate click dispatch (touch + emulated mouse) would otherwise open
     // the picker twice in a row.
     const now = Date.now()
     if (now - lastPickerOpenRef.current < 500) return
     lastPickerOpenRef.current = now
     setIsAttachmentMenuOpen(false)
-    const input = source === "camera" ? cameraInputRef.current : galleryInputRef.current
+    const input =
+      source === "camera" ? cameraInputRef.current : source === "pdf" ? pdfInputRef.current : galleryInputRef.current
     if (!input) return
     input.value = ""
     input.click()
@@ -1498,17 +1483,18 @@ export default function ChatPage() {
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
-              aria-label={lang === "EN" ? "Open menu" : "Buka menu"}
-              aria-haspopup="menu"
+              aria-label={lang === "EN" ? "Bot commands" : "Command bot"}
+              aria-haspopup="dialog"
               aria-expanded={isMobileMenuOpen}
               onClick={() => {
                 setIsCommandMenuOpen(false)
                 setIsAttachmentMenuOpen(false)
+                setCommandSearch("")
                 setIsMobileMenuOpen(true)
               }}
               className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-colors", mobileControlButton)}
             >
-              <Menu size={18} strokeWidth={2.3} />
+              <SquareTerminal size={18} strokeWidth={2.1} />
             </button>
             <div className="flex items-center gap-2">
               <button
@@ -1555,7 +1541,8 @@ export default function ChatPage() {
       {isMobileMenuOpen && (
  <div className={cn("fixed inset-0 z-[70] flex h-[100dvh] overflow-hidden", isLightTheme ? "bg-transparent" : "bg-transparent")} onClick={() => setIsMobileMenuOpen(false)}>
           <div
-            role="menu"
+            role="dialog"
+            aria-label={lang === "EN" ? "Bot commands" : "Command bot"}
             className={cn(
               "flex h-[100dvh] min-h-0 w-[min(86vw,360px)] flex-col overflow-hidden border-r shadow-2xl",
               isLightTheme
@@ -1566,44 +1553,84 @@ export default function ChatPage() {
           >
             <div className="flex items-center justify-between border-b border-[color:var(--border)] px-4 py-3">
               <div className="min-w-0">
-                <p className="truncate text-[0.9375rem] font-semibold text-[var(--text)]">{lang === "EN" ? "Menu" : "Menu"}</p>
-                <p className="truncate text-xs text-[var(--muted)]">{lang === "EN" ? "MyPeribadi pages" : "Halaman MyPeribadi"}</p>
+                <p className="truncate text-[0.9375rem] font-semibold text-[var(--text)]">{lang === "EN" ? "Bot commands" : "Command bot"}</p>
+                <p className="truncate text-xs text-[var(--muted)]">{lang === "EN" ? "Tap one to put it in the chat" : "Tekan untuk isi dalam chat"}</p>
               </div>
               <button
                 type="button"
-                aria-label={lang === "EN" ? "Close menu" : "Tutup menu"}
+                aria-label={lang === "EN" ? "Close" : "Tutup"}
                 onClick={() => setIsMobileMenuOpen(false)}
                 className={cn("flex h-9 w-9 items-center justify-center rounded-full border transition-colors", mobileControlButton)}
               >
                 <X size={17} />
               </button>
             </div>
-            <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
-              {menuItems.map((item) => {
-                const Icon = item.icon
-                const active = item.href === `/${sessionId}/chat`
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    role="menuitem"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors",
-                      active ? "bg-[color:var(--surface-tint)]" : "hover:bg-[color:var(--surface-tint)]"
-                    )}
+            <div className="border-b border-[color:var(--border)] px-3 py-2.5">
+              <label className="relative block">
+                <span className="sr-only">{lang === "EN" ? "Search commands" : "Cari command"}</span>
+                <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
+                {/* type="text": a search input adds the browser's own clear button next to ours. */}
+                <input
+                  type="text"
+                  inputMode="search"
+                  enterKeyHint="search"
+                  autoComplete="off"
+                  value={commandSearch}
+                  onChange={(e) => setCommandSearch(e.target.value)}
+                  placeholder={lang === "EN" ? "Search: budget, loan, wallet…" : "Cari: bajet, loan, wallet…"}
+                  className="h-10 w-full rounded-full border border-[color:var(--border)] bg-transparent pl-10 pr-9 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:border-[#0878F8]"
+                />
+                {commandSearch ? (
+                  <button
+                    type="button"
+                    onClick={() => setCommandSearch("")}
+                    aria-label={lang === "EN" ? "Clear search" : "Kosongkan carian"}
+                    className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-[var(--muted)]"
                   >
-                    <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", mobileIconTile)}>
-                      <Icon size={17} />
+                    <X size={14} />
+                  </button>
+                ) : null}
+              </label>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-2">
+              {commandSearchResults.length === 0 ? (
+                <p className="px-3 py-8 text-center text-sm text-[var(--muted)]">
+                  {lang === "EN" ? "No command found" : "Command tidak dijumpai"}
+                </p>
+              ) : null}
+              {commandSearchResults.map((item) => (
+                <button
+                  key={item.command}
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false)
+                    applyCommand(item)
+                  }}
+                  className="flex w-full items-start gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-[color:var(--surface-tint)] active:bg-[color:var(--surface-tint)]"
+                >
+                  <span className={cn("mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[0.9375rem] font-bold", mobileIconTile)}>
+                    /
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[0.875rem] font-semibold leading-5 text-[var(--text)] [overflow-wrap:anywhere]">
+                      {lang === "EN" ? item.labelEN : item.labelBM}
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[0.9375rem] font-semibold leading-5 text-[var(--text)]">{item.name}</span>
-                      <span className="block truncate text-xs leading-4 text-[var(--muted)]">{item.subtitle}</span>
-                    </span>
-                  </Link>
-                )
-              })}
-            </nav>
+                    <span className="block font-mono text-xs leading-5 text-[var(--text-soft)] [overflow-wrap:anywhere]">/{item.command}</span>
+                    <span className="block text-xs leading-4 text-[var(--muted)]">{lang === "EN" ? item.hintEN : item.hintBM}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            <div className="border-t border-[color:var(--border)] px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+              <Link
+                href={`/${sessionId}/bot-command`}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex h-11 items-center justify-center gap-2 rounded-full border border-[color:var(--border)] text-sm font-semibold text-[var(--text)] transition-colors hover:bg-[color:var(--surface-tint)]"
+              >
+                <Bot size={16} />
+                {lang === "EN" ? "Full command guide" : "Panduan command penuh"}
+              </Link>
+            </div>
           </div>
         </div>
       )}
@@ -1845,6 +1872,13 @@ export default function ChatPage() {
             className="hidden"
             onChange={(e) => handlePickFile(e.target.files?.[0] || null)}
           />
+          <input
+            ref={pdfInputRef}
+            type="file"
+            accept={PDF_PICKER_ACCEPT}
+            className="hidden"
+            onChange={(e) => handlePickFile(e.target.files?.[0] || null)}
+          />
 
           <div className="flex flex-col gap-2">
             <ChatQuickPanel lang={lang} onPick={insertKeyword} />
@@ -1936,6 +1970,14 @@ export default function ChatPage() {
                 className={cn("chat-composer-control flex h-11 w-11 shrink-0 items-center justify-center transition-colors active:scale-95", composerPlainButton)}
               >
                 <ImageIcon size={20} />
+              </button>
+              <button
+                type="button"
+                aria-label={lang === "EN" ? "PDF file" : "Fail PDF"}
+                onClick={() => { setIsCommandMenuOpen(false); openAttachmentPicker("pdf") }}
+                className={cn("chat-composer-control flex h-11 w-11 shrink-0 items-center justify-center transition-colors active:scale-95", composerPlainButton)}
+              >
+                <FileText size={20} />
               </button>
               <button
                 type="button"
