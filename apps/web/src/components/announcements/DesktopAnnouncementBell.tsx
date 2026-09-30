@@ -54,15 +54,15 @@ export function DesktopAnnouncementBell({ sessionId, lang }: { sessionId: string
         title={tr("Pengumuman", "Announcements")}
         aria-label={unread ? tr("Pengumuman baru", "New announcement") : tr("Pengumuman", "Announcements")}
         className={cn(
-          "relative flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] transition active:scale-[0.98]",
+          "relative flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] transition active:scale-[0.98]",
           open
             ? "bg-[var(--surface-tint-strong)] text-[var(--text)]"
-            : "bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+            : "bg-[var(--card)] text-[var(--text)] hover:bg-[var(--surface-tint)]"
         )}
       >
-        <Bell size={15} strokeWidth={2.2} />
+        <Bell size={16} strokeWidth={2} />
         {unread ? (
-          <span aria-hidden className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-500" style={{ boxShadow: "0 0 0 2px var(--page-bg)" }} />
+          <span aria-hidden className="absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-500" style={{ boxShadow: "0 0 0 2px var(--card)" }} />
         ) : null}
       </button>
 

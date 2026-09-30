@@ -3158,7 +3158,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <SidebarContent className="personal-sidebar-scroll gap-0.5 px-3 pb-4 pt-0" aria-label={lang === "BM" ? "Navigasi Personal" : "Personal navigation"}>
             {currentDesktopNavigationSections.map((section, sectionIndex) => (
               <SidebarGroup key={section.label} className={sectionIndex === 0 ? "pt-0" : undefined}>
-                <SidebarGroupLabel className={sectionIndex === 0 ? "h-6" : undefined}>{section.label}</SidebarGroupLabel>
+                <SidebarGroupLabel className={cn("px-3 text-xs font-semibold normal-case tracking-normal text-[var(--muted)]", sectionIndex === 0 && "h-6")}>{section.label}</SidebarGroupLabel>
                 <SidebarMenu>
                   {section.items.map((item) => {
                     const personalRoot = `/${sessionId}`;
@@ -3179,6 +3179,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           asChild
                           isActive={isActive}
                           tooltip={item.name}
+                          // Moden: the current page is a blue pill; the rest are quiet rows.
+                          className="h-10 rounded-full px-3.5 text-[0.875rem] font-medium text-[var(--text-soft)] hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] data-[active=true]:bg-[#0878F8] data-[active=true]:font-semibold data-[active=true]:!text-white [&>svg]:size-[18px]"
                         >
                           <Link href={item.href}>
                             <item.icon />
@@ -3193,23 +3195,22 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             ))}
           </SidebarContent>
 
-          <SidebarFooter className="relative shrink-0 border-t border-[var(--border)] p-2.5">
+          <SidebarFooter className="relative shrink-0 p-3">
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setShowLeftAccountSwitcher((prev) => !prev)}
                 className={cn(
-                  "flex w-full items-center gap-2.5 rounded-2xl border px-3 py-2.5 text-left shadow-sm transition active:scale-[0.99]",
-                  "sidebar-avatar-card",
-                  showLeftAccountSwitcher
-                    ? "border-[var(--border-strong)] bg-[var(--surface-tint)]"
-                    : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-tint)]",
+                  // An outlined card in the theme's colours (no longer pinned dark).
+                  "flex w-full items-center gap-3 rounded-[1.25rem] border px-3 py-2.5 text-left transition active:scale-[0.99]",
+                  "border-[var(--border)]",
+                  showLeftAccountSwitcher ? "bg-[var(--surface-tint)]" : "bg-[var(--card)] hover:bg-[var(--surface-tint)]",
                 )}
               >
-                <UserAvatar name={displayName} size={30} src={avatarSrc} />
+                <UserAvatar name={displayName} size={36} src={avatarSrc} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[0.75rem] font-bold leading-tight text-[var(--text)]">{displayName}</p>
-                  <p className="mt-0.5 truncate text-[0.56rem] font-medium text-[var(--muted)]">
+                  <p className="truncate text-[0.875rem] font-bold leading-tight text-[var(--text)]">{displayName}</p>
+                  <p className="mt-0.5 truncate text-[0.6875rem] font-medium text-[var(--muted)]">
                     {activeEmail || (lang === "BM" ? "Akaun aktif" : "Active account")}
                   </p>
                 </div>
@@ -3225,7 +3226,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               
                 {showLeftAccountSwitcher && (
                   <div
-                    className="sidebar-avatar-card absolute bottom-[calc(100%+0.5rem)] left-0 right-0 z-[120] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[0_16px_48px_rgba(0,0,0,0.18)]"
+                    className="absolute bottom-[calc(100%+0.5rem)] left-0 right-0 z-[120] overflow-hidden rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)] shadow-[0_16px_48px_rgba(0,0,0,0.18)]"
                   >
                     <div className="border-b border-[var(--border)] px-3.5 py-3">
                       <div className="flex items-center gap-2.5">
@@ -3606,64 +3607,35 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       {/* ── Desktop Right Sidebar ── */}
       { (
         <aside className="portal-desktop-right-rail hidden h-[100dvh] w-[300px] shrink-0 flex-col border-l border-[var(--border)] bg-[var(--page-bg)] lg:flex">
-          {/* Balance only at top */}
-          <div className="shrink-0 border-b border-[var(--border)] px-3 pb-3 pt-3">
-            <div
-              className="balance-hero relative overflow-hidden rounded-[var(--card-radius-xl)] p-4 text-white shadow-[var(--shadow-card)]"
-              style={{ background: "var(--brand-gradient)" }}
-            >
-              <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                <div
-                  className="absolute -right-16 -top-20 h-52 w-52 rounded-full"
-                  style={{ background: "linear-gradient(135deg, rgba(1,211,225,0.35), rgba(9,99,255,0.15))", filter: "blur(2px)" }}
-                />
-                <div
-                  className="absolute -left-16 top-8 h-44 w-44 rounded-full"
-                  style={{ background: "linear-gradient(225deg, rgba(9,99,255,0.28), transparent 70%)" }}
-                />
-                <div
-                  className="absolute -bottom-20 right-0 h-40 w-56 rotate-[-15deg] rounded-[50%]"
-                  style={{ background: "linear-gradient(45deg, rgba(1,211,225,0.22), rgba(0,26,83,0.12))" }}
-                />
-                <div className="absolute inset-0 ring-1 ring-inset ring-white/10" />
-                <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/[0.08] to-transparent" />
-              </div>
-              <div className="relative z-10">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] ring-1 ring-white/15 backdrop-blur-sm"
-                        style={{ background: "rgba(255,255,255,0.12)" }}
-                      >
-                        <Wallet size={12} strokeWidth={2.5} className="text-white" />
-                      </div>
-                      <p className="balance-hero-label truncate text-[0.62rem] font-semibold tracking-wide text-[#c5d0e0]">
-                        {lang === "EN" ? "Total Balance" : "Jumlah Baki"}
-                      </p>
-                    </div>
-                    <p className="mt-3 truncate text-[1.7rem] font-bold leading-none tracking-tight text-white tabular-nums">
-                      {user?.show_hero_amounts !== false ? (
-                        <>
-                          <span className="balance-hero-label mr-1 text-[0.42em] font-medium align-top text-[#c5d0e0]">RM</span>
-                          {stats.balance.toLocaleString("en-MY", { minimumFractionDigits: 2 })}
-                        </>
-                      ) : "RM ••••••"}
-                    </p>
-                  </div>
-                  <span
-                    className="rounded-full px-2.5 py-1 text-[0.62rem] font-bold text-white ring-1 ring-white/15"
-                    style={{ background: "rgba(255,255,255,0.12)" }}
-                  >
+          {/* Balance, as the Moden balance card over a blue circle */}
+          <div className="shrink-0 px-4 pb-2 pt-4">
+            <div className="relative pt-3">
+              <div aria-hidden className="absolute -right-2 -top-1 h-28 w-28 rounded-full bg-[#0878F8]" />
+              <div aria-hidden className="absolute right-5 top-5 h-12 w-12 rounded-full border-[1.5px] border-white opacity-35" />
+              <div className="relative rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 shadow-[0_20px_40px_-26px_rgba(0,0,0,0.6)]">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[0.8125rem] font-medium text-[var(--muted)]">{lang === "EN" ? "Total balance" : "Jumlah baki"}</p>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2 py-0.5 text-[0.6875rem] font-semibold text-[var(--text)]">
+                    <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-[var(--income)]" />
                     {lang === "EN" ? "Live" : "Kini"}
                   </span>
                 </div>
+                <p className="mt-2 truncate leading-none tabular-nums text-[var(--text)]">
+                  {user?.show_hero_amounts !== false ? (
+                    <>
+                      <span className="mr-1 align-top text-[0.8125rem] font-semibold text-[var(--muted)]">RM</span>
+                      <span className="text-[1.875rem] font-bold tracking-[-0.03em]">{stats.balance.toLocaleString("en-MY", { minimumFractionDigits: 2 })}</span>
+                    </>
+                  ) : (
+                    <span className="text-[1.875rem] font-bold">RM ••••••</span>
+                  )}
+                </p>
               </div>
             </div>
           </div>
 
           {/* Cat playground + calculator */}
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-0 pt-2">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-0 pt-2">
             <CatPlayground
               lang={lang === "BM" ? "BM" : "EN"}
               userKey={sessionId}
@@ -3671,27 +3643,27 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               stackFeed
               presentation="chip"
             />
-            <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/70">
+            <div className="overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)]">
               <Calculator embedded />
             </div>
           </div>
 
           {/* Footer tools */}
-          <div className="shrink-0 border-t border-[var(--border)] px-3 pb-3 pt-2.5">
-            <div className="flex items-center gap-1.5">
+          <div className="shrink-0 px-4 pb-4 pt-3">
+            <div className="flex items-center gap-2">
               <Link
                 href={`/${sessionId}/settings`}
                 title={lang === "BM" ? "Tetapan" : "Settings"}
                 className={cn(
-                  "flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl border text-[0.62rem] font-bold transition active:scale-[0.98]",
+                  "flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full border text-[0.8125rem] font-semibold transition active:scale-[0.98]",
                   ["settings", "security", "bot-command", "about", "whatsnew", "login-logs"].some(
                     (segment) => pathname === `/${sessionId}/${segment}`,
                   )
-                    ? "border-[color-mix(in_srgb,var(--accent2)_28%,var(--border))] bg-[var(--accent-bg)] text-[var(--accent2)]"
-                    : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]",
+                    ? "border-transparent bg-[#0878F8] !text-white"
+                    : "border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[var(--surface-tint)]",
                 )}
               >
-                <Settings size={13} strokeWidth={2.2} />
+                <Settings size={15} strokeWidth={2} />
                 <span>{lang === "BM" ? "Tetapan" : "Settings"}</span>
               </Link>
               <DesktopAnnouncementBell sessionId={sessionId} lang={lang} />
@@ -3699,16 +3671,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={() => setShowChatOverlay(true)}
                 title="Chat"
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] transition hover:opacity-95 active:scale-[0.98]"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] transition hover:bg-[var(--surface-tint)] active:scale-[0.98]"
               >
-                <ChatNavIcon active size={15} />
+                <ChatNavIcon active size={18} />
               </button>
-              <ThemeToggle compact inverted={!isLight} className="!h-9 !w-9 !rounded-xl !border !border-[var(--border)] !bg-[var(--surface-tint)]" />
+              <ThemeToggle compact inverted={!isLight} className="!h-10 !w-10 !rounded-full !border !border-[var(--border)] !bg-[var(--card)]" />
               <button
                 type="button"
                 onClick={() => setLang(lang === "EN" ? "BM" : "EN")}
                 title={lang}
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] text-[0.62rem] font-black text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[0.75rem] font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint)]"
               >
                 {lang}
               </button>
