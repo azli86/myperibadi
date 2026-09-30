@@ -3748,7 +3748,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <div className="relative px-4 pb-3 pt-3">
                 <div aria-hidden className="absolute right-2 top-0 h-28 w-28 rounded-full bg-[#0878F8]" />
                 <div aria-hidden className="absolute right-9 top-6 h-14 w-14 rounded-full border-[1.5px] border-white opacity-35" />
-                <div className="sidebar-avatar-card relative w-full rounded-[1.5rem] border border-[var(--home-line)] bg-[var(--home-card)] p-4 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)]">
+                {/* Not .sidebar-avatar-card: that class pins the desktop identity card dark in
+                    both themes, and the account switcher drawn inside this card inherited
+                    its white text, which vanished on the white sheet in light mode. */}
+                <div className="relative w-full rounded-[1.5rem] border border-[var(--home-line)] bg-[var(--home-card)] p-4 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)]">
                   <div className="flex items-center gap-3">
                     <div className="shrink-0">
                       <UserAvatar name={displayName || activeEmail} size={56} src={avatarSrc} />
