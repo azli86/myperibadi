@@ -1543,14 +1543,14 @@ const currentCycleKeyStr = useMemo(
  <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--surface)]/80 p-3">
  <div className="flex items-center justify-between gap-2">
  <p className="text-sm font-bold text-[var(--text)]">
- {lang === "EN" ? "Calendar Filter" : "Penapis Kalendar"}
+ {lang === "EN" ? "Calendar filter" : "Penapis kalendar"}
  </p>
  <div className="flex items-center gap-1">
  <button
  type="button"
  aria-label={lang === "EN" ? "Previous month" : "Bulan lepas"}
  onClick={() => setCalendarViewMonth((prev) => addMonths(prev, -1))}
- className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] transition hover:text-[var(--text)]"
+ className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] transition hover:text-[var(--text)]"
  >
  <ChevronLeft size={14} />
  </button>
@@ -1558,14 +1558,14 @@ const currentCycleKeyStr = useMemo(
  type="button"
  aria-label={lang === "EN" ? "Next month" : "Bulan depan"}
  onClick={() => setCalendarViewMonth((prev) => addMonths(prev, 1))}
- className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] transition hover:text-[var(--text)]"
+ className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] transition hover:text-[var(--text)]"
  >
  <ChevronRight size={14} />
  </button>
  </div>
  </div>
 
- <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--surface)]/80 p-2">
+ <div className="mt-3 rounded-2xl border border-[var(--border)] p-2">
  <p className="px-1 text-center text-xs font-semibold text-[var(--muted)]">
  {calendarMonthLabel}
  </p>
@@ -1596,11 +1596,11 @@ const currentCycleKeyStr = useMemo(
  type="button"
  onClick={() => handleCalendarDaySelect(cell.dateKey as string)}
  className={cn(
- "h-9 rounded-lg text-[0.75rem] font-semibold transition",
+ "h-9 rounded-full text-[0.75rem] font-semibold transition",
  isStart || isEnd
- ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
+ ? "bg-[#0878F8] !text-white"
  : isInRange
- ? "bg-[var(--text)]/12 text-[var(--text)]"
+ ? "bg-[#0878F8]/12 text-[var(--text)]"
  : "text-[var(--text)] hover:bg-[var(--text)]/8"
  )}
  >
@@ -1623,14 +1623,15 @@ const currentCycleKeyStr = useMemo(
  <button
  type="button"
  onClick={clearDateFilter}
- className="h-10 rounded-xl border border-[var(--border)] bg-[var(--card)] text-xs font-semibold text-[var(--muted)]"
+ className="h-10 rounded-full border border-[var(--border)] bg-[var(--card)] text-xs font-semibold text-[var(--text-soft)]"
  >
  {lang === "EN" ? "Clear" : "Kosongkan"}
  </button>
  <button
  type="button"
  onClick={applyDateFilter}
- className="h-10 rounded-xl bg-[var(--text)] text-xs font-bold text-[var(--bg)]"
+ className="h-10 rounded-full bg-[#0878F8] text-xs font-semibold"
+ style={{ color: "#ffffff" }}
  >
  {lang === "EN" ? "Apply" : "Guna"}
  </button>
@@ -1644,7 +1645,8 @@ const currentCycleKeyStr = useMemo(
  onClick={() => {
  setFiltersExpanded(false)
  }}
- className="mt-3 h-10 w-full rounded-xl bg-[var(--text)] text-xs font-bold text-[var(--bg)]"
+ className="mt-3 h-10 w-full rounded-full bg-[#0878F8] text-xs font-semibold"
+ style={{ color: "#ffffff" }}
  >
  {lang === "EN" ? "Done" : "Siap"}
  </button>
@@ -1678,12 +1680,12 @@ const currentCycleKeyStr = useMemo(
  <button
  type="button"
  onClick={() => setFiltersExpanded((v) => !v)}
- className="mx-auto flex w-full max-w-2xl items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--card)] px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-[var(--muted)] transition-all hover:border-[var(--text)]/25 hover:text-[var(--text)] md:max-w-none"
+ className="mx-auto flex h-10 w-full max-w-2xl items-center justify-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-4 text-[0.8125rem] font-semibold text-[var(--text-soft)] transition-all hover:border-[var(--border-strong)] hover:text-[var(--text)] md:max-w-none"
  >
  {filtersExpanded ? (
-   <><ChevronUp size={15} /> {lang === "EN" ? "Hide Filters" : "Sembunyi Penapis"}</>
+   <><ChevronUp size={15} /> {lang === "EN" ? "Hide filters" : "Sembunyi penapis"}</>
  ) : (
-   <><SlidersHorizontal size={15} /> {lang === "EN" ? "Show Filters" : "Tunjuk Penapis"}</>
+   <><SlidersHorizontal size={15} /> {lang === "EN" ? "Show filters" : "Tunjuk penapis"}</>
  )}
  </button>
 
@@ -1699,17 +1701,17 @@ const currentCycleKeyStr = useMemo(
  placeholder={langT.searchTransactions}
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}
- className="h-10 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] pl-11 pr-4 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] transition-all focus:ring-1 focus:ring-[var(--text)]/20 md:h-9 md:text-xs"
+ className="h-11 w-full rounded-full border border-[var(--border)] bg-[var(--card)] pl-11 pr-4 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition-all focus:border-[#0878F8] focus:ring-2 focus:ring-[#0878F8]/20"
  />
  </div>
  <button
  type="button"
  aria-label={lang === "EN" ? "Date filters" : "Penapis tarikh"}
  className={cn(
- "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-[var(--card)] text-[var(--muted)] transition-all",
+ "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all",
  showCalendar || hasDateRangeFilter
- ? "border-[var(--text)]/25 text-[var(--text)]"
- : "border-[var(--border)]"
+ ? "border-[#0878F8] bg-[#0878F8] !text-white"
+ : "border-[var(--border)] bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
  )}
  onClick={openDateFilterPopup}
  >
@@ -1718,7 +1720,7 @@ const currentCycleKeyStr = useMemo(
  </div>
  <div className="mx-auto w-full max-w-2xl md:max-w-none">
  {hasActiveSearch && (
- <div className="mt-2 flex items-center justify-between rounded-xl border border-[var(--text)]/15 bg-[var(--surface-tint-strong)] px-3 py-2 text-xs shadow-md shadow-black/10">
+ <div className="mt-2 flex items-center justify-between rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2.5 text-xs">
  <span className="font-semibold text-[var(--muted)]">
  {lang === "EN" ? `${searchMatchedCount} match(es)` : `${searchMatchedCount} padanan`}
  </span>
@@ -1730,7 +1732,7 @@ const currentCycleKeyStr = useMemo(
  : (isLight ? "text-rose-600" : "text-rose-300")
  )}
  >
- {lang === "EN" ? "Search Total: " : "Jumlah Carian: "}
+ {lang === "EN" ? "Search total: " : "Jumlah carian: "}
  {showDataSkeleton ? <AmountSkeleton className="h-3 w-28" /> : <>{searchMatchedTotal >= 0 ? "+" : "−"}RM {formatCurrencyAmount(Math.abs(searchMatchedTotal))}</>}
  </span>
  </div>
@@ -1838,17 +1840,17 @@ const currentCycleKeyStr = useMemo(
  />
  </div>
  {showCalendar && (
- <div className="mx-auto w-full max-w-2xl rounded-xl border border-[var(--border)] bg-[var(--surface)]/80 p-3 md:max-w-none">
+ <div className="mx-auto w-full max-w-2xl rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 md:max-w-none">
  <div className="flex items-center justify-between gap-2">
  <p className="text-sm font-bold text-[var(--text)]">
- {lang === "EN" ? "Calendar Filter" : "Penapis Kalendar"}
+ {lang === "EN" ? "Calendar filter" : "Penapis kalendar"}
  </p>
  <div className="flex items-center gap-1">
  <button
  type="button"
  aria-label={lang === "EN" ? "Previous month" : "Bulan lepas"}
  onClick={() => setCalendarViewMonth((prev) => addMonths(prev, -1))}
- className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] transition hover:text-[var(--text)]"
+ className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] transition hover:text-[var(--text)]"
  >
  <ChevronLeft size={14} />
  </button>
@@ -1856,14 +1858,14 @@ const currentCycleKeyStr = useMemo(
  type="button"
  aria-label={lang === "EN" ? "Next month" : "Bulan depan"}
  onClick={() => setCalendarViewMonth((prev) => addMonths(prev, 1))}
- className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] transition hover:text-[var(--text)]"
+ className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] transition hover:text-[var(--text)]"
  >
  <ChevronRight size={14} />
  </button>
  </div>
  </div>
 
- <div className="mt-2 rounded-xl border border-[var(--border)] bg-[var(--surface)]/80 p-2">
+ <div className="mt-3 rounded-2xl border border-[var(--border)] p-2">
  <p className="px-1 text-center text-xs font-semibold text-[var(--muted)]">
  {calendarMonthLabel}
  </p>
@@ -1894,11 +1896,11 @@ const currentCycleKeyStr = useMemo(
  type="button"
  onClick={() => handleCalendarDaySelect(cell.dateKey as string)}
  className={cn(
- "h-9 rounded-lg text-[0.75rem] font-semibold transition",
+ "h-9 rounded-full text-[0.75rem] font-semibold transition",
  isStart || isEnd
- ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
+ ? "bg-[#0878F8] !text-white"
  : isInRange
- ? "bg-[var(--text)]/12 text-[var(--text)]"
+ ? "bg-[#0878F8]/12 text-[var(--text)]"
  : "text-[var(--text)] hover:bg-[var(--text)]/8"
  )}
  >
@@ -1921,14 +1923,15 @@ const currentCycleKeyStr = useMemo(
  <button
  type="button"
  onClick={clearDateFilter}
- className="h-10 rounded-xl border border-[var(--border)] bg-[var(--card)] text-xs font-semibold text-[var(--muted)]"
+ className="h-10 rounded-full border border-[var(--border)] bg-[var(--card)] text-xs font-semibold text-[var(--text-soft)]"
  >
  {lang === "EN" ? "Clear" : "Kosongkan"}
  </button>
  <button
  type="button"
  onClick={applyDateFilter}
- className="h-10 rounded-xl bg-[var(--text)] text-xs font-bold text-[var(--bg)]"
+ className="h-10 rounded-full bg-[#0878F8] text-xs font-semibold"
+ style={{ color: "#ffffff" }}
  >
  {lang === "EN" ? "Apply" : "Guna"}
  </button>
@@ -1943,52 +1946,64 @@ const currentCycleKeyStr = useMemo(
  
  
 
-  {/* Desktop Summary — unified strip (matches mobile, uses global card radius) */}
+  {/* Desktop summary, in the Moden look: an outlined card over a blue circle */}
   {!showGraphMode && (
-  <div className="mx-auto hidden w-full max-w-[1280px] px-4 md:block">
-  <div className="modern-card overflow-hidden !shadow-[var(--shadow-soft)]">
-  <div className="grid grid-cols-3 divide-x divide-[var(--border)]">
-  <div className="px-5 py-4">
-  <div className="flex items-center gap-1.5">
-  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-  <p className="text-[0.62rem] font-bold uppercase tracking-wider text-[var(--muted)]">{langT.income}</p>
+  <div className="mx-auto hidden w-full max-w-[1280px] md:block">
+  <div className="relative pr-3 pt-3">
+  <div aria-hidden className="absolute -right-1 -top-2 h-52 w-52 rounded-full bg-[#0878F8]" />
+  <div aria-hidden className="absolute right-8 top-9 h-24 w-24 rounded-full border-[1.5px] border-white opacity-35" />
+  <div className="relative flex flex-col gap-6 rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-7 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)]">
+  <div className="min-w-0">
+  <div className="flex items-center gap-2">
+  <p className="text-[0.875rem] font-medium text-[var(--muted)]">{lang === "EN" ? "Current balance" : "Baki semasa"}</p>
+  <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-0.5 text-[0.6875rem] font-semibold text-[var(--text-soft)]">
+  <span className="h-1.5 w-1.5 rounded-full bg-[var(--income)]" />
+  {filteredTxns.length} {lang === "EN" ? "records" : "rekod"}
+  </span>
   </div>
-  <p className={cn("mt-2 text-xl font-black tracking-tight tabular-nums", isLight ? "text-emerald-600" : "text-emerald-400")}>
-  {showDataSkeleton ? <AmountSkeleton className="h-6 w-32" /> : <>RM {formatCurrencyAmount(displayIncome)}</>}
-  </p>
-  </div>
-  <div className="px-5 py-4">
-  <div className="flex items-center gap-1.5">
-  <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-  <p className="text-[0.62rem] font-bold uppercase tracking-wider text-[var(--muted)]">{langT.expense}</p>
-  </div>
-  <p className={cn("mt-2 text-xl font-black tracking-tight tabular-nums", isLight ? "text-rose-600" : "text-rose-400")}>
-  {showDataSkeleton ? <AmountSkeleton className="h-6 w-32" /> : <>RM {formatCurrencyAmount(displayExpense)}</>}
-  </p>
-  </div>
-  <div className="px-5 py-4">
-  <div className="flex items-center gap-1.5">
-  <span className="h-1.5 w-1.5 rounded-full bg-[var(--btn-primary-bg)]" />
-  <p className="text-[0.62rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-  {lang === "EN" ? "Current Balance" : "Baki Semasa"}
-  </p>
-  </div>
-  <p className="mt-2 text-xl font-black tracking-tight tabular-nums text-[var(--text)]">
-  {showDataSkeleton ? <AmountSkeleton className="h-6 w-32" /> : <>RM {formatCurrencyAmount(statsSnapshot.balance)}</>}
-  </p>
-  <p className={cn(
-  "mt-1.5 text-[0.68rem] font-bold tabular-nums",
-  filteredNetFlow >= 0
-  ? (isLight ? "text-emerald-600" : "text-emerald-400")
-  : (isLight ? "text-rose-600" : "text-rose-400")
-  )}>
-  {lang === "EN" ? "Net " : "Bersih "}
+  <p className="mt-2 leading-none tabular-nums text-[var(--text)]">
   {showDataSkeleton ? (
-  <AmountSkeleton className="inline-block h-3 w-20" />
+  <AmountSkeleton className="h-12 w-56" />
+  ) : (
+  <>
+  <span className="mr-1.5 align-top text-[1.125rem] font-semibold text-[var(--muted)]">RM</span>
+  <span className="text-[3rem] font-bold tracking-[-0.03em]">{formatCurrencyAmount(statsSnapshot.balance)}</span>
+  </>
+  )}
+  </p>
+  </div>
+  <div className="grid grid-cols-3 gap-3">
+  <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3.5">
+  <div className="flex items-center gap-1.5">
+  <span className="h-2 w-2 rounded-full bg-[var(--income)]" />
+  <p className="text-[0.75rem] font-medium text-[var(--muted)]">{lang === "EN" ? "Income" : "Pendapatan"}</p>
+  </div>
+  <p className="mt-2 truncate text-[1.25rem] font-bold tabular-nums text-[var(--text)]">
+  {showDataSkeleton ? <AmountSkeleton className="h-5 w-24" /> : <>RM {formatCurrencyAmount(displayIncome)}</>}
+  </p>
+  </div>
+  <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3.5">
+  <div className="flex items-center gap-1.5">
+  <span className="h-2 w-2 rounded-full bg-[var(--expense)]" />
+  <p className="text-[0.75rem] font-medium text-[var(--muted)]">{lang === "EN" ? "Expense" : "Perbelanjaan"}</p>
+  </div>
+  <p className="mt-2 truncate text-[1.25rem] font-bold tabular-nums text-[var(--text)]">
+  {showDataSkeleton ? <AmountSkeleton className="h-5 w-24" /> : <>RM {formatCurrencyAmount(displayExpense)}</>}
+  </p>
+  </div>
+  <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3.5">
+  <div className="flex items-center gap-1.5">
+  <span className="h-2 w-2 rounded-full bg-[#0878F8]" />
+  <p className="text-[0.75rem] font-medium text-[var(--muted)]">{lang === "EN" ? "Filtered net" : "Bersih tapisan"}</p>
+  </div>
+  <p className={cn("mt-2 truncate text-[1.25rem] font-bold tabular-nums", filteredNetFlow >= 0 ? "text-[var(--income)]" : "text-[var(--text)]")}>
+  {showDataSkeleton ? (
+  <AmountSkeleton className="h-5 w-24" />
   ) : (
   <>{filteredNetFlow >= 0 ? "+" : "−"}RM {formatCurrencyAmount(Math.abs(filteredNetFlow))}</>
   )}
   </p>
+  </div>
   </div>
   </div>
   </div>
@@ -2613,37 +2628,40 @@ const currentCycleKeyStr = useMemo(
  <button 
  disabled={currentPage === 1} 
  onClick={() => setCurrentPage(p => p - 1)}
- className="px-3 py-1.5 bg-[var(--card)] border border-[var(--border)] rounded-lg text-[0.6875rem] font-semibold text-[var(--text)] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[var(--surface-tint)] transition"
+ className="h-10 rounded-full border border-[var(--border)] bg-[var(--card)] px-5 text-[0.8125rem] font-semibold text-[var(--text)] transition hover:bg-[var(--surface-tint)] disabled:cursor-not-allowed disabled:opacity-30"
  >
  {langT.previous}
  </button>
- <span className="text-[0.625rem] font-semibold text-[var(--muted)] tabular-nums">
+ <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[0.75rem] font-semibold tabular-nums text-[var(--muted)]">
  {currentPage} / {totalPages}
  </span>
  <button 
  disabled={currentPage === totalPages} 
  onClick={() => setCurrentPage(p => p + 1)}
- className="px-3 py-1.5 bg-[var(--card)] border border-[var(--border)] rounded-lg text-[0.6875rem] font-semibold text-[var(--text)] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[var(--surface-tint)] transition"
+ className="h-10 rounded-full border border-[var(--border)] bg-[var(--card)] px-5 text-[0.8125rem] font-semibold text-[var(--text)] transition hover:bg-[var(--surface-tint)] disabled:cursor-not-allowed disabled:opacity-30"
  >
  {langT.next}
  </button>
  </div>
  )}
 
- {/* Download Section — At the bottom of transactions */}
- <div className="hidden pt-8 border-t border-[color:var(--border)] md:block">
- <div className="portal-download-card rounded-2xl border p-6 text-center">
- <div className="portal-download-card__icon mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl">
- <Download size={24} />
+ {/* Download, at the bottom: an outlined card with a round blue button */}
+ <div className="hidden pt-6 md:block">
+ <div className="flex items-center gap-5 rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6">
+ <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0878F8]" style={{ color: "#ffffff" }}>
+ <Download size={22} />
  </div>
- <h4 className="portal-download-card__title mb-2 text-lg">{langT.download}</h4>
- <p className="portal-download-card__desc mx-auto mb-6 max-w-xs text-sm font-medium leading-relaxed">
+ <div className="min-w-0 flex-1">
+ <h4 className="text-base font-bold text-[var(--text)]">{langT.download}</h4>
+ <p className="mt-1 text-sm font-medium leading-relaxed text-[var(--muted)]">
  {langT.downloadDesc}
  </p>
+ </div>
  <button 
  onClick={handleExport}
  disabled={filteredTxns.length === 0 || loading}
- className="portal-download-card__button w-full rounded-xl px-5 py-3 transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:px-12"
+ className="h-11 shrink-0 rounded-full bg-[#0878F8] px-6 text-sm font-semibold transition-all hover:bg-[#0567d6] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+ style={{ color: "#ffffff" }}
  >
  {langT.download} .XLS ({filteredTxns.length})
  </button>
@@ -2817,14 +2835,14 @@ function FilterSelect({
        aria-label={ariaLabel}
        value={value}
        onChange={(e) => onChange(e.target.value)}
-       className="h-9 w-full cursor-pointer appearance-none rounded-lg border border-[var(--border)] bg-[var(--card2)] pl-2.5 pr-7 font-semibold leading-none text-[var(--text-soft)] outline-none transition-colors hover:bg-[var(--surface-tint)]"
+       className="h-10 w-full cursor-pointer appearance-none rounded-full border border-[var(--border)] bg-[var(--card)] pl-4 pr-8 font-semibold leading-none text-[var(--text-soft)] outline-none transition-colors hover:border-[var(--border-strong)] focus:border-[#0878F8]"
        style={{ fontSize: isMobile ? "12px" : "13px" }}
      >
        {nodes}
      </select>
      <ChevronDown
        size={14}
-       className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 shrink-0 text-[var(--muted)]"
+       className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 shrink-0 text-[var(--muted)]"
      />
    </div>
  )
