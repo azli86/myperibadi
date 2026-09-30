@@ -1,23 +1,15 @@
-/* Login: the app's plain background, a colour area with three stacked cards in
-   the logo's colours, and a card holding the form. */
+/* Login in the Moden look: a balance card over a blue circle and the headline
+   (the "art"), and the ways in beside it (the "side"). On a phone they stack,
+   and the email step takes the whole screen; on desktop the art is an outlined
+   panel on the left and the side a plain column on the right. The email form
+   is drawn once, in the side, so only one Turnstile widget ever exists. */
 
 .screen {
   /* Phone, dark theme: #0b0b0b, the same as the phone home's background.
      Desktop stays pure black (below); the light theme keeps --page-bg. */
   --l-base: #0b0b0b;
-  --l-a: #0a3f96;
-  --l-b: #087aa8;
-  --l-c: #16206e;
-  --l-a2: #1f6fe0;
-  --l-b2: #12c4ec;
-  --l-c2: #3446b8;
-  --l-hero: transparent;
   --l-text: #eef4ff;
   --l-muted: #9fb0d0;
-  --l-panel: var(--card);
-  --l-field: rgba(255, 255, 255, 0.08);
-  --l-field-focus: rgba(255, 255, 255, 0.14);
-  --l-line: rgba(255, 255, 255, 0.14);
   --l-button-bg: #eef4ff;
   --l-button-text: #050820;
   --l-card: #18181b;
@@ -26,236 +18,115 @@
   inset: 0;
   display: flex;
   flex-direction: column;
-  /* On a phone the whole screen scrolls, so a short screen or the keyboard
-     never pushes the form out of reach. */
+  /* The whole screen scrolls, so a short phone or the keyboard never hides
+     the buttons. */
   overflow-x: hidden;
   overflow-y: auto;
-  /* Room for the top bar (logo, theme, language) above the centred block. */
-  padding-top: calc(env(safe-area-inset-top, 0px) + 4.5rem);
   overscroll-behavior: contain;
+  /* Room for the top bar (logo, theme, language). */
+  padding-top: calc(env(safe-area-inset-top, 0px) + 4.5rem);
   background: var(--l-base);
   color: var(--l-text);
 }
 
 :global(html[data-theme="light"]) .screen {
   --l-base: var(--page-bg);
-  --l-a: #7fe6fb;
-  --l-b: #8fb4ff;
-  --l-c: #b3bdf0;
-  --l-a2: #d5f7fd;
-  --l-b2: #d4e2ff;
-  --l-c2: #e6e9fb;
-  --l-hero: transparent;
   --l-text: #0a1230;
   --l-muted: #52607e;
-  --l-panel: var(--card);
-  --l-field: rgba(10, 18, 48, 0.06);
-  --l-field-focus: rgba(10, 18, 48, 0.1);
-  --l-line: rgba(10, 18, 48, 0.12);
   --l-button-bg: #0a1230;
   --l-button-text: #ffffff;
   --l-card: #ffffff;
   --l-card-line: #e4e4e7;
 }
 
-/* Phone: the colour area and the form form one block, centred on the screen.
-   Auto margins centre it and fall back to the top when the email form makes it
-   taller than the screen, so nothing is cut off and the page scrolls. */
-.hero {
-  /* Static on a phone, so the cards below place against the screen, not this
-     block: they stay at the top right, behind, while the block is centred. */
-  position: static;
-  flex: 0 0 auto;
-  min-height: 7rem;
-  margin-top: auto;
-}
-/* Three cards stacked and tilted, in the three mesh colours. */
-.cards {
+.topLogo {
   position: absolute;
-  right: -2.2rem;
-  top: calc(env(safe-area-inset-top, 0px) + 3.6rem);
-  width: 9.5rem;
-  height: 6.3rem;
-  transform: rotate(-8deg);
+  left: 1.5rem;
+  top: calc(env(safe-area-inset-top, 0px) + 1rem);
+  z-index: 50;
 }
-.card {
-  position: absolute;
-  inset: 0;
-  border-radius: 1.5rem;
-  box-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-}
-.cardA { background: var(--l-a); background: linear-gradient(135deg, var(--l-a), var(--l-a2)); transform: translate(-1.6rem, -2.2rem) rotate(-6deg); opacity: 0.9; }
-.cardB { background: var(--l-b); background: linear-gradient(135deg, var(--l-b), var(--l-b2)); transform: translate(-0.8rem, -1.1rem) rotate(-2deg); opacity: 0.95; }
-.cardC {
-  background: var(--l-c);
-  background: linear-gradient(135deg, var(--l-c), var(--l-c2));
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 0.45rem;
-  padding: 1.1rem;
-}
-.chip { position: absolute; left: 1.1rem; top: 1.1rem; width: 2.2rem; height: 1.6rem; border-radius: 0.45rem; background: rgba(255, 255, 255, 0.55); }
-.line { display: block; height: 0.5rem; width: 70%; border-radius: 9999px; background: rgba(255, 255, 255, 0.55); }
-.lineShort { width: 40%; }
 
-/* Phone: the form sits on the page itself, no card. */
-.panel {
-  position: relative;
-  z-index: 1;
+/* ── Art ── */
+.art {
   flex: 0 0 auto;
-  margin-bottom: auto;
-  padding: 0.5rem 1.5rem calc(1.75rem + env(safe-area-inset-bottom, 0px));
+  padding: 0 1.5rem;
 }
-
-.field {
-  width: 100%;
-  border: 0;
-  border-radius: 1rem;
-  padding: 1rem 1.1rem;
-  font-size: 16px;
-  font-weight: 500;
-  background: var(--l-field);
-  color: var(--l-text) !important;
-  -webkit-text-fill-color: var(--l-text) !important;
-  caret-color: var(--l-text);
-  outline: none;
-  transition: background 0.15s ease;
-}
-.field:focus { background: var(--l-field-focus); }
-.field::placeholder {
-  color: var(--l-muted) !important;
-  -webkit-text-fill-color: var(--l-muted) !important;
-}
-.field:-webkit-autofill,
-.field:-webkit-autofill:hover,
-.field:-webkit-autofill:focus {
-  -webkit-text-fill-color: var(--l-text) !important;
-  -webkit-box-shadow: 0 0 0 1000px var(--l-field-focus) inset !important;
-  transition: background-color 9999s ease-out 0s;
-}
-
-/* Desktop: the colour area becomes a rounded block beside the form. */
-@media (min-width: 900px) {
-  .screen {
-    --l-base: #000000;
-    flex-direction: row;
-    padding: 1.25rem;
-    gap: 1.25rem;
-    overflow: hidden;
-  }
-  .hero {
-    position: relative;
-    overflow: hidden;
-    flex: 1 1 0;
-    margin-top: 0;
-    min-height: 0;
-    border-radius: 2rem;
-    background: var(--l-hero);
-    border: 1px solid var(--l-line);
-  }
-  .cards {
-    right: 3.5rem;
-    top: 6rem;
-    width: 22rem;
-    height: 14rem;
-    transform: rotate(-8deg) scale(1.1);
-  }
-  .panel {
-    flex: 0 0 min(30rem, 42vw);
-    margin-bottom: 0;
-    background: var(--l-panel);
-    max-height: none;
-    align-self: stretch;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    border-radius: 2rem;
-    border: 1px solid var(--l-line);
-    padding: 3rem;
-  }
-}
-
-/* ── Phone: a modern app's welcome screen, then an email step ──
-   Welcome: the card illustration large in the middle, a big headline under it,
-   and the sign-in buttons at the foot of the screen, in thumb reach.
-   Email: the illustration steps aside and the form starts at the top, so
-   opening it never pushes anything down. */
-@media (max-width: 899.98px) {
-  .screen {
-    min-height: 100dvh;
-  }
-  .hero {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    flex: 1 1 auto;
-    min-height: 0;
-    margin-top: 0;
-  }
-  .cards {
-    position: relative;
-    right: auto;
-    top: auto;
-    align-self: center;
-    width: 14.5rem;
-    height: 9.25rem;
-    margin: 2.25rem auto 0;
-    transform: rotate(-8deg);
-  }
-  .heroText {
-    height: auto;
-    justify-content: flex-start;
-    padding: 2.75rem 1.5rem 0.5rem;
-  }
-  .heroText p:first-child {
-    max-width: 18rem;
-    font-size: 2rem;
-  }
-  .panel {
-    margin-bottom: 0;
-    padding: 1.25rem 1.5rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
-  }
-  .screen[data-step="welcome"] .intro {
-    display: none;
-  }
-  .screen[data-step="email"] .hero {
-    display: none;
-  }
-  .screen[data-step="email"] .panel {
-    padding-top: 0.75rem;
-  }
-}
-
-/* ── Phone welcome: the "Login Moden" screen ──
-   Shown only on a phone before the email step; the colour block and the form
-   panel take over for the email step and on desktop. */
-.mWelcome {
+.screen[data-step="email"] .art {
   display: none;
 }
-@media (max-width: 899.98px) {
-  .screen[data-step="welcome"] .mWelcome {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-    padding: 0 1.5rem calc(1.75rem + env(safe-area-inset-bottom, 0px));
-  }
-  .hero {
-    display: none;
-  }
-  .screen[data-step="welcome"] .panel {
-    display: none;
-  }
+.artLogo {
+  display: none;
+}
+.illoWrap {
+  margin-top: 0.5rem;
+}
+.illo {
+  position: relative;
+  width: 100%;
+  max-width: 22.5rem;
+  height: 300px;
+}
+.headline {
+  margin-top: 1.25rem;
+}
+.headlineText {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+.headlineSub {
+  margin: 0.875rem 0 0;
+  max-width: 19.5rem;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--l-muted);
 }
 
-/* ── Phone email step ── */
-.mEmail {
+/* ── Side ── */
+.side {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: 1.5rem 1.5rem calc(1.75rem + env(safe-area-inset-bottom, 0px));
+}
+.sideInner {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 100%;
+}
+.screen[data-step="email"] .side {
+  padding-top: 0.25rem;
+}
+.screen[data-step="email"] .sideInner {
+  justify-content: flex-start;
+}
+.sideIntro {
+  display: none;
+}
+
+/* ── Email step ── */
+.emailStep {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+.emailForm {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  margin-top: 1.75rem;
+}
+.emailSubmit {
   display: flex;
   flex-direction: column;
-  flex: 1 1 auto;
-  padding: 0.25rem 1.5rem calc(1.75rem + env(safe-area-inset-bottom, 0px));
+  gap: 0.75rem;
+  margin-top: auto;
+  padding-top: 2rem;
 }
 .mField {
   width: 100%;
@@ -288,4 +159,84 @@
   -webkit-text-fill-color: var(--l-text) !important;
   -webkit-box-shadow: 0 0 0 1000px var(--l-card) inset !important;
   transition: background-color 9999s ease-out 0s;
+}
+
+/* ── Desktop: the art as an outlined panel, the side as a centred column ── */
+@media (min-width: 900px) {
+  .screen {
+    --l-base: #000000;
+    flex-direction: row;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    overflow: hidden;
+  }
+  :global(html[data-theme="light"]) .screen {
+    --l-base: var(--page-bg);
+  }
+  .topLogo {
+    display: none;
+  }
+  .art,
+  .screen[data-step="email"] .art {
+    position: relative;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    padding: 2.75rem 3rem 3rem;
+    border: 1px solid var(--l-card-line);
+    border-radius: 2rem;
+    background: var(--l-card);
+  }
+  .artLogo {
+    display: block;
+    align-self: flex-start;
+  }
+  .illoWrap {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+  }
+  .illo {
+    width: 22.5rem;
+    transform: scale(1.4);
+  }
+  .headline {
+    margin-top: 0;
+  }
+  .headlineText {
+    font-size: clamp(2.75rem, 4vw, 3.75rem);
+  }
+  .headlineSub {
+    max-width: 30rem;
+    font-size: 17px;
+  }
+  .side,
+  .screen[data-step="email"] .side {
+    flex: 0 0 min(30rem, 40vw);
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2.5rem;
+    overflow-y: auto;
+  }
+  .sideInner,
+  .screen[data-step="email"] .sideInner {
+    flex: 0 0 auto;
+    justify-content: center;
+    max-width: 24rem;
+  }
+  .sideIntro {
+    display: block;
+    margin-bottom: 2rem;
+  }
+  .emailStep,
+  .emailForm {
+    flex: 0 0 auto;
+  }
+  .emailSubmit {
+    margin-top: 0;
+  }
 }
