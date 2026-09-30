@@ -12,8 +12,6 @@ import {
   BarChart2,
   Wallet,
   AlertTriangle,
-  ArrowDownRight,
-  ArrowUpRight,
   ArrowDown,
   ChevronRight,
   Eye,
@@ -23,7 +21,6 @@ import {
   Award,
   MinusCircle,
   HeartHandshake,
-  Layers,
   Mic,
   Square,
 } from "lucide-react"
@@ -322,7 +319,6 @@ export default function Dashboard() {
   const [isMobileViewport, setIsMobileViewport] = useState(false)
   const [showHeroAmounts, setShowHeroAmounts] = useState(true)
   const [showAnalyticsMonthDropdown, setShowAnalyticsMonthDropdown] = useState(false)
-  const [dashboardFocusedCardIndex, setDashboardFocusedCardIndex] = useState<number | null>(null)
   const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
 
   // Tell the user an admin answered their ticket. Shown once: opening it marks
@@ -1387,14 +1383,11 @@ export default function Dashboard() {
     <div data-wallet-section className="space-y-2">
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--surface-tint)] text-[var(--text)] shadow-xs">
-            <Layers size={14} className="text-indigo-400" />
-          </div>
-          <span className="text-xs font-black uppercase tracking-wider text-[var(--text)]">
-            {lang === "BM" ? "Dompet & Akaun" : "Wallets & Accounts"}
-          </span>
-          <span className="rounded-full bg-[var(--surface-tint)] px-2 py-0.5 text-[0.625rem] font-bold text-[var(--muted)]">
-            {heroWallets.length} {lang === "BM" ? "Kad" : "Cards"}
+          <h3 className="text-[1.125rem] font-bold tracking-tight text-[var(--text)]">
+            {lang === "BM" ? "Dompet & akaun" : "Wallets & accounts"}
+          </h3>
+          <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[0.6875rem] font-semibold text-[var(--muted)]">
+            {heroWallets.length}
           </span>
         </div>
 
@@ -1416,136 +1409,60 @@ export default function Dashboard() {
           {[0, 1, 2, 3].map((i) => walletCardSkeleton(i, "h-[196px] w-full"))}
         </div>
       ) : heroWallets.length > 0 ? (
-        <div
-          onMouseLeave={() => setDashboardFocusedCardIndex(null)}
-          className="flex items-center overflow-x-auto pt-6 pb-8 px-4 custom-scrollbar"
-        >
-          {/* Deck sits flush left and scrolls as one row. Centring was tried and
-              never held: the row has to stay scrollable, and any centring trick
-              either clipped the leading card or slid the deck out from under the
-              pointer. Start alignment is what the row actually wants. */}
-          <div className="flex w-max items-center">
+        // Every wallet as a Moden card in its own colour, in a grid (the fanned
+        // deck overlapped the cards and cut their balances off).
+        <div className="grid grid-cols-2 gap-4 min-[1500px]:grid-cols-4">
           {heroWallets.map((wallet, index) => {
             const accent = getDashboardWalletAccent(wallet)
             const walletName = wallet.label || wallet.name || (lang === "BM" ? "Dompet" : "Wallet")
             const walletType = walletTypeLabel(wallet.type)
-            const isTopCard = index === 0
-            const isFocused = dashboardFocusedCardIndex === index
-            const isBefore = dashboardFocusedCardIndex !== null && index < dashboardFocusedCardIndex
-            const isAfter = dashboardFocusedCardIndex !== null && index > dashboardFocusedCardIndex
-
-            let translateX = 0
-            let translateY = 0
-            let scale = 1
-            let zIndex = index + 1
-            let opacity = 1
-            let boxShadow = "none"
-
-            if (isFocused) {
-              translateY = -24
-              scale = 1.03
-              zIndex = 50
-              boxShadow = "0 0 0 1.5px var(--border-strong)"
-            } else if (isBefore) {
-              translateX = -18
-              scale = 0.985
-              zIndex = index + 1
-              opacity = 0.88
-            } else if (isAfter) {
-              translateX = 196
-              scale = 0.985
-              zIndex = index + 1
-              opacity = 0.88
-            }
-
+            const soft = "rgba(255,255,255,0.78)"
             return (
               <Link
                 key={`${wallet.id || index}-desktop-wallet-card`}
                 href={`/${sessionId}/wallet-settings`}
-                onMouseEnter={() => setDashboardFocusedCardIndex(index)}
-                style={{
-                  marginLeft: isTopCard ? 0 : "-190px",
-                  transform: `translate(${translateX}px, ${translateY}px) scale(${scale})`,
-                  zIndex,
-                  opacity,
-                  boxShadow,
-                  background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 18%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 10%, var(--card)) 100%)`,
-                  transition: "transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease, z-index 0.35s ease",
-                }}
-                className={cn(
-                  "group relative flex h-[206px] w-[320px] shrink-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-white/20 dark:border-white/10 p-5 pb-5 text-left select-none will-change-transform",
-                  isFocused && "border-[var(--border-strong)] ring-1 ring-white/25",
-                )}
+                className="relative flex h-[184px] flex-col justify-between overflow-hidden rounded-[1.5rem] p-5 text-left transition hover:-translate-y-0.5 active:scale-[0.99]"
+                // Inline colours: the light theme remaps the text-white class.
+                style={{ background: `linear-gradient(135deg, ${accent.from} 0%, ${accent.to} 100%)`, color: "#ffffff" }}
               >
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-white/[0.12] via-transparent to-white/[0.04]" />
-                {wallet.image_url && (
-                  <>
-                    <img src={wallet.image_url} alt="" className="absolute -right-5 -top-8 h-[135%] w-[62%] rotate-[9deg] object-cover opacity-50 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_55%)]" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-[var(--card)] from-30% via-[var(--card)] via-52% to-transparent to-90%" />
-                  </>
-                )}
-                <div className="absolute -right-8 -top-10 h-32 w-32 rounded-full opacity-15 blur-2xl" style={{ backgroundColor: accent.color }} />
-
-                <div className="relative flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="relative shrink-0">
-                      <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-[var(--icon-bg)] text-[var(--icon-fg)] shadow-sm border border-[var(--border)]">
-                        {wallet.image_url ? <img src={wallet.image_url} alt="" className="h-full w-full object-cover" /> : <Wallet size={18} />}
-                      </div>
-                      {wallet.is_bot_default && (
-                        <span className="absolute -right-1 -top-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[0.5rem] font-black leading-none text-white shadow-sm ring-2 ring-[var(--card)]">
-                          B
-                        </span>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-xs font-black tracking-tight text-[var(--text)]">{walletName}</p>
-                      <p className="mt-0.5 truncate text-[0.56rem] font-black uppercase tracking-[0.14em] text-[var(--muted)]">
-                        {walletType}
-                        {wallet.is_saving ? ` · ${lang === "BM" ? "Simpanan" : "Saving"}` : ""}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <div className="relative h-6 w-8 shrink-0 overflow-hidden rounded-md border border-amber-300/60 bg-gradient-to-br from-amber-200 via-amber-300 to-amber-500 shadow-inner">
-                      <div className="absolute inset-0 grid grid-cols-2 gap-0.5 p-0.5 opacity-35">
-                        <div className="border border-amber-950/60 rounded-[2px]" />
-                        <div className="border border-amber-950/60 rounded-[2px]" />
-                        <div className="border border-amber-950/60 rounded-[2px]" />
-                        <div className="border border-amber-950/60 rounded-[2px]" />
-                      </div>
-                    </div>
-                  </div>
+                <svg aria-hidden width="220" height="220" viewBox="0 0 260 260" className="pointer-events-none absolute -bottom-[95px] -right-[80px]" style={{ opacity: 0.16 }} fill="none" stroke="#ffffff" strokeWidth="2">
+                  <circle cx="130" cy="130" r="50" />
+                  <circle cx="130" cy="130" r="80" />
+                  <circle cx="130" cy="130" r="110" />
+                </svg>
+                <div className="relative flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-2">
+                    {wallet.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={wallet.image_url} alt="" className="h-7 w-7 shrink-0 rounded-full object-cover" style={{ boxShadow: "0 0 0 2px rgba(255,255,255,0.35)" }} />
+                    ) : null}
+                    <span className="truncate text-[0.9375rem] font-bold" style={{ color: "#ffffff" }}>{walletName}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1">
+                    {wallet.is_bot_default ? (
+                      <span className="rounded-lg px-1.5 py-0.5 text-[0.625rem] font-bold" style={{ background: "rgba(255,255,255,0.22)", color: "#ffffff" }}>Bot</span>
+                    ) : null}
+                    <span className="max-w-[5.5rem] truncate rounded-lg px-2 py-0.5 text-[0.6875rem] font-bold" style={{ background: "rgba(0,0,0,0.16)", color: "#ffffff" }}>{wallet.name}</span>
+                  </span>
                 </div>
-
-                <div className="relative mt-3.5">
-                  <p className="text-[0.58rem] font-bold uppercase tracking-[0.16em] text-[var(--muted)]">
-                    {lang === "BM" ? "Baki Semasa" : "Current Balance"}
+                <div className="relative min-w-0">
+                  <p className="truncate text-xs font-semibold" style={{ color: soft }}>
+                    {lang === "BM" ? "Baki" : "Balance"} · {walletType}{wallet.is_saving ? ` · ${lang === "BM" ? "Simpanan" : "Saving"}` : ""}
                   </p>
-                  <p className="mt-0.5 truncate text-xl font-bold tabular-nums tracking-tight text-[var(--text)]">
-                    {showDataSkeleton
-                      ? dashboardAmountSkeleton("h-6 w-24")
-                      : showHeroAmounts
-                        ? <>{formatCurrencyLabel(wallet.currency)} {wallet.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
-                        : `${formatCurrencyLabel(wallet.currency)} ••••••`}
+                  <p className="mt-1 truncate text-[1.75rem] font-bold leading-none tabular-nums tracking-[-0.02em]" style={{ color: "#ffffff" }}>
+                    <span className="mr-1 align-top text-[0.8125rem] font-semibold" style={{ color: soft }}>{formatCurrencyLabel(wallet.currency)}</span>
+                    {showHeroAmounts ? wallet.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "••••••"}
                   </p>
                 </div>
-
-                <div className="relative mt-auto flex items-center justify-between border-t border-[var(--border)]/80 pt-2.5">
-                  <div className="flex items-center gap-1.5 font-mono text-[0.62rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                    <span className="opacity-40">••••</span>
-                    <span className="text-[var(--text)]">{wallet.name}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-[var(--muted)] opacity-70 group-hover:opacity-100 transition">
-                    <span className="text-[0.58rem] font-bold uppercase tracking-wider">{lang === "BM" ? "Urus" : "Manage"}</span>
-                    <ChevronRight size={14} />
-                  </div>
+                <div className="relative flex items-center justify-between">
+                  <span className="text-xs font-semibold" style={{ color: soft }}>{lang === "BM" ? "Urus dompet" : "Manage wallet"}</span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full" style={{ background: "#09090b", color: "#fafafa" }}>
+                    <ChevronRight size={15} strokeWidth={2.4} />
+                  </span>
                 </div>
               </Link>
             )
           })}
-          </div>
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center rounded-2xl py-10 opacity-70 border border-dashed border-[var(--border)]">
@@ -1663,10 +1580,10 @@ export default function Dashboard() {
   const heroBalanceDigitCount = heroBalanceDisplay.replace(/\D/g, "").length
   const desktopHeroBalanceSizeClass =
     heroBalanceDigitCount >= 14
-      ? "text-[1.95rem] lg:text-[2.2rem]"
+      ? "text-[2.3rem]"
       : heroBalanceDigitCount >= 11
-        ? "text-[2.2rem] lg:text-[2.45rem]"
-        : "text-[2.55rem] lg:text-[2.8rem]"
+        ? "text-[2.75rem]"
+        : "text-[3.25rem]"
 
   const moneyLifespanCycleBounds = (() => {
     const bounds = cycleMode === "category"
@@ -1790,338 +1707,222 @@ export default function Dashboard() {
 
       {/* ─── DESKTOP VIEW (hidden md:block) ─── */}
       <div className="hidden md:block space-y-5 pb-12">
-        {/* Unified header → summary → runway (side by side, compact) */}
-        <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-card)]">
-          {/* Header strip */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-3.5">
-            <WeatherClockMini
-              lang={lang}
-              title={
-                <div className="mt-0.5 flex min-w-0 items-center gap-2.5">
-                  <UserAvatar name={displayName} size={30} src={avatarUrl} />
-                  <h1 className="min-w-0 truncate text-lg font-black tracking-tight text-[var(--text)]">
-                    {displayName}
-                  </h1>
+        {/* Header: who, when, and the page controls — on the page, no card */}
+        <header className="flex flex-wrap items-center justify-between gap-3 pt-1">
+          <WeatherClockMini
+            lang={lang}
+            title={
+              <div className="mt-0.5 flex min-w-0 items-center gap-3">
+                <UserAvatar name={displayName} size={40} src={avatarUrl} />
+                <div className="min-w-0">
+                  <p className="text-[0.8125rem] font-medium text-[var(--muted)]">{lang === "EN" ? "Hi," : "Hai,"}</p>
+                  <h1 className="min-w-0 truncate text-[1.375rem] font-bold leading-tight tracking-tight text-[var(--text)]">{displayName}</h1>
                 </div>
-              }
-            />
+              </div>
+            }
+          />
 
-            <div className="flex shrink-0 items-center gap-2">
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowAnalyticsMonthDropdown((prev) => !prev)}
-                  className="inline-flex h-9 min-w-[148px] items-center justify-between gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)]"
-                >
-                  <span className="truncate">{(dashboardMonthOptions.find((option) => option.key === selectedDashboardMonthKey) ?? dashboardMonthOptions[0])?.label}</span>
-                  <ArrowDown size={13} className={cn("text-[var(--muted)] transition-transform", showAnalyticsMonthDropdown ? "rotate-180" : "rotate-0")} />
-                </button>
-                {showAnalyticsMonthDropdown && (
-                  <div className="absolute right-0 top-[calc(100%+0.4rem)] z-20 w-52 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-card)]">
-                    {dashboardMonthOptions.map((option) => (
-                      <button
-                        key={option.key}
-                        type="button"
-                        onClick={() => {
-                          setSelectedDashboardMonthKey(option.key)
-                          setShowAnalyticsMonthDropdown(false)
-                        }}
-                        className={cn(
-                          "flex w-full items-center justify-between px-3.5 py-2.5 text-left text-sm font-semibold transition",
-                          selectedDashboardMonthKey === option.key
-                            ? "bg-[var(--surface-tint-strong)] text-[var(--text)]"
-                            : "text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)]"
-                        )}
-                      >
-                        <span>{option.label}</span>
-                        {selectedDashboardMonthKey === option.key ? <Check size={14} /> : null}
-                      </button>
-                    ))}
-                  </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowAnalyticsMonthDropdown((prev) => !prev)}
+                className="inline-flex h-11 min-w-[150px] items-center justify-between gap-2 rounded-full border border-[var(--border)] bg-[var(--card)] px-4 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface-tint)]"
+              >
+                <span className="truncate">{(dashboardMonthOptions.find((option) => option.key === selectedDashboardMonthKey) ?? dashboardMonthOptions[0])?.label}</span>
+                <ArrowDown size={14} className={cn("text-[var(--muted)] transition-transform", showAnalyticsMonthDropdown ? "rotate-180" : "rotate-0")} />
+              </button>
+              {showAnalyticsMonthDropdown && (
+                <div className="absolute right-0 top-[calc(100%+0.4rem)] z-20 w-52 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-card)]">
+                  {dashboardMonthOptions.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDashboardMonthKey(option.key)
+                        setShowAnalyticsMonthDropdown(false)
+                      }}
+                      className={cn(
+                        "flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-semibold transition",
+                        selectedDashboardMonthKey === option.key
+                          ? "bg-[var(--surface-tint-strong)] text-[var(--text)]"
+                          : "text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)]"
+                      )}
+                    >
+                      <span>{option.label}</span>
+                      {selectedDashboardMonthKey === option.key ? <Check size={14} /> : null}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={handleToggleHeroAmounts}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--text)] transition hover:bg-[var(--surface-tint)]"
+              aria-label={showHeroAmounts ? (lang === "EN" ? "Hide amounts" : "Sembunyi amaun") : (lang === "EN" ? "Show amounts" : "Papar amaun")}
+            >
+              {showHeroAmounts ? <Eye size={17} /> : <EyeClosed size={17} />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowBadgeModal(true)}
+              aria-label="Badges"
+              className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--text)] transition hover:bg-[var(--surface-tint)]"
+            >
+              <Award size={17} strokeWidth={2} />
+              {unlockedBadges.length > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#0878F8] px-1 text-[8px] font-bold" style={{ color: "#ffffff" }}>
+                  {unlockedBadges.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSupportOpen(true)}
+              className="accent-solid-btn inline-flex h-11 items-center gap-1.5 rounded-full bg-[var(--btn-primary-bg)] px-4 text-sm font-bold text-[var(--btn-primary-text)] transition hover:opacity-90 active:scale-95"
+            >
+              <HeartHandshake size={15} strokeWidth={2.2} />
+              <span>{lang === "EN" ? "Donate" : "Derma"}</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Balance card (over a blue circle) and runway card, side by side */}
+        <section className="grid grid-cols-1 gap-5 min-[1400px]:grid-cols-12">
+          <div className="relative pt-4 min-[1400px]:col-span-7">
+            <div aria-hidden className="absolute right-10 -top-1 h-44 w-44 rounded-full bg-[#0878F8]" />
+            <div aria-hidden className="absolute right-[5.5rem] top-9 h-20 w-20 rounded-full border-[1.5px] border-white opacity-35" />
+            <div className="relative flex h-full flex-col justify-between rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)]">
+              <div>
+              <p className="text-[0.8125rem] font-medium text-[var(--muted)]">{lang === "EN" ? "Total balance" : "Jumlah baki"}</p>
+              <p className="mt-2 leading-none tabular-nums text-[var(--text)]">
+                {showDataSkeleton ? (
+                  dashboardAmountSkeleton("h-12 w-56")
+                ) : showHeroAmounts ? (
+                  <>
+                    <span className="mr-1.5 align-top text-[1.125rem] font-semibold text-[var(--muted)]">RM</span>
+                    <span className={cn("font-bold tracking-[-0.03em]", desktopHeroBalanceSizeClass)}>{heroBalanceDisplay}</span>
+                  </>
+                ) : (
+                  <span className="text-[3.25rem] font-bold tracking-[0.04em]">RM ••••••</span>
                 )}
+              </p>
+
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[var(--border)] px-3 text-xs font-semibold tabular-nums text-[var(--text)]">
+                  {(filteredIncomeMonth - filteredExpenseMonth) >= 0 ? <TrendingUp size={13} className="text-[var(--income)]" /> : <TrendingDown size={13} className="text-[var(--expense)]" />}
+                  {showHeroAmounts
+                    ? `${(filteredIncomeMonth - filteredExpenseMonth) >= 0 ? "+" : "−"}RM ${Math.abs(filteredIncomeMonth - filteredExpenseMonth).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                    : "••••"}
+                  <span className="text-[var(--muted)]">{lang === "EN" ? "net" : "bersih"}</span>
+                </span>
+                <span className="inline-flex h-8 items-center rounded-full border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text)]">
+                  {heroWallets.length} {lang === "EN" ? "wallets" : "dompet"}
+                </span>
+                <span className="inline-flex h-8 items-center rounded-full border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text)]">
+                  {currentMonthTransactions.length} {lang === "EN" ? "txns" : "transaksi"}
+                </span>
+              </div>
               </div>
 
-              <button
-                type="button"
-                onClick={handleToggleHeroAmounts}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] transition hover:text-[var(--text)]"
-                aria-label={showHeroAmounts ? (lang === "EN" ? "Hide amounts" : "Sembunyi amaun") : (lang === "EN" ? "Show amounts" : "Papar amaun")}
-              >
-                {showHeroAmounts ? <Eye size={16} /> : <EyeClosed size={16} />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowBadgeModal(true)}
-                aria-label="Badges"
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] transition hover:text-[var(--text)]"
-              >
-                <Award size={16} strokeWidth={2} />
-                {unlockedBadges.length > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[8px] font-bold text-white">
-                    {unlockedBadges.length}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSupportOpen(true)}
-                className="accent-solid-btn inline-flex h-9 items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-3 text-xs font-bold transition hover:opacity-90 active:scale-95"
-              >
-                <HeartHandshake size={13} strokeWidth={2.4} />
-                <span>{lang === "EN" ? "Donate" : "Derma"}</span>
-              </button>
+              <div className="mt-5 grid grid-cols-3 gap-2.5">
+                {[
+                  { key: "in", label: t.income, value: filteredIncomeMonth, dot: "var(--income)" },
+                  { key: "out", label: t.expense, value: filteredExpenseMonth, dot: "var(--expense)" },
+                  { key: "safe", label: lang === "EN" ? "Safe to spend" : "Selamat dibelanja", value: stats.safe_balance, dot: "#0878F8" },
+                ].map((tile) => (
+                  <div key={tile.key} className="rounded-2xl border border-[var(--border)] px-3.5 py-3">
+                    <p className="flex items-center gap-1.5 text-xs font-medium text-[var(--muted)]">
+                      <span aria-hidden className="h-2 w-2 rounded-full" style={{ backgroundColor: tile.dot }} />
+                      <span className="truncate">{tile.label}</span>
+                    </p>
+                    <p className="mt-1.5 truncate text-[1.25rem] font-bold tabular-nums leading-none text-[var(--text)]">
+                      {showDataSkeleton
+                        ? dashboardAmountSkeleton("h-5 w-20")
+                        : showHeroAmounts
+                          ? <><span className="mr-0.5 text-[0.6em] font-medium text-[var(--muted)]">RM</span>{formatHeroNumber(tile.value, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</>
+                          : "••••"}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Summary + Runway — same mobile fintech gradient background */}
-          <div
-            className="balance-hero relative overflow-hidden"
-            style={{
-              background: "var(--brand-gradient)",
-            }}
-          >
-            {/* Abstract curved layers — same as mobile */}
-            <div className="pointer-events-none absolute inset-0 overflow-hidden">
-              <div
-                className="absolute -right-16 -top-20 h-64 w-64 rounded-full"
-                style={{ background: "linear-gradient(135deg, rgba(1,211,225,0.35), rgba(9,99,255,0.15))", filter: "blur(2px)" }}
-              />
-              <div
-                className="absolute -left-20 top-8 h-56 w-56 rounded-full"
-                style={{ background: "linear-gradient(225deg, rgba(9,99,255,0.28), transparent 70%)" }}
-              />
-              <div
-                className="absolute -bottom-24 right-4 h-52 w-72 rounded-[50%] rotate-[-15deg]"
-                style={{ background: "linear-gradient(45deg, rgba(1,211,225,0.22), rgba(0,26,83,0.12))" }}
-              />
-              <div
-                className="absolute right-8 top-32 h-20 w-20 rounded-full"
-                style={{ background: "radial-gradient(circle, rgba(1,211,225,0.35), transparent 70%)" }}
-              />
-              <div className="absolute inset-0 ring-1 ring-inset ring-white/10" />
-              <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/[0.08] to-transparent" />
+          {/* Runway: how long the money lasts until the next reset */}
+          <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 min-[1400px]:col-span-5 min-[1400px]:mt-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[0.9375rem] font-bold text-[var(--text)]">{lang === "EN" ? "Runway health" : "Status lifespan"}</p>
+                <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">{lang === "EN" ? "Until next reset" : "Sampai reset seterusnya"}</p>
+              </div>
+              <span className="rounded-full bg-[#0878F8]/15 px-2.5 py-0.5 text-[0.6875rem] font-semibold text-[#2f8cf9]">
+                {moneyLifespanStatusDisplay}
+              </span>
             </div>
 
-            <div className="relative z-10 grid grid-cols-12 text-white lg:divide-x lg:divide-white/10">
-              {/* Left: balance + metrics */}
-              <div className="col-span-12 space-y-4 p-5 lg:col-span-7 lg:p-6">
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="flex h-7 w-7 items-center justify-center rounded-[10px] ring-1 ring-white/15 backdrop-blur-sm"
-                        style={{ background: "rgba(255,255,255,0.12)" }}
-                      >
-                        <Wallet size={12} strokeWidth={2.5} className="text-white" />
-                      </div>
-                      <p className="balance-hero-label text-[0.65rem] font-semibold tracking-wide text-[#c5d0e0]">
-                        {lang === "EN" ? "Total Balance" : "Jumlah Baki"}
-                      </p>
-                    </div>
-                    <p className={cn("mt-3 font-bold tracking-tight text-white tabular-nums leading-none", desktopHeroBalanceSizeClass)}>
-                      {showDataSkeleton
-                        ? dashboardAmountSkeleton("h-8 w-44 bg-white/15")
-                        : showHeroAmounts
-                          ? <><span className="balance-hero-label mr-1.5 text-[0.4em] font-medium align-top text-[#c5d0e0]">RM</span>{heroBalanceDisplay}</>
-                          : "RM ••••••"}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span
-                      className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[0.65rem] font-bold text-white ring-1 ring-white/15"
-                      style={{ background: "rgba(255,255,255,0.12)" }}
-                    >
-                      {(filteredIncomeMonth - filteredExpenseMonth) >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                      {showHeroAmounts
-                        ? `${(filteredIncomeMonth - filteredExpenseMonth) >= 0 ? "+" : "−"}RM ${Math.abs(filteredIncomeMonth - filteredExpenseMonth).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-                        : "••••"}
-                      <span className="balance-hero-label opacity-80">{lang === "EN" ? "net" : "bersih"}</span>
-                    </span>
-                    <span
-                      className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold text-white ring-1 ring-white/15"
-                      style={{ background: "rgba(255,255,255,0.12)" }}
-                    >
-                      {heroWallets.length} {lang === "EN" ? "wallets" : "dompet"}
-                    </span>
-                    <span
-                      className="rounded-full px-2.5 py-1 text-[0.65rem] font-semibold text-white ring-1 ring-white/15"
-                      style={{ background: "rgba(255,255,255,0.12)" }}
-                    >
-                      {currentMonthTransactions.length} {lang === "EN" ? "txns" : "trx"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-2.5">
-                  <div
-                    className="relative overflow-hidden rounded-2xl px-3 py-3 backdrop-blur-md ring-1 ring-white/15"
-                    style={{ background: "rgba(255,255,255,0.08)" }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-transparent" />
-                    <div className="relative">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/15">
-                          <ArrowDownRight size={12} strokeWidth={2.5} className="text-emerald-300" />
-                        </div>
-                        <p className="balance-hero-label text-[0.5rem] font-semibold uppercase tracking-wider text-[#c5d0e0]">{t.income}</p>
-                      </div>
-                      <p className="mt-2 truncate text-base font-bold tabular-nums leading-none text-white xl:text-lg">
-                        {showDataSkeleton
-                          ? dashboardAmountSkeleton("h-5 w-20 bg-white/15")
-                          : showHeroAmounts
-                            ? <><span className="balance-hero-label mr-0.5 text-[0.55em] font-medium text-[#c5d0e0]">RM</span>{formatHeroNumber(filteredIncomeMonth, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</>
-                            : "••••"}
-                      </p>
-                    </div>
-                  </div>
-                  <div
-                    className="relative overflow-hidden rounded-2xl px-3 py-3 backdrop-blur-md ring-1 ring-white/15"
-                    style={{ background: "rgba(255,255,255,0.08)" }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-rose-400/10 to-transparent" />
-                    <div className="relative">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/15">
-                          <ArrowUpRight size={12} strokeWidth={2.5} className="text-rose-300" />
-                        </div>
-                        <p className="balance-hero-label text-[0.5rem] font-semibold uppercase tracking-wider text-[#c5d0e0]">{t.expense}</p>
-                      </div>
-                      <p className="mt-2 truncate text-base font-bold tabular-nums leading-none text-white xl:text-lg">
-                        {showDataSkeleton
-                          ? dashboardAmountSkeleton("h-5 w-20 bg-white/15")
-                          : showHeroAmounts
-                            ? <><span className="balance-hero-label mr-0.5 text-[0.55em] font-medium text-[#c5d0e0]">RM</span>{formatHeroNumber(filteredExpenseMonth, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</>
-                            : "••••"}
-                      </p>
-                    </div>
-                  </div>
-                  <div
-                    className="relative overflow-hidden rounded-2xl px-3 py-3 backdrop-blur-md ring-1 ring-white/15"
-                    style={{ background: "rgba(255,255,255,0.08)" }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/10 to-transparent" />
-                    <div className="relative">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/15">
-                          <Wallet size={12} strokeWidth={2.5} className="text-cyan-200" />
-                        </div>
-                        <p className="balance-hero-label text-[0.5rem] font-semibold uppercase tracking-wider text-[#c5d0e0]">
-                          {lang === "EN" ? "Safe" : "Selamat"}
-                        </p>
-                      </div>
-                      <p className="mt-2 truncate text-base font-bold tabular-nums leading-none text-white xl:text-lg">
-                        {showDataSkeleton
-                          ? dashboardAmountSkeleton("h-5 w-20 bg-white/15")
-                          : showHeroAmounts
-                            ? <><span className="balance-hero-label mr-0.5 text-[0.55em] font-medium text-[#c5d0e0]">RM</span>{formatHeroNumber(stats.safe_balance, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</>
-                            : "••••"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+            <div className="mt-4 grid grid-cols-2 gap-2.5">
+              <div className="rounded-2xl border border-[var(--border)] px-3.5 py-3">
+                <p className="text-xs font-medium text-[var(--muted)]">{lang === "EN" ? "Daily budget" : "Bajet sehari"}</p>
+                <p className="mt-1.5 text-[1.25rem] font-bold tabular-nums leading-none text-[var(--text)]">
+                  {showDataSkeleton
+                    ? dashboardAmountSkeleton("h-5 w-20")
+                    : showHeroAmounts
+                      ? <><span className="mr-0.5 text-[0.6em] font-medium text-[var(--muted)]">RM</span>{moneyLifespanDailyNum}</>
+                      : "••••"}
+                  <span className="ml-1 text-[0.6875rem] font-semibold text-[var(--muted)]">/{lang === "EN" ? "day" : "hari"}</span>
+                </p>
               </div>
+              <div className="rounded-2xl border border-[var(--border)] px-3.5 py-3">
+                <p className="text-xs font-medium text-[var(--muted)]">{lang === "EN" ? "Days left" : "Hari lagi"}</p>
+                <p className="mt-1.5 text-[1.25rem] font-bold tabular-nums leading-none text-[var(--text)]">
+                  {showDataSkeleton ? dashboardAmountSkeleton("h-5 w-10") : moneyLifespanDaysLeft}
+                </p>
+              </div>
+            </div>
 
-              {/* Right: runway health */}
-              <div className="col-span-12 space-y-3 border-t border-white/15 p-5 lg:col-span-5 lg:border-t-0 lg:p-6">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="balance-hero-label text-[0.62rem] font-bold uppercase tracking-[0.12em] text-[#c5d0e0]">
-                      {lang === "EN" ? "Runway health" : "Status lifespan"}
-                    </p>
-                    <p className="balance-hero-label mt-0.5 text-xs font-medium text-[#c5d0e0]/90">
-                      {lang === "EN" ? "Until next reset" : "Sampai reset seterusnya"}
-                    </p>
-                  </div>
-                  <span
-                    className="rounded-md px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-white ring-1 ring-white/20"
-                    style={{ background: "rgba(255,255,255,0.14)" }}
-                  >
-                    {moneyLifespanStatusDisplay}
-                  </span>
-                </div>
+            <div className="mt-4">
+              <div className="h-2 overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-500",
+                    moneyLifespanDailyAmount >= 50 ? "bg-[#0878F8]" :
+                    moneyLifespanDailyAmount >= 30 ? "bg-amber-500" :
+                    moneyLifespanDailyAmount >= 20 ? "bg-orange-500" : "bg-rose-500"
+                  )}
+                  style={{ width: `${moneyLifespanMonthProgress}%` }}
+                />
+              </div>
+              <div className="mt-1.5 flex items-center justify-between gap-2 text-xs font-medium text-[var(--muted)]">
+                <span className="truncate">{moneyLifespanSummaryText}</span>
+                <span className="tabular-nums font-semibold text-[var(--text)]">{Math.round(moneyLifespanMonthProgress)}%</span>
+              </div>
+            </div>
 
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div
-                    className="rounded-2xl px-3 py-2.5 ring-1 ring-white/15"
-                    style={{ background: "rgba(255,255,255,0.08)" }}
-                  >
-                    <p className="balance-hero-label text-[0.6rem] font-bold uppercase tracking-wider text-[#c5d0e0]">
-                      {lang === "EN" ? "Daily budget" : "Bajet sehari"}
-                    </p>
-                    <p className="mt-1.5 text-lg font-bold tabular-nums leading-none text-white">
-                      {showDataSkeleton
-                        ? dashboardAmountSkeleton("h-5 w-20 bg-white/15")
-                        : showHeroAmounts
-                          ? <><span className="balance-hero-label mr-0.5 text-[0.55em] font-medium text-[#c5d0e0]">RM</span>{moneyLifespanDailyNum}</>
-                          : "••••"}
-                      <span className="balance-hero-label ml-1 text-[0.65rem] font-bold text-[#c5d0e0]">/{lang === "EN" ? "day" : "hari"}</span>
-                    </p>
-                  </div>
-                  <div
-                    className="rounded-2xl px-3 py-2.5 ring-1 ring-white/15"
-                    style={{ background: "rgba(255,255,255,0.08)" }}
-                  >
-                    <p className="balance-hero-label text-[0.6rem] font-bold uppercase tracking-wider text-[#c5d0e0]">
-                      {lang === "EN" ? "Days left" : "Hari lagi"}
-                    </p>
-                    <p className="mt-1.5 text-lg font-bold tabular-nums leading-none text-white">
-                      {showDataSkeleton ? dashboardAmountSkeleton("h-5 w-10 bg-white/15") : moneyLifespanDaysLeft}
-                    </p>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="mb-1.5 flex items-center justify-between gap-2 text-[0.65rem] font-semibold">
-                    <span className="balance-hero-label truncate text-[#c5d0e0]">{moneyLifespanSummaryText}</span>
-                    <span className="tabular-nums text-white">{Math.round(moneyLifespanMonthProgress)}%</span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.15)" }}>
-                    <div
-                      className={cn(
-                        "h-full rounded-full transition-all duration-500",
-                        moneyLifespanDailyAmount >= 50 ? "bg-cyan-300" :
-                        moneyLifespanDailyAmount >= 30 ? "bg-amber-300" :
-                        moneyLifespanDailyAmount >= 20 ? "bg-orange-300" : "bg-rose-300"
-                      )}
-                      style={{ width: `${moneyLifespanMonthProgress}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div
-                    className="rounded-2xl px-3 py-2 ring-1 ring-white/15"
-                    style={{ background: "rgba(255,255,255,0.08)" }}
-                  >
-                    <p className="balance-hero-label text-[0.58rem] font-bold uppercase tracking-wider text-[#c5d0e0]">
-                      {lang === "EN" ? "Save / day" : "Simpan / hari"}
-                    </p>
-                    <p className="mt-1 text-sm font-bold tabular-nums text-white">
-                      {showDataSkeleton
-                        ? dashboardAmountSkeleton("h-4 w-16 bg-white/15")
-                        : showHeroAmounts
-                          ? <><span className="balance-hero-label mr-0.5 text-[0.6em] font-medium text-[#c5d0e0]">RM</span>{moneyLifespanEmergencyDailyNum}</>
-                          : "••••"}
-                    </p>
-                  </div>
-                  <div
-                    className="rounded-2xl px-3 py-2 ring-1 ring-white/15"
-                    style={{ background: "rgba(255,255,255,0.08)" }}
-                  >
-                    <p className="balance-hero-label text-[0.58rem] font-bold uppercase tracking-wider text-[#c5d0e0]">
-                      {lang === "EN" ? "Savings pot" : "Simpanan"}
-                    </p>
-                    <p className="mt-1 text-sm font-bold tabular-nums text-white">
-                      {showDataSkeleton
-                        ? dashboardAmountSkeleton("h-4 w-16 bg-white/15")
-                        : showHeroAmounts
-                          ? <><span className="balance-hero-label mr-0.5 text-[0.6em] font-medium text-[#c5d0e0]">RM</span>{moneyLifespanEmergencyMonthNum}</>
-                          : "••••"}
-                    </p>
-                  </div>
-                </div>
+            <div className="mt-4 grid grid-cols-2 gap-2.5">
+              <div className="rounded-2xl border border-[var(--border)] px-3.5 py-2.5">
+                <p className="text-xs font-medium text-[var(--muted)]">{lang === "EN" ? "Save / day" : "Simpan / hari"}</p>
+                <p className="mt-1 text-[0.9375rem] font-bold tabular-nums text-[var(--text)]">
+                  {showDataSkeleton
+                    ? dashboardAmountSkeleton("h-4 w-16")
+                    : showHeroAmounts
+                      ? <><span className="mr-0.5 text-[0.65em] font-medium text-[var(--muted)]">RM</span>{moneyLifespanEmergencyDailyNum}</>
+                      : "••••"}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-[var(--border)] px-3.5 py-2.5">
+                <p className="text-xs font-medium text-[var(--muted)]">{lang === "EN" ? "Savings pot" : "Simpanan"}</p>
+                <p className="mt-1 text-[0.9375rem] font-bold tabular-nums text-[var(--text)]">
+                  {showDataSkeleton
+                    ? dashboardAmountSkeleton("h-4 w-16")
+                    : showHeroAmounts
+                      ? <><span className="mr-0.5 text-[0.65em] font-medium text-[var(--muted)]">RM</span>{moneyLifespanEmergencyMonthNum}</>
+                      : "••••"}
+                </p>
               </div>
             </div>
           </div>
@@ -2142,7 +1943,7 @@ export default function Dashboard() {
             <div className="flex flex-col gap-4">
               <div className="mb-1 flex items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-sm font-bold text-[var(--text)]">{lang === "EN" ? "Expense Trends" : "Trend Perbelanjaan"}</h3>
+                  <h3 className="text-[1.125rem] font-bold tracking-tight text-[var(--text)]">{lang === "EN" ? "Expense trends" : "Trend perbelanjaan"}</h3>
                   <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">{lang === "EN" ? "Tap card for full graph" : "Tekan kad untuk graf penuh"}</p>
                 </div>
                 {!showDataSkeleton && chartView === "monthly" && monthlyExpenseDelta !== null && (
@@ -2160,14 +1961,14 @@ export default function Dashboard() {
                 </div>
               ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <button type="button" onClick={() => openChartModal("monthly")} className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-left text-[var(--text)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]">
+                <button type="button" onClick={() => openChartModal("monthly")} className="relative overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 text-left text-[var(--text)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-bold text-[var(--text)]">{t.monthlyTab}</p>
                     <BarChart2 size={14} className="text-[var(--muted)]" />
                   </div>
-                  <p className="mt-2 text-xl font-black tabular-nums text-[var(--text)]">RM {currentMonthExpense.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+                  <p className="mt-2 text-[1.5rem] font-bold tabular-nums tracking-tight text-[var(--text)]">RM {currentMonthExpense.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                   <p className="mt-0.5 text-xs font-semibold text-[var(--muted)]">7 {lang === "EN" ? "months" : "bulan"}</p>
-                  <ChartContainer config={{ expense: { label: t.expense, color: "var(--text)" } }} className="mt-3 h-14 w-full">
+                  <ChartContainer config={{ expense: { label: t.expense, color: "#0878F8" } }} className="mt-3 h-14 w-full">
                     <AreaChart accessibilityLayer data={monthlyAreaChartData} margin={{ left: 0, right: 0, top: 6, bottom: 0 }}>
                       <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={6} hide />
@@ -2175,14 +1976,14 @@ export default function Dashboard() {
                     </AreaChart>
                   </ChartContainer>
                 </button>
-                <button type="button" onClick={() => openChartModal("daily")} className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-left text-[var(--text)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]">
+                <button type="button" onClick={() => openChartModal("daily")} className="relative overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 text-left text-[var(--text)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-bold text-[var(--text)]">{t.dailyTab}</p>
                     <BarChart2 size={14} className="text-[var(--muted)]" />
                   </div>
-                  <p className="mt-2 text-xl font-black tabular-nums text-[var(--text)]">RM {(currentDailyTrendPoint?.expense ?? 0).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+                  <p className="mt-2 text-[1.5rem] font-bold tabular-nums tracking-tight text-[var(--text)]">RM {(currentDailyTrendPoint?.expense ?? 0).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                   <p className="mt-0.5 text-xs font-semibold text-[var(--muted)]">7 {lang === "EN" ? "days" : "hari"}</p>
-                  <ChartContainer config={{ expense: { label: t.expense, color: "var(--muted)" } }} className="mt-3 h-14 w-full">
+                  <ChartContainer config={{ expense: { label: t.expense, color: "#0878F8" } }} className="mt-3 h-14 w-full">
                     <AreaChart accessibilityLayer data={dailyAreaChartData} margin={{ left: 0, right: 0, top: 6, bottom: 0 }}>
                       <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={6} hide />
@@ -2190,18 +1991,18 @@ export default function Dashboard() {
                     </AreaChart>
                   </ChartContainer>
                 </button>
-                <button type="button" onClick={() => openChartModal("monthly")} className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-left text-[var(--text)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]">
+                <button type="button" onClick={() => openChartModal("monthly")} className="relative overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 text-left text-[var(--text)] transition active:scale-[0.99] hover:bg-[var(--surface-tint)]">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-bold text-[var(--text)]">{lang === "EN" ? "Net" : "Bersih"}</p>
                     <BarChart2 size={14} className="text-[var(--muted)]" />
                   </div>
-                  <p className="mt-2 text-xl font-black tabular-nums text-[var(--text)]">
+                  <p className="mt-2 text-[1.5rem] font-bold tabular-nums tracking-tight text-[var(--text)]">
                     {(filteredIncomeMonth - filteredExpenseMonth) >= 0 ? "+" : "−"}RM {Math.abs(filteredIncomeMonth - filteredExpenseMonth).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </p>
                   <p className="mt-0.5 text-xs font-semibold text-[var(--muted)]">
                     {lang === "EN" ? "Income − expense this month" : "Pendapatan − belanja bulan ini"}
                   </p>
-                  <ChartContainer config={{ expense: { label: t.expense, color: "var(--text)" } }} className="mt-3 h-14 w-full">
+                  <ChartContainer config={{ expense: { label: t.expense, color: "#0878F8" } }} className="mt-3 h-14 w-full">
                     <AreaChart accessibilityLayer data={monthlyAreaChartData} margin={{ left: 0, right: 0, top: 6, bottom: 0 }}>
                       <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={6} hide />
