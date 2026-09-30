@@ -1708,13 +1708,14 @@ async function startSock(userId, pairingPhone = null, options = {}) {
                 isSelfChat,
                 processingNotice: jobContext.processingNotice || null,
               });
+              // The text reply has spent the notice: it was edited into the
+              // reply, or deleted. The media call below must not touch it
+              // again, or it deletes the reply and the chat shows "You
+              // deleted this message".
+              jobContext.processingNotice = null;
               const replyText = textRes?.data?.reply || "";
               if (isCategoryPromptReply(replyText)) {
                 storePendingCategoryMedia(sessionObj, pendingMediaKey(userId, jobContext.remoteJid), jobContext);
-                // The category menu takes over from the notice; recall the hourglass.
-                await clearProcessingNotice(sessionObj, jobContext.processingNotice);
-                // The notice is spent, so the deferred upload must not try again.
-                jobContext.processingNotice = null;
                 return;
               }
               const replyTxnRef = extractTxnReference(replyText);
