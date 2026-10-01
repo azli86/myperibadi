@@ -56,6 +56,8 @@ class User(Base):
     category_language: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)  # 'bm' | 'en' | 'manual' (auto-seeded category set)
     theme_mode: Mapped[str] = mapped_column(String(12), default="system") # dark / light / system
     show_hero_amounts: Mapped[bool] = mapped_column(Boolean, default=True)
+    # "My Cycle" (period calendar): off until the user switches it on in Settings.
+    period_tracker_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     bot_personality: Mapped[Optional[str]] = mapped_column(String(160), nullable=True)
     personal_bot_prefix_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     personal_bot_prefix: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
@@ -972,6 +974,24 @@ class Donation(Base):
     stripe_session_id: Mapped[Optional[str]] = mapped_column(String(190), unique=True, index=True, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="pending", index=True) # pending, paid, failed
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ─── My Cycle (period calendar) ──────────────────────────────────────────────
+
+class PeriodCycle(Base):
+    """One period: the day it started and, once over, the day it ended.
+
+    Private to the user who recorded it; never shared with a household."""
+    __tablename__ = "period_cycles"
+    __table_args__ = (UniqueConstraint("user_id", "start_date", name="uq_period_cycles_user_start"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 

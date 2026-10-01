@@ -37,6 +37,8 @@ async def update_my_profile_route(
         current_user.language = normalize_language(user_in.language)
     if user_in.show_hero_amounts is not None:
         current_user.show_hero_amounts = user_in.show_hero_amounts
+    if user_in.period_tracker_enabled is not None:
+        current_user.period_tracker_enabled = bool(user_in.period_tracker_enabled)
     if user_in.theme_mode is not None:
         current_user.theme_mode = normalize_theme_mode(user_in.theme_mode)
     if user_in.bot_personality is not None:

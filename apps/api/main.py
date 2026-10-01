@@ -939,6 +939,7 @@ async def ensure_database_schema():
                 text("CREATE INDEX IF NOT EXISTS ix_transactions_user_date_id ON transactions (user_id, txn_date, id)")
             )
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_done BOOLEAN NOT NULL DEFAULT TRUE"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS period_tracker_enabled BOOLEAN NOT NULL DEFAULT FALSE"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS category_language VARCHAR(10) NULL"))
             await conn.execute(text("ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_kind VARCHAR(20) NULL"))
             await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP NULL"))
@@ -14138,6 +14139,8 @@ app.include_router(donations_router, prefix="/donations", tags=["donations"])
 
 from modules.vehicles import create_vehicles_router
 app.include_router(create_vehicles_router(get_current_user=get_current_user))
+from modules.period import create_period_router
+app.include_router(create_period_router(get_current_user=get_current_user))
 
 from modules.warranties import create_warranties_router
 app.include_router(create_warranties_router(get_current_user=get_current_user))

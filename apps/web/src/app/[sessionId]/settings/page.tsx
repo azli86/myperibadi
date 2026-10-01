@@ -43,6 +43,7 @@ import { DesktopPageBody, DesktopPageChip, DesktopPageHeader, MobilePageHeader }
 import { useLang, Lang } from "@/lib/lang"
 import { usePageAlert } from "@/hooks/usePageAlert"
 import { cn } from "@/lib/utils"
+import { PeriodTrackerToggle } from "@/components/period/PeriodTrackerToggle"
 import { useTheme } from "@/components/theme/ThemeProvider"
 import { getAccessToken, setAuthTokens, logoutAuthSession } from "@/lib/auth-session"
 import { getAccounts, getActiveEmail, switchToAccount, type AccountProfile } from "@/lib/multi-account"
@@ -62,6 +63,7 @@ type ProfileData = {
   avatar_url: string | null
   cycle_start_day: number
   cycle_mode: "day" | "category"
+  period_tracker_enabled?: boolean
   auth_provider?: string
   has_password?: boolean
 }
@@ -200,6 +202,7 @@ export default function SettingsPage() {
             avatar_url: data.avatar_url || null,
             cycle_start_day: Number(data.cycle_start_day) || 1,
             cycle_mode: data.cycle_mode === "category" ? "category" : "day",
+            period_tracker_enabled: Boolean(data.period_tracker_enabled),
             auth_provider: data.auth_provider || "email",
             has_password: data.has_password,
           }
@@ -880,6 +883,13 @@ export default function SettingsPage() {
               <ChevronRight size={15} className="text-[var(--muted)]" />
             </button>
 
+            <PeriodTrackerToggle
+              enabled={Boolean(profile?.period_tracker_enabled)}
+              isBm={lang === "BM"}
+              onChanged={(next) => setProfile((prev) => (prev ? { ...prev, period_tracker_enabled: next } : prev))}
+              onError={(message) => showAlert(tr("Gagal Simpan", "Save Failed"), message, "error")}
+            />
+
             {/* Halaman Utama removed — the app always opens on the dashboard. */}
           </div>
         </section>
@@ -1518,6 +1528,15 @@ export default function SettingsPage() {
                     </div>
 
                     {/* Halaman Utama removed — the app always opens on the dashboard. */}
+                  </div>
+
+                  <div className="overflow-hidden rounded-2xl border border-[var(--border)]">
+                    <PeriodTrackerToggle
+                      enabled={Boolean(profile?.period_tracker_enabled)}
+                      isBm={lang === "BM"}
+                      onChanged={(next) => setProfile((prev) => (prev ? { ...prev, period_tracker_enabled: next } : prev))}
+                      onError={(message) => showAlert(tr("Gagal Simpan", "Save Failed"), message, "error")}
+                    />
                   </div>
                 </section>
               )}

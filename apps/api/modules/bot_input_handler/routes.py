@@ -182,6 +182,18 @@ async def process_bot_input_route(
         except Exception as vehicle_exc:
             print(f"[vehicle-bot] command handling failed: {vehicle_exc}")
 
+    # Period Tracker commands. Private: never answered in a group chat.
+    if text and not has_media and not has_location:
+        from modules.period.bot import handle_period_command, match_period_command
+
+        if match_period_command(text):
+            if source_channel == "whatsapp_group":
+                return {"reply": None}
+            user_res = await db.execute(select(models.User).where(models.User.id == user_id))
+            period_user = user_res.scalar_one_or_none()
+            if period_user is not None:
+                return {"reply": await handle_period_command(db, user=period_user, text=text)}
+
     ocr_forced_kind = None
     receipt_user_note = None
     ocr_duplicate = False

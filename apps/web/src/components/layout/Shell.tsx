@@ -78,6 +78,7 @@ import {
   Car,
   Users,
   Heart,
+  CalendarHeart,
   Pill,
   type LucideIcon,
 } from "lucide-react";
@@ -174,6 +175,7 @@ type ShellUser = {
   created_at?: string;
   avatar_url?: string | null;
   show_hero_amounts?: boolean | null;
+  period_tracker_enabled?: boolean | null;
 };
 
 type ShellCategory = {
@@ -1335,7 +1337,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         },
       ]
     : [];
-  const currentDesktopNavigationSections = desktopNavigationSections;
+  // Period Tracker joins the Personal group only once switched on in Settings.
+  const currentDesktopNavigationSections = user?.period_tracker_enabled
+    ? desktopNavigationSections.map((section) =>
+        section.items === desktopPersonalNavigation
+          ? { ...section, items: [...section.items, { name: "Period Tracker", href: `/${sessionId}/period`, icon: CalendarHeart }] }
+          : section
+      )
+    : desktopNavigationSections;
 
   const [stats, setStats] = useState<ShellStats>({ balance: 0, income_month: 0, expense_month: 0 });
   const [isMounted, setIsMounted] = useState(false);
@@ -1522,6 +1531,19 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener("budget-hero-amounts", handler);
     return () => window.removeEventListener("budget-hero-amounts", handler);
+  }, []);
+
+  // Show or hide Period Tracker in the menus as soon as Settings switches it.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ enabled: boolean }>).detail;
+      if (typeof detail?.enabled === "boolean") {
+        setUser((u) => (u ? { ...u, period_tracker_enabled: detail.enabled } : u));
+      }
+    };
+    window.addEventListener("period-tracker-changed", handler);
+    return () => window.removeEventListener("period-tracker-changed", handler);
   }, []);
 
   // Always start at top on route change. Bottom nav uses scroll:false and
@@ -3905,6 +3927,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       { name: lang === "BM" ? "Waranti" : "Warranty", href: `/${sessionId}/warranty`, icon: Shield },
                       { name: lang === "BM" ? "Acara" : "Events", href: `/${sessionId}/event`, icon: CalendarDays },
                       { name: lang === "BM" ? "Kesihatan" : "Health", href: `/${sessionId}/health`, icon: Heart },
+                      ...(user?.period_tracker_enabled ? [{ name: "Period", href: `/${sessionId}/period`, icon: CalendarHeart }] : []),
                       { name: lang === "BM" ? "Lencana" : "Badges", href: `/${sessionId}/badges`, icon: Award },
                     ],
                   },

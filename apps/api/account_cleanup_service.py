@@ -80,6 +80,7 @@ _USER_DIRECT_TABLES = [
 # transactions/wallets, so they are deleted up-front, BEFORE those parents are
 # removed. Order is child-first per the live FK graph.
 _EXTRA_USER_TABLES = [
+    "period_cycles",
     "tax_transaction_links",   # -> transactions (CASCADE)
     "tax_reliefs",             # -> tax_rules (kept)
     "tax_rebates",             # -> tax_documents + transactions

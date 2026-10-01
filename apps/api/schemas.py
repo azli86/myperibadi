@@ -23,6 +23,7 @@ class UserUpdate(BaseModel):
     phone: Optional[str] = None
     language: Optional[str] = None
     show_hero_amounts: Optional[bool] = None
+    period_tracker_enabled: Optional[bool] = None
     theme_mode: Optional[str] = Field(default=None, max_length=12)
     bot_personality: Optional[str] = Field(default=None, max_length=160)
     cycle_start_day: Optional[int] = Field(default=None, ge=1, le=28)
@@ -46,6 +47,7 @@ class UserResponse(UserBase):
     is_admin: bool
     language: str
     show_hero_amounts: bool = True
+    period_tracker_enabled: bool = False
     theme_mode: str = "system"
     bot_personality: Optional[str] = None
     cycle_start_day: int = 1
