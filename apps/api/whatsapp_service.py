@@ -135,6 +135,8 @@ STANDARD_CATEGORIES_EN = [
 
 INTERNAL_TRANSFER_CATEGORY_NAME = "Transfer Wallet"
 INTERNAL_TRANSFER_CATEGORY_CODE = "wallet_transfer"
+INTERNAL_ADJUSTMENT_CATEGORY_NAME = "Adjustment"
+INTERNAL_ADJUSTMENT_CATEGORY_CODE = "wallet_adjustment"
 INTERNAL_DEBT_OUT_CATEGORY_NAME = "Debt Out"
 INTERNAL_DEBT_IN_CATEGORY_NAME = "Debt In"
 INTERNAL_DEBT_OUT_CATEGORY_CODE = "debt_out"
@@ -3025,6 +3027,45 @@ async def ensure_internal_transfer_category(
     db.add(category)
     await db.flush()
     return category
+
+async def ensure_internal_adjustment_category(
+    db: AsyncSession,
+    household_id: Optional[int],
+) -> Optional[models.Category]:
+    """The hidden category for balance adjustments: a wallet set to the balance
+    the bank shows, the gap recorded as one transaction. Internal, so it never
+    appears among the categories a user picks from."""
+    if not household_id:
+        return None
+    result = await db.execute(
+        select(models.Category)
+        .where(
+            models.Category.household_id == household_id,
+            models.Category.system_code == INTERNAL_ADJUSTMENT_CATEGORY_CODE,
+        )
+        .order_by(models.Category.id.asc())
+        .limit(1)
+    )
+    category = result.scalar_one_or_none()
+    if category:
+        # One made under the earlier Malay name takes the current one.
+        if category.name != INTERNAL_ADJUSTMENT_CATEGORY_NAME:
+            category.name = INTERNAL_ADJUSTMENT_CATEGORY_NAME
+            await db.flush()
+        return category
+    category = models.Category(
+        name=INTERNAL_ADJUSTMENT_CATEGORY_NAME,
+        icon_name="wallet",
+        kind="expense",
+        household_id=household_id,
+        is_default=False,
+        is_internal=True,
+        system_code=INTERNAL_ADJUSTMENT_CATEGORY_CODE,
+    )
+    db.add(category)
+    await db.flush()
+    return category
+
 
 async def ensure_monthly_salary_category(
     db: AsyncSession,

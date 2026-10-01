@@ -230,3 +230,76 @@ async def delete_wallet_route(
     await db.execute(models.Wallet.__table__.delete().where(models.Wallet.id == wallet.id))
     await db.commit()
     return {"message": "Wallet deleted"}
+
+
+async def adjust_wallet_balance_route(
+    *,
+    wallet_id: int,
+    body: schemas.WalletAdjustmentCreate,
+    db: AsyncSession,
+    current_user: models.User,
+    ensure_adjustment_category: Callable[..., Awaitable[models.Category | None]],
+    business_date: Callable[[], Any],
+) -> dict[str, Any]:
+    """Set a wallet to the balance the bank actually shows.
+
+    The gap between that and the balance the app holds is recorded as one
+    "Adjustment" transaction: income when the real balance is higher,
+    an expense when it is lower. It shows in the transaction list like any
+    other, so the adjustment is never hidden."""
+    user_id = current_user.id
+    household_id = current_user.default_household_id
+    result = await db.execute(
+        select(models.Wallet).where(
+            models.Wallet.id == wallet_id,
+            models.Wallet.owner_user_id == user_id,
+        )
+    )
+    wallet = result.scalars().first()
+    if not wallet:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+
+    # The same balance the wallet list shows.
+    balance_result = await db.execute(
+        select(
+            func.sum(
+                case(
+                    (models.Transaction.type == "income", models.Transaction.amount),
+                    else_=-models.Transaction.amount,
+                )
+            )
+        ).where(models.Transaction.wallet_id == wallet.id, models.Transaction.user_id == user_id)
+    )
+    current_balance = round(float(balance_result.scalar() or 0), 2)
+    actual_balance = round(float(body.actual_balance), 2)
+    difference = round(actual_balance - current_balance, 2)
+    if abs(difference) < 0.005:
+        raise HTTPException(status_code=400, detail="The balance already matches. No adjustment needed.")
+
+    category = await ensure_adjustment_category(db, household_id)
+    txn_date = body.txn_date or business_date()
+    note = (body.note or "").strip()
+    txn = models.Transaction(
+        wallet_id=wallet.id,
+        user_id=user_id,
+        reference_id=models.generate_txn_reference(),
+        type="income" if difference > 0 else "expense",
+        txn_date=txn_date,
+        vendor_or_source="Adjustment",
+        amount=abs(difference),
+        category_id=category.id if category else None,
+        notes=note or f"Balance adjusted from RM {current_balance:,.2f} to RM {actual_balance:,.2f}",
+        source_channel="web",
+    )
+    db.add(txn)
+    await db.commit()
+    await db.refresh(txn)
+    return {
+        "id": txn.id,
+        "reference_id": txn.reference_id,
+        "type": txn.type,
+        "amount": float(txn.amount),
+        "previous_balance": current_balance,
+        "balance": actual_balance,
+        "difference": difference,
+    }

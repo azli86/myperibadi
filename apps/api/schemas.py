@@ -410,6 +410,11 @@ class WalletBase(BaseModel):
 class WalletCreate(WalletBase):
     is_bot_default: Optional[bool] = False
 
+class WalletAdjustmentCreate(BaseModel):
+    actual_balance: float
+    note: Optional[str] = Field(default=None, max_length=300)
+    txn_date: Optional[date] = None
+
 class WalletUpdate(BaseModel):
     name: Optional[str] = None
     label: Optional[str] = None

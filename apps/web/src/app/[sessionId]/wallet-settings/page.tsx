@@ -31,6 +31,7 @@ import {
   ChevronUp,
   Sparkles,
   FileSpreadsheet,
+  Scale,
 } from "lucide-react"
 import Link from "next/link"
 import { useLang } from "@/lib/lang"
@@ -285,6 +286,10 @@ export default function WalletSettingsPage() {
   const [uploadingWalletId, setUploadingWalletId] = useState<number | null>(null)
   const [uploadingDraftImage, setUploadingDraftImage] = useState(false)
   const [activeWallet, setActiveWallet] = useState<WalletItem | null>(null)
+  // Balance adjustment: the balance the bank shows, typed by the user.
+  const [adjustActual, setAdjustActual] = useState("")
+  const [adjustNote, setAdjustNote] = useState("")
+  const [adjusting, setAdjusting] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showCreateWalletModal, setShowCreateWalletModal] = useState(false)
   const [createWalletStep, setCreateWalletStep] = useState<1 | 2 | 3>(1)
@@ -413,6 +418,8 @@ export default function WalletSettingsPage() {
 
   function openWalletModal(wallet: WalletItem) {
     setActiveWallet({ ...wallet })
+    setAdjustActual("")
+    setAdjustNote("")
   }
   function openCreateWalletModal() {
     setDraft(DEFAULT_DRAFT)
@@ -487,6 +494,53 @@ export default function WalletSettingsPage() {
       return false
     } finally {
       setBusyWalletId(null)
+    }
+  }
+
+  // Set the wallet to the balance the bank shows; the gap is recorded as one
+  // "Adjustment" transaction, which shows on the transactions page.
+  async function adjustWalletBalance(wallet: WalletItem) {
+    const actual = Number(adjustActual.replace(/,/g, ""))
+    if (!adjustActual.trim() || !Number.isFinite(actual)) {
+      showAlert("Invalid balance", "Enter this wallet's actual balance.", "warning")
+      return
+    }
+    setAdjusting(true)
+    try {
+      const token = getAccessToken()
+      const res = await fetch(`/api/wallets/${wallet.id}/adjust`, {
+        credentials: "include",
+        method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ actual_balance: actual, note: adjustNote.trim() || null }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        showAlert("Adjustment failed", data?.detail || "The balance could not be adjusted.", "error")
+        return
+      }
+      const difference = Number(data?.difference || 0)
+      showAlert(
+        "Balance adjusted",
+        `An adjustment of ${difference > 0 ? "+" : "−"}RM ${formatMoney(Math.abs(difference))} (${data?.reference_id}) was added. See it on the Transactions page.`,
+        "success",
+      )
+      setActiveWallet((current) =>
+        current?.id === wallet.id
+          ? { ...current, balance: Number(data?.balance ?? actual), transaction_count: Number(current.transaction_count || 0) + 1 }
+          : current,
+      )
+      setAdjustActual("")
+      setAdjustNote("")
+      await loadData()
+    } catch (err) {
+      console.error(err)
+      showAlert(tr("Ralat", "Error"), tr("Ralat teknikal berlaku.", "A technical error occurred."), "error")
+    } finally {
+      setAdjusting(false)
     }
   }
 
@@ -1229,6 +1283,79 @@ export default function WalletSettingsPage() {
                         : tr("Set bot default", "Set bot default")}
                     </button>
                   </div>
+
+                  {/* Balance adjustment: match the wallet to the bank */}
+                  {(() => {
+                    const actual = Number(adjustActual.replace(/,/g, ""))
+                    const hasActual = adjustActual.trim() !== "" && Number.isFinite(actual)
+                    const difference = hasActual ? Math.round((actual - Number(activeWallet.balance || 0)) * 100) / 100 : 0
+                    return (
+                      <div className="space-y-3 rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)] p-4">
+                        <div className="flex items-start gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--btn-primary-bg)]" style={{ color: "#ffffff" }}>
+                            <Scale size={16} />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-[0.9375rem] font-bold text-[var(--text)]">Adjustment</p>
+                            <p className="mt-0.5 text-xs leading-relaxed text-[var(--muted)]">
+                              Balance doesn&apos;t match the bank? Enter the real balance. The gap is recorded as an adjustment transaction.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="min-w-0 rounded-2xl border border-[var(--border)] px-3 py-2.5">
+                            <p className="text-[0.6875rem] font-medium text-[var(--muted)]">Balance in app</p>
+                            <p className="mt-0.5 truncate text-sm font-bold tabular-nums text-[var(--text)]">RM {formatMoney(activeWallet.balance)}</p>
+                          </div>
+                          <div className="min-w-0 rounded-2xl border border-[var(--border)] px-3 py-2.5">
+                            <p className="text-[0.6875rem] font-medium text-[var(--muted)]">Difference</p>
+                            <p
+                              className={cn(
+                                "mt-0.5 truncate text-sm font-bold tabular-nums",
+                                !hasActual || difference === 0 ? "text-[var(--muted)]" : difference > 0 ? "text-[var(--income)]" : "text-[var(--expense)]",
+                              )}
+                            >
+                              {hasActual ? `${difference > 0 ? "+" : difference < 0 ? "−" : ""}RM ${formatMoney(Math.abs(difference))}` : "—"}
+                            </p>
+                          </div>
+                        </div>
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-semibold text-[var(--muted)]">Actual balance (as at the bank)</span>
+                          <div className="flex h-12 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-4 focus-within:border-[var(--btn-primary-bg)]">
+                            <span className="text-sm font-semibold text-[var(--muted)]">RM</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={adjustActual}
+                              onChange={(e) => setAdjustActual(e.target.value.replace(/[^0-9.,-]/g, ""))}
+                              placeholder={formatMoney(activeWallet.balance)}
+                              className="min-w-0 flex-1 bg-transparent font-bold tabular-nums text-[var(--text)] outline-none placeholder:text-[var(--muted)]"
+                              style={{ fontSize: "16px" }}
+                            />
+                          </div>
+                        </label>
+                        <input
+                          type="text"
+                          value={adjustNote}
+                          onChange={(e) => setAdjustNote(e.target.value)}
+                          maxLength={300}
+                          placeholder="Note (optional), e.g. forgot to record"
+                          className="h-11 w-full rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-4 text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:border-[var(--btn-primary-bg)]"
+                          style={{ fontSize: "16px" }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void adjustWalletBalance(activeWallet)}
+                          disabled={adjusting || !hasActual || difference === 0}
+                          className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] text-sm font-semibold transition active:scale-[0.98] disabled:opacity-40"
+                          style={{ color: "#ffffff" }}
+                        >
+                          {adjusting ? <Loader2 size={16} className="animate-spin" /> : <Scale size={16} />}
+                          Save adjustment
+                        </button>
+                      </div>
+                    )
+                  })()}
 
                   <div className="space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
                     <p className="text-[0.6875rem] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">

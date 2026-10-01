@@ -108,6 +108,7 @@ from modules.wallets import (
     update_wallet_route as _module_update_wallet_route,
     delete_wallet_route as _module_delete_wallet_route,
     set_wallet_dashboard_order_route as _module_set_wallet_dashboard_order_route,
+    adjust_wallet_balance_route as _module_adjust_wallet_balance_route,
 )
 from modules.categories import (
     get_categories_route as _module_get_categories_route,
@@ -10956,6 +10957,22 @@ async def update_wallet(
         db=db,
         current_user=current_user,
         resolve_wallet_type=_resolve_wallet_type,
+    )
+
+@app.post("/wallets/{wallet_id}/adjust")
+async def adjust_wallet_balance(
+    wallet_id: int,
+    body: schemas.WalletAdjustmentCreate,
+    db: AsyncSession = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    return await _module_adjust_wallet_balance_route(
+        wallet_id=wallet_id,
+        body=body,
+        db=db,
+        current_user=current_user,
+        ensure_adjustment_category=whatsapp_service.ensure_internal_adjustment_category,
+        business_date=whatsapp_service.current_business_date,
     )
 
 @app.delete("/wallets/{wallet_id}")
