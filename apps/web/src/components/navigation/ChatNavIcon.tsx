@@ -13,9 +13,8 @@ type ChatNavIconProps = {
  * Four-point sparkle for the centre bottom-nav slot.
  *
  * The assistant is the one destination on the bar that is not a ledger, so it
- * wears the one icon on the bar that is not monochrome: a violet-cyan gradient
- * is the shared visual shorthand for "AI" and reads at 30px where a chat bubble
- * merely repeated the neighbouring tabs.
+ * wears the one icon on the bar that is not monochrome, in the hero card's
+ * colours: the main sparkle in the button blue, the small one in yellow.
  */
 export function ChatNavIcon({
   active = false,
@@ -46,9 +45,8 @@ export function ChatNavIcon({
       >
         <defs>
           <linearGradient id={gradientId} x1="3" y1="2" x2="21" y2="22" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#a855f7" />
-            <stop offset="55%" stopColor="#6366f1" />
-            <stop offset="100%" stopColor="#22d3ee" />
+            <stop offset="0%" stopColor="#2f8cf9" />
+            <stop offset="100%" stopColor="#0550B8" />
           </linearGradient>
         </defs>
         {/* Main sparkle. */}
@@ -58,8 +56,7 @@ export function ChatNavIcon({
         />
         {/* Small satellite sparkle, the detail that makes the glyph read as AI. */}
         <path
-          fill={`url(#${gradientId})`}
-          opacity="0.85"
+          fill="#FFD60A"
           d="M18.6 15.4c.17 0 .32.11.37.27l.45 1.49a2.1 2.1 0 0 0 1.38 1.38l1.49.45a.39.39 0 0 1 0 .74l-1.49.45a2.1 2.1 0 0 0-1.38 1.38l-.45 1.49a.39.39 0 0 1-.74 0l-.45-1.49a2.1 2.1 0 0 0-1.38-1.38l-1.49-.45a.39.39 0 0 1 0-.74l1.49-.45a2.1 2.1 0 0 0 1.38-1.38l.45-1.49a.39.39 0 0 1 .37-.27Z"
         />
       </svg>
