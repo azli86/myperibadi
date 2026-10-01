@@ -840,6 +840,26 @@ const currentCycleKeyStr = useMemo(
  selectedWallet !== "all"
  )
 
+ // Seconds into the day a transaction shows: txn_time, else created_at in the
+ // user's timezone (created_at is UTC). -1 when neither is known.
+ const txnTimeOfDay = (tx: TransactionRecord) => {
+ if (tx.txn_time) {
+ const [h, m, sec] = tx.txn_time.split(":").map(Number)
+ if (!isNaN(h) && !isNaN(m)) return h * 3600 + m * 60 + (isNaN(sec) ? 0 : sec)
+ }
+ if (!tx.created_at) return -1
+ const raw = tx.created_at.includes("Z") || tx.created_at.includes("+") ? tx.created_at : `${tx.created_at.replace(" ", "T")}Z`
+ const parsed = new Date(raw)
+ if (isNaN(parsed.getTime())) return -1
+ try {
+ const parts = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: timezone }).formatToParts(parsed)
+ const part = (type: string) => Number(parts.find((p) => p.type === type)?.value || 0)
+ return (part("hour") % 24) * 3600 + part("minute") * 60 + part("second")
+ } catch {
+ return parsed.getUTCHours() * 3600 + parsed.getUTCMinutes() * 60 + parsed.getUTCSeconds()
+ }
+ }
+
  const filteredTxns = transactions.filter(t => {
  const txnDateKey = getTxnDateKey(t.txn_date)
  const monthBounds = selectedMonth ? resolveMonthBounds(selectedMonth) : null
@@ -872,6 +892,17 @@ const currentCycleKeyStr = useMemo(
  getTransactionCategoryLabel(t, "").toLowerCase().includes(searchQuery.toLowerCase())
  ) : true
  return matchesDate && matchesType && matchesCategory && matchesWallet && matchesSearch
+ }).sort((a, b) => {
+ // Newest first by the date and time each row shows: the receipt time, else
+ // the time it was saved. A row saved without a time used to sink to the
+ // bottom of its day, under older ones.
+ const dateA = getTxnDateKey(a.txn_date)
+ const dateB = getTxnDateKey(b.txn_date)
+ if (dateA !== dateB) return dateB.localeCompare(dateA)
+ const timeA = txnTimeOfDay(a)
+ const timeB = txnTimeOfDay(b)
+ if (timeA !== timeB) return timeB - timeA
+ return Number(b.id) - Number(a.id)
  })
  const analyticalFilteredTxns = filteredTxns.filter((t) => !t.is_wallet_transfer)
  const analyticalTransactions = transactions.filter((t) => !t.is_wallet_transfer)

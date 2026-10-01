@@ -4,12 +4,21 @@ from datetime import date, datetime
 from typing import Awaitable, Callable
 
 from fastapi import HTTPException
-from sqlalchemy import func, or_, select
+from sqlalchemy import Time, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import location_service
 import models
 import schemas
+from time_utils import _get_business_timezone
+
+
+def _effective_txn_time():
+    """The time a transaction shows: its receipt time, else the local time it
+    was saved (created_at is naive UTC). Ordering by txn_time alone put every
+    transaction saved without one at the bottom of its day, under older ones."""
+    local_created = func.timezone(_get_business_timezone().key, func.timezone("UTC", models.Transaction.created_at))
+    return func.coalesce(models.Transaction.txn_time, cast(local_created, Time))
 
 
 async def get_wa_status_route(
@@ -71,7 +80,7 @@ async def get_transactions_route(
             models.Wallet.label,
             models.Wallet.name,
         )
-        .order_by(models.Transaction.txn_date.desc(), models.Transaction.txn_time.desc().nulls_last(), models.Transaction.id.desc())
+        .order_by(models.Transaction.txn_date.desc(), _effective_txn_time().desc(), models.Transaction.id.desc())
         .limit(limit)
     )
     result = await db.execute(stmt)
@@ -139,7 +148,7 @@ async def get_transaction_map_points_route(
         .outerjoin(models.Wallet, models.Transaction.wallet_id == models.Wallet.id)
         .where(models.Transaction.user_id == current_user.id)
         .where(models.Transaction.latitude.is_not(None), models.Transaction.longitude.is_not(None))
-        .order_by(models.Transaction.txn_date.desc(), models.Transaction.txn_time.desc().nulls_last(), models.Transaction.created_at.desc())
+        .order_by(models.Transaction.txn_date.desc(), _effective_txn_time().desc(), models.Transaction.created_at.desc())
         .limit(limit)
     )
 
@@ -188,7 +197,7 @@ async def sync_transaction_location_names_route(
         .where(models.Transaction.user_id == current_user.id)
         .where(models.Transaction.latitude.is_not(None), models.Transaction.longitude.is_not(None))
         .where(or_(models.Transaction.location_name.is_(None), func.trim(models.Transaction.location_name) == ""))
-        .order_by(models.Transaction.txn_date.desc(), models.Transaction.txn_time.desc().nulls_last(), models.Transaction.created_at.desc())
+        .order_by(models.Transaction.txn_date.desc(), _effective_txn_time().desc(), models.Transaction.created_at.desc())
         .limit(limit)
     )
     result = await db.execute(stmt)
