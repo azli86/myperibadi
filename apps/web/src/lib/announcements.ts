@@ -15,6 +15,8 @@ export type Announcement = {
   message_bm: string
   title_en: string
   message_en: string
+  /** An optional picture shown with the notice. */
+  image_url?: string | null
   created_at: string
   /** The notice switched on in Mastermind right now. */
   is_current: boolean

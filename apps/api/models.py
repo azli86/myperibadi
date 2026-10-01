@@ -1893,6 +1893,8 @@ class Announcement(Base):
     message_bm: Mapped[str] = mapped_column(Text, nullable=False, default="")
     title_en: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     message_en: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # An optional picture shown with the notice (a public CDN URL).
+    image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     created_by: Mapped[Optional[str]] = mapped_column(String(16), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     # Deleted from Mastermind: hidden everywhere, kept for the record.

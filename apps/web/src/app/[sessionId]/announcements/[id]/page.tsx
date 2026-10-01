@@ -118,6 +118,13 @@ export default function AnnouncementDetailPage() {
 
             <hr className="my-6 border-0 border-t border-[var(--divider)]" />
 
+            {item.image_url ? (
+              <div className="mb-6 flex justify-center overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface-tint)] p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={item.image_url} alt="" className="max-h-[560px] w-auto max-w-full rounded-2xl object-contain" />
+              </div>
+            ) : null}
+
             {text.message ? (
               <div className="whitespace-pre-line text-[1.0625rem] leading-[1.75] text-[var(--text-soft)] [overflow-wrap:anywhere] [text-wrap:pretty]">
                 {text.message}

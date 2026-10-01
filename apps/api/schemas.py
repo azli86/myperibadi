@@ -307,6 +307,7 @@ class AnnouncementResponse(BaseModel):
     message_bm: str = ""
     title_en: str = ""
     message_en: str = ""
+    image_url: Optional[str] = None
     created_at: datetime
     # True for the notice that is switched on in Mastermind right now.
     is_current: bool = False

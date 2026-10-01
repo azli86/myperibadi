@@ -196,9 +196,14 @@ export function AnnouncementList({
                         onClick={onNavigate}
                         className="flex items-center gap-3.5 rounded-2xl bg-[var(--card)] p-3.5 shadow-[var(--shadow-card)] transition active:scale-[0.99]"
                       >
-                        <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl", tone.cls)}>
-                          <tone.Icon size={24} />
-                        </span>
+                        {n.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={n.image_url} alt="" className="h-12 w-12 shrink-0 rounded-2xl border border-[var(--border)] object-cover object-top" />
+                        ) : (
+                          <span className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl", tone.cls)}>
+                            <tone.Icon size={24} />
+                          </span>
+                        )}
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-1.5">
                             {isNew ? <span aria-label={tr("Baru", "New")} className="h-2 w-2 shrink-0 rounded-full bg-rose-500" /> : null}
