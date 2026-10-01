@@ -914,7 +914,7 @@ export default function VehicleDetailPage() {
         <button
           type="button"
           onClick={() => router.push(`/${sessionId}/vehicle`)}
-          className="mt-4 text-sm font-bold text-[var(--accent2)]"
+          className="mt-4 text-sm font-bold text-[var(--btn-primary-bg)]"
         >
           {tr("Kembali", "Back")}
         </button>
@@ -948,7 +948,7 @@ export default function VehicleDetailPage() {
               type="button"
               disabled={saving}
               onClick={confirmDeleteVehicle}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-rose-500/25 bg-rose-500/10 px-2.5 text-xs font-bold text-rose-600 transition active:scale-95 disabled:opacity-60 dark:text-rose-400"
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-rose-500/25 bg-rose-500/10 px-3 text-xs font-bold text-rose-600 transition active:scale-95 disabled:opacity-60 dark:text-rose-400"
             >
               <Trash2 size={15} />
               {tr("Padam", "Delete")}
@@ -968,7 +968,7 @@ export default function VehicleDetailPage() {
                 type="button"
                 disabled={saving}
                 onClick={confirmDeleteVehicle}
-                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-rose-500/25 bg-rose-500/10 px-2.5 text-xs font-bold text-rose-600 transition active:scale-95 disabled:opacity-60 dark:text-rose-400"
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-rose-500/25 bg-rose-500/10 px-3 text-xs font-bold text-rose-600 transition active:scale-95 disabled:opacity-60 dark:text-rose-400"
                 aria-label={tr("Padam kenderaan", "Delete vehicle")}
               >
                 <Trash2 size={15} />
@@ -1030,7 +1030,7 @@ export default function VehicleDetailPage() {
                 <button
                   type="button"
                   onClick={openDocumentForm}
-                  className="inline-flex h-9 items-center gap-1 rounded-full bg-[var(--text)] px-3 text-[0.65rem] font-black uppercase tracking-wide text-[var(--bg)]"
+                  className="inline-flex h-9 items-center gap-1 rounded-full bg-[var(--btn-primary-bg)] px-3.5 text-xs font-semibold text-[var(--btn-primary-text)] transition hover:bg-[var(--btn-primary-hover)] active:scale-95"
                 >
                   <Plus size={14} strokeWidth={2.5} />
                   {tr("Tambah", "Add")}
@@ -1067,7 +1067,7 @@ export default function VehicleDetailPage() {
                   <button
                     type="button"
                     onClick={openDocumentForm}
-                    className="mt-3 text-xs font-bold text-[var(--accent2)]"
+                    className="mt-3 text-xs font-bold text-[var(--btn-primary-bg)]"
                   >
                     {tr("Tambah road tax / insurans", "Add road tax / insurance")}
                   </button>
@@ -1176,7 +1176,7 @@ export default function VehicleDetailPage() {
                 <button
                   type="button"
                   onClick={openFuelForm}
-                  className="inline-flex h-9 items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-3 text-[0.65rem] font-black uppercase tracking-wide text-[var(--text)]"
+                  className="inline-flex h-9 items-center gap-1 rounded-full bg-[var(--btn-primary-bg)] px-3.5 text-xs font-semibold text-[var(--btn-primary-text)] transition hover:bg-[var(--btn-primary-hover)] active:scale-95"
                 >
                   <Plus size={14} strokeWidth={2.5} />
                   {tr("Tambah", "Add")}
@@ -1519,7 +1519,7 @@ export default function VehicleDetailPage() {
                               activeItem.label
                             )
                           }
-                          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-500/25 bg-rose-500/10 py-3 text-sm font-bold text-rose-600 dark:text-rose-400 disabled:opacity-60"
+                          className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-rose-500/25 bg-rose-500/10 text-sm font-bold text-rose-600 dark:text-rose-400 disabled:opacity-60"
                         >
                           <Trash2 size={15} />
                           {tr("Padam rekod", "Delete record")}

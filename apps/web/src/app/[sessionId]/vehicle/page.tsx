@@ -576,7 +576,7 @@ export default function VehicleListPage() {
                   <button
                     type="button"
                     onClick={() => setShowSheet(true)}
-                    className="mt-4 rounded-full bg-[var(--text)] px-4 py-2 text-[0.625rem] font-black uppercase tracking-wider text-[var(--bg)] transition active:scale-95"
+                    className="mt-4 rounded-full bg-[var(--btn-primary-bg)] px-5 py-2.5 text-xs font-semibold text-[var(--btn-primary-text)] transition hover:bg-[var(--btn-primary-hover)] active:scale-95"
                   >
                     <Plus size={14} className="mr-1 inline" />
                     {tr("Tambah Kenderaan", "Add Vehicle")}
