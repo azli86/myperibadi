@@ -140,13 +140,13 @@
   background: var(--l-card);
   color: var(--l-text) !important;
   -webkit-text-fill-color: var(--l-text) !important;
-  caret-color: #0878f8;
+  caret-color: #0550b8;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 .mField:focus {
-  border-color: #0878f8;
-  box-shadow: 0 0 0 3px rgba(8, 120, 248, 0.22);
+  border-color: #0550b8;
+  box-shadow: 0 0 0 3px rgba(5, 80, 184, 0.25);
 }
 .mField::placeholder {
   color: var(--l-muted) !important;

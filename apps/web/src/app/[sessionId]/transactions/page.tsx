@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react"
 import { createPortal } from "react-dom"
 import {
  Search,
+ ArrowLeftRight,
  Banknote,
  Receipt,
  ArrowLeft,
@@ -24,6 +25,7 @@ import {
  Loader2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ModenHero, ModenHeroPill } from "@/components/ui/ModenHero"
 import { Doughnut, Bar } from "react-chartjs-2"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useLang } from "@/lib/lang"
@@ -1598,9 +1600,9 @@ const currentCycleKeyStr = useMemo(
  className={cn(
  "h-9 rounded-full text-[0.75rem] font-semibold transition",
  isStart || isEnd
- ? "bg-[#0878F8] !text-white"
+ ? "bg-[#0550B8] !text-white"
  : isInRange
- ? "bg-[#0878F8]/12 text-[var(--text)]"
+ ? "bg-[#0550B8]/12 text-[var(--text)]"
  : "text-[var(--text)] hover:bg-[var(--text)]/8"
  )}
  >
@@ -1630,7 +1632,7 @@ const currentCycleKeyStr = useMemo(
  <button
  type="button"
  onClick={applyDateFilter}
- className="h-10 rounded-full bg-[#0878F8] text-xs font-semibold"
+ className="h-10 rounded-full bg-[#0550B8] text-xs font-semibold"
  style={{ color: "#ffffff" }}
  >
  {lang === "EN" ? "Apply" : "Guna"}
@@ -1645,7 +1647,7 @@ const currentCycleKeyStr = useMemo(
  onClick={() => {
  setFiltersExpanded(false)
  }}
- className="mt-3 h-10 w-full rounded-full bg-[#0878F8] text-xs font-semibold"
+ className="mt-3 h-10 w-full rounded-full bg-[#0550B8] text-xs font-semibold"
  style={{ color: "#ffffff" }}
  >
  {lang === "EN" ? "Done" : "Siap"}
@@ -1701,7 +1703,7 @@ const currentCycleKeyStr = useMemo(
  placeholder={langT.searchTransactions}
  value={searchQuery}
  onChange={(e) => setSearchQuery(e.target.value)}
- className="h-11 w-full rounded-full border border-[var(--border)] bg-[var(--card)] pl-11 pr-4 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition-all focus:border-[#0878F8] focus:ring-2 focus:ring-[#0878F8]/20"
+ className="h-11 w-full rounded-full border border-[var(--border)] bg-[var(--card)] pl-11 pr-4 text-sm font-medium text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition-all focus:border-[#0550B8] focus:ring-2 focus:ring-[#0550B8]/20"
  />
  </div>
  <button
@@ -1710,7 +1712,7 @@ const currentCycleKeyStr = useMemo(
  className={cn(
  "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all",
  showCalendar || hasDateRangeFilter
- ? "border-[#0878F8] bg-[#0878F8] !text-white"
+ ? "border-[#0550B8] bg-[#0550B8] !text-white"
  : "border-[var(--border)] bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
  )}
  onClick={openDateFilterPopup}
@@ -1898,9 +1900,9 @@ const currentCycleKeyStr = useMemo(
  className={cn(
  "h-9 rounded-full text-[0.75rem] font-semibold transition",
  isStart || isEnd
- ? "bg-[#0878F8] !text-white"
+ ? "bg-[#0550B8] !text-white"
  : isInRange
- ? "bg-[#0878F8]/12 text-[var(--text)]"
+ ? "bg-[#0550B8]/12 text-[var(--text)]"
  : "text-[var(--text)] hover:bg-[var(--text)]/8"
  )}
  >
@@ -1930,7 +1932,7 @@ const currentCycleKeyStr = useMemo(
  <button
  type="button"
  onClick={applyDateFilter}
- className="h-10 rounded-full bg-[#0878F8] text-xs font-semibold"
+ className="h-10 rounded-full bg-[#0550B8] text-xs font-semibold"
  style={{ color: "#ffffff" }}
  >
  {lang === "EN" ? "Apply" : "Guna"}
@@ -1946,109 +1948,30 @@ const currentCycleKeyStr = useMemo(
  
  
 
-  {/* Desktop summary, in the Moden look: an outlined card over a blue circle */}
+  {/* Summary: the Moden hero card, on desktop and phone */}
   {!showGraphMode && (
-  <div className="mx-auto hidden w-full max-w-[1280px] md:block">
-  <div className="relative pr-3 pt-3">
-  <div aria-hidden className="absolute -right-1 -top-2 h-52 w-52 rounded-full bg-[#0878F8]" />
-  <div aria-hidden className="absolute right-8 top-9 h-24 w-24 rounded-full border-[1.5px] border-white opacity-35" />
-  <div className="relative flex flex-col gap-6 rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-7 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)]">
-  <div className="min-w-0">
-  <div className="flex items-center gap-2">
-  <p className="text-[0.875rem] font-medium text-[var(--muted)]">{lang === "EN" ? "Current balance" : "Baki semasa"}</p>
-  <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-0.5 text-[0.6875rem] font-semibold text-[var(--text-soft)]">
-  <span className="h-1.5 w-1.5 rounded-full bg-[var(--income)]" />
-  {filteredTxns.length} {lang === "EN" ? "records" : "rekod"}
-  </span>
-  </div>
-  <p className="mt-2 leading-none tabular-nums text-[var(--text)]">
-  {showDataSkeleton ? (
-  <AmountSkeleton className="h-12 w-56" />
-  ) : (
+  <ModenHero
+  className="mx-auto w-full max-w-[1280px]"
+  label={
   <>
-  <span className="mr-1.5 align-top text-[1.125rem] font-semibold text-[var(--muted)]">RM</span>
-  <span className="text-[3rem] font-bold tracking-[-0.03em]">{formatCurrencyAmount(statsSnapshot.balance)}</span>
+  {lang === "EN" ? "Current balance" : "Baki semasa"}
+  <ModenHeroPill dot="#4ADE80">{filteredTxns.length} {lang === "EN" ? "records" : "rekod"}</ModenHeroPill>
   </>
-  )}
-  </p>
-  </div>
-  <div className="grid grid-cols-3 gap-3">
-  <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3.5">
-  <div className="flex items-center gap-1.5">
-  <span className="h-2 w-2 rounded-full bg-[var(--income)]" />
-  <p className="text-[0.75rem] font-medium text-[var(--muted)]">{lang === "EN" ? "Income" : "Pendapatan"}</p>
-  </div>
-  <p className="mt-2 truncate text-[1.25rem] font-bold tabular-nums text-[var(--text)]">
-  {showDataSkeleton ? <AmountSkeleton className="h-5 w-24" /> : <>RM {formatCurrencyAmount(displayIncome)}</>}
-  </p>
-  </div>
-  <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3.5">
-  <div className="flex items-center gap-1.5">
-  <span className="h-2 w-2 rounded-full bg-[var(--expense)]" />
-  <p className="text-[0.75rem] font-medium text-[var(--muted)]">{lang === "EN" ? "Expense" : "Perbelanjaan"}</p>
-  </div>
-  <p className="mt-2 truncate text-[1.25rem] font-bold tabular-nums text-[var(--text)]">
-  {showDataSkeleton ? <AmountSkeleton className="h-5 w-24" /> : <>RM {formatCurrencyAmount(displayExpense)}</>}
-  </p>
-  </div>
-  <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-3.5">
-  <div className="flex items-center gap-1.5">
-  <span className="h-2 w-2 rounded-full bg-[#0878F8]" />
-  <p className="text-[0.75rem] font-medium text-[var(--muted)]">{lang === "EN" ? "Filtered net" : "Bersih tapisan"}</p>
-  </div>
-  <p className={cn("mt-2 truncate text-[1.25rem] font-bold tabular-nums", filteredNetFlow >= 0 ? "text-[var(--income)]" : "text-[var(--text)]")}>
-  {showDataSkeleton ? (
-  <AmountSkeleton className="h-5 w-24" />
-  ) : (
-  <>{filteredNetFlow >= 0 ? "+" : "−"}RM {formatCurrencyAmount(Math.abs(filteredNetFlow))}</>
-  )}
-  </p>
-  </div>
-  </div>
-  </div>
-  </div>
-  </div>
-  )}
-
-  {/* Mobile summary, in the Moden look: an outlined card over a blue circle */}
-  {!showGraphMode && (
-  <div className="relative px-1 pt-2 md:hidden">
-  <div aria-hidden className="absolute -right-2 -top-1 h-36 w-36 rounded-full bg-[#0878F8]" />
-  <div aria-hidden className="absolute right-6 top-7 h-16 w-16 rounded-full border-[1.5px] border-white opacity-35" />
-  <div className="relative rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)]">
-  <p className="text-[0.8125rem] font-medium text-[var(--muted)]">{lang === "EN" ? "Balance" : "Baki"}</p>
-  <p className="mt-1.5 leading-none tabular-nums text-[var(--text)]">
-  {showDataSkeleton ? (
-  <AmountSkeleton className="h-10 w-44" />
-  ) : (
-  <>
-  <span className="mr-1.5 align-top text-[1.0625rem] font-semibold text-[var(--muted)]">RM</span>
-  <span className="text-[2.5rem] font-bold tracking-[-0.03em]">{formatCurrencyAmount(statsSnapshot.balance)}</span>
-  </>
-  )}
-  </p>
-  <div className="mt-4 flex flex-wrap items-center gap-2">
-  <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[var(--border)] px-3 text-xs font-semibold tabular-nums text-[var(--text)]">
-  <span aria-hidden className="h-2 w-2 rounded-full bg-[var(--income)]" />
-  {showDataSkeleton ? <AmountSkeleton className="h-3 w-12" /> : <>RM {formatCurrencyAmount(displayIncome)}</>} {lang === "EN" ? "in" : "masuk"}
-  </span>
-  <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[var(--border)] px-3 text-xs font-semibold tabular-nums text-[var(--text)]">
-  <span aria-hidden className="h-2 w-2 rounded-full bg-[var(--expense)]" />
-  {showDataSkeleton ? <AmountSkeleton className="h-3 w-12" /> : <>RM {formatCurrencyAmount(displayExpense)}</>} {lang === "EN" ? "out" : "keluar"}
-  </span>
-  </div>
-  <div className="mt-3.5 flex items-center justify-between border-t border-[var(--border)] pt-3 text-xs font-medium text-[var(--muted)]">
-  <span>{lang === "EN" ? "Filtered net" : "Bersih tapisan"}</span>
-  <span className={cn("font-semibold tabular-nums", filteredNetFlow >= 0 ? "text-[var(--income)]" : "text-[var(--text)]")}>
-  {showDataSkeleton ? (
-  <AmountSkeleton className="h-3 w-16" />
-  ) : (
-  <>{filteredNetFlow >= 0 ? "+" : "−"}RM {formatCurrencyAmount(Math.abs(filteredNetFlow))}</>
-  )}
-  </span>
-  </div>
-  </div>
-  </div>
+  }
+  amount={showDataSkeleton ? <AmountSkeleton className="h-11 w-48" /> : formatCurrencyAmount(statsSnapshot.balance)}
+  amountSize="clamp(2.5rem, 6vw, 3.5rem)"
+  stats={[
+  { key: "in", tone: "in", label: lang === "EN" ? "In" : "Masuk", value: showDataSkeleton ? <AmountSkeleton className="h-3 w-16" /> : <>RM {formatCurrencyAmount(displayIncome)}</> },
+  { key: "out", tone: "out", label: lang === "EN" ? "Out" : "Keluar", value: showDataSkeleton ? <AmountSkeleton className="h-3 w-16" /> : <>RM {formatCurrencyAmount(displayExpense)}</> },
+  ...(isMobileViewport ? [] : [{
+  key: "net",
+  tone: (filteredNetFlow >= 0 ? "in" : "out") as "in" | "out",
+  icon: <ArrowLeftRight size={15} strokeWidth={2.4} />,
+  label: lang === "EN" ? "Filtered net" : "Bersih tapisan",
+  value: showDataSkeleton ? <AmountSkeleton className="h-3 w-16" /> : <>{filteredNetFlow >= 0 ? "+" : "−"}RM {formatCurrencyAmount(Math.abs(filteredNetFlow))}</>,
+  } as const]),
+  ]}
+  />
   )}
 
  <div className="space-y-6">
@@ -2356,7 +2279,7 @@ const currentCycleKeyStr = useMemo(
  <React.Fragment key={date}>
   <div className="grid grid-cols-2 items-center border-b border-[var(--border)] px-5 py-2.5">
   <div className="flex items-center gap-3">
-  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0878F8] text-[0.9375rem] font-bold leading-none tabular-nums" style={{ color: "#ffffff" }}>
+  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0550B8] text-[0.9375rem] font-bold leading-none tabular-nums" style={{ color: "#ffffff" }}>
   {dayNumber}
   </span>
   <div>
@@ -2514,7 +2437,7 @@ const currentCycleKeyStr = useMemo(
   style={{ borderBottom: "1px solid var(--border)" }}
   >
   <div className="flex min-w-0 flex-1 items-center gap-3">
-  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#0878F8] text-[1.25rem] font-bold leading-none tabular-nums" style={{ color: "#ffffff" }}>
+  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#0550B8] text-[1.25rem] font-bold leading-none tabular-nums" style={{ color: "#ffffff" }}>
   {dayNumber}
   </div>
   <div className="min-w-0">
@@ -2648,7 +2571,7 @@ const currentCycleKeyStr = useMemo(
  {/* Download, at the bottom: an outlined card with a round blue button */}
  <div className="hidden pt-6 md:block">
  <div className="flex items-center gap-5 rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6">
- <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0878F8]" style={{ color: "#ffffff" }}>
+ <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#0550B8]" style={{ color: "#ffffff" }}>
  <Download size={22} />
  </div>
  <div className="min-w-0 flex-1">
@@ -2660,7 +2583,7 @@ const currentCycleKeyStr = useMemo(
  <button 
  onClick={handleExport}
  disabled={filteredTxns.length === 0 || loading}
- className="h-11 shrink-0 rounded-full bg-[#0878F8] px-6 text-sm font-semibold transition-all hover:bg-[#0567d6] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+ className="h-11 shrink-0 rounded-full bg-[#0550B8] px-6 text-sm font-semibold transition-all hover:bg-[#04449c] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
  style={{ color: "#ffffff" }}
  >
  {langT.download} .XLS ({filteredTxns.length})
@@ -2835,7 +2758,7 @@ function FilterSelect({
        aria-label={ariaLabel}
        value={value}
        onChange={(e) => onChange(e.target.value)}
-       className="h-10 w-full cursor-pointer appearance-none rounded-full border border-[var(--border)] bg-[var(--card)] pl-4 pr-8 font-semibold leading-none text-[var(--text-soft)] outline-none transition-colors hover:border-[var(--border-strong)] focus:border-[#0878F8]"
+       className="h-10 w-full cursor-pointer appearance-none rounded-full border border-[var(--border)] bg-[var(--card)] pl-4 pr-8 font-semibold leading-none text-[var(--text-soft)] outline-none transition-colors hover:border-[var(--border-strong)] focus:border-[#0550B8]"
        style={{ fontSize: isMobile ? "12px" : "13px" }}
      >
        {nodes}

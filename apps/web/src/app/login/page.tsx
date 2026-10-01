@@ -231,7 +231,7 @@ export default function LoginPage() {
   const isBm = lang === "BM"
   const blueWord = (text: string) => (
     // Inline colour: some themes remap the text-white class.
-    <span className="rounded-[10px] bg-[#0878F8] px-2" style={{ color: "#ffffff" }}>
+    <span className="rounded-[10px] bg-[#0550B8] px-2" style={{ color: "#ffffff" }}>
       {text}
     </span>
   )
@@ -243,7 +243,7 @@ export default function LoginPage() {
   // Balance card over a blue circle, with the "record anywhere" chip.
   const illustration = (
     <div className={styles.illo} aria-hidden>
-      <div className="absolute -right-2 top-1.5 h-[190px] w-[190px] rounded-full bg-[#0878F8]" />
+      <div className="absolute -right-2 top-1.5 h-[190px] w-[190px] rounded-full bg-[#0550B8]" />
       <div className="absolute right-10 top-[54px] h-[94px] w-[94px] rounded-full border-[1.5px] border-white opacity-35" />
       <div className="absolute left-0 top-[70px] flex h-[164px] w-[268px] -rotate-[5deg] flex-col justify-between rounded-3xl border border-[var(--l-card-line)] bg-[var(--l-card)] p-5 shadow-[0_30px_60px_-30px_rgba(0,0,0,0.6)]">
         <div className="flex items-center justify-between">
@@ -257,7 +257,7 @@ export default function LoginPage() {
           <span className="text-[34px] font-semibold leading-none tracking-[0.08em]">••••••</span>
         </div>
         <div className="flex gap-1.5">
-          <span className="h-1.5 w-[72px] rounded-full bg-[#0878F8]" />
+          <span className="h-1.5 w-[72px] rounded-full bg-[#0550B8]" />
           <span className="h-1.5 w-10 rounded-full bg-[var(--l-card-line)]" />
           <span className="h-1.5 w-6 rounded-full bg-[var(--l-card-line)]" />
         </div>
@@ -298,7 +298,7 @@ export default function LoginPage() {
   const registerLine = (
     <p className="text-center text-sm text-[var(--l-muted)]">
       {isBm ? "Belum ada akaun?" : "No account yet?"}{" "}
-      <Link href="/register" className="font-bold text-[var(--l-text)] underline decoration-[#0878F8] decoration-2 underline-offset-4">
+      <Link href="/register" className="font-bold text-[var(--l-text)] underline decoration-[#0550B8] decoration-2 underline-offset-4">
         {isBm ? "Daftar percuma" : "Register free"}
       </Link>
     </p>
@@ -405,7 +405,7 @@ export default function LoginPage() {
         </label>
 
         <div className="mt-3 flex justify-end">
-          <Link href="/forgot-password" className="text-sm font-semibold text-[var(--l-text)] underline decoration-[#0878F8] decoration-2 underline-offset-4">
+          <Link href="/forgot-password" className="text-sm font-semibold text-[var(--l-text)] underline decoration-[#0550B8] decoration-2 underline-offset-4">
             {isBm ? "Lupa kata laluan?" : "Forgot password?"}
           </Link>
         </div>

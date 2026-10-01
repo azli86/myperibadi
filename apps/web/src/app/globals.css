@@ -117,9 +117,9 @@
   --input-border: #2a2a2a;
   --input-focus: #525252;
   --input-placeholder: #7a7a7a;
-  --btn-primary-bg: #0878f8;
+  --btn-primary-bg: #0550b8;
   --btn-primary-text: #ffffff;
-  --btn-primary-hover: #0567d6;
+  --btn-primary-hover: #04449c;
   --btn-secondary-bg: #262626;
   --btn-secondary-text: #c8c8c8;
   --btn-secondary-hover: #333333;
@@ -244,9 +244,9 @@ html[data-theme="light"] {
   --input-border: #dadada;
   --input-focus: #a3a3a3;
   --input-placeholder: #a3a3a3;
-  --btn-primary-bg: #0878f8;
+  --btn-primary-bg: #0550b8;
   --btn-primary-text: #ffffff;
-  --btn-primary-hover: #0567d6;
+  --btn-primary-hover: #04449c;
   --btn-secondary-bg: #eeeeee;
   --btn-secondary-text: #171717;
   --btn-secondary-hover: #e0e0e0;
@@ -3504,6 +3504,33 @@ div:has(> .app-sheet-panel) {
   }
 }
 
+/* Sheet tops: a blue-to-cyan wash along the top of every popup sheet and the
+   menu sheet, fading into the sheet's own colour so the title stays legible
+   in both themes. A sheet with <AppSheetHeader> carries it in the header
+   (which stays opaque when it sticks); one without, on the panel itself. */
+:root {
+  --sheet-glow: linear-gradient(115deg, #0550B8 0%, #22D3EE 100%);
+}
+.app-sheet-panel-header {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--sheet-bg) 50%, transparent) 0%, var(--sheet-bg) 100%),
+    var(--sheet-glow) !important;
+}
+.app-sheet-panel {
+  --sheet-fade: var(--sheet-bg);
+}
+.app-sheet-panel.moden-surface {
+  --sheet-fade: var(--page-bg);
+}
+.app-sheet-panel:not(:has(.app-sheet-panel-header)) {
+  background-image:
+    linear-gradient(180deg, color-mix(in srgb, var(--sheet-fade) 50%, transparent) 0%, var(--sheet-fade) 100%),
+    var(--sheet-glow) !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 10rem !important;
+  background-attachment: local !important;
+}
+
 /* Header action (Save / Update / Simpan…): pages size these themselves, from
    text-sm to text-xl; one size here keeps every sheet's header the same. */
 .app-sheet-header-action > button,
@@ -3513,25 +3540,70 @@ div:has(> .app-sheet-panel) {
   min-height: 2.25rem;
 }
 
-/* ── Page heroes in the Moden look ──
-   The heroes were dark cards with light text written into each page. They are
-   now the same outlined card as the rest of the app in both themes: the card
-   surface and hairline, text in the theme's colours, status colours kept, the
-   decorative gradients and blurs dropped, and solid buttons in the primary
-   blue. :not(#_) lifts these rules over the older per-hero overrides. */
+/* ── Page heroes: the Moden hero card ──
+   The same card as the home's balance (components/ui/ModenHero): a panel
+   holding the label and the big figure, set on a card whose strip along the
+   bottom carries the in/out stats. Dark: a dark grey panel on a lighter
+   grey strip; light: a white panel on a grey strip; a hairline round both. Status
+   colours follow the theme; decorative gradients and blurs are dropped;
+   solid buttons are the primary blue. :not(#_) lifts these rules over the
+   older per-hero overrides. */
+:root {
+  --hero-panel: #1c1c1f;
+  --hero-strip: #3f3f46;
+  --hero-line: #27272a;
+  --hero-text: #fafafa;
+  --hero-muted: #a1a1aa;
+  --hero-strip-text: #ffffff;
+  --hero-strip-muted: rgba(255, 255, 255, 0.78);
+  --hero-circle: #09090b;
+  --hero-chip: rgba(255, 255, 255, 0.07);
+  --hero-chip-line: rgba(255, 255, 255, 0.1);
+  --hero-divider: rgba(255, 255, 255, 0.16);
+}
+html[data-theme="light"] {
+  --hero-panel: #ffffff;
+  --hero-strip: #e4e4e7;
+  --hero-line: #e4e4e7;
+  --hero-text: #09090b;
+  --hero-muted: #52525b;
+  --hero-strip-text: #09090b;
+  --hero-strip-muted: #52525b;
+  --hero-circle: #ffffff;
+  --hero-chip: rgba(9, 9, 11, 0.04);
+  --hero-chip-line: rgba(9, 9, 11, 0.08);
+  --hero-divider: rgba(9, 9, 11, 0.16);
+}
 .portal-personal-shell :is(
   .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
   .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
   .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
   .warranty-hero
 ):not(#_) {
-  background: var(--card) !important;
+  position: relative;
+  overflow: hidden;
+  background: var(--hero-panel) !important;
   background-image: none !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 1.5rem !important;
-  color: var(--text) !important;
+  border: 1px solid var(--hero-line) !important;
+  border-bottom: 0.875rem solid var(--hero-strip) !important;
+  border-radius: 2rem !important;
+  color: var(--hero-text) !important;
   box-shadow: none !important;
   filter: none !important;
+}
+.portal-personal-shell :is(
+  .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
+  .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
+  .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
+  .warranty-hero
+):not(#_)::before,
+.portal-personal-shell :is(
+  .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
+  .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
+  .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
+  .warranty-hero
+):not(#_)::after {
+  content: none !important;
 }
 .portal-personal-shell :is(
   .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
@@ -3547,22 +3619,33 @@ div:has(> .app-sheet-panel) {
   .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
   .warranty-hero
 ):not(#_) :is(p, span, h1, h2, h3, h4, div, a, strong, small, label, li, svg) {
-  color: var(--text) !important;
+  color: var(--hero-text) !important;
 }
 .portal-personal-shell :is(
   .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
   .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
   .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
   .warranty-hero
-):not(#_) :is([class*="uppercase"], [class*="text-[#a3a3a3]"], [class*="text-[#b3b3b3]"], [class*="text-[#cbd5e1]"], [class*="text-[#94a3b8]"], [class*="text-[#a1a1aa]"], [class*="text-[#c5d0e0]"], [class*="text-[#B8C8D8]"], [class*="text-white/"], [class*="text-slate-"], [class*="text-[var(--muted)]"]) {
-  color: var(--muted) !important;
+):not(#_) :is([class*="uppercase"], [class*="text-[#a3a3a3]"], [class*="text-[#b3b3b3]"], [class*="text-[#cbd5e1]"], [class*="text-[#94a3b8]"], [class*="text-[#a1a1aa]"], [class*="text-[#c5d0e0]"], [class*="text-[#B8C8D8]"], [class*="text-white/"], [class*="text-slate-"], [class*="text-[var(--muted)]"], [class*="text-[var(--text-soft)]"], [class*="opacity-"]) {
+  color: var(--hero-muted) !important;
+}
+/* The headline figures: the balance and any large number, bold. */
+.portal-personal-shell :is(
+  .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
+  .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
+  .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
+  .warranty-hero
+):not(#_) :is(.balance-hero-amount, .debt-hero-amount, [class*="text-3xl"], [class*="text-4xl"], [class*="text-5xl"], [class*="text-[1.85rem]"], [class*="text-[2rem]"], [class*="text-[2.25rem]"], [class*="text-[2.5rem]"], [class*="text-[2.75rem]"], [class*="text-[3"]) {
+  background-image: none !important;
+  color: var(--hero-text) !important;
+  -webkit-text-fill-color: currentColor;
 }
 .portal-personal-shell :is(
   .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
   .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
   .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
   .warranty-hero
-):not(#_) :is([class*="text-emerald"], [class*="text-[#6ee7b7]"], [class*="text-[#a7f3d0]"], [class*="text-[#34d399]"]) {
+):not(#_) :is([class*="text-emerald"], [class*="text-[#6ee7b7]"], [class*="text-[#a7f3d0]"], [class*="text-[#34d399]"], [class*="text-[var(--income)]"]) {
   color: var(--income) !important;
 }
 .portal-personal-shell :is(
@@ -3570,8 +3653,8 @@ div:has(> .app-sheet-panel) {
   .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
   .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
   .warranty-hero
-):not(#_) :is([class*="text-rose"], [class*="text-red"], [class*="text-[#fecdd3]"], [class*="text-[#fda4af]"], [class*="text-[#f87171]"]) {
-  color: #f43f5e !important;
+):not(#_) :is([class*="text-rose"], [class*="text-red"], [class*="text-[#fecdd3]"], [class*="text-[#fda4af]"], [class*="text-[#f87171]"], [class*="text-[var(--expense)]"]) {
+  color: var(--expense) !important;
 }
 .portal-personal-shell :is(
   .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
@@ -3581,21 +3664,35 @@ div:has(> .app-sheet-panel) {
 ):not(#_) :is([class*="text-amber"], [class*="text-orange"], [class*="text-[#fcd34d]"], [class*="text-[#fde68a]"], [class*="text-[#fb923c]"]) {
   color: #f59e0b !important;
 }
+/* Tiles, tracks and nested surfaces: a faint tint on the panel. */
 .portal-personal-shell :is(
   .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
   .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
   .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
   .warranty-hero
-):not(#_) :is([class*="bg-white/"], [class*="bg-[rgba(255,255,255"]) {
-  background-color: var(--surface-tint-strong) !important;
-  border-color: var(--border) !important;
+):not(#_) :is([class*="bg-white/"], [class*="bg-[rgba(255,255,255"], [class*="bg-[var(--surface-tint"], [class*="bg-[var(--card"], [class*="bg-[var(--bg"], [class*="bg-[var(--page-bg"]) {
+  background-color: var(--hero-chip) !important;
+  border-color: var(--hero-chip-line) !important;
 }
 .portal-personal-shell :is(
   .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
   .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
   .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
   .warranty-hero
-):not(#_) :is(.hero-cta-primary, .debt-hero-btn, [class*="bg-[var(--btn-primary-bg)]"], [class*="bg-[var(--accent2)]"]) {
+):not(#_) [class*="border-[var(--border"], .portal-personal-shell :is(
+  .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
+  .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
+  .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
+  .warranty-hero
+):not(#_) [class*="border-white/"] {
+  border-color: var(--hero-chip-line) !important;
+}
+.portal-personal-shell :is(
+  .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
+  .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
+  .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
+  .warranty-hero
+):not(#_) :is(.hero-cta-primary, .debt-hero-btn, [class*="bg-[var(--btn-primary-bg)]"], [class*="bg-[var(--accent2)]"], [class*="bg-[#0550B8]"], [class*="bg-[#0550b8]"]) {
   background: var(--btn-primary-bg) !important;
   border-color: transparent !important;
 }
@@ -3604,50 +3701,14 @@ div:has(> .app-sheet-panel) {
   .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
   .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
   .warranty-hero
-):not(#_) :is(.hero-cta-primary, .debt-hero-btn, [class*="bg-[var(--btn-primary-bg)]"], [class*="bg-[var(--accent2)]"]) :is(*, svg) {
+):not(#_) :is(.hero-cta-primary, .debt-hero-btn, [class*="bg-[var(--btn-primary-bg)]"], [class*="bg-[var(--accent2)]"], [class*="bg-[#0550B8]"], [class*="bg-[#0550b8]"]),
+.portal-personal-shell :is(
+  .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
+  .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
+  .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
+  .warranty-hero
+):not(#_) :is(.hero-cta-primary, .debt-hero-btn, [class*="bg-[var(--btn-primary-bg)]"], [class*="bg-[var(--accent2)]"], [class*="bg-[#0550B8]"], [class*="bg-[#0550b8]"]) :is(*, svg) {
   color: var(--btn-primary-text) !important;
-}
-.portal-personal-shell :is(
-  .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
-  .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
-  .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
-  .warranty-hero
-):not(#_) .balance-hero-amount {
-  background-image: none !important;
-  color: var(--text) !important;
-  -webkit-text-fill-color: var(--text);
-}
-
-/* The Moden signature on every hero: a blue circle in the top-right corner,
-   drawn behind the content (isolation keeps z-index -1 above the card's own
-   background), small labels in sentence case instead of spaced capitals, and
-   the stat tiles outlined rather than filled. */
-.portal-personal-shell :is(
-  .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
-  .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
-  .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
-  .warranty-hero
-):not(#_) {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-}
-.portal-personal-shell :is(
-  .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
-  .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
-  .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
-  .warranty-hero
-):not(#_)::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  top: -4.5rem;
-  right: -3.5rem;
-  width: 10rem;
-  height: 10rem;
-  border-radius: 9999px;
-  background: #0878f8;
-  pointer-events: none;
 }
 .portal-personal-shell :is(
   .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
@@ -3660,69 +3721,43 @@ div:has(> .app-sheet-panel) {
   font-size: 0.75rem !important;
   font-weight: 500 !important;
 }
-.portal-personal-shell :is(
-  .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
-  .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
-  .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
-  .warranty-hero
-):not(#_) :is([class*="bg-white/"], [class*="bg-[rgba(255,255,255"])[class*="rounded-2xl"],
-.portal-personal-shell :is(
-  .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
-  .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
-  .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
-  .warranty-hero
-):not(#_) :is([class*="bg-white/"], [class*="bg-[rgba(255,255,255"])[class*="rounded-[1."] {
-  background-color: transparent !important;
-  border: 1px solid var(--border) !important;
-}
-
-.portal-personal-shell :is(
-  .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
-  .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
-  .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
-  .warranty-hero
-):not(#_)::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  top: 1.1rem;
-  right: 1.1rem;
-  width: 3.25rem;
-  height: 3.25rem;
-  border-radius: 9999px;
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
-  pointer-events: none;
-}
-
 /* Light-filled controls inside a hero (white buttons, the selected filter
-   chip) keep dark text; the hero's own text colour would make them blank. */
+   chip) keep dark text in both themes. */
 .portal-personal-shell :is(
   .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
   .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
   .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
   .warranty-hero
-):not(#_) :is([class*="bg-white"]:not([class*="bg-white/"]), [class*="bg-[#ffffff]"], [class*="bg-[#fff]"], [class*="bg-[#f5f5f5]"], [class*="bg-[#fafafa]"], [class*="bg-[var(--text)]"]),
+):not(#_) :is([class*="bg-white"]:not([class*="bg-white/"]), [class*="bg-[#ffffff]"], [class*="bg-[#fff]"], [class*="bg-[#f5f5f5]"], [class*="bg-[#fafafa]"]),
 .portal-personal-shell :is(
   .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
   .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
   .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
   .warranty-hero
-):not(#_) :is([class*="bg-white"]:not([class*="bg-white/"]), [class*="bg-[#ffffff]"], [class*="bg-[#fff]"], [class*="bg-[#f5f5f5]"], [class*="bg-[#fafafa]"], [class*="bg-[var(--text)]"]) :is(*, svg) {
-  color: #0a0a0a !important;
+):not(#_) :is([class*="bg-white"]:not([class*="bg-white/"]), [class*="bg-[#ffffff]"], [class*="bg-[#fff]"], [class*="bg-[#f5f5f5]"], [class*="bg-[#fafafa]"]) :is(*, svg) {
+  color: #09090b !important;
 }
-html[data-theme="light"] .portal-personal-shell :is(
+.portal-personal-shell :is(
+  .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
+  .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
+  .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
+  .warranty-hero
+):not(#_) :is([class*="bg-[var(--text)]"]) {
+  background-color: var(--text) !important;
+}
+.portal-personal-shell :is(
   .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
   .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
   .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
   .warranty-hero
 ):not(#_) :is([class*="bg-[var(--text)]"]),
-html[data-theme="light"] .portal-personal-shell :is(
+.portal-personal-shell :is(
   .balance-hero, .budget-hero, .debt-hero, .wallet-hero, .loan-detail-hero,
   .subscription-hero, .inventory-hero, .bnpl-hero, .splitbill-hero,
   .request-hero, .map-analysis-hero, .event-hero, .vehicle-hero-card,
   .warranty-hero
 ):not(#_) :is([class*="bg-[var(--text)]"]) :is(*, svg) {
-  color: #ffffff !important;
+  color: var(--bg) !important;
 }
 
 /* Small spaced capitals read as a different app next to the Moden screens:

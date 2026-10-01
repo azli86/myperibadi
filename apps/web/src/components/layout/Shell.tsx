@@ -82,6 +82,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn, getTodayDateInTimeZone } from "@/lib/utils";
+import { HERO_CIRCLE, HERO_LINE, HERO_PANEL, HERO_STRIP, HERO_STRIP_MUTED, HERO_STRIP_TEXT, HERO_TEXT, ModenHero, ModenHeroPill } from "@/components/ui/ModenHero";
 import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose";
 import { useRealtime } from "@/hooks/useRealtime";
 import { useLang } from "@/lib/lang";
@@ -3180,7 +3181,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                           isActive={isActive}
                           tooltip={item.name}
                           // Moden: the current page is a blue pill; the rest are quiet rows.
-                          className="h-10 rounded-full px-3.5 text-[0.875rem] font-medium text-[var(--text-soft)] hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] data-[active=true]:bg-[#0878F8] data-[active=true]:font-semibold data-[active=true]:!text-white [&>svg]:size-[18px]"
+                          className="h-10 rounded-full px-3.5 text-[0.875rem] font-medium text-[var(--text-soft)] hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)] data-[active=true]:bg-[#0550B8] data-[active=true]:font-semibold data-[active=true]:!text-white [&>svg]:size-[18px]"
                         >
                           <Link href={item.href}>
                             <item.icon />
@@ -3607,31 +3608,29 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       {/* ── Desktop Right Sidebar ── */}
       { (
         <aside className="portal-desktop-right-rail hidden h-[100dvh] w-[300px] shrink-0 flex-col border-l border-[var(--border)] bg-[var(--page-bg)] lg:flex">
-          {/* Balance, as the Moden balance card over a blue circle */}
+          {/* Balance: the Moden hero card, compact */}
           <div className="shrink-0 px-4 pb-2 pt-4">
-            <div className="relative pt-3">
-              <div aria-hidden className="absolute -right-2 -top-1 h-28 w-28 rounded-full bg-[#0878F8]" />
-              <div aria-hidden className="absolute right-5 top-5 h-12 w-12 rounded-full border-[1.5px] border-white opacity-35" />
-              <div className="relative rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 shadow-[0_20px_40px_-26px_rgba(0,0,0,0.6)]">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[0.8125rem] font-medium text-[var(--muted)]">{lang === "EN" ? "Total balance" : "Jumlah baki"}</p>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2 py-0.5 text-[0.6875rem] font-semibold text-[var(--text)]">
-                    <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-[var(--income)]" />
-                    {lang === "EN" ? "Live" : "Kini"}
-                  </span>
-                </div>
-                <p className="mt-2 truncate leading-none tabular-nums text-[var(--text)]">
-                  {user?.show_hero_amounts !== false ? (
-                    <>
-                      <span className="mr-1 align-top text-[0.8125rem] font-semibold text-[var(--muted)]">RM</span>
-                      <span className="text-[1.875rem] font-bold tracking-[-0.03em]">{stats.balance.toLocaleString("en-MY", { minimumFractionDigits: 2 })}</span>
-                    </>
-                  ) : (
-                    <span className="text-[1.875rem] font-bold">RM ••••••</span>
-                  )}
-                </p>
-              </div>
-            </div>
+            {(() => {
+              const showRailAmounts = user?.show_hero_amounts !== false;
+              const railMoney = (v: number | undefined) =>
+                showRailAmounts ? `RM ${Number(v || 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "RM ••••";
+              return (
+                <ModenHero
+                  className="rounded-[1.75rem]"
+                  panelClassName="gap-2 pb-4 pl-4 pr-3 pt-3"
+                  label={lang === "EN" ? "Total balance" : "Jumlah baki"}
+                  actions={<ModenHeroPill dot="#4ADE80">{lang === "EN" ? "Live" : "Kini"}</ModenHeroPill>}
+                  currency={showRailAmounts ? "RM" : null}
+                  amount={showRailAmounts ? stats.balance.toLocaleString("en-MY", { minimumFractionDigits: 2 }) : "RM ••••••"}
+                  amountSize="1.875rem"
+                  statsLayout="rows"
+                  stats={[
+                    { key: "in", tone: "in", label: lang === "EN" ? "In" : "Masuk", value: railMoney(stats.income_month) },
+                    { key: "out", tone: "out", label: lang === "EN" ? "Out" : "Keluar", value: railMoney(stats.expense_month) },
+                  ]}
+                />
+              );
+            })()}
           </div>
 
           {/* Cat playground + calculator */}
@@ -3659,7 +3658,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   ["settings", "security", "bot-command", "about", "whatsnew", "login-logs"].some(
                     (segment) => pathname === `/${sessionId}/${segment}`,
                   )
-                    ? "border-transparent bg-[#0878F8] !text-white"
+                    ? "border-transparent bg-[#0550B8] !text-white"
                     : "border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[var(--surface-tint)]",
                 )}
               >
@@ -3716,15 +3715,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 </button>
               </div>
 
-              {/* ── Profile Card: avatar left, name and account right ── */}
+              {/* ── Profile Card, as the hero card: avatar and name on the blue
+                  panel, the account in the yellow strip below ── */}
               <div className="relative px-4 pb-3 pt-3">
-                <div aria-hidden className="absolute right-2 top-0 h-28 w-28 rounded-full bg-[#0878F8]" />
-                <div aria-hidden className="absolute right-9 top-6 h-14 w-14 rounded-full border-[1.5px] border-white opacity-35" />
                 {/* Not .sidebar-avatar-card: that class pins the desktop identity card dark in
                     both themes, and the account switcher drawn inside this card inherited
                     its white text, which vanished on the white sheet in light mode. */}
-                <div className="relative w-full rounded-[1.5rem] border border-[var(--home-line)] bg-[var(--home-card)] p-4 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)]">
-                  <div className="flex items-center gap-3">
+                <div className="relative w-full overflow-hidden rounded-[2rem]" style={{ background: HERO_STRIP, border: `1px solid ${HERO_LINE}` }}>
+                  <div className="flex items-center gap-3 rounded-b-[1.875rem] p-4" style={{ background: HERO_PANEL }}>
                     <div className="shrink-0">
                       <UserAvatar name={displayName || activeEmail} size={56} src={avatarSrc} />
                     </div>
@@ -3736,7 +3734,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         aria-haspopup="dialog"
                         className="flex min-w-0 flex-1 items-start gap-1.5 text-left transition active:opacity-70"
                       >
-                        <h3 className="min-w-0 flex-1 self-center text-[clamp(17px,6.5vw,24px)] font-black leading-[1.1] tracking-tight text-[var(--text)] [overflow-wrap:anywhere]">
+                        <h3 className="min-w-0 flex-1 self-center text-[clamp(17px,6.5vw,24px)] font-black leading-[1.1] tracking-tight [overflow-wrap:anywhere]" style={{ color: HERO_TEXT }}>
                           {displayName}
                         </h3>
                       </button>
@@ -3814,6 +3812,24 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                   )}
                 </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowMobileSheetAccountSwitcher(true)}
+                    aria-haspopup="dialog"
+                    className="flex w-full items-center gap-2.5 pb-3.5 pl-5 pr-4 pt-3 text-left transition active:opacity-80"
+                    style={{ color: HERO_STRIP_TEXT }}
+                  >
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full" style={{ background: HERO_CIRCLE, color: HERO_STRIP_TEXT }}>
+                      <Users size={16} strokeWidth={2.2} />
+                    </span>
+                    <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <span className="font-semibold" style={{ color: HERO_STRIP_MUTED, fontSize: "0.75rem" }}>{lang === "BM" ? "Akaun" : "Account"}</span>
+                      <span className="truncate font-bold" style={{ color: HERO_STRIP_TEXT, fontSize: "0.875rem" }}>{activeEmail}</span>
+                    </span>
+                    <span className="shrink-0 font-bold underline underline-offset-4" style={{ color: HERO_STRIP_TEXT, textDecorationColor: "var(--btn-primary-bg)", fontSize: "0.75rem" }}>
+                      {lang === "BM" ? "Tukar akaun" : "Switch"}
+                    </span>
+                  </button>
                 </div>
 
                 {/* ── Cat, under the name card; its arena opens above this sheet ── */}
@@ -3940,7 +3956,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                               className={cn(
                                 "relative flex h-12 w-12 items-center justify-center rounded-2xl transition-colors",
                                 isCurrent
-                                  ? "bg-[#0878F8]"
+                                  ? "bg-[#0550B8]"
                                   : "border border-[var(--home-line)] text-[var(--text)] group-active:bg-[var(--home-line)]"
                               )}
                               // Inline: some themes remap the text-white class.

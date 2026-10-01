@@ -1,6 +1,7 @@
 "use client"
 
 import { getWalletAccent as walletAccent } from "@/lib/wallet-accents"
+import { ModenHero, ModenHeroIconButton, ModenHeroLink } from "@/components/ui/ModenHero"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -558,69 +559,32 @@ export function MobileHome({
         </button>
       </header>
 
-      {/* ── Balance card over a blue circle, as on the login screen ── */}
-      <section className="relative mt-5 px-1 pb-2 pt-3">
-        <div aria-hidden className="absolute -right-3 -top-1 h-40 w-40 rounded-full bg-[#0878F8]" />
-        <div aria-hidden className="absolute right-6 top-8 h-20 w-20 rounded-full border-[1.5px] border-white opacity-35" />
-        <div className="relative rounded-[1.5rem] border border-[var(--home-line)] bg-[var(--home-card)] p-5 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)]">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[0.8125rem] font-medium text-[var(--muted)]">{tr("Jumlah baki", "Total balance")}</p>
-            <button
-              type="button"
+      {/* ── Balance: the Moden hero card ── */}
+      <ModenHero
+        className="mt-5"
+        label={tr("Jumlah baki", "Total balance")}
+        actions={
+          <>
+            <ModenHeroLink onClick={() => setChartsOpen(true)} disabled={stats == null} aria-haspopup="dialog">
+              {tr("Info baki", "Balance info")}
+            </ModenHeroLink>
+            <ModenHeroIconButton
               onClick={toggleAmounts}
               aria-label={showAmounts ? tr("Sembunyikan jumlah", "Hide amounts") : tr("Tunjuk jumlah", "Show amounts")}
               aria-pressed={!showAmounts}
-              className="-mr-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--home-line)] text-[var(--muted)] transition active:scale-90"
             >
-              {showAmounts ? <Eye size={16} strokeWidth={1.9} /> : <EyeClosed size={16} strokeWidth={1.9} />}
-            </button>
-          </div>
-
-          {/* Tapping the balance opens the expense charts. */}
-          <button
-            type="button"
-            onClick={() => setChartsOpen(true)}
-            disabled={stats == null}
-            aria-haspopup="dialog"
-            aria-label={tr("Lihat graf perbelanjaan", "See spending charts")}
-            className="mt-2 block min-w-0 max-w-full truncate text-left leading-none tabular-nums text-[var(--text)] transition active:opacity-70"
-          >
-            {stats == null ? (
-              skeleton("h-11 w-48")
-            ) : (
-              <>
-                <span className="mr-1.5 align-top text-[1.0625rem] font-semibold text-[var(--muted)]">RM</span>
-                <span className="text-[2.75rem] font-bold tracking-[-0.03em]">{showAmounts ? num(stats.balance) : hidden}</span>
-              </>
-            )}
-          </button>
-
-          {/* This cycle's money in and out, and the way into the charts. */}
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            {[
-              { key: "in", label: tr("masuk", "in"), value: month?.income, dot: "var(--income)" },
-              { key: "out", label: tr("keluar", "out"), value: month?.expense, dot: "var(--expense)" },
-            ].map((chip) => (
-              <span
-                key={chip.key}
-                className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[var(--home-line)] px-3 text-xs font-semibold tabular-nums text-[var(--text)]"
-              >
-                <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: chip.dot }} />
-                {chip.value == null ? skeleton("h-3 w-12") : money(chip.value, 0)} {chip.label}
-              </span>
-            ))}
-            <button
-              type="button"
-              onClick={() => setChartsOpen(true)}
-              disabled={stats == null}
-              aria-haspopup="dialog"
-              className="ml-auto inline-flex h-8 items-center gap-0.5 text-xs font-semibold text-[var(--text)] underline decoration-[#0878F8] decoration-2 underline-offset-4 disabled:opacity-40"
-            >
-              {tr("Info baki", "Balance info")}
-            </button>
-          </div>
-        </div>
-      </section>
+              {showAmounts ? <Eye size={18} strokeWidth={1.9} /> : <EyeClosed size={18} strokeWidth={1.9} />}
+            </ModenHeroIconButton>
+          </>
+        }
+        amount={stats == null ? skeleton("h-11 w-48") : showAmounts ? num(stats.balance) : hidden}
+        onAmountClick={stats == null ? undefined : () => setChartsOpen(true)}
+        amountLabel={tr("Lihat graf perbelanjaan", "See spending charts")}
+        stats={[
+          { key: "in", tone: "in", label: tr("Masuk", "In"), value: month?.income == null ? skeleton("h-3 w-14") : money(month.income, 0) },
+          { key: "out", tone: "out", label: tr("Keluar", "Out"), value: month?.expense == null ? skeleton("h-3 w-14") : money(month.expense, 0) },
+        ]}
+      />
 
       {/* ── Quick actions: one blue, the rest outlined ── */}
       <div role="group" aria-label={tr("Tindakan pantas", "Quick actions")} className="mb-6 mt-5 grid grid-cols-4 gap-2 px-1">
@@ -639,7 +603,7 @@ export function MobileHome({
             <span
               className={cn(
                 "flex h-[3.625rem] w-[3.625rem] items-center justify-center rounded-[1.375rem] transition group-active:scale-90",
-                action.accent ? "bg-[#0878F8] shadow-[0_12px_24px_-12px_rgba(8,120,248,0.8)]" : "border border-[var(--home-line)] bg-[var(--home-card)] text-[var(--text)]"
+                action.accent ? "bg-[#0550B8] shadow-[0_12px_24px_-12px_rgba(5,80,184,0.8)]" : "border border-[var(--home-line)] bg-[var(--home-card)] text-[var(--text)]"
               )}
               // Inline: some themes remap the text-white class.
               style={action.accent ? { color: "#ffffff" } : undefined}

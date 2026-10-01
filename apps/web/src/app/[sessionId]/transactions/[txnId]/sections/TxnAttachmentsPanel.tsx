@@ -43,7 +43,7 @@ export default function TxnAttachmentsPanel({
       <div className="flex min-h-[320px] flex-col overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] lg:min-h-0">
         <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4 md:px-6 md:py-5">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0878F8]" style={{ color: "#ffffff" }}>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0550B8]" style={{ color: "#ffffff" }}>
               <FileText size={16} />
             </div>
             <h3 className="text-sm font-semibold text-[var(--text)]">{langT.preview}</h3>

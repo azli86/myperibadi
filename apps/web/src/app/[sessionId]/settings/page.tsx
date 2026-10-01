@@ -605,6 +605,14 @@ export default function SettingsPage() {
           "overflow-hidden bg-[var(--card)] shadow-[var(--shadow-card)]",
           desktop ? "scroll-mt-24 rounded-[1.75rem]" : "rounded-[1.5rem]"
         )}
+        // The blue-to-cyan wash of the sheet tops, fading into the card.
+        style={{
+          backgroundColor: "var(--card)",
+          backgroundImage:
+            "linear-gradient(180deg, color-mix(in srgb, var(--card) 50%, transparent) 0%, var(--card) 100%), var(--sheet-glow)",
+          backgroundRepeat: "no-repeat",
+          backgroundSize: desktop ? "100% 13rem" : "100% 10rem",
+        }}
       >
         <div className={desktop ? "p-7" : "p-4 pb-5"}>
           {/* Avatar (with a camera badge to change it) and the three stats beside it */}

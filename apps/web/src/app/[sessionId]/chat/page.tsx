@@ -1578,7 +1578,7 @@ export default function ChatPage() {
                   value={commandSearch}
                   onChange={(e) => setCommandSearch(e.target.value)}
                   placeholder={lang === "EN" ? "Search: budget, loan, wallet…" : "Cari: bajet, loan, wallet…"}
-                  className="h-10 w-full rounded-full border border-[color:var(--border)] bg-transparent pl-10 pr-9 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:border-[#0878F8]"
+                  className="h-10 w-full rounded-full border border-[color:var(--border)] bg-transparent pl-10 pr-9 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)] focus:border-[#0550B8]"
                 />
                 {commandSearch ? (
                   <button

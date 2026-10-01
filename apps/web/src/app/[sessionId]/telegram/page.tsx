@@ -23,6 +23,7 @@ import {
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
+import { HERO_MUTED, ModenHero, ModenHeroPill, heroPrimaryButtonStyle, heroQuietButtonStyle } from "@/components/ui/ModenHero"
 import { usePageAlert } from "@/hooks/usePageAlert"
 
 type TelegramStatus = {
@@ -249,79 +250,66 @@ export default function TelegramPage() {
       />
 
       <DesktopPageBody className="mt-2 flex flex-col gap-4 px-1 lg:mt-0 lg:gap-5 lg:px-0">
-        {/* Status, in the Moden look: an outlined card over a blue circle */}
-        <div className="relative pr-2 pt-3">
-          <div aria-hidden className="absolute -right-1 -top-1 h-36 w-36 rounded-full bg-[#0878F8] md:h-48 md:w-48" />
-          <div aria-hidden className="absolute right-6 top-7 h-16 w-16 rounded-full border-[1.5px] border-white opacity-35 md:right-9 md:top-9 md:h-24 md:w-24" />
-          <div className="relative rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)] md:p-7">
-            <div className="flex items-center gap-2">
-              <p className="text-[0.8125rem] font-medium text-[var(--muted)]">Telegram</p>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-0.5 text-[0.6875rem] font-semibold text-[var(--text-soft)]">
-                <span className={cn("h-1.5 w-1.5 rounded-full", isConnected ? "bg-emerald-500" : "bg-[var(--muted)]")} />
+        {/* Status: the Moden hero card */}
+        <ModenHero
+          label={
+            <>
+              Telegram
+              <ModenHeroPill dot={isConnected ? "#4ADE80" : "var(--hero-muted)"}>
                 {loading ? (isBM ? "Menyemak" : "Checking") : isConnected ? (isBM ? "Aktif" : "Live") : (isBM ? "Tidak aktif" : "Offline")}
-              </span>
-            </div>
-            <p className="mt-2 text-[1.75rem] font-bold leading-tight tracking-[-0.02em] text-[var(--text)] md:text-[2.5rem]">
-              {loading
-                ? (isBM ? "Menyemak…" : "Checking…")
-                : isConnected
-                  ? (isBM ? "Disambung" : "Connected")
-                  : (isBM ? "Belum disambung" : "Not connected")}
-            </p>
-            <p className="mt-1 max-w-md text-[0.8125rem] font-medium leading-relaxed text-[var(--muted)]">
-              {isConnected
-                ? (isBM ? "Hantar belanja dan pendapatan kepada bot dari Telegram." : "Send expenses and income to the bot from Telegram.")
-                : (isBM ? "Jana kod, kemudian hantar kod itu kepada bot untuk paut." : "Generate a code, then send it to the bot to link.")}
-            </p>
-
-            <div className="mt-5 grid grid-cols-2 gap-2.5 md:max-w-lg">
-              <div className="min-w-0 rounded-2xl border border-[var(--border)] px-3.5 py-3">
-                <p className="text-[0.6875rem] font-medium text-[var(--muted)]">{isBM ? "Akaun" : "Account"}</p>
-                <p className="mt-1 truncate text-[1rem] font-bold text-[var(--text)]">{isConnected ? connectedName : "-"}</p>
-              </div>
-              <div className="min-w-0 rounded-2xl border border-[var(--border)] px-3.5 py-3">
-                <p className="text-[0.6875rem] font-medium text-[var(--muted)]">Bot</p>
-                <p className="mt-1 truncate text-[1rem] font-bold text-[var(--text)]">@{botHandle}</p>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-2 md:flex">
-              <button
-                type="button"
-                onClick={openBot}
-                className="inline-flex h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-full [&>svg]:shrink-0 bg-[#0878F8] px-3 text-[0.8125rem] md:px-5 font-semibold transition hover:bg-[#0567d6] active:scale-[0.98]"
-                style={{ color: "#ffffff" }}
-              >
-                <ExternalLink size={16} />
-                <span className="md:hidden">{isBM ? "Buka bot" : "Open bot"}</span>
-                <span className="hidden md:inline">{isBM ? "Buka bot Telegram" : "Open Telegram bot"}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void navigator.clipboard.writeText(botHandle)
-                  showAlert(
-                    isBM ? "Disalin" : "Copied",
-                    isBM
-                      ? `Cari @${botHandle} dalam Telegram.`
-                      : `Search @${botHandle} in Telegram.`,
-                    "success",
-                  )
-                }}
-                className="inline-flex h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-full [&>svg]:shrink-0 border border-[var(--border)] bg-[var(--card)] px-3 text-[0.8125rem] md:px-5 font-semibold text-[var(--text)] transition hover:bg-[var(--surface-tint)] active:scale-[0.98]"
-              >
-                <Copy size={16} />
-                {isBM ? "Salin nama bot" : "Copy bot name"}
-              </button>
-            </div>
+              </ModenHeroPill>
+            </>
+          }
+          currency={null}
+          amount={loading ? (isBM ? "Menyemak…" : "Checking…") : isConnected ? (isBM ? "Disambung" : "Connected") : (isBM ? "Belum disambung" : "Not connected")}
+          amountSize="clamp(1.75rem, 7.5vw, 2.5rem)"
+          stats={[
+            { key: "account", tone: "neutral", icon: <Link2 size={16} strokeWidth={2.2} />, label: isBM ? "Akaun" : "Account", value: isConnected ? connectedName : "-" },
+            { key: "bot", tone: "neutral", icon: <Send size={15} strokeWidth={2.2} />, label: "Bot", value: `@${botHandle}` },
+          ]}
+        >
+          <p className="max-w-md text-[0.8125rem] font-medium leading-relaxed" style={{ color: HERO_MUTED }}>
+            {isConnected
+              ? (isBM ? "Hantar belanja dan pendapatan kepada bot dari Telegram." : "Send expenses and income to the bot from Telegram.")
+              : (isBM ? "Jana kod, kemudian hantar kod itu kepada bot untuk paut." : "Generate a code, then send it to the bot to link.")}
+          </p>
+          <div className="grid grid-cols-2 gap-2 md:flex">
+            <button
+              type="button"
+              onClick={openBot}
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 text-[0.8125rem] font-semibold transition active:scale-[0.98] disabled:opacity-50 md:px-5 [&>svg]:shrink-0"
+              style={heroPrimaryButtonStyle}
+            >
+              <ExternalLink size={16} />
+              <span className="md:hidden">{isBM ? "Buka bot" : "Open bot"}</span>
+              <span className="hidden md:inline">{isBM ? "Buka bot Telegram" : "Open Telegram bot"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                void navigator.clipboard.writeText(botHandle)
+                showAlert(
+                  isBM ? "Disalin" : "Copied",
+                  isBM
+                    ? `Cari @${botHandle} dalam Telegram.`
+                    : `Search @${botHandle} in Telegram.`,
+                  "success",
+                )
+              }}
+              className="inline-flex h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-full px-3 text-[0.8125rem] font-semibold transition active:scale-[0.98] md:px-5 [&>svg]:shrink-0"
+              style={heroQuietButtonStyle}
+            >
+              <Copy size={16} />
+              {isBM ? "Salin nama bot" : "Copy bot name"}
+            </button>
           </div>
-        </div>
+        </ModenHero>
 
         <div className="grid gap-4 md:grid-cols-2">
           {/* Pairing code */}
           <section id="telegram-pair-code" className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 md:p-6">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0878F8]" style={{ color: "#ffffff" }}>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0550B8]" style={{ color: "#ffffff" }}>
                 <Link2 size={18} />
               </span>
               <div className="min-w-0">
@@ -353,7 +341,7 @@ export default function TelegramPage() {
               type="button"
               onClick={() => void (pairCode?.code ? copyCode() : requestPairCode())}
               disabled={working || loading}
-              className="mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#0878F8] px-4 text-sm font-semibold transition hover:bg-[#0567d6] active:scale-[0.99] disabled:opacity-50"
+              className="mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#0550B8] px-4 text-sm font-semibold transition hover:bg-[#04449c] active:scale-[0.99] disabled:opacity-50"
               style={{ color: "#ffffff" }}
             >
               {working ? (
@@ -383,7 +371,7 @@ export default function TelegramPage() {
           {/* Commands */}
           <section className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 md:p-6">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0878F8]/10 text-[#0878F8]">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0550B8]/10 text-[#0550B8]">
                 <Send size={17} />
               </span>
               <div className="min-w-0">

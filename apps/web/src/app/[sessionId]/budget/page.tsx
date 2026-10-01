@@ -22,6 +22,7 @@ import { CategoryIconGlyph } from "@/lib/category-icons"
 import { useLang } from "@/lib/lang"
 import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 import { cn } from "@/lib/utils"
+import { HERO_CHIP_LINE, HERO_MUTED, HERO_TEXT, ModenHero, ModenHeroPill, ModenHeroTile } from "@/components/ui/ModenHero"
 import { usePageAlert } from "@/hooks/usePageAlert"
 import HistoryBackButton from "@/components/navigation/HistoryBackButton"
 import {
@@ -465,9 +466,9 @@ export default function BudgetPage() {
       hasBudget: true as const,
       tone: "emerald" as const,
       label: tr("Baik", "Good"),
-      bar: "bg-[#0878F8]",
-      soft: "bg-[#0878F8]/15 text-[#2f8cf9]",
-      icon: "bg-[#0878F8]/12 text-[#2f8cf9]",
+      bar: "bg-[#0550B8]",
+      soft: "bg-[#0550B8]/15 text-[#2f8cf9]",
+      icon: "bg-[#0550B8]/12 text-[#2f8cf9]",
     }
   }
 
@@ -750,99 +751,63 @@ export default function BudgetPage() {
     )
   }
 
-  // The summary, as the home's balance card: an outlined card over a blue circle.
-  const heroBlock = (desktop = false) => (
-    <div className={cn("relative", desktop ? "pr-6 pt-4" : "pt-3")}>
-      <div aria-hidden className={cn("absolute rounded-full bg-[#0878F8]", desktop ? "-right-2 -top-2 h-48 w-48" : "-right-3 -top-1 h-40 w-40")} />
-      <div aria-hidden className={cn("absolute rounded-full border-[1.5px] border-white opacity-35", desktop ? "right-10 top-10 h-24 w-24" : "right-6 top-8 h-20 w-20")} />
-      <div className={cn(
-        "relative rounded-[1.5rem] border border-[var(--home-line)] bg-[var(--home-card)] shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)]",
-        desktop ? "p-6" : "p-5",
-      )}>
-        <div className={cn(desktop && "flex items-end gap-8")}>
-          <div className={cn(desktop && "min-w-[16rem] shrink-0")}>
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[0.8125rem] font-medium text-[var(--muted)]">
-                {tr("Baki bajet", "Budget left")} · {monthMeta.label}
-              </p>
-              <span
-                className={cn(
-                  "rounded-full px-2.5 py-0.5 text-[0.6875rem] font-semibold",
-                  summaryStatus === "over_budget"
-                    ? "bg-rose-500/15 text-rose-500"
-                    : summaryStatus === "warning"
-                      ? "bg-amber-500/15 text-amber-500"
-                      : "bg-[#0878F8]/15 text-[#2f8cf9]",
-                )}
-              >
-                {summaryStatus === "over_budget" ? tr("Lebih", "Over") : summaryStatus === "warning" ? tr("Hampir", "Near") : tr("Sihat", "Healthy")}
-              </span>
-            </div>
-            <p className="mt-2 leading-none tabular-nums text-[var(--text)]">
-              {showDataSkeleton ? (
-                <AmountSkeleton className="h-11 w-44" />
-              ) : (
-                <>
-                  <span className="mr-1.5 align-top text-[1.0625rem] font-semibold text-[var(--muted)]">
-                    {summary.remaining_amount < 0 ? "-RM" : "RM"}
-                  </span>
-                  <span className={cn("font-bold tracking-[-0.03em]", desktop ? "text-[3rem]" : "text-[2.6rem]")}>
-                    {Math.abs(summary.remaining_amount).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                </>
-              )}
-            </p>
-            <div className="mt-4">
-              <div className="h-2 overflow-hidden rounded-full bg-[var(--home-line)]">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all",
-                    summaryStatus === "over_budget" ? "bg-rose-500" : summaryStatus === "warning" ? "bg-amber-500" : "bg-[#0878F8]",
-                  )}
-                  style={{ width: `${clamp(summary.overall_progress_percent, 2, 100)}%` }}
-                />
-              </div>
-              <div className="mt-1.5 flex items-center justify-between text-xs font-medium text-[var(--muted)]">
-                <span>{tr("Penggunaan bulan ini", "Used this month")}</span>
-                <span className="tabular-nums font-semibold text-[var(--text)]">{summary.overall_progress_percent.toFixed(0)}%</span>
-              </div>
-            </div>
+  // The summary: the Moden hero card, as on the home.
+  const heroBlock = (desktop = false) => {
+    const money = (value: number) => `RM ${Number(value || 0).toLocaleString("en-MY", { maximumFractionDigits: 0 })}`
+    return (
+      <ModenHero
+        className={cn(desktop ? "mt-2" : "mt-1")}
+        label={
+          <>
+            {tr("Baki bajet", "Budget left")} · {monthMeta.label}
+            <ModenHeroPill dot={summaryStatus === "over_budget" ? "#FF7A7A" : summaryStatus === "warning" ? "#FDBA74" : "#4ADE80"}>
+              {summaryStatus === "over_budget" ? tr("Lebih", "Over") : summaryStatus === "warning" ? tr("Hampir", "Near") : tr("Sihat", "Healthy")}
+            </ModenHeroPill>
+          </>
+        }
+        currency={summary.remaining_amount < 0 ? "-RM" : "RM"}
+        amount={
+          showDataSkeleton ? (
+            <AmountSkeleton className="h-11 w-44" />
+          ) : (
+            Math.abs(summary.remaining_amount).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          )
+        }
+        amountSize={desktop ? "3.25rem" : "clamp(2.5rem, 11vw, 3rem)"}
+        stats={[
+          { key: "in", tone: "in", label: tr("Pendapatan", "Income"), value: showDataSkeleton ? <AmountSkeleton className="h-3 w-16" /> : money(summary.cycle_income) },
+          { key: "out", tone: "out", label: tr("Belanja", "Spent"), value: showDataSkeleton ? <AmountSkeleton className="h-3 w-16" /> : money(summary.total_used) },
+        ]}
+      >
+        <div>
+          <div className="h-2 overflow-hidden rounded-full" style={{ background: HERO_CHIP_LINE }}>
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${clamp(summary.overall_progress_percent, 2, 100)}%`,
+                background: summaryStatus === "over_budget" ? "var(--expense)" : summaryStatus === "warning" ? "#f59e0b" : "var(--btn-primary-bg)",
+              }}
+            />
           </div>
-
-          <div className={cn("grid grid-cols-2 gap-2", desktop ? "min-w-0 flex-1 lg:grid-cols-4" : "mt-4")}>
-            {[
-              { label: tr("Pendapatan", "Income"), value: summary.cycle_income, dot: "var(--income)" },
-              { label: tr("Belanja", "Spent"), value: summary.total_used, dot: "var(--expense)" },
-              { label: tr("Bajet", "Budget"), value: summary.total_budget, dot: "#0878F8" },
-              {
-                label: summary.unallocated_amount < 0 ? tr("Terlebih agih", "Overallocated") : tr("Belum diagih", "Unallocated"),
-                value: Math.abs(summary.unallocated_amount),
-                dot: summary.unallocated_amount < 0 ? "#f43f5e" : "var(--muted)",
-              },
-            ].map((stat) => (
-              <div key={stat.label} className="rounded-2xl border border-[var(--home-line)] px-3 py-2.5">
-                <p className="flex items-center gap-1.5 text-[0.6875rem] font-medium text-[var(--muted)]">
-                  <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: stat.dot }} />
-                  {stat.label}
-                </p>
-                <p className="mt-1 text-[var(--text)]">
-                  {showDataSkeleton ? (
-                    <AmountSkeleton className="h-4 w-16" />
-                  ) : (
-                    <MoneyAmount value={Number(stat.value || 0)} digits={0} size="xs" className="!text-[0.9375rem] font-bold text-[var(--text)]" currencyClassName="!text-[0.6875rem]" />
-                  )}
-                </p>
-              </div>
-            ))}
+          <div className="mt-1.5 flex items-center justify-between text-xs font-medium" style={{ color: HERO_MUTED }}>
+            <span>{tr("Penggunaan bulan ini", "Used this month")}</span>
+            <span className="tabular-nums font-semibold" style={{ color: HERO_TEXT }}>{summary.overall_progress_percent.toFixed(0)}%</span>
           </div>
         </div>
-      </div>
-    </div>
-  )
+        <div className={cn("grid grid-cols-2 gap-2", desktop && "max-w-lg")}>
+          <ModenHeroTile label={tr("Bajet", "Budget")} value={showDataSkeleton ? <AmountSkeleton className="h-4 w-16" /> : money(summary.total_budget)} />
+          <ModenHeroTile
+            label={summary.unallocated_amount < 0 ? tr("Terlebih agih", "Overallocated") : tr("Belum diagih", "Unallocated")}
+            value={showDataSkeleton ? <AmountSkeleton className="h-4 w-16" /> : money(Math.abs(summary.unallocated_amount))}
+          />
+        </div>
+      </ModenHero>
+    )
+  }
 
   const emptyState = (
     <div className="flex flex-col items-center rounded-[1.5rem] border border-[var(--home-line)] bg-[var(--home-card)] px-6 py-12 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-[1.1rem] bg-[#0878F8]/12 text-[#2f8cf9]">
+      <span className="flex h-14 w-14 items-center justify-center rounded-[1.1rem] bg-[#0550B8]/12 text-[#2f8cf9]">
         <Wallet size={24} />
       </span>
       <p className="mt-4 text-[0.9375rem] font-bold text-[var(--text)]">
@@ -860,7 +825,7 @@ export default function BudgetPage() {
       ? "bg-rose-500"
       : activeModalItem?.status === "warning"
         ? "bg-amber-500"
-        : "bg-[#0878F8]"
+        : "bg-[#0550B8]"
   const modalStatusLabel =
     activeModalItem?.status === "over_budget"
       ? tr("Lebih", "Over")
@@ -1015,7 +980,7 @@ export default function BudgetPage() {
                                 ? "bg-rose-500/15 text-rose-500"
                                 : activeModalItem.status === "warning"
                                   ? "bg-amber-500/15 text-amber-500"
-                                  : "bg-[#0878F8]/15 text-[#2f8cf9]",
+                                  : "bg-[#0550B8]/15 text-[#2f8cf9]",
                             )}
                           >
                             {modalStatusLabel}

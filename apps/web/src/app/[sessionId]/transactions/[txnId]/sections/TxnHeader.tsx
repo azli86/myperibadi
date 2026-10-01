@@ -35,7 +35,7 @@ export default function TxnHeader({
               type="button"
               onClick={onDownloadReceipt}
               disabled={downloading}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#0878F8] px-3.5 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-40"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#0550B8] px-3.5 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-40"
               style={{ color: "#ffffff" }}
               aria-label={isBm ? "Muat turun resit" : "Download receipt"}
             >

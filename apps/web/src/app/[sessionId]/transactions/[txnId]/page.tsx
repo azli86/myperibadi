@@ -1685,7 +1685,7 @@ export default function TransactionDetailPage() {
               }`}
               className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#0878F8]" style={{ color: "#ffffff" }}>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#0550B8]" style={{ color: "#ffffff" }}>
                 <Car size={18} />
               </span>
               <span className="min-w-0 flex-1">
@@ -1714,7 +1714,7 @@ export default function TransactionDetailPage() {
                 href={`/${sessionId}/split-bills`}
                 className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#0878F8]" style={{ color: "#ffffff" }}>
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#0550B8]" style={{ color: "#ffffff" }}>
                   <Users size={18} />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -1737,7 +1737,7 @@ export default function TransactionDetailPage() {
                 href={`/${sessionId}/split-bills?create=1&txn=${txn?.id}`}
                 className="mt-3 flex items-center gap-3 rounded-[1.25rem] border border-dashed border-[var(--border-strong)] bg-[var(--card)] p-3.5 transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#0878F8]/30 bg-[#0878F8]/10 text-[#0878F8]">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#0550B8]/30 bg-[#0550B8]/10 text-[#0550B8]">
                   <Users size={18} />
                 </span>
                 <span className="min-w-0 flex-1">
@@ -1764,7 +1764,7 @@ export default function TransactionDetailPage() {
               disabled={invAdding}
               className="mt-3 flex w-full items-center gap-3 rounded-[1.25rem] border border-dashed border-[var(--border-strong)] bg-[var(--card)] p-3.5 text-left transition active:scale-[0.99] hover:bg-[var(--surface-tint)]/30 disabled:opacity-50"
             >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#0878F8]/30 bg-[#0878F8]/10 text-[#0878F8]">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#0550B8]/30 bg-[#0550B8]/10 text-[#0550B8]">
                 {invAdding ? <Loader2 size={18} className="animate-spin" /> : <Package size={18} />}
               </span>
               <span className="min-w-0 flex-1">
@@ -1782,7 +1782,7 @@ export default function TransactionDetailPage() {
             </button>
           ) : invAdded ? (
             <div className="mt-3 flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3.5">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#0878F8]/30 bg-[#0878F8]/10 text-[#0878F8]">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#0550B8]/30 bg-[#0550B8]/10 text-[#0550B8]">
                 <Package size={18} />
               </span>
               <span className="min-w-0 flex-1">

@@ -23,10 +23,12 @@ import {
   HeartHandshake,
   Mic,
   Square,
+  ShieldCheck,
 } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { cn, getTodayDateInTimeZone } from "@/lib/utils"
+import { ModenHero, ModenHeroPill } from "@/components/ui/ModenHero"
 import { useLang } from "@/lib/lang"
 import { useTheme } from "@/components/theme/ThemeProvider"
 import { usePageAlert } from "@/hooks/usePageAlert"
@@ -1589,12 +1591,12 @@ export default function Dashboard() {
   )
 
   const heroBalanceDigitCount = heroBalanceDisplay.replace(/\D/g, "").length
-  const desktopHeroBalanceSizeClass =
+  const desktopHeroBalanceSize =
     heroBalanceDigitCount >= 14
-      ? "text-[2.3rem]"
+      ? "2.3rem"
       : heroBalanceDigitCount >= 11
-        ? "text-[2.75rem]"
-        : "text-[3.25rem]"
+        ? "2.75rem"
+        : "3.5rem"
 
   const moneyLifespanCycleBounds = (() => {
     const bounds = cycleMode === "category"
@@ -1785,7 +1787,7 @@ export default function Dashboard() {
             >
               <Award size={17} strokeWidth={2} />
               {unlockedBadges.length > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#0878F8] px-1 text-[8px] font-bold" style={{ color: "#ffffff" }}>
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#0550B8] px-1 text-[8px] font-bold" style={{ color: "#ffffff" }}>
                   {unlockedBadges.length}
                 </span>
               )}
@@ -1802,76 +1804,47 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* Balance card (over a blue circle) and runway card, side by side */}
+        {/* Balance (the Moden hero) and runway card, side by side */}
         <section className="grid grid-cols-1 gap-5 min-[1400px]:grid-cols-12">
-          <div className="relative pt-4 min-[1400px]:col-span-7">
-            <div aria-hidden className="absolute right-10 -top-1 h-44 w-44 rounded-full bg-[#0878F8]" />
-            <div aria-hidden className="absolute right-[5.5rem] top-9 h-20 w-20 rounded-full border-[1.5px] border-white opacity-35" />
-            <div className="relative flex h-full flex-col justify-between rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.6)]">
-              <div>
-              <p className="text-[0.8125rem] font-medium text-[var(--muted)]">{lang === "EN" ? "Total balance" : "Jumlah baki"}</p>
-              <p className="mt-2 leading-none tabular-nums text-[var(--text)]">
-                {showDataSkeleton ? (
-                  dashboardAmountSkeleton("h-12 w-56")
-                ) : showHeroAmounts ? (
-                  <>
-                    <span className="mr-1.5 align-top text-[1.125rem] font-semibold text-[var(--muted)]">RM</span>
-                    <span className={cn("font-bold tracking-[-0.03em]", desktopHeroBalanceSizeClass)}>{heroBalanceDisplay}</span>
-                  </>
-                ) : (
-                  <span className="text-[3.25rem] font-bold tracking-[0.04em]">RM ••••••</span>
-                )}
-              </p>
-
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <span className="inline-flex h-8 items-center gap-1.5 rounded-full border border-[var(--border)] px-3 text-xs font-semibold tabular-nums text-[var(--text)]">
-                  {(filteredIncomeMonth - filteredExpenseMonth) >= 0 ? <TrendingUp size={13} className="text-[var(--income)]" /> : <TrendingDown size={13} className="text-[var(--expense)]" />}
-                  {showHeroAmounts
-                    ? `${(filteredIncomeMonth - filteredExpenseMonth) >= 0 ? "+" : "−"}RM ${Math.abs(filteredIncomeMonth - filteredExpenseMonth).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-                    : "••••"}
-                  <span className="text-[var(--muted)]">{lang === "EN" ? "net" : "bersih"}</span>
-                </span>
-                <span className="inline-flex h-8 items-center rounded-full border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text)]">
-                  {heroWallets.length} {lang === "EN" ? "wallets" : "dompet"}
-                </span>
-                <span className="inline-flex h-8 items-center rounded-full border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text)]">
-                  {currentMonthTransactions.length} {lang === "EN" ? "txns" : "transaksi"}
-                </span>
-              </div>
-              </div>
-
-              <div className="mt-5 grid grid-cols-3 gap-2.5">
-                {[
-                  { key: "in", label: t.income, value: filteredIncomeMonth, dot: "var(--income)" },
-                  { key: "out", label: t.expense, value: filteredExpenseMonth, dot: "var(--expense)" },
-                  { key: "safe", label: lang === "EN" ? "Safe to spend" : "Selamat dibelanja", value: stats.safe_balance, dot: "#0878F8" },
-                ].map((tile) => (
-                  <div key={tile.key} className="rounded-2xl border border-[var(--border)] px-3.5 py-3">
-                    <p className="flex items-center gap-1.5 text-xs font-medium text-[var(--muted)]">
-                      <span aria-hidden className="h-2 w-2 rounded-full" style={{ backgroundColor: tile.dot }} />
-                      <span className="truncate">{tile.label}</span>
-                    </p>
-                    <p className="mt-1.5 truncate text-[1.25rem] font-bold tabular-nums leading-none text-[var(--text)]">
-                      {showDataSkeleton
-                        ? dashboardAmountSkeleton("h-5 w-20")
-                        : showHeroAmounts
-                          ? <><span className="mr-0.5 text-[0.6em] font-medium text-[var(--muted)]">RM</span>{formatHeroNumber(tile.value, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</>
-                          : "••••"}
-                    </p>
-                  </div>
-                ))}
-              </div>
+          <ModenHero
+            className="flex flex-col min-[1400px]:col-span-7"
+            panelClassName="flex-1 justify-between"
+            label={lang === "EN" ? "Total balance" : "Jumlah baki"}
+            currency={showDataSkeleton || !showHeroAmounts ? null : "RM"}
+            amount={
+              showDataSkeleton
+                ? dashboardAmountSkeleton("h-12 w-56")
+                : showHeroAmounts
+                  ? heroBalanceDisplay
+                  : "RM ••••••"
+            }
+            amountSize={desktopHeroBalanceSize}
+            stats={[
+              { key: "in", tone: "in", label: t.income, value: showDataSkeleton ? dashboardAmountSkeleton("h-3 w-16") : showHeroAmounts ? `RM ${formatHeroNumber(filteredIncomeMonth, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "••••" },
+              { key: "out", tone: "out", label: t.expense, value: showDataSkeleton ? dashboardAmountSkeleton("h-3 w-16") : showHeroAmounts ? `RM ${formatHeroNumber(filteredExpenseMonth, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "••••" },
+              { key: "safe", tone: "neutral", icon: <ShieldCheck size={16} strokeWidth={2.2} />, label: lang === "EN" ? "Safe to spend" : "Selamat dibelanja", value: showDataSkeleton ? dashboardAmountSkeleton("h-3 w-16") : showHeroAmounts ? `RM ${formatHeroNumber(stats.safe_balance, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : "••••" },
+            ]}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <ModenHeroPill dot={(filteredIncomeMonth - filteredExpenseMonth) >= 0 ? "#4ADE80" : "#FF7A7A"}>
+                {showHeroAmounts
+                  ? `${(filteredIncomeMonth - filteredExpenseMonth) >= 0 ? "+" : "−"}RM ${Math.abs(filteredIncomeMonth - filteredExpenseMonth).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+                  : "••••"}{" "}
+                {lang === "EN" ? "net" : "bersih"}
+              </ModenHeroPill>
+              <ModenHeroPill>{heroWallets.length} {lang === "EN" ? "wallets" : "dompet"}</ModenHeroPill>
+              <ModenHeroPill>{currentMonthTransactions.length} {lang === "EN" ? "txns" : "transaksi"}</ModenHeroPill>
             </div>
-          </div>
+          </ModenHero>
 
           {/* Runway: how long the money lasts until the next reset */}
-          <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 min-[1400px]:col-span-5 min-[1400px]:mt-4">
+          <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-6 min-[1400px]:col-span-5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[0.9375rem] font-bold text-[var(--text)]">{lang === "EN" ? "Runway health" : "Status lifespan"}</p>
                 <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">{lang === "EN" ? "Until next reset" : "Sampai reset seterusnya"}</p>
               </div>
-              <span className="rounded-full bg-[#0878F8]/15 px-2.5 py-0.5 text-[0.6875rem] font-semibold text-[#2f8cf9]">
+              <span className="rounded-full bg-[#0550B8]/15 px-2.5 py-0.5 text-[0.6875rem] font-semibold text-[#2f8cf9]">
                 {moneyLifespanStatusDisplay}
               </span>
             </div>
@@ -1901,7 +1874,7 @@ export default function Dashboard() {
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-500",
-                    moneyLifespanDailyAmount >= 50 ? "bg-[#0878F8]" :
+                    moneyLifespanDailyAmount >= 50 ? "bg-[#0550B8]" :
                     moneyLifespanDailyAmount >= 30 ? "bg-amber-500" :
                     moneyLifespanDailyAmount >= 20 ? "bg-orange-500" : "bg-rose-500"
                   )}
@@ -1979,7 +1952,7 @@ export default function Dashboard() {
                   </div>
                   <p className="mt-2 text-[1.5rem] font-bold tabular-nums tracking-tight text-[var(--text)]">RM {currentMonthExpense.toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                   <p className="mt-0.5 text-xs font-semibold text-[var(--muted)]">7 {lang === "EN" ? "months" : "bulan"}</p>
-                  <ChartContainer config={{ expense: { label: t.expense, color: "#0878F8" } }} className="mt-3 h-14 w-full">
+                  <ChartContainer config={{ expense: { label: t.expense, color: "#0550B8" } }} className="mt-3 h-14 w-full">
                     <AreaChart accessibilityLayer data={monthlyAreaChartData} margin={{ left: 0, right: 0, top: 6, bottom: 0 }}>
                       <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={6} hide />
@@ -1994,7 +1967,7 @@ export default function Dashboard() {
                   </div>
                   <p className="mt-2 text-[1.5rem] font-bold tabular-nums tracking-tight text-[var(--text)]">RM {(currentDailyTrendPoint?.expense ?? 0).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
                   <p className="mt-0.5 text-xs font-semibold text-[var(--muted)]">7 {lang === "EN" ? "days" : "hari"}</p>
-                  <ChartContainer config={{ expense: { label: t.expense, color: "#0878F8" } }} className="mt-3 h-14 w-full">
+                  <ChartContainer config={{ expense: { label: t.expense, color: "#0550B8" } }} className="mt-3 h-14 w-full">
                     <AreaChart accessibilityLayer data={dailyAreaChartData} margin={{ left: 0, right: 0, top: 6, bottom: 0 }}>
                       <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={6} hide />
@@ -2013,7 +1986,7 @@ export default function Dashboard() {
                   <p className="mt-0.5 text-xs font-semibold text-[var(--muted)]">
                     {lang === "EN" ? "Income − expense this month" : "Pendapatan − belanja bulan ini"}
                   </p>
-                  <ChartContainer config={{ expense: { label: t.expense, color: "#0878F8" } }} className="mt-3 h-14 w-full">
+                  <ChartContainer config={{ expense: { label: t.expense, color: "#0550B8" } }} className="mt-3 h-14 w-full">
                     <AreaChart accessibilityLayer data={monthlyAreaChartData} margin={{ left: 0, right: 0, top: 6, bottom: 0 }}>
                       <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--border)" />
                       <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={6} hide />
