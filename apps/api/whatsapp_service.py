@@ -576,7 +576,11 @@ def wallet_display_name(wallet: models.Wallet) -> str:
 def strip_wallet_reference(text: str, wallet_name: str) -> str:
     if not text or not wallet_name:
         return (text or "").strip()
-    cleaned = re.sub(rf"\b{re.escape(wallet_name.lower())}\b", " ", text)
+    cleaned = text
+    # The text may be normalised already, where a wallet called "u" reads "you".
+    for name in {wallet_name.lower(), normalize_message_text(wallet_name).lower()}:
+        if name:
+            cleaned = re.sub(rf"\b{re.escape(name)}\b", " ", cleaned)
     return re.sub(r"\s{2,}", " ", cleaned).strip()
 
 
@@ -857,6 +861,36 @@ def _build_subx_help_text(language: str) -> str:
     if language == "EN":
         return "Subscription usage:\n`subx ASTRO 89.90 15HB` - save a monthly subscription with due day\n`subx pay ASTRO 89.90 TNG` - pay subscription and record as transaction to wallet"
     return "Cara guna langganan:\n`subx ASTRO 89.90 15HB` - simpan langganan bulanan dengan due day\n`subx pay ASTRO 89.90 TNG` - bayar langganan dan rekod sebagai transaksi ke wallet"
+
+
+def _wallet_mentions(
+    wallets: list[models.Wallet], text: str | None, *, include_labels: bool = False
+) -> list[tuple[int, models.Wallet]]:
+    """Where each wallet is named in a message, as whole words, in order.
+
+    Searches the text as typed, not the normalised one: the shortform pass turns
+    a wallet called "u" into "you" (and "r", "kt", "bg"... likewise), so
+    "pindah 50 mbb u" lost its second wallet. Longer names claim their words
+    first, so "maybank cash" is not also read as "cash"."""
+    hay = " " + re.sub(r"[^\w\s.&-]", " ", (text or "").lower()) + " "
+    candidates: list[tuple[str, models.Wallet]] = []
+    for wallet in wallets:
+        names = {(getattr(wallet, "name", None) or "").strip().lower()}
+        if include_labels:
+            names.add((getattr(wallet, "label", None) or "").strip().lower())
+        candidates.extend((name, wallet) for name in names if name)
+    candidates.sort(key=lambda item: len(item[0]), reverse=True)
+    taken: list[tuple[int, int]] = []
+    found: dict[int, tuple[int, models.Wallet]] = {}
+    for name, wallet in candidates:
+        for match in re.finditer(rf"(?<!\w){re.escape(name)}(?!\w)", hay):
+            start, end = match.span()
+            if any(start < b and end > a for a, b in taken):
+                continue
+            taken.append((start, end))
+            if wallet.id not in found or start < found[wallet.id][0]:
+                found[wallet.id] = (start, wallet)
+    return sorted(found.values(), key=lambda item: item[0])
 
 
 def _match_wallet_by_hint(wallets: list[models.Wallet], hint: str | None) -> Optional[models.Wallet]:
@@ -4234,12 +4268,9 @@ async def _process_whatsapp_message_impl(
             if normalized_typed.startswith("transfer") or normalized_typed.startswith("pindah"):
                 ocr_amount = extract_amount(str(pending_selection.get("original_text") or ""))
                 if ocr_amount and ocr_amount > 0:
-                    # Use the full reply (normalized_selection) because
+                    # Use the whole reply as typed because
                     # _split_reply_category_wallet already stripped the trailing
                     # wallet into forced_wallet_id. We need both wallet names.
-                    transfer_reply = re.sub(r"\d+(?:\.\d+)?", "", normalized_selection).strip()
-                    transfer_reply = transfer_reply.replace("transfer", " ").replace("pindah", " ").replace("dari", " ").replace("ke", " ").replace("from", " ").replace("to", " ").replace("duit", " ").replace("money", " ")
-                    transfer_reply = re.sub(r"\s+", " ", transfer_reply).strip()
                     wallet_query = select(models.Wallet).where(models.Wallet.owner_user_id == user_id)
                     if household_id:
                         wallet_query = select(models.Wallet).where(
@@ -4247,12 +4278,7 @@ async def _process_whatsapp_message_impl(
                         )
                     w_res = await db.execute(wallet_query)
                     user_wallets = w_res.scalars().all()
-                    found_wallets = []
-                    for w in user_wallets:
-                        m = re.search(rf"\b{re.escape(w.name.lower())}\b", transfer_reply)
-                        if m:
-                            found_wallets.append((m.start(), w))
-                    found_wallets.sort(key=lambda x: x[0])
+                    found_wallets = _wallet_mentions(list(user_wallets), raw_text, include_labels=True)
                     if len(found_wallets) >= 2:
                         from_w = found_wallets[0][1]
                         to_w = found_wallets[-1][1]
@@ -4877,14 +4903,8 @@ async def _process_whatsapp_message_impl(
             w_res = await db.execute(wallet_query)
             user_wallets = w_res.scalars().all()
             
-            found_wallets = []
-            for w in user_wallets:
-                match = re.search(rf"\b{re.escape(w.name.lower())}\b", lowered)
-                if match:
-                    found_wallets.append((match.start(), w))
-            
-            # Sort by appearance index
-            found_wallets.sort(key=lambda x: x[0])
+            # In the order typed, by name or label, from the text as typed.
+            found_wallets = _wallet_mentions(list(user_wallets), raw_text, include_labels=True)
             
             if len(found_wallets) >= 2:
                 from_w = found_wallets[0][1]
@@ -5171,12 +5191,12 @@ async def _process_whatsapp_message_impl(
             if forced_wallet:
                 selected_wallet = forced_wallet
         if not selected_wallet:
-            # Sort by length descending, so "maybank cash" matches before "cash"
-            for w in sorted(user_wallets, key=lambda x: len(x.name), reverse=True):
-                if re.search(rf"\b{re.escape(w.name.lower())}\b", lowered):
-                    selected_wallet = w
-                    used_explicit_wallet_prefix = True
-                    break
+            # The longest wallet name in the text as typed ("maybank cash"
+            # before "cash"; a wallet called "u" survives the shortform pass).
+            mentions = _wallet_mentions(user_wallets, raw_text)
+            if mentions:
+                selected_wallet = max(mentions, key=lambda item: len(item[1].name or ""))[1]
+                used_explicit_wallet_prefix = True
 
         # Voice notes may transcribe a wallet name slightly differently — try a
         # fuzzy match on the trailing word(s) before falling back to defaults.
