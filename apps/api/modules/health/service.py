@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Optional
 
 from sqlalchemy import select
 
 import models
 from modules.health import queries
+from time_utils import business_now_naive, current_business_date, utc_iso
+
+# A dose still pending this long after its time is flagged overdue.
+OVERDUE_AFTER_MINUTES = 30
 from modules.health.schemas import (
     HealthReadingCreate,
     HealthReadingUpdate,
@@ -66,7 +70,7 @@ def serialize_dose(d: models.MedicationDoseLog) -> dict[str, Any]:
         "schedule_id": d.schedule_id,
         "scheduled_time": fmt_time(d.scheduled_time),
         "status": d.status,
-        "taken_at": d.taken_at,
+        "taken_at": utc_iso(d.taken_at),
     }
 
 
@@ -79,9 +83,15 @@ def serialize_reading(r: models.HealthReading) -> dict[str, Any]:
         "diastolic": float(r.diastolic) if r.diastolic is not None else None,
         "unit": r.unit or METRIC_UNITS.get(r.metric_type),
         "note": r.note,
-        "measured_at": r.measured_at,
-        "created_at": r.created_at,
+        "measured_at": utc_iso(r.measured_at),
+        "created_at": utc_iso(r.created_at),
     }
+
+
+def _naive_utc(value: Optional[datetime]) -> Optional[datetime]:
+    if value is not None and value.tzinfo is not None:
+        return value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value
 
 
 async def create_reading(db, *, user_id, payload: HealthReadingCreate, household_id=None) -> models.HealthReading:
@@ -94,7 +104,7 @@ async def create_reading(db, *, user_id, payload: HealthReadingCreate, household
         diastolic=payload.diastolic if payload.metric_type == "bp" else None,
         unit=payload.unit or METRIC_UNITS.get(payload.metric_type),
         note=payload.note,
-        measured_at=payload.measured_at or datetime.utcnow(),
+        measured_at=_naive_utc(payload.measured_at) or datetime.utcnow(),
     )
     db.add(row)
     await db.commit()
@@ -111,6 +121,8 @@ async def update_reading(db, *, reading_id, user_id, payload: HealthReadingUpdat
         if row.metric_type != "bp":
             data.pop("systolic", None)
             data.pop("diastolic", None)
+    if "measured_at" in data:
+        data["measured_at"] = _naive_utc(data["measured_at"])
     for k, v in data.items():
         setattr(row, k, v)
     if payload.unit is None and row.unit is None:
@@ -183,7 +195,7 @@ async def build_dashboard(db, *, user_id) -> dict[str, Any]:
                 "systolic": float(r.systolic) if r.systolic is not None else None,
                 "diastolic": float(r.diastolic) if r.diastolic is not None else None,
                 "unit": r.unit or METRIC_UNITS.get(m),
-                "measured_at": r.measured_at,
+                "measured_at": utc_iso(r.measured_at),
                 "label": METRIC_LABELS_BM.get(m, m),
             }
         )
@@ -209,7 +221,7 @@ async def build_history(db, *, user_id, metric_type, range_key) -> dict[str, Any
     for r in reversed(rows):
         points.append(
             {
-                "measured_at": r.measured_at,
+                "measured_at": utc_iso(r.measured_at),
                 "value": float(r.value) if r.value is not None else None,
                 "systolic": float(r.systolic) if r.systolic is not None else None,
                 "diastolic": float(r.diastolic) if r.diastolic is not None else None,
@@ -312,8 +324,20 @@ async def toggle_schedule(db, *, schedule_id, user_id, enabled: Optional[bool] =
     return s
 
 
+def runs_on(med: models.Medication, day: date) -> bool:
+    """Whether the medication is being taken on this day: after its start and before its end."""
+    if med.start_date and med.start_date > day:
+        return False
+    if med.end_date and med.end_date < day:
+        return False
+    return True
+
+
 async def _ensure_today_logs(db, med: models.Medication, dose_date: date) -> list[models.MedicationDoseLog]:
     """Create pending dose logs for today's enabled schedules if missing."""
+    if not runs_on(med, dose_date):
+        # A course that has ended, or not begun, has no doses to log or to chase.
+        return []
     existing = await queries.list_dose_logs(db, medication_ids=[med.id], dose_date=dose_date)
     by_sched = {d.schedule_id: d for d in existing}
     schedules = await queries.list_schedules(db, medication_id=med.id)
@@ -341,7 +365,7 @@ async def tick_dose(db, *, medication_id, user_id, schedule_id, dose_date, statu
     med = await queries.get_medication_or_404(db, medication_id=medication_id, user_id=user_id)
     if not med:
         return None
-    dose_date = dose_date or date.today()
+    dose_date = dose_date or current_business_date()
     log = await queries.get_dose_log(db, medication_id=med.id, schedule_id=schedule_id, dose_date=dose_date)
     if not log:
         # create it on demand (e.g. ticking a past time later today)
@@ -359,6 +383,10 @@ async def tick_dose(db, *, medication_id, user_id, schedule_id, dose_date, statu
         db.add(log)
     log.status = status
     log.taken_at = datetime.utcnow() if status in ("taken", "skipped") else None
+    if status == "pending":
+        # Undoing a tick puts the dose back to waiting, so it can be reminded again.
+        log.remind_later_at = None
+        log.notified_at = None
     await db.commit()
     await db.refresh(log)
     return log
@@ -369,7 +397,7 @@ async def serialize_medication(db, med: models.Medication, *, with_today=True) -
     schedules.sort(key=lambda s: s.time)
     today_doses = []
     if with_today:
-        today_doses = await _ensure_today_logs(db, med, date.today())
+        today_doses = await _ensure_today_logs(db, med, current_business_date())
     return {
         "id": med.id,
         "name": med.name,
@@ -380,29 +408,36 @@ async def serialize_medication(db, med: models.Medication, *, with_today=True) -
         "end_date": med.end_date,
         "notes": med.notes,
         "reminder_enabled": med.reminder_enabled,
-        "created_at": med.created_at,
+        "created_at": utc_iso(med.created_at),
         "schedules": [serialize_schedule(s) for s in schedules],
         "today_doses": [serialize_dose(d) for d in today_doses],
     }
 
 
 async def build_today(db, *, user_id) -> list[dict[str, Any]]:
-    """Return today's medication reminder list, sorted by time."""
+    """Today's doses, sorted by time.
+
+    Every medication that is running today is listed, whether or not its reminder is on: the
+    reminder only decides whether the bot chases the dose, not whether it is yours to take.
+    Courses outside their start and end dates are left out."""
+    today = current_business_date()
+    now_local = business_now_naive()
     meds = await queries.list_medications(db, user_id=user_id)
     items = []
     for med in meds:
-        if not med.reminder_enabled:
+        if not runs_on(med, today):
             continue
         schedules = await queries.list_schedules(db, medication_id=med.id)
         if not schedules:
             continue
-        logs = await _ensure_today_logs(db, med, date.today())
+        logs = await _ensure_today_logs(db, med, today)
         by_sched = {d.schedule_id: d for d in logs}
         for sc in schedules:
             if not sc.enabled:
                 continue
             log = by_sched.get(sc.id)
             status = log.status if log else "pending"
+            overdue = status == "pending" and (now_local - datetime.combine(today, sc.time)) >= timedelta(minutes=OVERDUE_AFTER_MINUTES)
             items.append(
                 {
                     "medication_id": med.id,
@@ -412,8 +447,10 @@ async def build_today(db, *, user_id) -> list[dict[str, Any]]:
                     "schedule_id": sc.id,
                     "scheduled_time": fmt_time(sc.time),
                     "enabled": sc.enabled,
+                    "reminder_enabled": med.reminder_enabled,
                     "status": status,
-                    "taken_at": log.taken_at if log else None,
+                    "overdue": overdue,
+                    "taken_at": utc_iso(log.taken_at) if log else None,
                 }
             )
     items.sort(key=lambda x: x["scheduled_time"])

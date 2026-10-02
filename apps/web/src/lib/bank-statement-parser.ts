@@ -18,6 +18,8 @@ export type BankTransactionRow = {
 
 export type ParseStatementResult = {
   transactions: BankTransactionRow[]
+  /** Rows that looked like transactions but had no readable date or amount. */
+  skipped?: number
   totalDebit: number
   totalCredit: number
   netChange: number
@@ -26,46 +28,41 @@ export type ParseStatementResult = {
   error?: string
 }
 
+const MONTHS: Record<string, number> = {
+  jan: 1, feb: 2, mar: 3, mac: 3, apr: 4, may: 5, mei: 5, jun: 6, jul: 7,
+  aug: 8, ogo: 8, sep: 9, oct: 10, okt: 10, nov: 11, dec: 12, dis: 12,
+}
+
+function isoDate(year: number, month: number, day: number): string {
+  const d = new Date(Date.UTC(year, month - 1, day))
+  // Reject 31 Feb, month 13 and the like instead of letting Date roll them over.
+  if (d.getUTCFullYear() !== year || d.getUTCMonth() !== month - 1 || d.getUTCDate() !== day) return ""
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+}
+
 /**
- * Normalize date strings into YYYY-MM-DD
+ * Normalize a date into YYYY-MM-DD, or "" when it is not a real date.
+ * Malaysian statements write day first (14/08/2026, 14-08-26, 14 Aug 2026, 14 OGOS 26).
+ * An unreadable date used to become today's date, which put the row on the wrong day
+ * and matched it against the wrong transactions.
  */
 export function normalizeDate(dateStr: string): string {
-  const clean = dateStr.trim().replace(/[/.-]/g, "-")
+  const text = String(dateStr || "").trim()
+  if (!text) return ""
 
-  // Match YYYY-MM-DD
-  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(clean)) {
-    const [y, m, d] = clean.split("-")
-    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
+  let m = text.match(/^(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})(?:\D.*)?$/)
+  if (m) return isoDate(+m[1], +m[2], +m[3])
+
+  m = text.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})(?:\D.*)?$/)
+  if (m) return isoDate(m[3].length === 2 ? 2000 + +m[3] : +m[3], +m[2], +m[1])
+
+  m = text.match(/^(\d{1,2})[\s/.-]+([A-Za-z]{3,9})\.?[\s/.-]+(\d{2}|\d{4})(?:\D.*)?$/)
+  if (m) {
+    const month = MONTHS[m[2].toLowerCase().slice(0, 3)]
+    if (!month) return ""
+    return isoDate(m[3].length === 2 ? 2000 + +m[3] : +m[3], month, +m[1])
   }
-
-  // Match DD-MM-YYYY
-  if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(clean)) {
-    const [d, m, y] = clean.split("-")
-    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
-  }
-
-  // Match DD-MMM-YYYY (e.g. 14-Aug-2026 or 14-OGOS-2026)
-  const monthMap: Record<string, string> = {
-    jan: "01", feb: "02", mar: "03", mac: "03", apr: "04", may: "05", mei: "05",
-    jun: "06", jul: "07", aug: "08", ogos: "08", sep: "09", oct: "10", okt: "10",
-    nov: "11", dec: "12", dis: "12",
-  }
-
-  const alphaMatch = dateStr.trim().match(/^(\d{1,2})[\s/-]+([A-Za-z]{3,4})[\s/-]+(\d{2,4})$/)
-  if (alphaMatch) {
-    const day = alphaMatch[1].padStart(2, "0")
-    const monthKey = alphaMatch[2].toLowerCase().substring(0, 3)
-    const month = monthMap[monthKey] || "01"
-    let year = alphaMatch[3]
-    if (year.length === 2) year = `20${year}`
-    return `${year}-${month}-${day}`
-  }
-
-  const now = new Date()
-  const y = now.getFullYear()
-  const m = String(now.getMonth() + 1).padStart(2, "0")
-  const d = String(now.getDate()).padStart(2, "0")
-  return `${y}-${m}-${d}`
+  return ""
 }
 
 /**
@@ -78,7 +75,7 @@ export function parseAmount(val: string | number): { amount: number; isNegative:
 
   const str = String(val || "").trim()
   const isParenNegative = /^\(.*\)$/.test(str)
-  const isMinusNegative = str.includes("-")
+  const isMinusNegative = /^[^\d]*-\s*[\d.,]|[\d.,]\s*-\s*(?:dr)?\s*$/i.test(str)
   const isDR = /\b(dr|debit|keluar)\b/i.test(str)
   const isCR = /\b(cr|credit|masuk)\b/i.test(str)
 
@@ -101,7 +98,7 @@ function parseCsvRows(text: string): string[][] {
 
     // Check if TSV (tab separated)
     if (line.includes("\t") && !line.includes(",")) {
-      result.push(line.split("\t").map((c) => c.trim().replace(/^["']|["']$/g, "")))
+      result.push(line.split("\t").map((c) => c.trim().replace(/^"|"$/g, "")))
       continue
     }
 
@@ -111,16 +108,16 @@ function parseCsvRows(text: string): string[][] {
 
     for (let i = 0; i < line.length; i++) {
       const char = line[i]
-      if (char === '"' || char === "'") {
+      if (char === '"') {
         insideQuote = !insideQuote
       } else if (char === "," && !insideQuote) {
-        row.push(currentCell.trim().replace(/^["']|["']$/g, ""))
+        row.push(currentCell.trim().replace(/^"|"$/g, ""))
         currentCell = ""
       } else {
         currentCell += char
       }
     }
-    row.push(currentCell.trim().replace(/^["']|["']$/g, ""))
+    row.push(currentCell.trim().replace(/^"|"$/g, ""))
     result.push(row)
   }
 
@@ -131,19 +128,21 @@ function parseCsvRows(text: string): string[][] {
  * Auto-detect columns from CSV headers
  */
 function detectColumns(headers: string[]) {
-  const lower = headers.map((h) => h.toLowerCase())
+  const lower = headers.map((h) => h.toLowerCase().trim())
+  const word = (re: RegExp) => lower.findIndex((h) => re.test(h))
 
-  let dateIdx = lower.findIndex((h) => h.includes("date") || h.includes("tarikh") || h.includes("posting"))
-  let descIdx = lower.findIndex((h) => h.includes("desc") || h.includes("perihal") || h.includes("details") || h.includes("keterangan") || h.includes("transaction") || h.includes("merchant") || h.includes("payee"))
-  let debitIdx = lower.findIndex((h) => h.includes("debit") || h.includes("keluar") || h.includes("withdrawal") || h.includes("out") || h.includes("dr"))
-  let creditIdx = lower.findIndex((h) => h.includes("credit") || h.includes("masuk") || h.includes("deposit") || h.includes("in") || h.includes("cr"))
-  let amountIdx = lower.findIndex((h) => h.includes("amount") || h.includes("jumlah") || h.includes("amaun"))
-  let balanceIdx = lower.findIndex((h) => h.includes("balance") || h.includes("baki"))
-  let typeIdx = lower.findIndex((h) => h === "type" || h === "jenis" || h === "cr/dr")
+  // Short tokens such as "in", "out", "dr" and "cr" must match as whole words: a plain
+  // substring test took "Posting Date" for a credit column and "Description" for a debit one.
+  let dateIdx = word(/\b(date|tarikh)\b|posting/)
+  let descIdx = word(/\b(desc\w*|perihal|details?|keterangan|transaction|merchant|payee|particulars?)\b/)
+  const debitIdx = word(/\b(debit|keluar|withdrawals?|dr)\b/)
+  const creditIdx = word(/\b(credit|masuk|deposits?|cr)\b/)
+  const amountIdx = word(/\b(amount|jumlah|amaun)\b/)
+  const balanceIdx = word(/\b(balance|baki)\b/)
+  const typeIdx = word(/^(type|jenis|cr\/dr|dr\/cr)$/)
 
-  // Fallbacks if not found
   if (dateIdx === -1) dateIdx = 0
-  if (descIdx === -1) descIdx = 1
+  if (descIdx === -1 || descIdx === dateIdx) descIdx = dateIdx === 1 ? 2 : 1
 
   return { dateIdx, descIdx, debitIdx, creditIdx, amountIdx, balanceIdx, typeIdx }
 }
@@ -182,6 +181,12 @@ export function parseCsvStatement(content: string): ParseStatementResult {
   const transactions: BankTransactionRow[] = []
   let totalDebit = 0
   let totalCredit = 0
+  let skipped = 0
+
+  // A statement with one signed amount column marks debits with a minus. Without any minus
+  // there is nothing to tell the direction from, so every row is read as money out.
+  const usesSigns =
+    col.debitIdx < 0 && col.amountIdx >= 0 && dataRows.some((r) => parseAmount(r[col.amountIdx] || "").isNegative)
 
   dataRows.forEach((row, idx) => {
     if (row.length < 2) return
@@ -190,6 +195,10 @@ export function parseCsvStatement(content: string): ParseStatementResult {
     if (!rawDate || !/\d/.test(rawDate)) return // skip summary/empty rows
 
     const date = normalizeDate(rawDate)
+    if (!date) {
+      skipped++
+      return
+    }
     const description = (row[col.descIdx] || "Transaksi").replace(/\s+/g, " ").trim()
 
     let amount = 0
@@ -220,11 +229,15 @@ export function parseCsvStatement(content: string): ParseStatementResult {
           type = "expense"
         }
       } else {
-        type = amountParsed.isNegative ? "expense" : "expense" // default
+        if (usesSigns) type = amountParsed.isNegative ? "expense" : "income"
+        else type = /transfer in|duitnow in|salary|gaji|refund|deposit|cash in|credit/i.test(description) ? "income" : "expense"
       }
     }
 
-    if (amount <= 0) return
+    if (amount <= 0) {
+      skipped++
+      return
+    }
 
     let balance: number | undefined = undefined
     if (col.balanceIdx >= 0 && row[col.balanceIdx]) {
@@ -258,6 +271,7 @@ export function parseCsvStatement(content: string): ParseStatementResult {
 
   return {
     transactions,
+    skipped,
     totalDebit,
     totalCredit,
     netChange: totalCredit - totalDebit,
@@ -274,6 +288,7 @@ export function parseTextStatement(text: string): ParseStatementResult {
   const transactions: BankTransactionRow[] = []
   let totalDebit = 0
   let totalCredit = 0
+  let skipped = 0
 
   // Regex patterns for Malaysian Bank Statements
   // Date formats: DD/MM/YYYY, DD-MM-YYYY, DD MMM YYYY
@@ -286,6 +301,10 @@ export function parseTextStatement(text: string): ParseStatementResult {
 
     const rawDate = dateMatch[1]
     const date = normalizeDate(rawDate)
+    if (!date) {
+      skipped++
+      return
+    }
 
     // Remove the date from the line to find description and amount
     let lineRest = line.replace(rawDate, "").trim()
@@ -347,6 +366,7 @@ export function parseTextStatement(text: string): ParseStatementResult {
 
   return {
     transactions,
+    skipped,
     totalDebit,
     totalCredit,
     netChange: totalCredit - totalDebit,

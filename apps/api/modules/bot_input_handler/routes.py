@@ -182,6 +182,18 @@ async def process_bot_input_route(
         except Exception as vehicle_exc:
             print(f"[vehicle-bot] command handling failed: {vehicle_exc}")
 
+    # Shopping list commands. Not answered in a group chat.
+    if text and not has_media and not has_location:
+        from modules.shopping.bot import handle_shopping_command, match_shopping_command
+
+        if match_shopping_command(text):
+            if source_channel == "whatsapp_group":
+                return {"reply": None}
+            user_res = await db.execute(select(models.User).where(models.User.id == user_id))
+            shopping_user = user_res.scalar_one_or_none()
+            if shopping_user is not None:
+                return {"reply": await handle_shopping_command(db, user=shopping_user, text=text)}
+
     # Period Tracker commands. Private: never answered in a group chat.
     if text and not has_media and not has_location:
         from modules.period.bot import handle_period_command, match_period_command

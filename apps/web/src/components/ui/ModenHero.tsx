@@ -3,6 +3,7 @@
 import type React from "react"
 import { ArrowDown, ArrowUp } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { HeroActionsSlot, useRegisterHero } from "@/components/layout/pageActions"
 
 // The Moden hero card: a panel holding the label and the big figure, set on
 // a card whose strip below carries the in/out stats. Dark: a dark grey panel
@@ -49,6 +50,7 @@ export function ModenHero({
   footer,
   className,
   panelClassName,
+  pageActions = true,
 }: {
   label: React.ReactNode
   actions?: React.ReactNode
@@ -64,7 +66,10 @@ export function ModenHero({
   footer?: React.ReactNode
   className?: string
   panelClassName?: string
+  /** Whether the page's action buttons render below this hero (false for side-rail cards). */
+  pageActions?: boolean
 }) {
+  const heroId = useRegisterHero(pageActions)
   const figure = amount == null ? null : (
     <span className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap leading-none tabular-nums">
       {currency ? (
@@ -79,6 +84,7 @@ export function ModenHero({
   )
 
   return (
+    <>
     <section
       className={cn("moden-hero overflow-hidden rounded-[2rem]", className)}
       style={{ background: HERO_STRIP, border: `1px solid ${HERO_LINE}` }}
@@ -160,6 +166,8 @@ export function ModenHero({
       ) : null}
       {footer}
     </section>
+    {pageActions ? <HeroActionsSlot heroId={heroId} /> : null}
+    </>
   )
 }
 

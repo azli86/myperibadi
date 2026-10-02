@@ -1,5 +1,5 @@
 import os
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 DEFAULT_BUSINESS_TIMEZONE = "Asia/Kuala_Lumpur"
@@ -15,6 +15,29 @@ def _get_business_timezone() -> ZoneInfo:
 
 def current_business_date() -> date:
     return datetime.now(_get_business_timezone()).date()
+
+
+def business_now_naive() -> datetime:
+    """The current wall-clock time in the business timezone, without tzinfo. Schedules such
+    as medication times are stored as local wall-clock times, so they must be compared with
+    this and not with the UTC clock."""
+    return datetime.now(_get_business_timezone()).replace(tzinfo=None)
+
+
+def utc_to_business_naive(value: datetime) -> datetime:
+    """A naive UTC datetime as the local wall-clock time in the business timezone."""
+    return value.replace(tzinfo=timezone.utc).astimezone(_get_business_timezone()).replace(tzinfo=None)
+
+
+def utc_iso(value: datetime | None) -> str | None:
+    """A stored UTC datetime as an ISO string a browser reads as UTC. The columns hold naive
+    UTC; sent bare, JavaScript takes them as local time and every reading, dose and reminder
+    showed eight hours early."""
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.isoformat() + "Z"
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 def clamp_day(year: int, month: int, day: int) -> int:
     last = (date(year, month, 1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)

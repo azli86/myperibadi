@@ -21,6 +21,13 @@ export type MatchedPair = {
   appTxn: AppTransaction
   confidence: "exact" | "high" | "partial"
   dateDiffDays: number
+  /** The app records it as the opposite direction to the bank (e.g. income against a debit). */
+  directionMismatch?: boolean
+}
+
+/** The key that names one bank row against one app record, for "this is not a match". */
+export function pairKey(bankId: string, appId: string | number): string {
+  return `${bankId}|${appId}`
 }
 
 export type ReconciliationResult = {
@@ -90,9 +97,14 @@ export function reconcileStatements(
   appTxns: AppTransaction[],
   options: {
     maxDateToleranceDays?: number
+    /** Pairs the user said are not the same transaction; they are never matched again. */
+    forbiddenPairs?: Set<string>
   } = {}
 ): ReconciliationResult {
   const maxDays = options.maxDateToleranceDays ?? 3
+  const forbidden = options.forbiddenPairs ?? new Set<string>()
+  const allowed = (bank: BankTransactionRow, app: AppTransaction) => !forbidden.has(pairKey(bank.id, app.id))
+  const sameDirection = (bank: BankTransactionRow, app: AppTransaction) => normalizeType(String(app.type)) === bank.type
 
   // Maybank pre-authorisation is temporary: pair debit + refund first, then ignore both.
   const cancelledPreAuthIds = new Set<string>()
@@ -116,31 +128,47 @@ export function reconcileStatements(
   const usedAppTxnIds = new Set<string | number>()
   const usedBankTxnIds = new Set<string>()
 
-  // Filter out internal transfers from app txns if desired
-  const filteredAppTxns = appTxns.filter((tx) => !tx.is_wallet_transfer && !tx.is_debt_movement)
+  // A transfer to another wallet and a loan or debt payment are real money leaving or
+  // entering this account, so they appear on the statement and must be matched against
+  // it. Leaving them out made every such line look "missing in app", and importing it
+  // would have recorded the same movement twice.
+  const filteredAppTxns = appTxns
 
   // Scope the reverse check ("missing in bank") to the statement's date range.
   // App transactions outside the statement period are irrelevant, not missing.
   const bankDates = effectiveBankTxns.map((t) => new Date(t.date).getTime()).filter((t) => !isNaN(t))
   const rangeStart = bankDates.length ? Math.min(...bankDates) - maxDays * 86400000 : null
   const rangeEnd = bankDates.length ? Math.max(...bankDates) + maxDays * 86400000 : null
-  const inRangeAppTxns = rangeStart === null ? [] : filteredAppTxns.filter((tx) => {
+  const withinDays = (tx: AppTransaction, days: number) => {
+    if (bankDates.length === 0) return false
     const t = new Date(tx.date).getTime()
     if (isNaN(t)) return false
-    return rangeStart !== null && rangeEnd !== null && t >= rangeStart && t <= rangeEnd
-  })
+    return t >= Math.min(...bankDates) - days * 86400000 && t <= Math.max(...bankDates) + days * 86400000
+  }
+  const inRangeAppTxns = rangeStart === null ? [] : filteredAppTxns.filter((tx) => withinDays(tx, maxDays))
+  // A record just outside the statement can still be a late-cleared line's partner, so
+  // matching looks a week further than the "missing in bank" report does.
+  const matchPool = filteredAppTxns.filter((tx) => withinDays(tx, Math.max(maxDays, 7)))
 
   // 1. Primary identity: wallet (pre-filtered), absolute amount, exact date.
   // Bank direction remains authoritative for importing; it is not an identity field.
   effectiveBankTxns.forEach((bankTxn) => {
     if (usedBankTxnIds.has(bankTxn.id)) return
 
-    const candidate = inRangeAppTxns.find((appTxn) => {
-      if (usedAppTxnIds.has(appTxn.id)) return false
+    let candidate: AppTransaction | undefined
+    let candidateSimilarity = -1
+    for (const appTxn of matchPool) {
+      if (usedAppTxnIds.has(appTxn.id) || !allowed(bankTxn, appTxn) || !sameDirection(bankTxn, appTxn)) continue
       const amountMatch = Math.abs(Math.abs(Number(appTxn.amount)) - Math.abs(bankTxn.amount)) < 0.01
       const dateMatch = normalizeDate(appTxn.date) === normalizeDate(bankTxn.date)
-      return amountMatch && dateMatch
-    })
+      if (!amountMatch || !dateMatch) continue
+      // Several records with the same amount on one day: the one that reads most like the bank line.
+      const similarity = textSimilarity(bankTxn.description, `${appTxn.description || ""} ${appTxn.notes || ""}`)
+      if (similarity > candidateSimilarity) {
+        candidate = appTxn
+        candidateSimilarity = similarity
+      }
+    }
 
     if (candidate) {
       usedBankTxnIds.add(bankTxn.id)
@@ -163,8 +191,8 @@ export function reconcileStatements(
     let bestDaysDiff = 999
     let bestScore = -1
 
-    inRangeAppTxns.forEach((appTxn) => {
-      if (usedAppTxnIds.has(appTxn.id)) return
+    matchPool.forEach((appTxn) => {
+      if (usedAppTxnIds.has(appTxn.id) || !allowed(bankTxn, appTxn) || !sameDirection(bankTxn, appTxn)) return
       const amountMatch = Math.abs(Math.abs(Number(appTxn.amount)) - Math.abs(bankTxn.amount)) < 0.01
       if (!amountMatch) return
 
@@ -199,8 +227,8 @@ export function reconcileStatements(
     let bestScore = 0
     let bestDays = 999
 
-    inRangeAppTxns.forEach((appTxn) => {
-      if (usedAppTxnIds.has(appTxn.id)) return
+    matchPool.forEach((appTxn) => {
+      if (usedAppTxnIds.has(appTxn.id) || !allowed(bankTxn, appTxn) || !sameDirection(bankTxn, appTxn)) return
       const amountMatch = Math.abs(Math.abs(Number(appTxn.amount)) - Math.abs(bankTxn.amount)) < 0.01
       if (!amountMatch) return
 
@@ -228,6 +256,67 @@ export function reconcileStatements(
         appTxn: cand,
         confidence: "partial",
         dateDiffDays: bestDays,
+      })
+    }
+  })
+
+  // 3b. One unmatched bank line and one unmatched record share an amount and a direction,
+  // within a week: with no other candidate on either side, they are the same transaction
+  // even when the bank cleared it late and the wording shares nothing.
+  if (maxDays > 0) {
+    const key = (type: string, amount: number) => `${type}|${Math.round(Math.abs(amount) * 100)}`
+    const freeBank = effectiveBankTxns.filter((b) => !usedBankTxnIds.has(b.id))
+    const freeApp = matchPool.filter((a) => !usedAppTxnIds.has(a.id))
+    const bankByKey = new Map<string, BankTransactionRow[]>()
+    const appByKey = new Map<string, AppTransaction[]>()
+    freeBank.forEach((b) => bankByKey.set(key(b.type, b.amount), [...(bankByKey.get(key(b.type, b.amount)) || []), b]))
+    freeApp.forEach((a) => appByKey.set(key(normalizeType(String(a.type)), Number(a.amount)), [...(appByKey.get(key(normalizeType(String(a.type)), Number(a.amount))) || []), a]))
+    bankByKey.forEach((banks, k) => {
+      const apps = appByKey.get(k) || []
+      if (banks.length !== 1 || apps.length !== 1) return
+      const bankTxn = banks[0]
+      const appTxn = apps[0]
+      const days = getDaysDiff(bankTxn.date, appTxn.date)
+      if (days > 7 || !allowed(bankTxn, appTxn)) return
+      usedBankTxnIds.add(bankTxn.id)
+      usedAppTxnIds.add(appTxn.id)
+      matched.push({
+        id: `match-unique-${bankTxn.id}-${appTxn.id}`,
+        bankTxn,
+        appTxn,
+        confidence: "partial",
+        dateDiffDays: days,
+      })
+    })
+  }
+
+  // 4. Same amount and date but recorded the other way round (a debit saved as income, or
+  // the reverse). It is the same transaction entered wrongly, so pair it and flag it, rather
+  // than call it missing on both sides.
+  effectiveBankTxns.forEach((bankTxn) => {
+    if (usedBankTxnIds.has(bankTxn.id)) return
+    let best: AppTransaction | null = null
+    let bestDays = 999
+    matchPool.forEach((appTxn) => {
+      if (usedAppTxnIds.has(appTxn.id) || !allowed(bankTxn, appTxn) || sameDirection(bankTxn, appTxn)) return
+      if (Math.abs(Math.abs(Number(appTxn.amount)) - Math.abs(bankTxn.amount)) >= 0.01) return
+      const days = getDaysDiff(bankTxn.date, appTxn.date)
+      if (days <= maxDays && days < bestDays) {
+        best = appTxn
+        bestDays = days
+      }
+    })
+    if (best) {
+      const cand = best as AppTransaction
+      usedBankTxnIds.add(bankTxn.id)
+      usedAppTxnIds.add(cand.id)
+      matched.push({
+        id: `match-direction-${bankTxn.id}-${cand.id}`,
+        bankTxn,
+        appTxn: cand,
+        confidence: "partial",
+        dateDiffDays: bestDays,
+        directionMismatch: true,
       })
     }
   })

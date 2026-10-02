@@ -2631,7 +2631,7 @@ const currentCycleKeyStr = useMemo(
  </DesktopPageBody>
   {mounted && txnToDelete && createPortal(
     <div
-      className="fixed inset-0 z-[600] flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-black/60 backdrop-blur-xs p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-[600] flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-black/60 p-0 sm:items-center sm:p-4"
       onClick={() => !deletingTxn && setTxnToDelete(null)}
       onTouchMove={(e) => e.preventDefault()}
     >

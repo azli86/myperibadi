@@ -16,6 +16,7 @@ import {
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { MobilePageHeader, DesktopPageHeader, DesktopPageBody } from "@/components/layout/PageHeader"
+import { ModenHero, ModenHeroIconButton, heroPrimaryButtonStyle, heroQuietButtonStyle } from "@/components/ui/ModenHero"
 import { cn } from "@/lib/utils"
 
 type TabKey =
@@ -51,6 +52,17 @@ const TABS: TabConfig[] = [
 ]
 
 const YEARS = [2027, 2026, 2025, 2024]
+
+// The readiness checks the API reports, in the reader's language, and where each is completed.
+const CHECK_META: Record<string, { bm: string; en: string; tab: TabKey }> = {
+  "EA reviewed": { bm: "Borang EA disemak", en: "EA form reviewed", tab: "ea" },
+  "Income reviewed": { bm: "Pendapatan disahkan", en: "Income confirmed", tab: "income" },
+  "Reliefs reviewed": { bm: "Pelepasan disemak", en: "Reliefs reviewed", tab: "reliefs" },
+  "PCB reviewed": { bm: "PCB direkod", en: "PCB recorded", tab: "ea" },
+  "Documents attached": { bm: "Dokumen dilampirkan", en: "Documents attached", tab: "documents" },
+  "Tax profile complete": { bm: "Profil cukai lengkap", en: "Tax profile complete", tab: "profile" },
+  "Final review complete": { bm: "Semakan akhir selesai", en: "Final review done", tab: "summary" },
+}
 
 const DISCLAIMER_BM = "MyPeribadi membantu menguruskan maklumat cukai dan menyediakan anggaran berdasarkan data yang anda masukkan serta Peraturan Cukai LHDN yang dikonfigurasi untuk tahun taksiran terpilih. Kelayakan muktamad, liabiliti cukai dan pemfailan tertakluk kepada keperluan rasmi HASiL / MyTax."
 const DISCLAIMER_EN = "MyPeribadi helps organize tax information and provides estimates based on your inputs and applicable HASiL Tax Rules configured for the selected assessment year. Final eligibility, tax liability, and filing remain subject to official HASiL / MyTax requirements."
@@ -119,280 +131,151 @@ export default function TaxPage() {
 
   const balance = calcData?.estimated_balance ?? 0
   const isPositiveRefund = balance >= 0
+  const hasIncome = (calcData?.income_total ?? 0) > 0
+  const score = readinessData?.score ?? 0
+  const money = (n: number) => Number(n).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+  const refresh = () => {
+    setLoading(true)
+    refreshGlobalMetrics()
+  }
+
+  const activeTab = loading ? (
+    <Skeleton />
+  ) : (
+    <ActiveTab
+      tab={tab}
+      setTab={setTab}
+      year={year}
+      tr={tr}
+      api={api}
+      sessionId={sessionId}
+      profile={profile}
+      setProfile={setProfile}
+      calcData={calcData}
+      readinessData={readinessData}
+      refreshMetrics={refreshGlobalMetrics}
+      showNotice={showNotice}
+    />
+  )
 
   return (
-    <div className="space-y-4 pb-28 md:space-y-6 md:pb-12">
-      {/* ─── Mobile View Header ─── */}
-      <div className="space-y-3.5 md:hidden">
-        <MobilePageHeader
-          title={tr("Cukai Pendapatan", "Income Tax")}
-          fallbackHref={`/${sessionId}`}
-          action={
-            <div className="flex items-center gap-1.5">
-              <YearPicker year={year} onChange={setYear} tr={tr} />
-            </div>
+    <div className="pb-24 lg:pb-0">
+      <div className="lg:hidden">
+        <MobilePageHeader title={tr("Cukai Pendapatan", "Income Tax")} fallbackHref={`/${sessionId}`} />
+      </div>
+      <DesktopPageHeader className="hidden lg:block" title={tr("Cukai Pendapatan", "Income Tax")} homeHref={`/${sessionId}`} />
+
+      <DesktopPageBody className="mt-2 flex flex-col gap-4 px-1 lg:mt-0 lg:gap-5 lg:px-0">
+        <ModenHero
+          label={
+            <>
+              <Landmark size={16} />
+              {tr("Cukai pendapatan", "Income tax")}
+            </>
           }
-        />
-
-        {/* Mobile Quick Status Banner */}
-        <div className="px-1">
-          <div className={cn(
-            "flex items-center justify-between rounded-2xl px-3.5 py-2.5 shadow-xs border transition-all",
-            isPositiveRefund
-              ? "border-emerald-500/25 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-emerald-500/5 dark:from-emerald-950/40"
-              : "border-amber-500/30 bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-amber-500/5 dark:from-amber-950/40"
-          )}>
-            <div className="flex items-center gap-2">
-              <div className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-xl",
-                isPositiveRefund ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
-              )}>
-                <Banknote size={18} />
-              </div>
-              <div>
-                <p className="text-[0.65rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                  {tr(`YA ${year} · Anggaran`, `YA ${year} · Estimate`)}
-                </p>
-                <p className={cn("text-xs font-black", isPositiveRefund ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
-                  {isPositiveRefund ? tr("Lebihan PCB (Refund)", "Overpayment (Refund)") : tr("Cukai Belum Bayar", "Tax to Pay")}
-                </p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className={cn("text-base font-black tracking-tight", isPositiveRefund ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
-                {isPositiveRefund ? "+" : "-"}<RM value={Math.abs(balance)} />
-              </p>
-              <p className="text-[0.65rem] font-bold text-[var(--muted)]">
-                {tr("Kesediaan", "Readiness")}: <span className="font-extrabold text-[var(--text)]">{readinessData?.score ?? 0}%</span>
-              </p>
-            </div>
+          actions={
+            <>
+              <YearPicker year={year} onChange={setYear} />
+              <ModenHeroIconButton onClick={refresh} aria-label={tr("Muat semula", "Refresh")} disabled={loading}>
+                <RefreshCw size={17} className={cn(loading && "animate-spin")} />
+              </ModenHeroIconButton>
+            </>
+          }
+          currency="RM"
+          amount={
+            <>
+              {hasIncome ? (isPositiveRefund ? "+" : "−") : ""}
+              {money(hasIncome ? Math.abs(balance) : 0)}
+            </>
+          }
+          amountSize="clamp(2rem, 9vw, 2.75rem)"
+          stats={[
+            { key: "tax", tone: "out", icon: <Banknote size={15} strokeWidth={2.2} />, label: tr("Cukai", "Net tax"), value: `RM ${money(calcData?.net_tax ?? 0)}` },
+            { key: "ready", tone: "in", icon: <ShieldCheck size={15} strokeWidth={2.2} />, label: tr("Kesediaan", "Readiness"), value: `${score}%` },
+          ]}
+        >
+          <p className="text-[0.8125rem] font-medium leading-snug" style={{ color: "var(--hero-muted)" }}>
+            {!hasIncome
+              ? tr("Tambah pendapatan atau muat naik borang EA untuk mula anggaran.", "Add income or upload an EA form to start the estimate.")
+              : isPositiveRefund
+                ? tr("Anggaran bayaran balik daripada HASiL.", "Estimated refund from HASiL.")
+                : tr("Anggaran baki cukai yang perlu dibayar.", "Estimated tax still to pay.")}
+            {calcData?.residency_status === "non_resident" ? ` ${tr("Bukan pemastautin: kadar tetap 30%.", "Non-resident: flat 30%.")}` : ""}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setTab("estimate")}
+              className="flex h-11 flex-1 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition active:scale-[0.98]"
+              style={heroPrimaryButtonStyle}
+            >
+              <Calculator size={15} />
+              {tr("Lihat pengiraan", "View calculation")}
+            </button>
+            <a
+              href={`/api/tax/export?assessment_year=${year}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex h-11 items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold transition active:scale-[0.98]"
+              style={heroQuietButtonStyle}
+            >
+              <Download size={15} />
+              PDF
+            </a>
           </div>
-        </div>
+        </ModenHero>
 
-        {/* Tab Bar (Pill Tabs Horizontal Scroll) */}
         <TabBar tab={tab} setTab={setTab} tr={tr} />
-
-        {/* Notification Alert */}
         {notice && <NoticeBar notice={notice} />}
 
-        {/* Active Tab View */}
-        {loading ? <Skeleton /> : (
-          <div className="px-1">
-            <ActiveTab
-              tab={tab}
-              setTab={setTab}
-              year={year}
-              tr={tr}
-              api={api}
-              sessionId={sessionId}
-              profile={profile}
-              setProfile={setProfile}
-              calcData={calcData}
-              readinessData={readinessData}
-              refreshMetrics={refreshGlobalMetrics}
-              showNotice={showNotice}
-            />
-          </div>
-        )}
-      </div>
+        {activeTab}
 
-      {/* ─── Desktop View Layout ─── */}
-      <div className="hidden md:block">
-        <DesktopPageHeader title={tr("Cukai Pendapatan (Income Tax)", "Income Tax (HASiL / LHDN)")} />
-        <DesktopPageBody className="space-y-6">
-          {/* Top Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-xs">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)]">
-                <Landmark size={22} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-black text-[var(--text)]">
-                    {tr("Pengurusan Cukai Individu", "Individual Tax Management")}
-                  </h2>
-                  <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[0.68rem] font-black text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    HASiL Malaysia (LHDN)
-                  </span>
-                </div>
-                <p className="text-xs text-[var(--muted)]">
-                  {tr("Kira cukai pendapatan, pantau pelepasan, sahkan borang EA, dan sediakan e-Filing.", "Calculate income tax, monitor reliefs, confirm EA forms, and prepare e-Filing.")}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <YearPicker year={year} onChange={setYear} tr={tr} />
-              <button
-                type="button"
-                onClick={() => {
-                  setLoading(true)
-                  refreshGlobalMetrics()
-                }}
-                className="flex h-10 items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 text-xs font-bold text-[var(--text)] hover:bg-[var(--surface-tint-strong)] transition active:scale-95 cursor-pointer"
-                title={tr("Muat Semula", "Refresh")}
-              >
-                <RefreshCw size={14} className={cn(loading && "animate-spin")} />
-                <span>{tr("Muat Semula", "Refresh")}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Tab Bar (Desktop Filter Pills) */}
-          <TabBar tab={tab} setTab={setTab} tr={tr} />
-
-          {/* Global Notice */}
-          {notice && <NoticeBar notice={notice} />}
-
-          {/* Desktop Content Grid (Main Content + Live Engine Sidebar) */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className={cn(tab === "dashboard" || tab === "estimate" || tab === "summary" ? "lg:col-span-8" : "lg:col-span-12", "space-y-6")}>
-              {loading ? <Skeleton /> : (
-                <ActiveTab
-                  tab={tab}
-                  setTab={setTab}
-                  year={year}
-                  tr={tr}
-                  api={api}
-                  sessionId={sessionId}
-                  profile={profile}
-                  setProfile={setProfile}
-                  calcData={calcData}
-                  readinessData={readinessData}
-                  refreshMetrics={refreshGlobalMetrics}
-                  showNotice={showNotice}
-                />
-              )}
-            </div>
-
-            {/* Desktop Quick Engine Side Panel */}
-            {(tab === "dashboard" || tab === "estimate" || tab === "summary") && (
-              <div className="lg:col-span-4 space-y-4">
-                {/* Live Tax Position Card */}
-                <Card className={cn(
-                  "relative overflow-hidden border-2 p-5 shadow-md transition-all",
-                  isPositiveRefund
-                    ? "border-emerald-500/30 bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-[var(--card)]"
-                    : "border-amber-500/30 bg-gradient-to-br from-amber-500/15 via-rose-500/10 to-[var(--card)]"
-                )}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[0.7rem] font-black uppercase tracking-wider text-[var(--muted)]">
-                      {tr("Kedudukan Cukai", "Tax Position")} · YA {year}
-                    </span>
-                    <span className={cn(
-                      "rounded-full px-2.5 py-0.5 text-[0.65rem] font-black uppercase tracking-wider",
-                      isPositiveRefund ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
-                    )}>
-                      {isPositiveRefund ? tr("Lebihan PCB", "Refund") : tr("Cukai Perlu Bayar", "Payable")}
-                    </span>
-                  </div>
-
-                  <div className="mt-3">
-                    <p className="text-3xl font-black tracking-tight text-[var(--text)]">
-                      {isPositiveRefund ? "+" : "-"}<RM value={Math.abs(balance)} />
-                    </p>
-                    <p className={cn("mt-1 text-xs font-bold", isPositiveRefund ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
-                      {isPositiveRefund
-                        ? tr("Anggaran bayaran balik daripada HASiL", "Estimated refund from HASiL")
-                        : tr("Anggaran baki cukai perlu dibayar", "Estimated remaining tax balance to settle")}
-                    </p>
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-[var(--border)]/70 space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--muted)]">{tr("Pendapatan Kasar", "Gross Income")}</span>
-                      <span className="font-bold text-[var(--text)]"><RM value={calcData?.income_total} /></span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--muted)]">{tr("Jumlah Pelepasan", "Total Reliefs")}</span>
-                      <span className="font-bold text-rose-500">-<RM value={calcData?.relief_total} /></span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--muted)]">{tr("Pendapatan Bercukai", "Chargeable Income")}</span>
-                      <span className="font-black text-[var(--text)]"><RM value={calcData?.chargeable_income} /></span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--muted)]">{tr("Cukai Kena Bayar", "Net Tax Payable")}</span>
-                      <span className="font-bold text-[var(--text)]"><RM value={calcData?.net_tax} /></span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[var(--muted)]">{tr("PCB / MTD Telah Dipotong", "PCB / MTD Deducted")}</span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-400">-<RM value={calcData?.pcb_total} /></span>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setTab("estimate")}
-                      className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] py-2 text-xs font-bold text-[var(--text)] hover:bg-[var(--surface-tint-strong)] transition cursor-pointer"
-                    >
-                      {tr("Perincian Pengiraan", "Full Calculation")}
-                    </button>
-                    <a
-                      href={`/api/tax/export?assessment_year=${year}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center justify-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-3 py-2 text-xs font-bold text-[var(--btn-primary-text)] shadow-sm hover:opacity-95 transition"
-                    >
-                      <Download size={13} />
-                      <span>{tr("PDF", "PDF")}</span>
-                    </a>
-                  </div>
-                </Card>
-
-                {/* Readiness Progress Card */}
-                <Card className="p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck size={16} className="text-[var(--accent)]" />
-                      <p className="text-xs font-black text-[var(--text)]">{tr("Status Kesediaan e-Filing", "e-Filing Readiness")}</p>
-                    </div>
-                    <span className="text-sm font-black text-[var(--accent)]">{readinessData?.score ?? 0}%</span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
-                    <div
-                      className="h-full rounded-full bg-[var(--accent)] transition-all duration-500"
-                      style={{ width: `${Math.max(5, readinessData?.score ?? 0)}%` }}
-                    />
-                  </div>
-                  <div className="space-y-1.5 pt-1 text-xs">
-                    {readinessData?.checks && Object.entries(readinessData.checks).map(([key, val]) => (
-                      <div key={key} className="flex items-center justify-between py-0.5">
-                        <span className="text-[var(--muted)] capitalize">{key.replace(/_/g, " ")}</span>
-                        {val ? (
-                          <span className="flex items-center gap-1 text-[0.7rem] font-bold text-emerald-600 dark:text-emerald-400">
-                            <Check size={12} /> {tr("Lengkap", "Done")}
-                          </span>
-                        ) : (
-                          <span className="text-[0.7rem] font-bold text-amber-500">
-                            {tr("Perlu Diisi", "Pending")}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              </div>
-            )}
-          </div>
-        </DesktopPageBody>
-      </div>
+        <p className="px-1 text-xs leading-relaxed text-[var(--muted)]">{tr(DISCLAIMER_BM, DISCLAIMER_EN)}</p>
+      </DesktopPageBody>
     </div>
   )
 }
 
 /* ─────────────────────────── Shared Components ─────────────────────────── */
 
-function YearPicker({ year, onChange, tr }: { year: number; onChange: (y: number) => void; tr: (b: string, e: string) => string }) {
+/** A rule name is stored as "Malay / English"; show the half that matches the language. */
+function localName(name: string | null | undefined, isBm: boolean): string {
+  const text = name || ""
+  if (text === "Zakat / Fitrah & Harta") return isBm ? "Zakat (Fitrah & Harta)" : "Zakat (Fitrah & Wealth)"
+  const cut = text.lastIndexOf(" / ")
+  if (cut < 0) return text
+  return isBm ? text.slice(0, cut) : text.slice(cut + 3)
+}
+
+const UPLOAD_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"]
+const UPLOAD_MAX_BYTES = 10 * 1024 * 1024
+
+/** Why a file cannot be uploaded, or null when it can. Checked before sending, so a
+ *  wrong type or a huge file is explained at once instead of failing at the server. */
+function uploadProblem(file: File, tr: (b: string, e: string) => string): string | null {
+  if (file.type && !UPLOAD_TYPES.includes(file.type)) {
+    return tr("Hanya PDF, JPG, PNG atau WebP diterima.", "Only PDF, JPG, PNG or WebP files are accepted.")
+  }
+  if (file.size > UPLOAD_MAX_BYTES) {
+    return tr("Fail terlalu besar. Had 10 MB.", "The file is too large. The limit is 10 MB.")
+  }
+  return null
+}
+
+function YearPicker({ year, onChange }: { year: number; onChange: (y: number) => void }) {
   return (
-    <label className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 text-xs font-bold text-[var(--text)] shadow-2xs hover:bg-[var(--surface-tint)] transition cursor-pointer">
-      <Calendar className="h-3.5 w-3.5 text-[var(--accent)]" />
-      <span className="font-extrabold text-[var(--muted)] uppercase tracking-wider">YA</span>
+    <label
+      className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-full pl-3.5 pr-2.5 text-[0.8125rem] font-semibold"
+      style={heroQuietButtonStyle}
+    >
+      <span style={{ color: "var(--hero-muted)" }}>YA</span>
       <select
         value={year}
         onChange={(e) => onChange(parseInt(e.target.value, 10))}
-        className="bg-transparent text-xs font-black text-[var(--text)] outline-none cursor-pointer"
+        aria-label="YA"
+        className="cursor-pointer appearance-none bg-transparent font-bold outline-none"
+        style={{ color: "var(--hero-text)" }}
       >
         {YEARS.map((y) => (
           <option key={y} value={y} className="bg-[var(--card)] text-[var(--text)]">
@@ -400,32 +283,33 @@ function YearPicker({ year, onChange, tr }: { year: number; onChange: (y: number
           </option>
         ))}
       </select>
-      <ChevronDown size={14} className="text-[var(--muted)]" />
+      <ChevronDown size={14} style={{ color: "var(--hero-muted)" }} />
     </label>
   )
 }
 
 function TabBar({ tab, setTab, tr }: { tab: TabKey; setTab: (t: TabKey) => void; tr: (b: string, e: string) => string }) {
   return (
-    <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1.5 pt-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div role="tablist" aria-label={tr("Bahagian cukai", "Tax sections")} className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {TABS.map((t) => {
         const active = t.key === tab
         const Icon = t.icon
-        const label = tr(t.labelBm, t.labelEn)
         return (
           <button
             key={t.key}
             type="button"
+            role="tab"
+            aria-selected={active}
             onClick={() => setTab(t.key)}
             className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-bold transition-all active:scale-95 shadow-2xs cursor-pointer",
+              "flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition active:scale-95",
               active
-                ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] font-extrabold shadow-sm"
-                : "border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)]"
+                ? "border-transparent bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
+                : "border-[var(--border)] bg-transparent text-[var(--muted)] hover:text-[var(--text)]"
             )}
           >
-            <Icon size={14} />
-            <span>{label}</span>
+            <Icon size={15} />
+            <span>{tr(t.labelBm, t.labelEn)}</span>
           </button>
         )
       })}
@@ -439,7 +323,7 @@ function NoticeBar({ notice }: { notice: { msg: string; type?: "success" | "erro
   return (
     <div className="px-1 animate-in fade-in slide-in-from-top-1 duration-200">
       <div className={cn(
-        "flex items-center gap-2 rounded-2xl border px-3.5 py-2.5 text-xs font-bold shadow-xs",
+        "flex items-center gap-2 rounded-2xl border px-3.5 py-2.5 text-xs font-bold",
         isErr
           ? "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400"
           : isInfo
@@ -456,21 +340,21 @@ function NoticeBar({ notice }: { notice: { msg: string; type?: "success" | "erro
 function Skeleton() {
   return (
     <div className="space-y-3.5 px-1">
-      <div className="h-32 animate-pulse rounded-3xl bg-[var(--surface-tint)]" />
+      <div className="h-32 animate-pulse rounded-[1.5rem] bg-[var(--surface-tint)]" />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div className="h-20 animate-pulse rounded-2xl bg-[var(--surface-tint)]" />
         <div className="h-20 animate-pulse rounded-2xl bg-[var(--surface-tint)]" />
         <div className="h-20 animate-pulse rounded-2xl bg-[var(--surface-tint)]" />
         <div className="h-20 animate-pulse rounded-2xl bg-[var(--surface-tint)]" />
       </div>
-      <div className="h-44 animate-pulse rounded-3xl bg-[var(--surface-tint)]" />
+      <div className="h-44 animate-pulse rounded-[1.5rem] bg-[var(--surface-tint)]" />
     </div>
   )
 }
 
 function Card({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5 shadow-xs", className)}>
+    <div className={cn("rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 md:p-5", className)}>
       {children}
     </div>
   )
@@ -479,16 +363,16 @@ function Card({ children, className }: { children: React.ReactNode; className?: 
 function SectionLabel({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between px-1 pb-1 pt-2">
-      <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-[var(--muted)]">{children}</p>
+      <p className="text-sm font-bold text-[var(--text)]">{children}</p>
       {right}
     </div>
   )
 }
 
 function RM({ value, decimals = 2 }: { value: number | null | undefined; decimals?: number }) {
-  if (value == null || isNaN(value)) return <span>RM 0.00</span>
+  if (value == null || isNaN(value)) return <span className="whitespace-nowrap">RM 0.00</span>
   return (
-    <span>
+    <span className="whitespace-nowrap">
       RM {Number(value).toLocaleString("en-MY", { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
     </span>
   )
@@ -497,9 +381,9 @@ function RM({ value, decimals = 2 }: { value: number | null | undefined; decimal
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <label className="block space-y-1">
-      <div className="flex items-center justify-between">
-        <span className="text-[0.7rem] font-black uppercase tracking-wider text-[var(--muted)]">{label}</span>
-        {hint && <span className="text-[0.65rem] text-[var(--muted)]">{hint}</span>}
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs font-semibold text-[var(--muted)]">{label}</span>
+        {hint && <span className="truncate text-xs text-[var(--muted)]">{hint}</span>}
       </div>
       {children}
     </label>
@@ -514,7 +398,7 @@ function TextInput({ value, onChange, placeholder, type, disabled }: { value: st
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       disabled={disabled}
-      className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3.5 py-2.5 text-xs text-[var(--text)] outline-none transition focus:border-[var(--input-focus)] focus:ring-2 focus:ring-[var(--accent)]/15 disabled:opacity-60"
+      className="h-11 w-full rounded-full border border-[var(--input-border)] bg-[var(--input-bg)] px-4 text-base text-[var(--text)] outline-none transition focus:border-[var(--btn-primary-bg)] disabled:opacity-60 md:text-sm"
     />
   )
 }
@@ -522,7 +406,7 @@ function TextInput({ value, onChange, placeholder, type, disabled }: { value: st
 function NumInput({ value, onChange, placeholder, disabled }: { value: string; onChange: (v: string) => void; placeholder?: string; disabled?: boolean }) {
   return (
     <div className="relative flex items-center">
-      <span className="absolute left-3.5 text-xs font-bold text-[var(--muted)]">RM</span>
+      <span className="absolute left-4 text-sm font-semibold text-[var(--muted)]">RM</span>
       <input
         type="number"
         inputMode="decimal"
@@ -531,7 +415,7 @@ function NumInput({ value, onChange, placeholder, disabled }: { value: string; o
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder || "0.00"}
         disabled={disabled}
-        className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] pl-10 pr-3.5 py-2.5 text-xs font-bold text-[var(--text)] outline-none transition focus:border-[var(--input-focus)] focus:ring-2 focus:ring-[var(--accent)]/15 disabled:opacity-60"
+        className="h-11 w-full rounded-full border border-[var(--input-border)] bg-[var(--input-bg)] pl-11 pr-4 text-base font-semibold text-[var(--text)] outline-none transition focus:border-[var(--btn-primary-bg)] disabled:opacity-60 md:text-sm"
       />
     </div>
   )
@@ -544,7 +428,7 @@ function PrimaryButton({ children, onClick, disabled, type, className }: { child
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--btn-primary-bg)] py-3 text-xs font-black text-[var(--btn-primary-text)] shadow-sm transition active:scale-[0.98] disabled:opacity-50 hover:opacity-95 cursor-pointer",
+        "flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-5 text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-[0.98] disabled:opacity-50 hover:opacity-95",
         className
       )}
     >
@@ -560,7 +444,7 @@ function GhostButton({ children, onClick, disabled, className }: { children: Rea
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] py-3 text-xs font-bold text-[var(--text)] shadow-2xs transition active:scale-[0.98] hover:bg-[var(--surface-tint-strong)] disabled:opacity-50 cursor-pointer",
+        "flex h-12 w-full items-center justify-center gap-2 rounded-full border border-[var(--border)] bg-transparent px-5 text-sm font-semibold text-[var(--text)] transition active:scale-[0.98] hover:bg-[var(--surface-tint)] disabled:opacity-50",
         className
       )}
     >
@@ -613,59 +497,11 @@ function ActiveTab(props: {
 
 /* ─────────────────────────── 1. Dashboard Tab ─────────────────────────── */
 
-function DashboardTab({ year, tr, setTab, calcData, readinessData, refreshMetrics, showNotice }: any) {
-  const balance = calcData?.estimated_balance ?? 0
-  const isPositiveRefund = balance >= 0
+function DashboardTab({ year, tr, setTab, calcData, readinessData }: any) {
   const needAttentionCount = (readinessData?.attention?.length || 0) + (readinessData?.pending_links || 0)
 
   return (
     <div className="space-y-4">
-      {/* Hero Position Banner */}
-      <Card className={cn(
-        "relative overflow-hidden border-2 p-5 sm:p-6 transition-all",
-        isPositiveRefund
-          ? "border-emerald-500/30 bg-gradient-to-br from-emerald-500/20 via-teal-500/10 to-[var(--card)]"
-          : "border-amber-500/30 bg-gradient-to-br from-amber-500/20 via-rose-500/10 to-[var(--card)]"
-      )}>
-        <div className="absolute -right-6 -top-8 h-36 w-36 rounded-full bg-[var(--accent)]/15 blur-3xl pointer-events-none" />
-        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--surface-tint)] px-3 py-1 text-[0.68rem] font-black uppercase tracking-wider text-[var(--muted)] border border-[var(--border)]">
-              <Landmark size={12} className="text-[var(--accent)]" />
-              {tr("Kedudukan Cukai Taksiran", "Assessment Tax Position")} · YA {year}
-            </span>
-            <h3 className="mt-2 text-3xl sm:text-4xl font-black tracking-tight text-[var(--text)]">
-              {isPositiveRefund ? "+" : "-"}<RM value={Math.abs(balance)} />
-            </h3>
-            <p className={cn("mt-1 text-xs font-bold", isPositiveRefund ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
-              {isPositiveRefund
-                ? tr("🎉 Anggaran Lebihan Bayaran Cukai (Akan Dipulangkan / Refund oleh HASiL)", "🎉 Estimated Tax Overpayment (To be Refunded by HASiL)")
-                : tr("⚠️ Anggaran Baki Cukai Belum Bayar (Perlu Diselesaikan)", "⚠️ Estimated Tax Payable to HASiL")}
-            </p>
-          </div>
-
-          <div className="flex sm:flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => setTab("estimate")}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 rounded-2xl bg-[var(--btn-primary-bg)] px-4 py-2.5 text-xs font-black text-[var(--btn-primary-text)] shadow-xs hover:opacity-95 transition active:scale-95 cursor-pointer"
-            >
-              <Calculator size={14} />
-              <span>{tr("Lihat Pengiraan", "View Calculation")}</span>
-            </button>
-            <a
-              href={`/api/tax/export?assessment_year=${year}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-4 py-2.5 text-xs font-bold text-[var(--text)] hover:bg-[var(--surface-tint)] transition"
-            >
-              <Download size={14} />
-              <span>{tr("Eksport PDF", "Export PDF")}</span>
-            </a>
-          </div>
-        </div>
-      </Card>
-
       {/* 4 Quick Stat KPIs */}
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
         <StatCard
@@ -673,28 +509,24 @@ function DashboardTab({ year, tr, setTab, calcData, readinessData, refreshMetric
           label={tr("Jumlah Pendapatan", "Total Income")}
           value={calcData?.income_total}
           onClick={() => setTab("income")}
-          color="text-sky-500 bg-sky-500/10"
         />
         <StatCard
           icon={Gift}
           label={tr("Jumlah Pelepasan", "Total Reliefs")}
           value={calcData?.relief_total}
           onClick={() => setTab("reliefs")}
-          color="text-indigo-500 bg-indigo-500/10"
         />
         <StatCard
           icon={BadgePercent}
           label={tr("Rebat & Zakat", "Rebates & Zakat")}
           value={calcData?.rebate_total}
           onClick={() => setTab("rebates")}
-          color="text-emerald-500 bg-emerald-500/10"
         />
         <StatCard
           icon={Banknote}
           label={tr("PCB Telah Dipotong", "PCB / MTD Paid")}
           value={calcData?.pcb_total}
           onClick={() => setTab("ea")}
-          color="text-teal-500 bg-teal-500/10"
         />
       </div>
 
@@ -702,15 +534,15 @@ function DashboardTab({ year, tr, setTab, calcData, readinessData, refreshMetric
       <Card className="space-y-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent)]/15 text-[var(--accent)]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[var(--accent)]/15 text-[var(--accent)]">
               <ClipboardCheck size={18} />
             </div>
             <div>
-              <p className="text-sm font-black text-[var(--text)]">{tr("Tahap Kesediaan e-Filing", "e-Filing Readiness Progress")}</p>
-              <p className="text-[0.7rem] text-[var(--muted)]">{tr("Senarai semak dokumen dan pengesahan sebelum menghantar e-Filing", "Checklist of documents and confirmations before e-Filing")}</p>
+              <p className="text-sm font-bold text-[var(--text)]">{tr("Tahap Kesediaan e-Filing", "e-Filing Readiness Progress")}</p>
+              <p className="text-xs text-[var(--muted)]">{tr("Senarai semak dokumen dan pengesahan sebelum menghantar e-Filing", "Checklist of documents and confirmations before e-Filing")}</p>
             </div>
           </div>
-          <span className="text-lg font-black text-[var(--accent)]">{readinessData?.score ?? 0}%</span>
+          <span className="text-lg font-bold text-[var(--accent)]">{readinessData?.score ?? 0}%</span>
         </div>
 
         <div className="h-2.5 w-full overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
@@ -720,31 +552,27 @@ function DashboardTab({ year, tr, setTab, calcData, readinessData, refreshMetric
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-          {readinessData?.checks && Object.entries(readinessData.checks).map(([key, val]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => {
-                if (key.includes("profile")) setTab("profile")
-                else if (key.includes("ea") || key.includes("income")) setTab("ea")
-                else if (key.includes("relief")) setTab("reliefs")
-                else if (key.includes("rebate") || key.includes("zakat")) setTab("rebates")
-              }}
-              className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/60 px-3.5 py-2.5 text-left text-xs font-bold hover:bg-[var(--surface-tint-strong)] transition cursor-pointer"
-            >
-              <span className="text-[var(--text)] capitalize">{key.replace(/_/g, " ")}</span>
-              {val ? (
-                <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[0.68rem] font-extrabold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                  <Check size={11} /> {tr("Selesai", "Completed")}
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[0.68rem] font-extrabold text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                  {tr("Lengkapkan →", "Complete →")}
-                </span>
-              )}
-            </button>
-          ))}
+        <div className="grid grid-cols-1 gap-2 pt-1 sm:grid-cols-2">
+          {readinessData?.checks && Object.entries(readinessData.checks).map(([key, val]) => {
+            const meta = CHECK_META[key] || { bm: key, en: key, tab: "dashboard" as TabKey }
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(meta.tab)}
+                className="flex min-h-12 items-center justify-between gap-3 rounded-full border border-[var(--border)] px-4 text-left text-sm font-semibold transition hover:bg-[var(--surface-tint)] active:scale-[0.99]"
+              >
+                <span className="min-w-0 truncate text-[var(--text)]">{tr(meta.bm, meta.en)}</span>
+                {val ? (
+                  <span className="flex shrink-0 items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    <Check size={13} /> {tr("Selesai", "Done")}
+                  </span>
+                ) : (
+                  <span className="shrink-0 text-xs font-bold text-amber-600 dark:text-amber-400">{tr("Lengkapkan", "Complete")} →</span>
+                )}
+              </button>
+            )
+          })}
         </div>
       </Card>
 
@@ -753,7 +581,7 @@ function DashboardTab({ year, tr, setTab, calcData, readinessData, refreshMetric
         <Card className="border-amber-500/30 bg-amber-500/5 space-y-2.5">
           <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
             <AlertTriangle size={16} />
-            <p className="text-xs font-black uppercase tracking-wider">
+            <p className="text-xs font-bold">
               {needAttentionCount} {tr("Perkara Perlu Perhatian Anda", "Items Need Your Attention")}
             </p>
           </div>
@@ -761,11 +589,11 @@ function DashboardTab({ year, tr, setTab, calcData, readinessData, refreshMetric
             {(readinessData?.attention || []).map((item: any, idx: number) => (
               <div key={idx} className="flex items-center justify-between rounded-2xl border border-amber-500/20 bg-[var(--card)] p-3 text-xs">
                 <div>
-                  <p className="font-extrabold text-[var(--text)]">{item.name}</p>
+                  <p className="font-bold text-[var(--text)]">{item.name}</p>
                   <p className="text-[var(--muted)]">{item.issue}</p>
                 </div>
                 {item.amount != null && (
-                  <span className="font-black text-[var(--text)]"><RM value={item.amount} /></span>
+                  <span className="font-bold text-[var(--text)]"><RM value={item.amount} /></span>
                 )}
               </div>
             ))}
@@ -801,30 +629,26 @@ function DashboardTab({ year, tr, setTab, calcData, readinessData, refreshMetric
           onClick={() => window.open(`/api/tax/export?assessment_year=${year}`, "_blank")}
         />
       </div>
-
-      <p className="px-1 text-[0.65rem] leading-relaxed text-[var(--muted)]">
-        {tr(DISCLAIMER_BM, DISCLAIMER_EN)}
-      </p>
     </div>
   )
 }
 
-function StatCard({ icon: Icon, label, value, onClick, color }: { icon: any; label: string; value: number | null | undefined; onClick: () => void; color: string }) {
+function StatCard({ icon: Icon, label, value, onClick }: { icon: any; label: string; value: number | null | undefined; onClick: () => void; color?: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col justify-between rounded-3xl border border-[var(--border)] bg-[var(--card)] p-3.5 text-left shadow-2xs hover:border-[var(--accent)]/40 hover:bg-[var(--surface-tint)]/40 transition active:scale-95 cursor-pointer"
+      className="flex flex-col justify-between rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 text-left transition hover:bg-[var(--surface-tint)] active:scale-[0.98]"
     >
       <div className="flex items-center justify-between">
-        <div className={cn("flex h-7 w-7 items-center justify-center rounded-xl", color)}>
-          <Icon size={14} />
-        </div>
-        <ChevronRight size={14} className="text-[var(--muted)]" />
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--text)]">
+          <Icon size={16} />
+        </span>
+        <ChevronRight size={15} className="text-[var(--muted)]" />
       </div>
-      <div className="mt-3">
-        <p className="text-[0.65rem] font-bold text-[var(--muted)] uppercase tracking-wider">{label}</p>
-        <p className="mt-0.5 text-sm sm:text-base font-black text-[var(--text)]">
+      <div className="mt-4">
+        <p className="text-xs font-semibold text-[var(--muted)]">{label}</p>
+        <p className="mt-0.5 text-lg font-bold tabular-nums tracking-tight text-[var(--text)]">
           <RM value={value} />
         </p>
       </div>
@@ -837,15 +661,15 @@ function ActionCard({ icon: Icon, title, desc, onClick }: { icon: any; title: st
     <button
       type="button"
       onClick={onClick}
-      className="flex items-center gap-2.5 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-3 text-left shadow-2xs hover:bg-[var(--surface-tint)] transition active:scale-95 cursor-pointer"
+      className="flex items-center gap-3 rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-3.5 text-left transition hover:bg-[var(--surface-tint)] active:scale-[0.98]"
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--accent)]">
-        <Icon size={16} />
-      </div>
-      <div className="min-w-0">
-        <p className="truncate text-xs font-black text-[var(--text)]">{title}</p>
-        <p className="truncate text-[0.65rem] text-[var(--muted)]">{desc}</p>
-      </div>
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--text)]">
+        <Icon size={17} />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-semibold text-[var(--text)]">{title}</span>
+        <span className="block truncate text-xs text-[var(--muted)]">{desc}</span>
+      </span>
     </button>
   )
 }
@@ -861,6 +685,9 @@ function ProfileTab({ year, tr, api, profile, setProfile, refreshMetrics, showNo
     if (profile) setForm({ ...profile })
   }, [profile])
 
+  const PROFILE_FIELDS = ["residency_status", "marital_status", "income_source", "disabled_status", "spouse_income_status", "assessment_type", "zakat_tracking_enabled"]
+  const dirty = !!tin.trim() || PROFILE_FIELDS.some((k) => (form[k] ?? null) !== (profile?.[k] ?? null))
+
   async function save() {
     setBusy(true)
     try {
@@ -869,8 +696,10 @@ function ProfileTab({ year, tr, api, profile, setProfile, refreshMetrics, showNo
         marital_status: form.marital_status,
         income_source: form.income_source,
         disabled_status: form.disabled_status,
-        spouse_income_status: form.spouse_income_status || undefined,
-        assessment_type: form.assessment_type || undefined,
+        // Only a married taxpayer has a spouse; otherwise clear them, so an old answer
+        // does not keep giving the spouse relief.
+        spouse_income_status: form.marital_status === "married" ? form.spouse_income_status || null : null,
+        assessment_type: form.marital_status === "married" ? form.assessment_type || null : null,
         zakat_tracking_enabled: form.zakat_tracking_enabled,
         tax_identifier: tin || undefined,
       }
@@ -899,18 +728,18 @@ function ProfileTab({ year, tr, api, profile, setProfile, refreshMetrics, showNo
             type="button"
             onClick={() => setForm({ ...form, [field]: opt.val })}
             className={cn(
-              "flex flex-col justify-between rounded-2xl border p-3 text-left transition-all active:scale-[0.98] cursor-pointer",
+              "flex flex-col justify-between rounded-[1.25rem] border p-3.5 text-left transition active:scale-[0.98]",
               isSelected
-                ? "border-[var(--btn-primary-bg)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-xs"
-                : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] hover:bg-[var(--surface-tint-strong)]"
+                ? "border-transparent bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
+                : "border-[var(--border)] bg-transparent text-[var(--text)] hover:bg-[var(--surface-tint)]"
             )}
           >
             <div className="flex items-center justify-between">
-              <span className="text-xs font-black">{tr(opt.labelBm, opt.labelEn)}</span>
+              <span className="text-sm font-semibold">{tr(opt.labelBm, opt.labelEn)}</span>
               {isSelected ? <Check size={14} /> : <div className="h-3.5 w-3.5 rounded-full border border-[var(--muted)]/40" />}
             </div>
             {(opt.descBm || opt.descEn) && (
-              <span className={cn("mt-1 text-[0.68rem]", isSelected ? "opacity-90 text-[var(--btn-primary-text)]" : "text-[var(--muted)]")}>
+              <span className={cn("mt-1 text-xs", isSelected ? "opacity-90 text-[var(--btn-primary-text)]" : "text-[var(--muted)]")}>
                 {tr(opt.descBm || "", opt.descEn || "")}
               </span>
             )}
@@ -922,6 +751,30 @@ function ProfileTab({ year, tr, api, profile, setProfile, refreshMetrics, showNo
 
   return (
     <div className="space-y-4">
+      <Card className="flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--text)]">
+          <Info size={16} />
+        </span>
+        <p className="text-sm leading-relaxed text-[var(--muted)]">
+          {tr(
+            "Profil ini menentukan pelepasan yang dikira secara automatik: RM9,000 untuk diri sendiri, tambahan OKU, pelepasan pasangan RM4,000 jika pasangan tiada pendapatan, dan anak daripada senarai tanggungan. Anda tidak perlu menuntutnya lagi di tab Pelepasan.",
+            "This profile decides the reliefs counted automatically: RM9,000 for yourself, the disabled-individual extra, the RM4,000 spouse relief when your spouse has no income, and your children from the dependants list. You do not claim them again in the Reliefs tab."
+          )}
+        </p>
+      </Card>
+
+      {form.residency_status === "non_resident" && (
+        <Card className="flex items-start gap-3 border-amber-500/40">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <p className="text-sm leading-relaxed text-[var(--text)]">
+            {tr(
+              "Bukan pemastautin dikenakan cukai kadar tetap 30% atas semua pendapatan, tanpa pelepasan dan rebat. Status pemastautin bergantung pada tempoh anda berada di Malaysia (biasanya 182 hari atau lebih dalam setahun).",
+              "A non-resident pays a flat 30% on all income, with no reliefs or rebates. Residency depends on how long you are in Malaysia (usually 182 days or more in a year)."
+            )}
+          </p>
+        </Card>
+      )}
+
       {/* General Status */}
       <SectionLabel>{tr("Status Pemastautin & Peribadi", "Tax Residency & Personal Status")}</SectionLabel>
       <Card className="space-y-4">
@@ -987,7 +840,7 @@ function ProfileTab({ year, tr, api, profile, setProfile, refreshMetrics, showNo
       <Card>
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-extrabold text-[var(--text)]">{tr("Jejak Zakat untuk Rebat Cukai", "Track Zakat for Tax Rebates")}</p>
+            <p className="text-sm font-bold text-[var(--text)]">{tr("Jejak Zakat untuk Rebat Cukai", "Track Zakat for Tax Rebates")}</p>
             <p className="text-xs text-[var(--muted)]">
               {tr("Zakat ditolak terus daripada jumlah cukai sebenar (1:1), bukan sekadar mengurangkan pendapatan bercukai.", "Zakat is deducted directly from actual tax liability (1:1), not just chargeable income.")}
             </p>
@@ -997,7 +850,7 @@ function ProfileTab({ year, tr, api, profile, setProfile, refreshMetrics, showNo
             onClick={() => setForm({ ...form, zakat_tracking_enabled: !form.zakat_tracking_enabled })}
             className={cn("h-7 w-12 shrink-0 rounded-full p-1 transition-all cursor-pointer", form.zakat_tracking_enabled ? "bg-[var(--accent)]" : "bg-[var(--surface-tint-strong)]")}
           >
-            <div className={cn("h-5 w-5 rounded-full bg-white transition-all shadow-xs", form.zakat_tracking_enabled && "translate-x-5")} />
+            <div className={cn("h-5 w-5 rounded-full bg-white transition-all", form.zakat_tracking_enabled && "translate-x-5")} />
           </button>
         </div>
       </Card>
@@ -1010,9 +863,9 @@ function ProfileTab({ year, tr, api, profile, setProfile, refreshMetrics, showNo
           <p>{tr("Nombor fail cukai HASiL anda disulitkan secara selamat.", "Your HASiL tax file number is securely encrypted.")}</p>
         </div>
         {profile?.tax_identifier_masked && (
-          <div className="flex items-center justify-between rounded-xl bg-[var(--surface-tint)] px-3.5 py-2.5 text-xs font-bold text-[var(--text)]">
+          <div className="flex items-center justify-between rounded-2xl bg-[var(--surface-tint)] px-3.5 py-2.5 text-xs font-bold text-[var(--text)]">
             <span className="text-[var(--muted)]">{tr("TIN Semasa", "Current TIN")}:</span>
-            <span className="font-mono text-sm tracking-wider">{profile.tax_identifier_masked}</span>
+            <span className="font-mono text-sm">{profile.tax_identifier_masked}</span>
           </div>
         )}
         <TextInput
@@ -1023,9 +876,9 @@ function ProfileTab({ year, tr, api, profile, setProfile, refreshMetrics, showNo
       </Card>
 
       {/* Save Button */}
-      <PrimaryButton onClick={save} disabled={busy}>
+      <PrimaryButton onClick={save} disabled={busy || !dirty}>
         {busy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-        <span>{tr("Simpan Profil Cukai", "Save Tax Profile")}</span>
+        <span>{dirty ? tr("Simpan Profil Cukai", "Save Tax Profile") : tr("Tiada perubahan", "No changes")}</span>
       </PrimaryButton>
     </div>
   )
@@ -1054,14 +907,15 @@ function DependantsSection({ year, tr, api, showNotice, refreshMetrics }: any) {
 
   const LABELS: Record<string, { labelBm: string; labelEn: string; reliefRM: string }> = {
     under18: { labelBm: "Anak Bawah 18 Tahun", labelEn: "Child Under 18", reliefRM: "RM 2,000" },
-    education18plus: { labelBm: "Anak 18+ Tahun (Pengajian Tinggi)", labelEn: "Child 18+ (Higher Education)", reliefRM: "RM 8,000" },
+    preuniversity18plus: { labelBm: "Anak 18+ (A-Level / Pra-U)", labelEn: "Child 18+ (A-Level / Pre-University)", reliefRM: "RM 2,000" },
+    education18plus: { labelBm: "Anak 18+ (Diploma ke Atas)", labelEn: "Child 18+ (Diploma and Above)", reliefRM: "RM 8,000" },
     disabled_child: { labelBm: "Anak Kurang Upaya (OKU)", labelEn: "Disabled Child (OKU)", reliefRM: "RM 6,000" },
-    disabled_education: { labelBm: "Anak OKU (Pengajian Tinggi)", labelEn: "Disabled Child (Higher Education)", reliefRM: "RM 14,000" },
+    disabled_education: { labelBm: "Anak OKU (Diploma ke Atas)", labelEn: "Disabled Child (Diploma and Above)", reliefRM: "RM 14,000" },
   }
 
   async function add() {
     try {
-      await api("/dependants", {
+      await api(`/dependants?assessment_year=${year}`, {
         method: "POST",
         body: JSON.stringify({
           assessment_year: year,
@@ -1080,6 +934,7 @@ function DependantsSection({ year, tr, api, showNotice, refreshMetrics }: any) {
   }
 
   async function remove(id: number) {
+    if (!window.confirm(tr("Padam tanggungan ini? Pelepasannya tidak lagi dikira.", "Delete this dependant? Its relief will no longer count."))) return
     try {
       await api(`/dependants/${id}`, { method: "DELETE" })
       await load()
@@ -1097,7 +952,7 @@ function DependantsSection({ year, tr, api, showNotice, refreshMetrics }: any) {
           <button
             type="button"
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1 rounded-full bg-[var(--btn-primary-bg)] px-3 py-1 text-xs font-bold text-[var(--btn-primary-text)] shadow-2xs hover:opacity-90 transition active:scale-95 cursor-pointer"
+            className="flex items-center gap-1 rounded-full bg-[var(--btn-primary-bg)] px-3 py-1 text-xs font-bold text-[var(--btn-primary-text)] hover:opacity-90 transition active:scale-95 cursor-pointer"
           >
             <Plus size={13} />
             <span>{tr("Tambah Anak", "Add Child")}</span>
@@ -1108,7 +963,7 @@ function DependantsSection({ year, tr, api, showNotice, refreshMetrics }: any) {
       </SectionLabel>
 
       {loading ? (
-        <div className="h-20 animate-pulse rounded-3xl bg-[var(--surface-tint)]" />
+        <div className="h-20 animate-pulse rounded-[1.5rem] bg-[var(--surface-tint)]" />
       ) : rows.length === 0 ? (
         <Card className="text-center py-6 space-y-1">
           <p className="text-sm font-bold text-[var(--text)]">{tr("Tiada Rekod Tanggungan Anak", "No Child Dependants")}</p>
@@ -1125,8 +980,8 @@ function DependantsSection({ year, tr, api, showNotice, refreshMetrics }: any) {
                     <Heart size={16} />
                   </div>
                   <div>
-                    <p className="text-xs font-black text-[var(--text)]">{tr(info.labelBm, info.labelEn)}</p>
-                    <p className="text-[0.68rem] text-[var(--muted)]">
+                    <p className="text-xs font-bold text-[var(--text)]">{tr(info.labelBm, info.labelEn)}</p>
+                    <p className="text-xs text-[var(--muted)]">
                       {tr("Tuntutan", "Claim")}: <span className="font-bold text-[var(--text)]">{d.relief_percentage}%</span> ({info.reliefRM})
                     </p>
                   </div>
@@ -1134,7 +989,7 @@ function DependantsSection({ year, tr, api, showNotice, refreshMetrics }: any) {
                 <button
                   type="button"
                   onClick={() => remove(d.id)}
-                  className="flex h-8 w-8 items-center justify-center rounded-xl text-rose-500 hover:bg-rose-500/10 transition cursor-pointer"
+                  className="flex h-8 w-8 items-center justify-center rounded-2xl text-rose-500 hover:bg-rose-500/10 transition cursor-pointer"
                   title={tr("Padam", "Delete")}
                 >
                   <Trash2 size={15} />
@@ -1146,9 +1001,9 @@ function DependantsSection({ year, tr, api, showNotice, refreshMetrics }: any) {
       )}
 
       {showAdd && (
-        <Card className="space-y-3 border-2 border-[var(--accent)]/30">
+        <Card className="space-y-3 border border-[var(--border)]">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-black text-[var(--text)]">{tr("Tambah Tanggungan Anak", "Add Child Dependant")}</p>
+            <p className="text-xs font-bold text-[var(--text)]">{tr("Tambah Tanggungan Anak", "Add Child Dependant")}</p>
             <button type="button" onClick={() => setShowAdd(false)} className="text-[var(--muted)] cursor-pointer">
               <X size={16} />
             </button>
@@ -1158,7 +1013,7 @@ function DependantsSection({ year, tr, api, showNotice, refreshMetrics }: any) {
             <select
               value={draft.dependant_type}
               onChange={(e) => setDraft({ ...draft, dependant_type: e.target.value })}
-              className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3.5 py-2.5 text-xs font-bold text-[var(--text)] outline-none cursor-pointer"
+              className="w-full rounded-2xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3.5 py-2.5 text-xs font-bold text-[var(--text)] outline-none cursor-pointer"
             >
               {Object.entries(LABELS).map(([k, v]) => (
                 <option key={k} value={k}>
@@ -1176,7 +1031,7 @@ function DependantsSection({ year, tr, api, showNotice, refreshMetrics }: any) {
                   type="button"
                   onClick={() => setDraft({ ...draft, relief_percentage: pct })}
                   className={cn(
-                    "flex-1 rounded-xl border py-2.5 text-xs font-bold transition cursor-pointer",
+                    "flex-1 rounded-2xl border py-2.5 text-xs font-bold transition cursor-pointer",
                     draft.relief_percentage === pct
                       ? "border-[var(--btn-primary-bg)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
                       : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)]"
@@ -1223,8 +1078,16 @@ function EATab({ year, tr, api, refreshMetrics, showNotice }: any) {
   }, [load])
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
+    const input = e.target
+    const file = input.files?.[0]
+    // Clear the input so choosing the same file again still fires a change.
+    input.value = ""
     if (!file) return
+    const problem = uploadProblem(file, tr)
+    if (problem) {
+      showNotice(problem, "error")
+      return
+    }
     const fd = new FormData()
     fd.append("file", file)
     fd.append("assessment_year", String(year))
@@ -1275,17 +1138,29 @@ function EATab({ year, tr, api, refreshMetrics, showNotice }: any) {
     }
   }
 
+  async function removeForm(f: any) {
+    if (!window.confirm(tr("Padam borang EA ini? Pendapatan, PCB dan zakat daripadanya turut dibuang.", "Delete this EA form? The income, PCB and zakat from it are removed too."))) return
+    try {
+      await api(`/ea-forms/${f.id}`, { method: "DELETE" })
+      await load()
+      await refreshMetrics()
+      showNotice(tr("Borang EA dipadam", "EA form deleted"))
+    } catch (e: any) {
+      showNotice(e.message || "Error", "error")
+    }
+  }
+
   const totalIncome = forms.reduce((acc, f) => acc + (f.total_employment_income || 0), 0)
 
   return (
     <div className="space-y-4">
       {/* Upload Zone Card */}
-      <Card className="border-2 border-dashed border-[var(--accent)]/30 text-center p-6 space-y-3">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-3xl bg-[var(--accent)]/15 text-[var(--accent)] shadow-2xs">
+      <Card className="border border-dashed border-[var(--accent)]/30 text-center p-6 space-y-3">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-[1.5rem] bg-[var(--accent)]/15 text-[var(--accent)]">
           <FileUp size={26} />
         </div>
         <div>
-          <h3 className="text-base font-black text-[var(--text)]">
+          <h3 className="text-base font-bold text-[var(--text)]">
             {tr("Muat Naik Penyata Pendapatan (Borang EA / EC)", "Upload EA / EC Remuneration Statement")}
           </h3>
           <p className="mt-1 text-xs text-[var(--muted)] max-w-md mx-auto">
@@ -1293,7 +1168,7 @@ function EATab({ year, tr, api, refreshMetrics, showNotice }: any) {
           </p>
         </div>
 
-        <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[var(--btn-primary-bg)] px-5 py-3 text-xs font-black text-[var(--btn-primary-text)] shadow-sm hover:opacity-95 transition active:scale-95">
+        <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[var(--btn-primary-bg)] px-5 py-3 text-xs font-bold text-[var(--btn-primary-text)] hover:opacity-95 transition active:scale-95">
           {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
           <span>{stage || (uploading ? tr("Memproses Dokumen…", "Processing Document…") : tr("Pilih Fail EA / Ambil Gambar", "Select EA File / Take Photo"))}</span>
           <input
@@ -1344,20 +1219,20 @@ function EATab({ year, tr, api, refreshMetrics, showNotice }: any) {
                     <Building size={18} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-black text-[var(--text)]">{f.employer_name || tr("Majikan Tidak Dinyatakan", "Unnamed Employer")}</h4>
-                    <p className="text-[0.68rem] text-[var(--muted)]">YA {f.assessment_year} · {f.review_status === "confirmed" ? tr("Disahkan", "Confirmed") : tr("Perlu Disemak", "Pending Review")}</p>
+                    <h4 className="text-sm font-bold text-[var(--text)]">{f.employer_name || tr("Majikan Tidak Dinyatakan", "Unnamed Employer")}</h4>
+                    <p className="text-xs text-[var(--muted)]">YA {f.assessment_year} · {f.review_status === "confirmed" ? tr("Disahkan", "Confirmed") : tr("Perlu Disemak", "Pending Review")}</p>
                   </div>
                 </div>
 
                 {f.review_status === "confirmed" ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1 text-[0.68rem] font-black text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                     <Check size={12} /> {tr("Disahkan", "Confirmed")}
                   </span>
                 ) : (
                   <button
                     type="button"
                     onClick={() => setReviewing(f)}
-                    className="rounded-full bg-[var(--btn-primary-bg)] px-3 py-1 text-xs font-black text-[var(--btn-primary-text)] shadow-2xs hover:opacity-90 cursor-pointer"
+                    className="rounded-full bg-[var(--btn-primary-bg)] px-3 py-1 text-xs font-bold text-[var(--btn-primary-text)] hover:opacity-90 cursor-pointer"
                   >
                     {tr("Semak Data", "Review")}
                   </button>
@@ -1366,32 +1241,40 @@ function EATab({ year, tr, api, refreshMetrics, showNotice }: any) {
 
               {/* Breakdown Pills */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-[var(--border)] text-xs">
-                <div className="rounded-xl bg-[var(--surface-tint)] p-2.5">
-                  <span className="text-[0.65rem] text-[var(--muted)] block font-bold">{tr("Pendapatan Kasar", "Gross Income")}</span>
-                  <span className="font-black text-[var(--text)]"><RM value={f.total_employment_income} /></span>
+                <div className="rounded-2xl bg-[var(--surface-tint)] p-2.5">
+                  <span className="text-xs text-[var(--muted)] block font-bold">{tr("Pendapatan Kasar", "Gross Income")}</span>
+                  <span className="font-bold text-[var(--text)]"><RM value={f.total_employment_income} /></span>
                 </div>
-                <div className="rounded-xl bg-[var(--surface-tint)] p-2.5">
-                  <span className="text-[0.65rem] text-[var(--muted)] block font-bold">PCB (MTD)</span>
-                  <span className="font-black text-emerald-600 dark:text-emerald-400"><RM value={f.pcb_amount} /></span>
+                <div className="rounded-2xl bg-[var(--surface-tint)] p-2.5">
+                  <span className="text-xs text-[var(--muted)] block font-bold">PCB (MTD)</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400"><RM value={f.pcb_amount} /></span>
                 </div>
-                <div className="rounded-xl bg-[var(--surface-tint)] p-2.5">
-                  <span className="text-[0.65rem] text-[var(--muted)] block font-bold">KWSP (EPF)</span>
-                  <span className="font-black text-[var(--text)]"><RM value={f.epf_amount} /></span>
+                <div className="rounded-2xl bg-[var(--surface-tint)] p-2.5">
+                  <span className="text-xs text-[var(--muted)] block font-bold">KWSP (EPF)</span>
+                  <span className="font-bold text-[var(--text)]"><RM value={f.epf_amount} /></span>
                 </div>
-                <div className="rounded-xl bg-[var(--surface-tint)] p-2.5">
-                  <span className="text-[0.65rem] text-[var(--muted)] block font-bold">SOCSO / PERKESO</span>
-                  <span className="font-black text-[var(--text)]"><RM value={f.socso_amount} /></span>
+                <div className="rounded-2xl bg-[var(--surface-tint)] p-2.5">
+                  <span className="text-xs text-[var(--muted)] block font-bold">SOCSO / PERKESO</span>
+                  <span className="font-bold text-[var(--text)]"><RM value={f.socso_amount} /></span>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-1">
+              <div className="flex justify-end gap-4 pt-1">
                 <button
                   type="button"
                   onClick={() => setReviewing({ ...f, editing: true })}
-                  className="flex items-center gap-1 text-xs font-bold text-[var(--accent)] hover:underline cursor-pointer"
+                  className="flex items-center gap-1.5 text-sm font-semibold text-[var(--text)] hover:underline"
                 >
-                  <PencilLine size={13} />
-                  <span>{tr("Sunting Nilai", "Edit Values")}</span>
+                  <PencilLine size={14} />
+                  <span>{tr("Sunting nilai", "Edit values")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void removeForm(f)}
+                  className="flex items-center gap-1.5 text-sm font-semibold text-rose-500 hover:underline"
+                >
+                  <Trash2 size={14} />
+                  <span>{tr("Padam", "Delete")}</span>
                 </button>
               </div>
             </Card>
@@ -1399,8 +1282,8 @@ function EATab({ year, tr, api, refreshMetrics, showNotice }: any) {
 
           {forms.length > 1 && (
             <Card className="flex items-center justify-between bg-[var(--surface-tint)] p-4">
-              <span className="text-xs font-black uppercase text-[var(--muted)]">{tr("Jumlah Keseluruhan Pendapatan Majikan", "Total All Employers")}</span>
-              <span className="text-base font-black text-[var(--text)]"><RM value={totalIncome} /></span>
+              <span className="text-xs font-bold text-[var(--muted)]">{tr("Jumlah Keseluruhan Pendapatan Majikan", "Total All Employers")}</span>
+              <span className="text-base font-bold text-[var(--text)]"><RM value={totalIncome} /></span>
             </Card>
           )}
         </div>
@@ -1416,9 +1299,17 @@ function ReviewEAModal({ form, onConfirm, onClose, api, tr, year, showNotice, on
 
   const conf = Math.round((form.confidence || 0.85) * 100)
 
+  const PARTS = ["salary", "bonus", "allowances"]
+
   function setNum(key: string, val: string) {
     const n = val === "" ? null : Number(val)
-    setF({ ...f, [key]: val === "" ? null : n !== null && isNaN(n) ? val : n })
+    if (n !== null && (isNaN(n) || n < 0)) return
+    const next: any = { ...f, [key]: n }
+    if (PARTS.includes(key)) {
+      // The gross total moves with the part that changed, so the two never disagree.
+      next.total_employment_income = Math.round(((Number(f.total_employment_income) || 0) - (Number(f[key]) || 0) + (n || 0)) * 100) / 100
+    }
+    setF(next)
   }
 
   async function save() {
@@ -1436,12 +1327,12 @@ function ReviewEAModal({ form, onConfirm, onClose, api, tr, year, showNotice, on
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-xs md:items-center p-0 md:p-4 animate-in fade-in duration-200">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[32px] md:rounded-3xl border border-[var(--border)] bg-[var(--bg)] p-5 md:p-6 shadow-2xl space-y-4">
+    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 md:items-center p-0 md:p-4 animate-in fade-in duration-200">
+      <div className="max-h-[90vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-t-[2rem] border border-[var(--border)] bg-[var(--bg)] p-5 md:rounded-[2rem] md:p-6">
         {/* Modal Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-black text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+            <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
               {tr("Borang EA Dikesan", "EA Form Detected")}
             </span>
             <span className="text-xs font-bold text-[var(--muted)]">{tr("Ketepatan AI", "AI Confidence")}: {conf}%</span>
@@ -1458,13 +1349,13 @@ function ReviewEAModal({ form, onConfirm, onClose, api, tr, year, showNotice, on
               {editing ? (
                 <TextInput value={f.employer_name || ""} onChange={(v) => setF({ ...f, employer_name: v })} />
               ) : (
-                <p className="text-sm font-black text-[var(--text)]">{f.employer_name || "—"}</p>
+                <p className="text-sm font-bold text-[var(--text)]">{f.employer_name || "—"}</p>
               )}
             </Field>
           </div>
 
           <div className="space-y-2.5 pt-3">
-            <p className="text-[0.68rem] font-black uppercase tracking-wider text-[var(--muted)]">{tr("Pecahan Pendapatan Kasar", "Employment Remuneration")}</p>
+            <p className="text-xs font-bold text-[var(--muted)]">{tr("Pecahan Pendapatan Kasar", "Employment Remuneration")}</p>
             <div className="grid grid-cols-2 gap-2">
               <Field label={tr("Gaji Pokok", "Salary")}>
                 {editing ? <NumInput value={f.salary ?? ""} onChange={(v) => setNum("salary", v)} /> : <p className="text-xs font-bold text-[var(--text)]"><RM value={f.salary} /></p>}
@@ -1476,13 +1367,13 @@ function ReviewEAModal({ form, onConfirm, onClose, api, tr, year, showNotice, on
                 {editing ? <NumInput value={f.allowances ?? ""} onChange={(v) => setNum("allowances", v)} /> : <p className="text-xs font-bold text-[var(--text)]"><RM value={f.allowances} /></p>}
               </Field>
               <Field label={tr("Jumlah Kasar", "Total Gross")}>
-                {editing ? <NumInput value={f.total_employment_income ?? ""} onChange={(v) => setNum("total_employment_income", v)} /> : <p className="text-sm font-black text-[var(--text)]"><RM value={f.total_employment_income} /></p>}
+                {editing ? <NumInput value={f.total_employment_income ?? ""} onChange={(v) => setNum("total_employment_income", v)} /> : <p className="text-sm font-bold text-[var(--text)]"><RM value={f.total_employment_income} /></p>}
               </Field>
             </div>
           </div>
 
           <div className="space-y-2.5 pt-3">
-            <p className="text-[0.68rem] font-black uppercase tracking-wider text-[var(--muted)]">{tr("Potongan & Caruman", "Deductions & Contributions")}</p>
+            <p className="text-xs font-bold text-[var(--muted)]">{tr("Potongan & Caruman", "Deductions & Contributions")}</p>
             <div className="grid grid-cols-2 gap-2">
               <Field label="PCB / MTD">
                 {editing ? <NumInput value={f.pcb_amount ?? ""} onChange={(v) => setNum("pcb_amount", v)} /> : <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400"><RM value={f.pcb_amount} /></p>}
@@ -1504,7 +1395,7 @@ function ReviewEAModal({ form, onConfirm, onClose, api, tr, year, showNotice, on
         <div className="flex gap-2 pt-2">
           {editing ? (
             <>
-              <GhostButton onClick={() => setEditing(false)}>{tr("Batal Edit", "Cancel")}</GhostButton>
+              <GhostButton onClick={() => { setF({ ...form }); setEditing(false) }}>{tr("Batal Edit", "Cancel")}</GhostButton>
               <PrimaryButton onClick={save} disabled={busy}>
                 {busy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                 <span>{tr("Simpan Perubahan", "Save Changes")}</span>
@@ -1556,6 +1447,16 @@ function IncomeTab({ year, tr, api, refreshMetrics, showNotice }: any) {
   }, [load])
 
   async function add() {
+    const gross = Number(draft.gross_amount)
+    const expenses = draft.income_type === "business" && draft.business_expenses ? Number(draft.business_expenses) : 0
+    if (!gross || gross <= 0) {
+      showNotice(tr("Masukkan pendapatan kasar yang lebih daripada sifar.", "Enter a gross income above zero."), "error")
+      return
+    }
+    if (expenses < 0 || expenses > gross) {
+      showNotice(tr("Perbelanjaan tidak boleh lebih daripada pendapatan kasar.", "Expenses cannot be more than the gross income."), "error")
+      return
+    }
     try {
       await api("/income", {
         method: "POST",
@@ -1564,10 +1465,11 @@ function IncomeTab({ year, tr, api, refreshMetrics, showNotice }: any) {
           income_type: draft.income_type,
           source_type: "manual",
           employer_name: draft.income_type === "employment" ? draft.employer_name || undefined : undefined,
-          gross_amount: draft.gross_amount ? Number(draft.gross_amount) : 0,
-          taxable_amount: draft.taxable_amount ? Number(draft.taxable_amount) : (draft.gross_amount ? Number(draft.gross_amount) : 0),
+          gross_amount: gross,
+          // A business is taxed on what is left after its allowable expenses.
+          taxable_amount: Math.round((gross - expenses) * 100) / 100,
           business_name: draft.income_type === "business" ? draft.business_name || undefined : undefined,
-          business_expenses: draft.business_expenses ? Number(draft.business_expenses) : null,
+          business_expenses: draft.income_type === "business" && draft.business_expenses ? expenses : null,
           status: "confirmed",
         }),
       })
@@ -1581,6 +1483,18 @@ function IncomeTab({ year, tr, api, refreshMetrics, showNotice }: any) {
     }
   }
 
+  async function remove(r: any) {
+    if (!window.confirm(tr("Padam rekod pendapatan ini?", "Delete this income record?"))) return
+    try {
+      await api(`/income/${r.id}`, { method: "DELETE" })
+      await load()
+      await refreshMetrics()
+      showNotice(tr("Rekod pendapatan dipadam", "Income record deleted"))
+    } catch (e: any) {
+      showNotice(e.message || "Error", "error")
+    }
+  }
+
   return (
     <div className="space-y-4">
       <SectionLabel
@@ -1588,14 +1502,14 @@ function IncomeTab({ year, tr, api, refreshMetrics, showNotice }: any) {
           <button
             type="button"
             onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1 rounded-full bg-[var(--btn-primary-bg)] px-3.5 py-1.5 text-xs font-bold text-[var(--btn-primary-text)] shadow-2xs hover:opacity-90 transition active:scale-95 cursor-pointer"
+            className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--btn-primary-bg)] px-4 text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-95"
           >
             <Plus size={13} />
-            <span>{tr("Tambah Pendapatan", "Add Income")}</span>
+            <span className="whitespace-nowrap">{tr("Tambah", "Add")}</span>
           </button>
         }
       >
-        {tr("Senarai Pendapatan", "Income Records")} — YA {year}
+        {tr("Pendapatan", "Income")}
       </SectionLabel>
 
       {loading ? (
@@ -1608,8 +1522,8 @@ function IncomeTab({ year, tr, api, refreshMetrics, showNotice }: any) {
       ) : (
         <div className="space-y-2.5">
           {rows.map((r) => (
-            <Card key={r.id} className="flex items-center justify-between p-4">
-              <div className="flex items-center gap-3">
+            <Card key={r.id} className="flex items-center justify-between gap-3 p-4">
+              <div className="flex min-w-0 items-center gap-3">
                 <div className={cn(
                   "flex h-10 w-10 items-center justify-center rounded-2xl",
                   r.income_type === "business" ? "bg-amber-500/15 text-amber-600" : "bg-sky-500/15 text-sky-600"
@@ -1617,15 +1531,15 @@ function IncomeTab({ year, tr, api, refreshMetrics, showNotice }: any) {
                   {r.income_type === "business" ? <Briefcase size={18} /> : <Building size={18} />}
                 </div>
                 <div>
-                  <h4 className="text-sm font-black text-[var(--text)]">
+                  <h4 className="text-sm font-bold text-[var(--text)]">
                     {r.income_type === "business" ? r.business_name || tr("Perniagaan", "Business") : r.employer_name || tr("Pekerjaan", "Employment")}
                   </h4>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="rounded-full bg-[var(--surface-tint)] px-2 py-0.5 text-[0.65rem] font-bold text-[var(--muted)]">
-                      {r.source_type === "ea" ? tr("Borang EA Majikan", "EA Form") : tr("Kemasukan Manual", "Manual Entry")}
+                    <span className="rounded-full bg-[var(--surface-tint)] px-2 py-0.5 text-xs font-bold text-[var(--muted)]">
+                      {r.source_type === "ea" ? tr("Daripada borang EA", "From the EA form") : tr("Kemasukan manual", "Manual entry")}
                     </span>
                     {r.business_expenses != null && (
-                      <span className="text-[0.65rem] text-[var(--muted)]">
+                      <span className="text-xs text-[var(--muted)]">
                         {tr("Perbelanjaan", "Expenses")}: <RM value={r.business_expenses} />
                       </span>
                     )}
@@ -1633,9 +1547,21 @@ function IncomeTab({ year, tr, api, refreshMetrics, showNotice }: any) {
                 </div>
               </div>
 
-              <div className="text-right">
-                <p className="text-sm sm:text-base font-black text-[var(--text)]"><RM value={r.gross_amount} /></p>
-                <p className="text-[0.65rem] text-emerald-600 dark:text-emerald-400 font-bold">{tr("Bercukai", "Taxable")}: <RM value={r.taxable_amount || r.gross_amount} /></p>
+              <div className="flex items-center gap-2">
+                <div className="text-right">
+                  <p className="text-base font-bold tabular-nums text-[var(--text)]"><RM value={r.gross_amount} /></p>
+                  <p className="text-xs font-semibold text-[var(--muted)]">{tr("Bercukai", "Taxable")}: <RM value={r.taxable_amount ?? r.gross_amount} /></p>
+                </div>
+                {r.source_type === "ea" ? null : (
+                  <button
+                    type="button"
+                    onClick={() => void remove(r)}
+                    aria-label={tr("Padam", "Delete")}
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-rose-500 transition hover:bg-rose-500/10"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
               </div>
             </Card>
           ))}
@@ -1643,9 +1569,9 @@ function IncomeTab({ year, tr, api, refreshMetrics, showNotice }: any) {
       )}
 
       {showAdd && (
-        <Card className="space-y-3.5 border-2 border-[var(--accent)]/30">
+        <Card className="space-y-3.5 border border-[var(--border)]">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-black text-[var(--text)]">{tr("Tambah Rekod Pendapatan", "Add Income Record")}</h4>
+            <h4 className="text-sm font-bold text-[var(--text)]">{tr("Tambah Rekod Pendapatan", "Add Income Record")}</h4>
             <button type="button" onClick={() => setShowAdd(false)} className="text-[var(--muted)] cursor-pointer">
               <X size={16} />
             </button>
@@ -1659,7 +1585,7 @@ function IncomeTab({ year, tr, api, refreshMetrics, showNotice }: any) {
                   type="button"
                   onClick={() => setDraft({ ...draft, income_type: t })}
                   className={cn(
-                    "flex-1 rounded-xl border py-2 text-xs font-bold transition cursor-pointer",
+                    "flex-1 rounded-2xl border py-2 text-xs font-bold transition cursor-pointer",
                     draft.income_type === t
                       ? "border-[var(--btn-primary-bg)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
                       : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)]"
@@ -1686,7 +1612,7 @@ function IncomeTab({ year, tr, api, refreshMetrics, showNotice }: any) {
           </Field>
 
           {draft.income_type === "business" && (
-            <Field label={tr("Perbelanjaan Dibenarkan (RM)", "Allowable Business Expenses (RM)")}>
+            <Field label={tr("Perbelanjaan Dibenarkan (RM)", "Allowable Business Expenses (RM)")} hint={tr("Ditolak sebelum cukai", "Deducted before tax")}>
               <NumInput value={draft.business_expenses} onChange={(v) => setDraft({ ...draft, business_expenses: v })} placeholder="0.00" />
             </Field>
           )}
@@ -1709,6 +1635,7 @@ function ReliefsTab({ year, tr, api, refreshMetrics, showNotice }: any) {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [searchQuery, setSearchQuery] = useState("")
+  const [saving, setSaving] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -1725,32 +1652,48 @@ function ReliefsTab({ year, tr, api, refreshMetrics, showNotice }: any) {
     load()
   }, [load])
 
-  async function saveRelief(code: string) {
-    const val = Number(drafts[code] || 0)
+  // What the box shows: what the user is typing, else what is claimed now.
+  const draftOf = (r: any) => drafts[r.relief_code] ?? (r.claimed_amount ? String(r.claimed_amount) : "")
+
+  async function saveRelief(r: any, amount?: number) {
+    const val = amount ?? Number(draftOf(r) || 0)
+    if (isNaN(val) || val < 0) {
+      showNotice(tr("Masukkan jumlah yang sah.", "Enter a valid amount."), "error")
+      return
+    }
+    setSaving(r.relief_code)
     try {
       await api("/reliefs", {
         method: "POST",
-        body: JSON.stringify({ assessment_year: year, relief_code: code, claimed_amount: val }),
+        body: JSON.stringify({ assessment_year: year, relief_code: r.relief_code, claimed_amount: val }),
       })
-      setDrafts({ ...drafts, [code]: "" })
+      setDrafts((d) => {
+        const next = { ...d }
+        delete next[r.relief_code]
+        return next
+      })
       await load()
       await refreshMetrics()
-      showNotice(tr("Pelepasan cukai berjaya dikemas kini!", "Relief updated successfully!"))
+      showNotice(val > 0 ? tr("Pelepasan dikemas kini", "Relief updated") : tr("Tuntutan dibuang", "Claim removed"))
     } catch (e: any) {
       showNotice(e.message || "Error", "error")
+    } finally {
+      setSaving(null)
     }
   }
 
-  const groupLabels: Record<string, { nameBm: string; nameEn: string; icon: any; color: string }> = {
-    personal: { nameBm: "Individu & Diri Sendiri", nameEn: "Personal & Individual", icon: User, color: "text-sky-500 bg-sky-500/10" },
-    epf_insurance: { nameBm: "KWSP, Insurans & PRS", nameEn: "EPF, Insurance & PRS", icon: Shield, color: "text-indigo-500 bg-indigo-500/10" },
-    medical: { nameBm: "Rawatan Perubatan & Kesihatan", nameEn: "Medical & Health", icon: Heart, color: "text-rose-500 bg-rose-500/10" },
-    lifestyle: { nameBm: "Gaya Hidup & Gajet", nameEn: "Lifestyle & Gadgets", icon: Smartphone, color: "text-amber-500 bg-amber-500/10" },
-    education: { nameBm: "Pendidikan & Pengajian", nameEn: "Education & Studies", icon: GraduationCap, color: "text-violet-500 bg-violet-500/10" },
-    children: { nameBm: "Anak & Penjagaan", nameEn: "Children & Childcare", icon: Heart, color: "text-emerald-500 bg-emerald-500/10" },
-    parents: { nameBm: "Ibu Bapa & Keluarga", nameEn: "Parents & Family", icon: UserCircle2, color: "text-teal-500 bg-teal-500/10" },
-    other: { nameBm: "Pelepasan Lain (SSPN, EV, SOCSO)", nameEn: "Other Reliefs (SSPN, EV, SOCSO)", icon: Gift, color: "text-slate-500 bg-slate-500/10" },
+  const groupLabels: Record<string, { nameBm: string; nameEn: string; icon: any }> = {
+    personal: { nameBm: "Diri sendiri", nameEn: "Yourself", icon: User },
+    family: { nameBm: "Pasangan & keluarga", nameEn: "Spouse & family", icon: Heart },
+    children: { nameBm: "Anak", nameEn: "Children", icon: Heart },
+    parents: { nameBm: "Ibu bapa", nameEn: "Parents", icon: UserCircle2 },
+    medical: { nameBm: "Perubatan", nameEn: "Medical", icon: Heart },
+    epf_insurance: { nameBm: "KWSP, insurans & persaraan", nameEn: "EPF, insurance & retirement", icon: Shield },
+    education: { nameBm: "Pendidikan", nameEn: "Education", icon: GraduationCap },
+    lifestyle: { nameBm: "Gaya hidup", nameEn: "Lifestyle", icon: Smartphone },
+    other: { nameBm: "Lain-lain", nameEn: "Other", icon: Gift },
   }
+  const GROUP_ORDER = ["personal", "family", "children", "parents", "medical", "epf_insurance", "education", "lifestyle", "other"]
 
   const filtered = useMemo(() => {
     if (!searchQuery.trim()) return reliefs
@@ -1760,133 +1703,129 @@ function ReliefsTab({ year, tr, api, refreshMetrics, showNotice }: any) {
 
   const grouped: Record<string, any[]> = {}
   filtered.forEach((r) => {
-    const g = r.group || "other"
+    const g = groupLabels[r.group] ? r.group : "other"
     ;(grouped[g] = grouped[g] || []).push(r)
   })
+  const orderedGroups = GROUP_ORDER.filter((g) => grouped[g])
 
-  const totalClaimed = reliefs.reduce((acc, r) => acc + (r.claimed_amount || 0), 0)
+  const totalApplied = reliefs.reduce((acc, r) => acc + (r.applied_amount || 0), 0)
 
   return (
     <div className="space-y-4">
-      {/* Header Info Banner */}
-      <Card className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[var(--surface-tint)]">
+      <Card className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
-          <span className="text-[0.68rem] font-bold uppercase tracking-wider text-[var(--muted)]">{tr("Jumlah Pelepasan Dituntut", "Total Reliefs Claimed")}</span>
-          <h3 className="text-2xl font-black text-[var(--text)]"><RM value={totalClaimed} /></h3>
-          <p className="text-xs text-[var(--muted)]">{tr("Mengurangkan pendapatan bercukai anda mengikut jadual LHDN.", "Reduces your chargeable income per HASiL rules.")}</p>
+          <p className="text-xs font-semibold text-[var(--muted)]">{tr("Jumlah pelepasan yang dikira", "Total reliefs counted")}</p>
+          <p className="mt-0.5 text-2xl font-bold tabular-nums tracking-tight text-[var(--text)]"><RM value={totalApplied} /></p>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            {tr("Mengurangkan pendapatan bercukai, setiap satu dihadkan kepada had LHDN.", "Reduces your chargeable income, each capped at its HASiL limit.")}
+          </p>
         </div>
-
-        {/* Search Input */}
         <div className="relative w-full sm:w-64">
-          <Search size={14} className="absolute left-3 top-3 text-[var(--muted)]" />
+          <Search size={15} className="absolute left-4 top-3.5 text-[var(--muted)]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={tr("Cari pelepasan…", "Search reliefs…")}
-            className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] pl-9 pr-3.5 py-2 text-xs text-[var(--text)] outline-none focus:border-[var(--accent)]"
+            className="h-11 w-full rounded-full border border-[var(--border)] bg-transparent pl-11 pr-4 text-base text-[var(--text)] outline-none focus:border-[var(--btn-primary-bg)] md:text-sm"
           />
         </div>
       </Card>
 
-      {/* Grouped Relief List */}
       {loading ? (
         <Skeleton />
-      ) : Object.keys(grouped).length === 0 ? (
-        <Card className="text-center py-8 text-sm text-[var(--muted)]">{tr("Tiada pelepasan dijumpai.", "No reliefs found.")}</Card>
+      ) : orderedGroups.length === 0 ? (
+        <Card className="py-8 text-center text-sm text-[var(--muted)]">{tr("Tiada pelepasan dijumpai.", "No reliefs found.")}</Card>
       ) : (
-        Object.entries(grouped).map(([groupKey, list]) => {
-          const gInfo = groupLabels[groupKey] || { nameBm: groupKey, nameEn: groupKey, icon: Gift, color: "text-slate-500 bg-slate-500/10" }
+        orderedGroups.map((groupKey) => {
+          const list = grouped[groupKey]
+          const gInfo = groupLabels[groupKey]
           const GroupIcon = gInfo.icon
-
           return (
             <div key={groupKey} className="space-y-2">
               <div className="flex items-center gap-2 px-1 pt-2">
-                <div className={cn("flex h-6 w-6 items-center justify-center rounded-lg text-xs", gInfo.color)}>
-                  <GroupIcon size={13} />
-                </div>
-                <h4 className="text-xs font-black uppercase tracking-wider text-[var(--text)]">
-                  {tr(gInfo.nameBm, gInfo.nameEn)}
-                </h4>
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--text)]">
+                  <GroupIcon size={14} />
+                </span>
+                <h4 className="text-sm font-bold text-[var(--text)]">{tr(gInfo.nameBm, gInfo.nameEn)}</h4>
               </div>
 
-              <Card className="space-y-1.5 p-2 sm:p-3 divide-y divide-[var(--border)]/60">
+              <Card className="divide-y divide-[var(--border)] p-0 md:p-0">
                 {list.map((r) => {
-                  const claimed = r.claimed_amount || 0
+                  const applied = r.applied_amount || 0
                   const limit = r.max_limit
-                  const pct = limit ? Math.min(100, (claimed / limit) * 100) : claimed > 0 ? 100 : 0
-                  const isMaxed = limit && claimed >= limit
+                  const pct = limit ? Math.min(100, (applied / limit) * 100) : applied > 0 ? 100 : 0
+                  const isMaxed = !!limit && applied >= limit
                   const isExp = expanded === r.relief_code
-
+                  const overLimit = !!limit && Number(draftOf(r) || 0) > limit
+                  const fromEa = r.applied_source === "ea"
                   return (
-                    <div key={r.relief_code} className="pt-2 first:pt-0">
+                    <div key={r.relief_code} className="px-4 py-3 md:px-5">
                       <button
                         type="button"
-                        onClick={() => setExpanded(isExp ? null : r.relief_code)}
-                        className="flex w-full items-center justify-between p-2 rounded-2xl hover:bg-[var(--surface-tint)]/60 transition text-left cursor-pointer"
+                        onClick={() => !r.auto && setExpanded(isExp ? null : r.relief_code)}
+                        className={cn("flex w-full items-center justify-between gap-3 text-left", r.auto && "cursor-default")}
+                        aria-expanded={r.auto ? undefined : isExp}
                       >
-                        <div className="min-w-0 pr-2">
-                          <div className="flex items-center gap-1.5">
-                            <p className="text-xs sm:text-sm font-bold text-[var(--text)] truncate">{r.name}</p>
-                            {isMaxed && (
-                              <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[0.6rem] font-black text-emerald-600 dark:text-emerald-400">
-                                MAX
-                              </span>
+                        <span className="min-w-0">
+                          <span className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-sm font-semibold text-[var(--text)]">{localName(r.name, tr("1", "0") === "1")}</span>
+                            {r.auto && (
+                              <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-xs font-semibold text-[var(--muted)]">{tr("Automatik", "Automatic")}</span>
                             )}
-                          </div>
-                          <p className="text-[0.68rem] text-[var(--muted)]">
-                            {tr("Had Maksimum", "Max Limit")}: <span className="font-bold text-[var(--text)]">{limit ? `RM ${Number(limit).toLocaleString("en-MY")}` : tr("Tiada Had", "No Limit")}</span>
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="text-right">
-                            <span className={cn("text-xs sm:text-sm font-black", claimed > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-[var(--text)]")}>
-                              <RM value={claimed} />
-                            </span>
-                          </div>
-                          <ChevronRight size={16} className={cn("text-[var(--muted)] transition-transform duration-200", isExp && "rotate-90")} />
-                        </div>
+                            {fromEa && !r.auto && (
+                              <span className="rounded-full border border-[var(--border)] px-2 py-0.5 text-xs font-semibold text-[var(--muted)]">{tr("Daripada EA", "From EA")}</span>
+                            )}
+                            {isMaxed && <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">MAX</span>}
+                          </span>
+                          <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                            {tr("Had", "Limit")}: {limit ? `RM ${Number(limit).toLocaleString("en-MY")}` : tr("Tiada had", "No limit")}
+                            {r.shared ? ` · ${tr("kongsi had RM10,000", "shares the RM10,000 limit")}` : ""}
+                          </span>
+                        </span>
+                        <span className="flex shrink-0 items-center gap-2">
+                          <span className={cn("text-sm font-bold tabular-nums", applied > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-[var(--muted)]")}>
+                            <RM value={applied} />
+                          </span>
+                          {!r.auto && <ChevronRight size={16} className={cn("text-[var(--muted)] transition-transform duration-200", isExp && "rotate-90")} />}
+                        </span>
                       </button>
 
-                      {/* Progress Bar */}
-                      <div className="px-2 pb-1">
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
-                          <div
-                            className={cn("h-full rounded-full transition-all duration-300", isMaxed ? "bg-emerald-500" : "bg-[var(--accent)]")}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
+                      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
+                        <div className={cn("h-full rounded-full transition-all duration-300", isMaxed ? "bg-emerald-500" : "bg-[var(--btn-primary-bg)]")} style={{ width: `${pct}%` }} />
                       </div>
 
-                      {/* Expanded Claim Box */}
-                      {isExp && (
-                        <div className="mt-2 space-y-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3.5 animate-in fade-in duration-150">
-                          <div className="flex flex-col sm:flex-row sm:items-end gap-2">
-                            <div className="flex-1">
-                              <Field label={tr("Jumlah Dituntut (RM)", "Amount Claimed (RM)")}>
-                                <NumInput
-                                  value={drafts[r.relief_code] ?? (claimed ? String(claimed) : "")}
-                                  onChange={(v) => setDrafts({ ...drafts, [r.relief_code]: v })}
-                                  placeholder={limit ? `Maksimum: RM ${limit}` : "0.00"}
-                                />
-                              </Field>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => saveRelief(r.relief_code)}
-                              className="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 text-xs font-black text-[var(--btn-primary-text)] shadow-xs hover:opacity-90 transition active:scale-95 cursor-pointer"
-                            >
-                              <Check size={14} />
+                      {isExp && !r.auto && (
+                        <div className="mt-3 space-y-3 rounded-[1.25rem] border border-[var(--border)] p-3.5">
+                          {r.note && <p className="text-xs leading-relaxed text-[var(--muted)]">{r.note}</p>}
+                          <Field label={tr("Jumlah dituntut (RM)", "Amount claimed (RM)")}>
+                            <NumInput
+                              value={draftOf(r)}
+                              onChange={(v) => setDrafts({ ...drafts, [r.relief_code]: v })}
+                              placeholder={limit ? `${tr("Maksimum", "Maximum")}: RM ${limit}` : "0.00"}
+                            />
+                          </Field>
+                          {overLimit && (
+                            <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                              {tr(`Hanya RM ${Number(limit).toLocaleString("en-MY")} dikira, iaitu had pelepasan ini.`, `Only RM ${Number(limit).toLocaleString("en-MY")} counts, the limit for this relief.`)}
+                            </p>
+                          )}
+                          <div className="flex gap-2">
+                            {r.claimed_amount > 0 && (
+                              <GhostButton onClick={() => void saveRelief(r, 0)} disabled={saving === r.relief_code}>
+                                {tr("Buang tuntutan", "Remove claim")}
+                              </GhostButton>
+                            )}
+                            <PrimaryButton onClick={() => void saveRelief(r)} disabled={saving === r.relief_code}>
+                              {saving === r.relief_code ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                               <span>{tr("Simpan", "Save")}</span>
-                            </button>
+                            </PrimaryButton>
                           </div>
-
                           {r.doc_requirement && (
-                            <div className="flex items-center gap-1.5 text-[0.68rem] text-[var(--muted)] bg-[var(--card)] p-2 rounded-xl border border-[var(--border)]">
-                              <Info size={13} className="text-[var(--accent)] shrink-0" />
-                              <span>{tr("Dokumen / Resit diperlukan", "Required proof")}: {r.doc_requirement}</span>
-                            </div>
+                            <p className="flex items-start gap-1.5 text-xs text-[var(--muted)]">
+                              <Info size={13} className="mt-0.5 shrink-0" />
+                              <span>{tr("Dokumen / resit diperlukan", "Required proof")}: {r.doc_requirement}</span>
+                            </p>
                           )}
                         </div>
                       )}
@@ -1904,7 +1843,7 @@ function ReliefsTab({ year, tr, api, refreshMetrics, showNotice }: any) {
 
 /* ─────────────────────────── 6. Rebates Tab ─────────────────────────── */
 
-function RebatesTab({ year, tr, api, refreshMetrics, showNotice }: any) {
+function RebatesTab({ year, tr, api, calcData, refreshMetrics, showNotice }: any) {
   const [rows, setRows] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [amount, setAmount] = useState("")
@@ -1926,22 +1865,21 @@ function RebatesTab({ year, tr, api, refreshMetrics, showNotice }: any) {
   }, [load])
 
   async function addZakat() {
-    if (!amount || Number(amount) <= 0) return
+    const value = Number(amount)
+    if (!amount || isNaN(value) || value <= 0) {
+      showNotice(tr("Masukkan jumlah zakat yang lebih daripada sifar.", "Enter a zakat amount above zero."), "error")
+      return
+    }
     setBusy(true)
     try {
       await api("/rebates", {
         method: "POST",
-        body: JSON.stringify({
-          assessment_year: year,
-          rebate_code: "rebate_zakat",
-          amount: Number(amount || 0),
-          source: "manual",
-        }),
+        body: JSON.stringify({ assessment_year: year, rebate_code: "rebate_zakat", amount: value, source: "manual" }),
       })
       setAmount("")
       await load()
       await refreshMetrics()
-      showNotice(tr("Zakat direkodkan sebagai rebat cukai!", "Zakat recorded as tax rebate!"))
+      showNotice(tr("Zakat direkodkan sebagai rebat cukai", "Zakat recorded as a tax rebate"))
     } catch (e: any) {
       showNotice(e.message || "Error", "error")
     } finally {
@@ -1949,46 +1887,89 @@ function RebatesTab({ year, tr, api, refreshMetrics, showNotice }: any) {
     }
   }
 
+  async function remove(r: any) {
+    if (!window.confirm(tr("Padam rekod rebat ini?", "Delete this rebate record?"))) return
+    try {
+      await api(`/rebates/${r.id}`, { method: "DELETE" })
+      await load()
+      await refreshMetrics()
+      showNotice(tr("Rebat dipadam", "Rebate deleted"))
+    } catch (e: any) {
+      showNotice(e.message || "Error", "error")
+    }
+  }
+
+  // Rebates the estimate adds by itself: the RM400 individual rebate and zakat from the EA form.
+  const autoLines: any[] = (calcData?.rebate_lines || []).filter((l: any) => l.auto)
+  const applied = calcData?.rebate_total ?? 0
+  const available = calcData?.rebate_available ?? 0
+
   return (
     <div className="space-y-4">
-      {/* Explanatory Banner */}
-      <Card className="border-emerald-500/30 bg-emerald-500/5 space-y-2">
-        <div className="flex items-center gap-2">
-          <BadgePercent size={18} className="text-emerald-600 dark:text-emerald-400" />
-          <h4 className="text-sm font-black text-[var(--text)]">{tr("Kelebihan Rebat Cukai & Zakat", "Tax Rebates & Zakat Advantage")}</h4>
+      <Card className="space-y-2">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--text)]">
+            <BadgePercent size={17} />
+          </span>
+          <h4 className="text-sm font-bold text-[var(--text)]">{tr("Rebat dan zakat", "Rebates and zakat")}</h4>
         </div>
-        <p className="text-xs text-[var(--muted)] leading-relaxed">
-          {tr("Rebat cukai dan bayaran Zakat (Fitrah / Harta) ditolak secara 1-ke-1 (Ringgit-ke-Ringgit) daripada jumlah Cukai Kasar yang perlu dibayar, bukan sekadar mengurangkan pendapatan bercukai.", "Tax rebates and Zakat payments offset your gross tax liability dollar-for-dollar directly.")}
+        <p className="text-sm leading-relaxed text-[var(--muted)]">
+          {tr(
+            "Rebat dan zakat ditolak terus daripada cukai yang perlu dibayar, ringgit demi ringgit, bukan daripada pendapatan bercukai. Jika pendapatan bercukai anda RM35,000 atau kurang, rebat individu RM400 ditambah secara automatik. Rebat tidak boleh melebihi cukai.",
+            "Rebates and zakat come off the tax itself, ringgit for ringgit, not off chargeable income. When your chargeable income is RM35,000 or less, the RM400 individual rebate is added automatically. A rebate cannot be more than the tax."
+          )}
         </p>
+        {available > applied && (
+          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">
+            {tr(`Hanya RM ${applied.toLocaleString("en-MY")} daripada RM ${available.toLocaleString("en-MY")} digunakan kerana cukai anda lebih rendah.`, `Only RM ${applied.toLocaleString("en-MY")} of RM ${available.toLocaleString("en-MY")} is used, because your tax is lower.`)}
+          </p>
+        )}
       </Card>
 
-      {/* Record Zakat Card */}
-      <SectionLabel>{tr("Rekod Pembayaran Zakat", "Record Zakat Payment")}</SectionLabel>
+      <SectionLabel>{tr("Rekod bayaran zakat", "Record a zakat payment")}</SectionLabel>
       <Card className="space-y-3.5">
-        <Field label={tr("Jumlah Zakat Dibayar (RM)", "Zakat Paid Amount (RM)")} hint={tr("Zakat Fitrah & Zakat Pendapatan", "Zakat Fitrah / Wealth")}>
+        <Field label={tr("Jumlah zakat dibayar (RM)", "Zakat paid (RM)")} hint={tr("Fitrah, pendapatan atau harta", "Fitrah, income or wealth")}>
           <NumInput value={amount} onChange={setAmount} placeholder="0.00" />
         </Field>
         <PrimaryButton onClick={addZakat} disabled={busy || !amount}>
           {busy ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-          <span>{tr("Rekod Bayaran Zakat", "Record Zakat Payment")}</span>
+          <span>{tr("Rekod bayaran zakat", "Record zakat payment")}</span>
         </PrimaryButton>
       </Card>
 
-      {/* Rebates List */}
-      <SectionLabel>{tr("Senarai Rebat Diperoleh", "Applied Rebates")}</SectionLabel>
+      <SectionLabel>{tr("Rebat yang dikira", "Rebates counted")}</SectionLabel>
       {loading ? (
         <Skeleton />
-      ) : rows.length === 0 ? (
-        <Card className="text-center py-6 text-sm text-[var(--muted)]">{tr("Tiada rebat direkodkan.", "No rebates recorded.")}</Card>
+      ) : rows.length === 0 && autoLines.length === 0 ? (
+        <Card className="py-6 text-center text-sm text-[var(--muted)]">{tr("Tiada rebat direkodkan.", "No rebates recorded.")}</Card>
       ) : (
         <div className="space-y-2">
-          {rows.map((r) => (
-            <Card key={r.id} className="flex items-center justify-between p-3.5">
-              <div>
-                <p className="text-xs sm:text-sm font-black text-[var(--text)]">{r.name || r.rebate_code}</p>
-                <p className="text-[0.68rem] text-[var(--muted)] capitalize">{r.source}</p>
+          {autoLines.map((l) => (
+            <Card key={`auto-${l.code}`} className="flex items-center justify-between gap-3 p-3.5 md:p-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[var(--text)]">{localName(l.name, tr("1", "0") === "1")}</p>
+                <p className="text-xs text-[var(--muted)]">{l.source === "ea" ? tr("Daripada borang EA", "From the EA form") : tr("Automatik", "Automatic")}</p>
               </div>
-              <p className="text-sm sm:text-base font-black text-emerald-600 dark:text-emerald-400"><RM value={r.amount} /></p>
+              <p className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400"><RM value={l.amount} /></p>
+            </Card>
+          ))}
+          {rows.map((r) => (
+            <Card key={r.id} className="flex items-center justify-between gap-3 p-3.5 md:p-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[var(--text)]">{localName(r.name || r.rebate_code, tr("1", "0") === "1")}</p>
+                <p className="text-xs capitalize text-[var(--muted)]">{r.source}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <p className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400"><RM value={r.amount} /></p>
+                <button
+                  type="button"
+                  onClick={() => void remove(r)}
+                  aria-label={tr("Padam", "Delete")}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-rose-500 transition hover:bg-rose-500/10"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
             </Card>
           ))}
         </div>
@@ -2054,26 +2035,26 @@ function TxTab({ year, tr, api, refreshMetrics, showNotice }: any) {
             <Card key={l.id} className="space-y-3 p-3.5">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs sm:text-sm font-black text-[var(--text)]">Tx #{l.transaction_id} · {l.tax_type}</h4>
-                  <p className="text-[0.68rem] text-[var(--muted)]">{l.notes || tr("Pelepasan Dituntut", "Claimed relief")}</p>
+                  <h4 className="text-xs sm:text-sm font-bold text-[var(--text)]">Tx #{l.transaction_id} · {l.tax_type}</h4>
+                  <p className="text-xs text-[var(--muted)]">{l.notes || tr("Pelepasan Dituntut", "Claimed relief")}</p>
                 </div>
-                <span className="text-sm font-black text-[var(--text)]"><RM value={l.claim_amount} /></span>
+                <span className="text-sm font-bold text-[var(--text)]"><RM value={l.claim_amount} /></span>
               </div>
 
               <div className="flex gap-1.5 pt-1">
-                {["accepted", "reviewed", "rejected"].map((s) => (
+                {([["accepted", "Diterima", "Accepted"], ["reviewed", "Disemak", "Reviewed"], ["rejected", "Ditolak", "Rejected"]] as const).map(([s, bm, en]) => (
                   <button
                     key={s}
                     type="button"
                     onClick={() => setStatus(l.id, s)}
                     className={cn(
-                      "flex-1 rounded-xl border py-1.5 text-[0.68rem] font-bold capitalize transition cursor-pointer",
+                      "h-10 flex-1 rounded-full border text-sm font-semibold transition",
                       l.status === s
-                        ? "border-[var(--btn-primary-bg)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
-                        : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]"
+                        ? "border-transparent bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
+                        : "border-[var(--border)] bg-transparent text-[var(--muted)] hover:text-[var(--text)]"
                     )}
                   >
-                    {s}
+                    {tr(bm, en)}
                   </button>
                 ))}
               </div>
@@ -2120,8 +2101,15 @@ function DocsTab({ year, tr, api, showNotice }: any) {
   }
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
+    const input = e.target
+    const file = input.files?.[0]
+    input.value = ""
     if (!file) return
+    const problem = uploadProblem(file, tr)
+    if (problem) {
+      showNotice(problem, "error")
+      return
+    }
     const fd = new FormData()
     fd.append("file", file)
     fd.append("assessment_year", String(year))
@@ -2132,18 +2120,34 @@ function DocsTab({ year, tr, api, showNotice }: any) {
       const headers: Record<string, string> = {}
       if (token && !isCookieAuthSentinel(token)) headers["Authorization"] = `Bearer ${token}`
 
-      await fetch(`/api/tax/documents`, {
+      const res = await fetch(`/api/tax/documents`, {
         method: "POST",
         headers,
         credentials: "include",
         body: fd,
       })
+      if (!res.ok) {
+        // A refused upload used to be reported as a success.
+        const err = await res.json().catch(() => ({}))
+        throw new Error(typeof err.detail === "string" ? err.detail : tr("Gagal memuat naik dokumen.", "The document could not be uploaded."))
+      }
       await load()
-      showNotice(tr("Dokumen berjaya dimuat naik!", "Document uploaded!"))
+      showNotice(tr("Dokumen dimuat naik", "Document uploaded"))
     } catch (e: any) {
-      showNotice(e.message || "Upload error", "error")
+      showNotice(e.message || tr("Ralat muat naik", "Upload error"), "error")
     } finally {
       setUploading(false)
+    }
+  }
+
+  async function removeDoc(d: any) {
+    if (!window.confirm(tr("Padam dokumen ini?", "Delete this document?"))) return
+    try {
+      await api(`/documents/${d.id}`, { method: "DELETE" })
+      await load()
+      showNotice(tr("Dokumen dipadam", "Document deleted"))
+    } catch (e: any) {
+      showNotice(e.message || "Error", "error")
     }
   }
 
@@ -2160,7 +2164,7 @@ function DocsTab({ year, tr, api, showNotice }: any) {
           <select
             value={docType}
             onChange={(e) => setDocType(e.target.value)}
-            className="w-full rounded-xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3.5 py-2.5 text-xs font-bold text-[var(--text)] outline-none cursor-pointer"
+            className="w-full rounded-2xl border border-[var(--input-border)] bg-[var(--input-bg)] px-3.5 py-2.5 text-xs font-bold text-[var(--text)] outline-none cursor-pointer"
           >
             {Object.entries(TYPES).map(([k, v]) => (
               <option key={k} value={k}>
@@ -2170,7 +2174,7 @@ function DocsTab({ year, tr, api, showNotice }: any) {
           </select>
         </Field>
 
-        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[var(--btn-primary-bg)] py-3 text-xs font-black text-[var(--btn-primary-text)] shadow-xs hover:opacity-95 transition active:scale-95">
+        <label className="flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[var(--btn-primary-bg)] py-3 text-xs font-bold text-[var(--btn-primary-text)] hover:opacity-95 transition active:scale-95">
           {uploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
           <span>{uploading ? tr("Memuat Naik…", "Uploading…") : tr("Pilih & Muat Naik Dokumen (PDF / Imej)", "Upload Supporting Document")}</span>
           <input
@@ -2195,7 +2199,7 @@ function DocsTab({ year, tr, api, showNotice }: any) {
           const tInfo = TYPES[typeKey] || { labelBm: typeKey, labelEn: typeKey }
           return (
             <div key={typeKey} className="space-y-2">
-              <p className="px-1 text-[0.68rem] font-black uppercase tracking-wider text-[var(--muted)]">
+              <p className="px-1 text-xs font-bold text-[var(--muted)]">
                 {tr(tInfo.labelBm, tInfo.labelEn)} · {list.length}
               </p>
               <div className="space-y-2">
@@ -2206,19 +2210,29 @@ function DocsTab({ year, tr, api, showNotice }: any) {
                         <FileText size={16} />
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-xs font-black text-[var(--text)]">{d.original_filename}</p>
-                        <p className="text-[0.65rem] text-[var(--muted)]">{d.document_date || "—"}</p>
+                        <p className="truncate text-xs font-bold text-[var(--text)]">{d.original_filename}</p>
+                        <p className="text-xs text-[var(--muted)]">{d.document_date || "—"}</p>
                       </div>
                     </div>
-                    <a
-                      href={`/api/tax/documents/${d.id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex h-8 items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 text-xs font-bold text-[var(--text)] hover:bg-[var(--surface-tint-strong)] transition"
-                    >
-                      <Download size={13} />
-                      <span>{tr("Buka", "View")}</span>
-                    </a>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <a
+                        href={`/api/tax/documents/${d.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--border)] px-3.5 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface-tint)]"
+                      >
+                        <Download size={14} />
+                        <span>{tr("Buka", "View")}</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => void removeDoc(d)}
+                        aria-label={tr("Padam", "Delete")}
+                        className="flex h-9 w-9 items-center justify-center rounded-full text-rose-500 transition hover:bg-rose-500/10"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </Card>
                 ))}
               </div>
@@ -2232,72 +2246,129 @@ function DocsTab({ year, tr, api, showNotice }: any) {
 
 /* ─────────────────────────── 9. Estimate & Calculation Engine Tab ─────────────────────────── */
 
-function EstimateTab({ year, tr, api, calcData, refreshMetrics }: any) {
+function EstimateTab({ year, tr, calcData }: any) {
   const balance = calcData?.estimated_balance ?? 0
   const isPositiveRefund = balance >= 0
+  const reliefLines: any[] = calcData?.relief_lines || []
+  const rebateLines: any[] = calcData?.rebate_lines || []
+  const bands: any[] = calcData?.bracket_lines || []
+  const nonResident = calcData?.residency_status === "non_resident"
+  const [showReliefs, setShowReliefs] = useState(false)
+
+  const reliefName = (l: any) => localName(l.name, tr("1", "0") === "1")
 
   return (
     <div className="space-y-4">
-      {/* Position Hero Card */}
-      <Card className={cn(
-        "relative overflow-hidden border-2 p-5 sm:p-6 transition-all",
-        isPositiveRefund
-          ? "border-emerald-500/30 bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-[var(--card)]"
-          : "border-amber-500/30 bg-gradient-to-br from-amber-500/15 via-rose-500/10 to-[var(--card)]"
-      )}>
-        <span className="text-[0.68rem] font-black uppercase tracking-wider text-[var(--muted)]">
-          {tr("Pengiraan Cukai Muktamad", "Tax Computation Summary")} · YA {year}
-        </span>
-        <h3 className="mt-2 text-3xl sm:text-4xl font-black tracking-tight text-[var(--text)]">
-          {isPositiveRefund ? "+" : "-"}<RM value={Math.abs(balance)} />
-        </h3>
-        <p className={cn("mt-1 text-xs font-bold", isPositiveRefund ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
-          {isPositiveRefund ? tr("Anggaran Lebihan Bayaran PCB (Bayaran Balik / Refund)", "Estimated PCB Overpayment (Refund)") : tr("Anggaran Baki Cukai Perlu Dibayar", "Estimated Tax Payable")}
-        </p>
-      </Card>
+      <Card className="space-y-3.5">
+        <h4 className="text-sm font-bold text-[var(--text)]">{tr("Pengiraan cukai langkah demi langkah", "Step-by-step tax calculation")} · YA {year}</h4>
+        {nonResident && (
+          <p className="rounded-[1.25rem] border border-amber-500/40 px-3.5 py-2.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+            {tr("Bukan pemastautin: cukai 30% atas semua pendapatan, tanpa pelepasan dan rebat.", "Non-resident: 30% on all income, with no reliefs or rebates.")}
+          </p>
+        )}
 
-      {/* Step by Step Breakdown Card */}
-      <Card className="space-y-3.5 p-5">
-        <h4 className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">
-          {tr("Jadual Pengiraan Berperingkat HASiL", "HASiL Progressive Tax Schedule")}
-        </h4>
+        <div className="space-y-2.5 text-sm">
+          <CalcRow label={tr("1. Jumlah pendapatan kasar", "1. Gross income")} value={calcData?.income_total} />
+          {calcData?.taxable_income != null && calcData?.taxable_income !== calcData?.income_total && (
+            <CalcRow label={tr("   Pendapatan bercukai (selepas perbelanjaan perniagaan)", "   Taxable income (after business expenses)")} value={calcData?.taxable_income} />
+          )}
+          <button
+            type="button"
+            onClick={() => setShowReliefs((v) => !v)}
+            aria-expanded={showReliefs}
+            className="flex w-full items-center justify-between text-left"
+          >
+            <span className="flex items-center gap-1.5 text-[var(--muted)]">
+              {tr("2. (−) Pelepasan cukai", "2. (−) Tax reliefs")}
+              <ChevronRight size={14} className={cn("transition-transform", showReliefs && "rotate-90")} />
+            </span>
+            <span className="font-semibold tabular-nums text-rose-500">−<RM value={calcData?.relief_total} /></span>
+          </button>
+          {showReliefs && (
+            <ul className="space-y-1.5 rounded-[1.25rem] border border-[var(--border)] px-3.5 py-3 text-xs">
+              {reliefLines.length === 0 ? (
+                <li className="text-[var(--muted)]">{tr("Tiada pelepasan.", "No reliefs.")}</li>
+              ) : (
+                reliefLines.map((l) => (
+                  <li key={l.code} className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate text-[var(--muted)]">
+                      {reliefName(l)}
+                      {l.auto ? ` · ${l.source === "ea" ? tr("EA", "EA") : tr("auto", "auto")}` : ""}
+                    </span>
+                    <span className="shrink-0 font-semibold tabular-nums text-[var(--text)]"><RM value={l.amount} /></span>
+                  </li>
+                ))
+              )}
+            </ul>
+          )}
+          <div className="border-t border-[var(--border)] pt-2.5">
+            <CalcRow label={tr("3. (=) Pendapatan bercukai", "3. (=) Chargeable income")} value={calcData?.chargeable_income} strong />
+          </div>
 
-        <div className="space-y-2.5 text-xs sm:text-sm">
-          <CalcRow label={tr("1. Jumlah Pendapatan Agregat", "1. Aggregate Gross Income")} value={calcData?.income_total} />
-          <CalcRow label={tr("2. (-) Jumlah Pelepasan Cukai Layak", "2. (-) Total Eligible Reliefs")} value={calcData?.relief_total} negative />
-          <div className="pt-2 border-t border-[var(--border)]">
-            <CalcRow label={tr("3. (=) Pendapatan Bercukai (Chargeable Income)", "3. (=) Chargeable Income")} value={calcData?.chargeable_income} strong />
+          {bands.length > 0 && (
+            <div className="overflow-hidden rounded-[1.25rem] border border-[var(--border)]">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-[var(--muted)]">
+                    <th className="px-3.5 py-2 font-semibold">{tr("Pendapatan bercukai", "Chargeable income")}</th>
+                    <th className="px-2 py-2 text-right font-semibold">{tr("Kadar", "Rate")}</th>
+                    <th className="px-3.5 py-2 text-right font-semibold">{tr("Cukai", "Tax")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {bands.map((b, i) => (
+                    <tr key={i}>
+                      <td className="px-3.5 py-2 text-[var(--text)]">
+                        {Number(b.from).toLocaleString("en-MY")} – {b.to == null ? tr("ke atas", "and above") : Number(b.to).toLocaleString("en-MY")}
+                      </td>
+                      <td className="px-2 py-2 text-right tabular-nums text-[var(--muted)]">{b.rate}%</td>
+                      <td className="px-3.5 py-2 text-right font-semibold tabular-nums text-[var(--text)]"><RM value={b.tax} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <CalcRow label={tr("4. Cukai kasar", "4. Gross tax")} value={calcData?.gross_tax} />
+          <CalcRow label={tr("5. (−) Rebat dan zakat", "5. (−) Rebates and zakat")} value={calcData?.rebate_total} negative />
+          {rebateLines.length > 0 && (
+            <ul className="space-y-1.5 text-xs text-[var(--muted)]">
+              {rebateLines.map((l, i) => (
+                <li key={i} className="flex items-center justify-between gap-3 pl-3">
+                  <span className="min-w-0 truncate">{localName(l.name, tr("1", "0") === "1")}</span>
+                  <span className="shrink-0 tabular-nums"><RM value={l.amount} /></span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="border-t border-[var(--border)] pt-2.5">
+            <CalcRow label={tr("6. (=) Cukai kena bayar", "6. (=) Net tax payable")} value={calcData?.net_tax} strong />
           </div>
-          <CalcRow label={tr("4. Cukai Kasar (Kadar Berperingkat LHDN)", "4. Gross Tax (Progressive Brackets)")} value={calcData?.gross_tax} />
-          <CalcRow label={tr("5. (-) Rebat Cukai & Zakat", "5. (-) Tax Rebates & Zakat")} value={calcData?.rebate_total} negative />
-          <div className="pt-2 border-t border-[var(--border)]">
-            <CalcRow label={tr("6. (=) Cukai Kena Bayar Sebenar", "6. (=) Net Tax Payable")} value={calcData?.net_tax} strong />
-          </div>
-          <CalcRow label={tr("7. (-) Potongan Cukai Bulanan (PCB) Telah Dibayar", "7. (-) Monthly Tax Deduction (PCB) Paid")} value={calcData?.pcb_total} negative />
-          <div className="pt-3 border-t-2 border-[var(--border)]">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-black text-[var(--text)]">{tr("8. (=) Kedudukan Akhir Cukai", "8. (=) Final Tax Balance")}</span>
-              <span className={cn("text-lg font-black", isPositiveRefund ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
-                {isPositiveRefund ? "+" : "-"}<RM value={Math.abs(balance)} />
+          <CalcRow label={tr("7. (−) PCB / MTD telah dipotong", "7. (−) PCB / MTD already deducted")} value={calcData?.pcb_total} negative />
+          <div className="border-t border-[var(--border)] pt-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-bold text-[var(--text)]">{tr("8. (=) Kedudukan akhir", "8. (=) Final position")}</span>
+              <span className={cn("text-lg font-bold tabular-nums", isPositiveRefund ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
+                {isPositiveRefund ? "+" : "−"}<RM value={Math.abs(balance)} />
               </span>
             </div>
+            <p className="mt-1 text-xs text-[var(--muted)]">
+              {isPositiveRefund ? tr("Lebihan PCB: anggaran bayaran balik.", "PCB overpaid: an estimated refund.") : tr("Baki cukai yang perlu dibayar.", "Tax still to pay.")}
+            </p>
           </div>
         </div>
       </Card>
-
-      <p className="px-1 text-[0.65rem] leading-relaxed text-[var(--muted)]">
-        {tr(DISCLAIMER_BM, DISCLAIMER_EN)}
-      </p>
     </div>
   )
 }
 
 function CalcRow({ label, value, negative, strong }: { label: string; value: number | null | undefined; negative?: boolean; strong?: boolean }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className={cn(strong ? "font-black text-[var(--text)]" : "text-[var(--muted)]")}>{label}</span>
-      <span className={cn(strong ? "font-black text-base text-[var(--text)]" : "font-bold text-[var(--text)]", negative && "text-rose-500")}>
-        {negative ? "-" : ""}<RM value={value} />
+    <div className="flex items-center justify-between gap-3">
+      <span className={cn("min-w-0 whitespace-pre-wrap", strong ? "font-bold text-[var(--text)]" : "text-[var(--muted)]")}>{label}</span>
+      <span className={cn("shrink-0 tabular-nums", strong ? "text-base font-bold text-[var(--text)]" : "font-semibold text-[var(--text)]", negative && "text-rose-500")}>
+        {negative ? "−" : ""}<RM value={value} />
       </span>
     </div>
   )
@@ -2337,82 +2408,76 @@ function SummaryTab({ year, tr, api, profile, calcData, refreshMetrics, showNoti
     }
   }
 
+  const residencyLabel = profile?.residency_status === "non_resident" ? tr("Bukan pemastautin", "Non-resident") : tr("Pemastautin", "Resident")
+  const sourceLabel: Record<string, [string, string]> = {
+    employment: ["Pekerjaan", "Employment"],
+    business: ["Perniagaan", "Business"],
+    both: ["Pekerjaan + perniagaan", "Employment + business"],
+  }
+  const source = sourceLabel[profile?.income_source || "employment"] || sourceLabel.employment
+
   return (
     <div className="space-y-4">
-      {/* Official Executive Summary Certificate Card */}
-      <Card className="border-2 border-[var(--accent)]/40 p-5 sm:p-6 space-y-4 shadow-md bg-[var(--card)]">
-        <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-              <ShieldCheck size={24} />
-            </div>
-            <div>
-              <h3 className="text-base font-black text-[var(--text)]">{tr("Ringkasan Cukai e-Filing", "e-Filing Tax Summary")}</h3>
-              <p className="text-xs text-[var(--muted)]">Tahun Taksiran (YA) {year}</p>
-            </div>
-          </div>
-          <span className="rounded-full bg-[var(--surface-tint)] px-3 py-1 text-xs font-mono font-bold text-[var(--text)] border border-[var(--border)]">
-            HASiL / LHDN
+      <Card className="space-y-4">
+        <div className="flex items-center gap-3 border-b border-[var(--border)] pb-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--text)]">
+            <ShieldCheck size={22} />
           </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 text-xs">
           <div>
-            <span className="text-[var(--muted)] font-bold">{tr("Status Pemastautin", "Residency")}</span>
-            <p className="font-black text-[var(--text)] capitalize">{profile?.residency_status || "Resident"}</p>
-          </div>
-          <div>
-            <span className="text-[var(--muted)] font-bold">{tr("Sumber Pendapatan", "Income Source")}</span>
-            <p className="font-black text-[var(--text)] capitalize">{profile?.income_source || "Employment"}</p>
-          </div>
-          <div>
-            <span className="text-[var(--muted)] font-bold">{tr("Jumlah Pendapatan", "Total Income")}</span>
-            <p className="font-black text-[var(--text)]"><RM value={calcData?.income_total} /></p>
-          </div>
-          <div>
-            <span className="text-[var(--muted)] font-bold">{tr("Jumlah Pelepasan", "Total Reliefs")}</span>
-            <p className="font-black text-rose-500">-<RM value={calcData?.relief_total} /></p>
-          </div>
-          <div>
-            <span className="text-[var(--muted)] font-bold">{tr("Rebat & Zakat", "Rebates & Zakat")}</span>
-            <p className="font-black text-emerald-600 dark:text-emerald-400">-<RM value={calcData?.rebate_total} /></p>
-          </div>
-          <div>
-            <span className="text-[var(--muted)] font-bold">PCB (MTD) Dibayar</span>
-            <p className="font-black text-emerald-600 dark:text-emerald-400">-<RM value={calcData?.pcb_total} /></p>
+            <h3 className="text-base font-bold text-[var(--text)]">{tr("Ringkasan cukai e-Filing", "e-Filing tax summary")}</h3>
+            <p className="text-xs text-[var(--muted)]">{tr("Tahun Taksiran", "Year of Assessment")} {year}</p>
           </div>
         </div>
 
-        <div className={cn(
-          "rounded-2xl p-4 text-center border",
-          isPositiveRefund ? "border-emerald-500/30 bg-emerald-500/10" : "border-amber-500/30 bg-amber-500/10"
-        )}>
-          <span className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
-            {isPositiveRefund ? tr("Anggaran Lebihan Bayaran (Refund)", "Estimated Refund") : tr("Anggaran Baki Cukai", "Estimated Tax to Settle")}
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+          <div>
+            <dt className="text-xs font-semibold text-[var(--muted)]">{tr("Status pemastautin", "Residency")}</dt>
+            <dd className="font-bold text-[var(--text)]">{residencyLabel}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--muted)]">{tr("Sumber pendapatan", "Income source")}</dt>
+            <dd className="font-bold text-[var(--text)]">{tr(source[0], source[1])}</dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--muted)]">{tr("Jumlah pendapatan", "Total income")}</dt>
+            <dd className="font-bold tabular-nums text-[var(--text)]"><RM value={calcData?.income_total} /></dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--muted)]">{tr("Jumlah pelepasan", "Total reliefs")}</dt>
+            <dd className="font-bold tabular-nums text-rose-500">−<RM value={calcData?.relief_total} /></dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--muted)]">{tr("Rebat dan zakat", "Rebates and zakat")}</dt>
+            <dd className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">−<RM value={calcData?.rebate_total} /></dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold text-[var(--muted)]">{tr("PCB (MTD) dibayar", "PCB (MTD) paid")}</dt>
+            <dd className="font-bold tabular-nums text-emerald-600 dark:text-emerald-400">−<RM value={calcData?.pcb_total} /></dd>
+          </div>
+        </dl>
+
+        <div className={cn("rounded-[1.25rem] border p-4 text-center", isPositiveRefund ? "border-emerald-500/30" : "border-amber-500/30")}>
+          <span className="text-xs font-semibold text-[var(--muted)]">
+            {isPositiveRefund ? tr("Anggaran bayaran balik", "Estimated refund") : tr("Anggaran baki cukai", "Estimated tax to settle")}
           </span>
-          <p className={cn("text-3xl font-black mt-0.5", isPositiveRefund ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
-            {isPositiveRefund ? "+" : "-"}<RM value={Math.abs(balance)} />
+          <p className={cn("mt-0.5 text-3xl font-bold tabular-nums tracking-tight", isPositiveRefund ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
+            {isPositiveRefund ? "+" : "−"}<RM value={Math.abs(balance)} />
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 pt-1">
-          <button
-            type="button"
-            onClick={saveSnapshot}
-            disabled={saving}
-            className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] py-3 text-xs font-bold text-[var(--text)] hover:bg-[var(--surface-tint-strong)] transition cursor-pointer"
-          >
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <GhostButton onClick={saveSnapshot} disabled={saving}>
             {saving ? <Loader2 size={16} className="animate-spin" /> : <FileCheck size={16} />}
-            <span>{tr("Simpan ke Sejarah", "Save to History")}</span>
-          </button>
+            <span>{tr("Simpan ke sejarah", "Save to history")}</span>
+          </GhostButton>
           <a
             href={`/api/tax/export?assessment_year=${year}`}
             target="_blank"
             rel="noreferrer"
-            className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-[var(--btn-primary-bg)] py-3 text-xs font-black text-[var(--btn-primary-text)] shadow-sm hover:opacity-95 transition"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-5 text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-[0.98]"
           >
             <Download size={16} />
-            <span>{tr("Muat Turun Tax Pack (PDF)", "Export Tax Pack (PDF)")}</span>
+            <span>{tr("Muat turun Tax Pack (PDF)", "Export Tax Pack (PDF)")}</span>
           </a>
         </div>
       </Card>
@@ -2428,10 +2493,10 @@ function SummaryTab({ year, tr, api, profile, calcData, refreshMetrics, showNoti
             return (
               <Card key={h.id} className="flex items-center justify-between p-3.5">
                 <div>
-                  <p className="text-xs font-black text-[var(--text)]">YA {h.assessment_year} · {new Date(h.created_at).toLocaleDateString()}</p>
-                  <p className="text-[0.68rem] text-[var(--muted)]">{tr("Cukai", "Tax")}: <RM value={h.net_tax} /> · PCB: <RM value={h.pcb_total} /></p>
+                  <p className="text-xs font-bold text-[var(--text)]">YA {h.assessment_year} · {new Date(h.created_at).toLocaleDateString()}</p>
+                  <p className="text-xs text-[var(--muted)]">{tr("Cukai", "Tax")}: <RM value={h.net_tax} /> · PCB: <RM value={h.pcb_total} /></p>
                 </div>
-                <p className={cn("text-sm font-black", hPos ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
+                <p className={cn("text-sm font-bold", hPos ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
                   {hPos ? "+" : "-"}<RM value={Math.abs(h.estimated_balance || 0)} />
                 </p>
               </Card>

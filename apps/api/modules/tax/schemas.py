@@ -68,6 +68,7 @@ class IncomeCreate(BaseModel):
     business_name: Optional[str] = None
     business_expenses: Optional[float] = None
     notes: Optional[str] = None
+    status: Optional[Literal["draft", "confirmed"]] = None
 
 
 class IncomeUpdate(BaseModel):
@@ -82,12 +83,12 @@ class IncomeUpdate(BaseModel):
 
 
 class DependantCreate(BaseModel):
-    dependant_type: Literal["under18", "education18plus", "disabled_child", "disabled_education"]
+    dependant_type: Literal["under18", "preuniversity18plus", "education18plus", "disabled_child", "disabled_education"]
     relief_percentage: Literal[50, 100] = 100
 
 
 class DependantUpdate(BaseModel):
-    dependant_type: Optional[Literal["under18", "education18plus", "disabled_child", "disabled_education"]] = None
+    dependant_type: Optional[Literal["under18", "preuniversity18plus", "education18plus", "disabled_child", "disabled_education"]] = None
     relief_percentage: Optional[Literal[50, 100]] = None
     eligibility_status: Optional[Literal["pending", "eligible", "not_eligible"]] = None
 

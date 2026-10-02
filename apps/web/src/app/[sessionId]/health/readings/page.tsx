@@ -215,11 +215,6 @@ export default function HealthReadingsPage() {
         <MobilePageHeader
           title={isBm ? "Monitor" : "Monitor"}
           fallbackHref={`/${sessionId}/health`}
-          action={
-            <MobileIconButton label={isBm ? "Tambah bacaan" : "Add reading"} onClick={openAdd}>
-              <Plus />
-            </MobileIconButton>
-          }
         />
       </div>
 
@@ -228,17 +223,19 @@ export default function HealthReadingsPage() {
           title={isBm ? "Monitor Kesihatan" : "Health Monitor"}
           homeHref={`/${sessionId}`}
           breadcrumbs={[{ label: isBm ? "Kesihatan" : "Health", href: `/${sessionId}/health` }]}
-          actions={
-            <DesktopPageAction onClick={openAdd}>
-              <Plus />
-              {isBm ? "Tambah" : "Add"}
-            </DesktopPageAction>
-          }
         />
       </div>
 
       {/* ── MOBILE VIEW ── */}
       <div className="space-y-4 px-3 pb-28 pt-2 md:hidden">
+        <button
+          type="button"
+          onClick={openAdd}
+          className="ml-auto flex h-12 w-fit items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-[0.98]"
+        >
+          <Plus size={16} />
+          {isBm ? "Tambah bacaan" : "Add reading"}
+        </button>
         {/* Metric picker */}
         <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
           {METRICS.map((m) => (
@@ -407,6 +404,14 @@ export default function HealthReadingsPage() {
       <div className="hidden md:block">
         <DesktopPageBody>
         <div className="mx-auto w-full max-w-[1180px] space-y-6 p-6 xl:px-8">
+          <button
+          type="button"
+          onClick={openAdd}
+          className="ml-auto flex h-12 w-fit items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-[0.98]"
+        >
+          <Plus size={16} />
+          {isBm ? "Tambah bacaan" : "Add reading"}
+        </button>
           <div className="flex gap-2 overflow-x-auto rounded-2xl border border-[var(--divider)]/40 bg-[var(--card)] p-2 shadow-sm">
             {METRICS.map((m) => (
               <button

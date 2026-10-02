@@ -79,6 +79,7 @@ import {
   Users,
   Heart,
   CalendarHeart,
+  ShoppingCart,
   Pill,
   type LucideIcon,
 } from "lucide-react";
@@ -979,6 +980,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     { name: lang === "BM" ? "Subscription" : "Subscription", href: `/${sessionId}/subscription`, icon: CreditCard },
     { name: "Loan", href: `/${sessionId}/loan`, icon: CreditCard },
     { name: lang === "BM" ? "Kesihatan" : "Health", href: `/${sessionId}/health`, icon: Heart },
+    { name: lang === "BM" ? "Senarai Beli" : "Shopping List", href: `/${sessionId}/shopping`, icon: ShoppingCart },
     { name: t.debt, href: `/${sessionId}/debt`, icon: HandCoins },
   ];
   const desktopMapNavigation = [
@@ -1057,8 +1059,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const mobileBottomNavActiveClass = "text-[var(--bottom-nav-text)]";
   const mobileBottomNavIndicatorClass = "bg-[var(--bottom-nav-text)]";
   const mobileBottomNavShellClass = isLight
-    ? "bg-white/80 backdrop-blur-xl"
-    : "bg-[var(--sheet-bg)]/95 backdrop-blur-xl";
+    ? "bg-white/80"
+    : "bg-[var(--sheet-bg)]/95";
   const mobileBottomNavRailClass = "bg-[var(--pill-bg)]";
   const mobileBottomNavCenterGlowClass = "bg-[var(--bottom-nav-center-ring)]";
   const mobileBottomNavItemActiveClass = isLight
@@ -3123,7 +3125,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 onPointerDown={(event) => handlePinPointerDown(event, "0")}
                 onClick={(event) => event.preventDefault()}
                 className={cn(
-                  "flex h-[62px] touch-manipulation select-none items-center justify-center rounded-2xl backdrop-blur-md transition-all duration-150 active:scale-[0.94] disabled:opacity-50",
+                  "flex h-[62px] touch-manipulation select-none items-center justify-center rounded-2xl transition-all duration-150 active:scale-[0.94] disabled:opacity-50",
                   isLight
                     ? "bg-white/60 text-slate-900 hover:bg-white/80"
                     : "bg-white/[0.10] text-white hover:bg-white/[0.16]",
@@ -3426,7 +3428,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           {showMobileHeader && (
             <section className="lg:hidden mb-4">
               <div className={cn(
-                "relative overflow-hidden rounded-2xl border px-4 py-3.5 backdrop-blur-2xl",
+                "relative overflow-hidden rounded-2xl border px-4 py-3.5",
                 isLight
                   ? "border-white/80 bg-white/82 text-slate-950"
                   : "border-white/10 bg-white/[0.075] text-white",
@@ -3439,7 +3441,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       fallbackHref={mobileHeaderMeta.backHref}
                       aria-label={t.previous}
                       className={cn(
-                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border shadow-sm backdrop-blur-xl",
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border shadow-sm",
                         isLight
                           ? "border-slate-200/80 bg-slate-100/80 text-slate-900"
                           : "border-white/10 bg-white/10 text-white",
@@ -3638,6 +3640,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 showRailAmounts ? `RM ${Number(v || 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "RM ••••";
               return (
                 <ModenHero
+            pageActions={false}
                   className="rounded-[1.75rem]"
                   panelClassName="gap-2 pb-4 pl-4 pr-3 pt-3"
                   label={lang === "EN" ? "Total balance" : "Jumlah baki"}
@@ -3714,7 +3717,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       
         {showMobileMenu && !isChatFullscreen && (
           <div
-            className="fixed inset-0 z-[500] flex items-stretch bg-black/60 backdrop-blur-xs lg:hidden animate-in fade-in-0 duration-200"
+            className="fixed inset-0 z-[500] flex items-stretch bg-black/60 lg:hidden"
             onClick={requestMobileMenuClose}
           >
             <aside
@@ -3763,7 +3766,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
                   {showMobileSheetAccountSwitcher && (
                     <div
-                      className="fixed inset-0 z-[600] flex items-end bg-black/60 backdrop-blur-xs animate-in fade-in-0 duration-200"
+                      className="fixed inset-0 z-[600] flex items-end bg-black/60 animate-in fade-in-0 duration-200"
                       onClick={() => setShowMobileSheetAccountSwitcher(false)}
                     >
                       <div
@@ -3927,6 +3930,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                       { name: lang === "BM" ? "Waranti" : "Warranty", href: `/${sessionId}/warranty`, icon: Shield },
                       { name: lang === "BM" ? "Acara" : "Events", href: `/${sessionId}/event`, icon: CalendarDays },
                       { name: lang === "BM" ? "Kesihatan" : "Health", href: `/${sessionId}/health`, icon: Heart },
+                      { name: lang === "BM" ? "Senarai Beli" : "Shopping", href: `/${sessionId}/shopping`, icon: ShoppingCart },
                       ...(user?.period_tracker_enabled ? [{ name: "Period", href: `/${sessionId}/period`, icon: CalendarHeart }] : []),
                       { name: lang === "BM" ? "Lencana" : "Badges", href: `/${sessionId}/badges`, icon: Award },
                     ],

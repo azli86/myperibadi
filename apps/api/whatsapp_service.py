@@ -319,11 +319,12 @@ async def _split_reply_category_wallet(db, user_id: str, reply_text: str) -> Tup
 
 async def caption_names_category(db, user_id: str, caption: str) -> bool:
     """True when a receipt caption already answers the category prompt, e.g.
-    "makan", "makan tng" or "loanx akpk tng", so the scan can be saved at once.
+    "makan", "makan tng", "direct beli makan nasi lemak tng" or "loanx akpk tng",
+    so the scan can be saved at once.
 
-    Stricter than the prompt reply itself: a keyword must be the whole reply or
-    a whole word in it, so a loose caption such as "ni resit" never picks a
-    category by accident; the prompt is asked as usual instead."""
+    The first word has to be the category (its keyword or its name), the same
+    rule as a plain text message; the rest is the note. A caption whose first
+    word is not one, such as "ni resit", is asked about as usual."""
     category_part, _wallet_id = await _split_reply_category_wallet(db, user_id, caption or "")
     typed = normalize_message_text(category_part).strip().lower()
     if not typed or typed.isdigit():
@@ -333,29 +334,7 @@ async def caption_names_category(db, user_id: str, caption: str) -> bool:
     user = await db.scalar(select(models.User).where(models.User.id == user_id))
     if not user:
         return False
-    names = (await db.execute(
-        select(models.Category.name).where(
-            models.Category.household_id == user.default_household_id,
-            models.Category.is_internal == False,
-        )
-    )).scalars().all()
-    if any(normalize_message_text(name or "").lower() == typed for name in names):
-        return True
-    keywords = (await db.execute(
-        select(models.CategoryKeyword.keyword)
-        .join(models.Category, models.CategoryKeyword.category_id == models.Category.id)
-        .where(
-            models.CategoryKeyword.is_active == True,
-            models.Category.is_internal == False,
-            models.Category.household_id == user.default_household_id,
-        )
-    )).scalars().all()
-    padded = f" {typed} "
-    for keyword in keywords:
-        kw = normalize_message_text(keyword or "").lower()
-        if kw and (kw == typed or f" {kw} " in padded):
-            return True
-    return False
+    return await get_category_by_keywords(db, typed, household_id=user.default_household_id) is not None
 
 
 BOT_TRANSLATIONS = {
@@ -2959,6 +2938,34 @@ async def ensure_standard_categories(db: AsyncSession, user_id: str):
         await db.flush()
         return household_id
 
+    # The standard set is a starting point for a household that has none of its own. This
+    # runs on almost every request, so re-creating whichever standard category was missing
+    # made them impossible to delete, and a renamed one came back beside its new name with
+    # the default keywords. Once the household has categories of its own, only the two
+    # defaults that uncategorised transactions fall back on are guaranteed.
+    own_categories = [c for c in existing if not c.is_internal and not c.system_code]
+    if own_categories:
+        for default_name, kind in (
+            (seed_list[-1]["name"], "expense"),
+            (next(c["name"] for c in seed_list if c["kind"] == "income"), "income"),
+        ):
+            if any(c.is_default and c.kind == kind and not c.is_internal for c in existing):
+                continue
+            template = next(c for c in seed_list if c["name"] == default_name)
+            fallback = models.Category(
+                name=template["name"],
+                icon_name=template.get("icon_name"),
+                kind=kind,
+                household_id=household_id,
+                is_default=True,
+            )
+            db.add(fallback)
+            await db.flush()
+            for kw_text in template["keywords"]:
+                db.add(models.CategoryKeyword(category_id=fallback.id, keyword=kw_text, match_type="contains", is_active=True))
+        await db.flush()
+        return household_id
+
     for cat_data in seed_list:
         exists = any(c.name == cat_data["name"] for c in existing)
         if not exists:
@@ -3989,6 +3996,11 @@ async def _process_health_wa_reply(db, *, user_id, lowered, is_bm, source_channe
     words = (lowered or "").split()
     if not words:
         return None
+    # A reply to a reminder is one word ("ambil"), or "nanti" with minutes. Anything longer
+    # is another message: "dah makan 12 tng" is an expense, and was being taken as the
+    # answer to the medication reminder, so no transaction was saved.
+    if len(words) > 2 or (len(words) == 2 and not (words[0] in {"nanti", "later", "ingatkan"} and words[1].isdigit())):
+        return None
 
     action = None
     later_minutes = None
@@ -4011,13 +4023,16 @@ async def _process_health_wa_reply(db, *, user_id, lowered, is_bm, source_channe
 
     # Find the most recent pending/notified dose log for today for this user.
     from sqlalchemy import select as sa_select
-    today = date.today()
+    from time_utils import current_business_date
+    today = current_business_date()
     rows = (
         await db.execute(
             sa_select(models.MedicationDoseLog)
             .where(
                 models.MedicationDoseLog.user_id == user_id,
                 models.MedicationDoseLog.dose_date == today,
+                # Only a dose the user has actually been reminded of can be answered.
+                models.MedicationDoseLog.notified_at.is_not(None),
             )
             .order_by(models.MedicationDoseLog.scheduled_time.desc())
         )
@@ -4193,11 +4208,16 @@ async def _process_whatsapp_message_impl(
                         selected_index = idx_option
                         break
             options = pending_selection.get("options") or []
+            # A reply that is only a wallet ("tng") names no category. Take the first
+            # option, the default for the kind, rather than letting the empty text match
+            # every keyword below and pick whichever is longest.
+            if selected_index is None and not normalized_typed and forced_wallet_id is not None and options:
+                selected_index = 0
             # The note is what the user typed to confirm the category (e.g.
             # "makan nasi ayam PBE"), falling back to any text sent with the media.
             # A bare numeric index is not a note.
             typed_note = (text or "").strip()
-            if typed_note.isdigit():
+            if typed_note.isdigit() or not normalized_typed:
                 typed_note = ""
             if selected_index is not None and 0 <= selected_index < len(options):
                 _clear_pending_category_selection(user_id, source_channel)
@@ -4223,7 +4243,7 @@ async def _process_whatsapp_message_impl(
                     receipt_user_note=typed_note or pending_selection.get("receipt_user_note"),
                 )
             # User typed a category name or keyword not in the shortlist: match against all user categories.
-            if selected_index is None:
+            if selected_index is None and normalized_typed:
                 all_rows = (await db.execute(
                     select(models.Category).where(
                         models.Category.household_id == user.default_household_id,
@@ -4233,6 +4253,11 @@ async def _process_whatsapp_message_impl(
                 exact_match = next((c for c in all_rows if normalize_message_text(c.name).lower() == normalized_typed), None)
                 keyword_match = None
                 if not exact_match:
+                    # The first word is the category ("direct beli makan nasi
+                    # lemak" is Direct, the rest is the note), as for a plain text
+                    # message, before any keyword found elsewhere in the text.
+                    keyword_match = await get_category_by_keywords(db, normalized_typed, household_id=user.default_household_id)
+                if not exact_match and not keyword_match:
                     kw_rows = (await db.execute(
                         select(models.CategoryKeyword, models.Category)
                         .join(models.Category, models.CategoryKeyword.category_id == models.Category.id)
@@ -4242,11 +4267,24 @@ async def _process_whatsapp_message_impl(
                             models.Category.household_id == user.default_household_id,
                         )
                     )).all()
+                    # Otherwise the keyword that appears first in the text wins (the
+                    # longer one on a tie), not whichever happens to be stored first.
+                    best_rank = None
                     for kw, category in kw_rows:
                         kw_norm = normalize_message_text(kw.keyword or "").lower()
-                        if kw_norm and (kw_norm == normalized_typed or kw_norm in normalized_typed or normalized_typed in kw_norm):
-                            keyword_match = category
-                            break
+                        if not kw_norm:
+                            continue
+                        if kw_norm == normalized_typed:
+                            position = 0
+                        elif kw_norm in normalized_typed:
+                            position = normalized_typed.find(kw_norm)
+                        elif normalized_typed in kw_norm:
+                            position = len(normalized_typed)
+                        else:
+                            continue
+                        rank = (position, -len(kw_norm))
+                        if best_rank is None or rank < best_rank:
+                            best_rank, keyword_match = rank, category
                 matched = exact_match or keyword_match
                 if matched:
                     _clear_pending_category_selection(user_id, source_channel)
@@ -5163,13 +5201,29 @@ async def _process_whatsapp_message_impl(
             # Fallback ONLY if no keyword mapping exists in the portal
             # We default to 'expense' for safety, unless the user named the kind.
             txn_type = forced_kind or stated_kind or "expense"
-            category_suggestions = await get_category_suggestions_by_keywords(
+            # "income 1" / "income 50 tng" names only a kind, an amount and maybe a wallet.
+            # There is nothing left to suggest a category from, so save it under the default
+            # category of that kind instead of asking, as with a lone "income" typed for a
+            # user who has few categories.
+            kind_only = False
+            if stated_kind and not force_category_prompt and not skip_category_prompt:
+                leftover = (category_search_text or "").lower()
+                wallet_rows = await db.execute(
+                    select(models.Wallet.name).where(models.Wallet.owner_user_id == user_id)
+                )
+                for (wallet_name_value,) in wallet_rows.all():
+                    leftover = strip_wallet_reference(leftover, wallet_name_value or "")
+                leftover = re.sub(r"\b(rm|myr)\b|[\d.,]+|[^\w]+|_", " ", leftover).strip()
+                kind_only = not leftover
+            category_suggestions = [] if kind_only else await get_category_suggestions_by_keywords(
                 db,
                 text,
                 household_id=household_id,
                 preferred_kind=txn_type,
             )
-            if (category_suggestions or force_category_prompt) and not skip_category_prompt:
+            # Only a scanned receipt asks which category; a typed message is saved straight
+            # away under the default category of its kind, with the default bot wallet.
+            if force_category_prompt and not skip_category_prompt:
                 default_category = await get_default_category(db, txn_type, household_id=household_id)
                 prompt_options = []
                 if default_category:

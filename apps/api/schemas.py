@@ -482,6 +482,8 @@ class CategoryResponse(CategoryBase):
     keywordCount: int = 0
     amountMonth: float = 0
     transactionCountMonth: int = 0
+    transactionCount: int = 0
+    is_default: bool = False
     status: str = "active"
     is_internal: bool = False
     system_code: Optional[str] = None

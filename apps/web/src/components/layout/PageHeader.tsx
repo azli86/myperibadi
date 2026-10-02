@@ -4,6 +4,7 @@ import React, { useLayoutEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ActionsAfterHero, useRegisterActions, usePageHasHero } from "@/components/layout/pageActions"
 
 /**
  * Shared mobile top bar. At the top of the page it is a large title resting on
@@ -28,6 +29,8 @@ export function MobilePageHeader({
   alignLeft?: boolean
   beta?: boolean
 }) {
+  const hasHero = usePageHasHero()
+  useRegisterActions(action, "md:hidden lg:hidden "+"flex w-full flex-wrap gap-2 px-1 pb-2 pt-3 [&>*]:min-w-0 [&>*]:flex-1 [&>*]:basis-[calc(50%-0.25rem)] [&>div]:flex [&>div]:gap-2 [&>div>*]:flex-1")
   const headerRef = useRef<HTMLDivElement>(null)
   const [spacer, setSpacer] = useState(0)
   const [compact, setCompact] = useState(false)
@@ -105,9 +108,6 @@ export function MobilePageHeader({
               </span>
             )}
           </div>
-          <div className={cn("flex shrink-0 items-center gap-2", !alignLeft && "justify-end")}>
-            {action ?? <span className="h-10 w-10" aria-hidden />}
-          </div>
         </div>
       </div>
       {/* In-flow spacer so the fixed header never covers page content. The
@@ -119,11 +119,17 @@ export function MobilePageHeader({
         className="w-full"
         style={{ height: spacer, marginTop: "calc(-0.35rem - env(safe-area-inset-top, 0px))" }}
       />
+      {/* Actions belong to the page, not the bar (right-aligned): the bar is for where you are and the way back.
+          They sit in the page flow right under it, as full-width buttons, so they are
+          easy to reach and never crowd the title. */}
+      {action && !hasHero ? (
+        <ActionsAfterHero className={"md:hidden lg:hidden flex w-full flex-wrap gap-2 px-1 pb-2 pt-3 [&>*]:min-w-0 [&>*]:flex-1 [&>*]:basis-[calc(50%-0.25rem)] [&>div]:flex [&>div]:gap-2 [&>div>*]:flex-1"}>{action}</ActionsAfterHero>
+      ) : null}
     </>
   )
 }
 
-/** Round top-bar action: accent fill, 40px target, like the home's buttons. */
+/** A page action on phones: a round, labelled button in the page, not an icon in the bar. */
 export function MobileIconButton({
   children,
   onClick,
@@ -144,20 +150,21 @@ export function MobileIconButton({
       disabled={disabled}
       aria-label={label}
       className={cn(
-        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-[0_6px_16px_-8px_rgba(0,0,0,0.45)] transition active:scale-90",
+        "flex h-11 min-w-0 shrink-0 items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-5 text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-[0.98]",
         "disabled:pointer-events-none disabled:opacity-50",
-        "[&_svg]:h-[1.125rem] [&_svg]:w-[1.125rem] [&_svg]:shrink-0",
+        "[&_svg]:h-[1.0625rem] [&_svg]:w-[1.0625rem] [&_svg]:shrink-0",
         className,
       )}
     >
       {children}
+      <span className="truncate">{label}</span>
     </button>
   )
 }
 
 /** Shared size for every top-bar control (primary + chip). */
 export const DESKTOP_TOPBAR_CONTROL =
-  "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-bold leading-none whitespace-nowrap [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:shrink-0"
+  "inline-flex h-11 shrink-0 items-center gap-2 rounded-full px-5 text-sm font-semibold leading-none whitespace-nowrap [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0"
 
 /** Primary CTA used in desktop top bars — accent by default (vehicle style). */
 export function DesktopPageAction({
@@ -194,8 +201,8 @@ export function DesktopPageAction({
         DESKTOP_TOPBAR_CONTROL,
         "transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
         variant === "solid"
-          ? "bg-[var(--text)] text-[var(--bg)] shadow-sm shadow-black/5"
-          : "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-sm shadow-black/10",
+          ? "bg-[var(--text)] text-[var(--bg)]"
+          : "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]",
         className
       )}
     >
@@ -256,6 +263,10 @@ export function DesktopPageHeader({
   showBack?: boolean
   beta?: boolean
 }) {
+  // A page may hide the bar below a breakpoint ("hidden lg:block"); its action row follows.
+  const hiddenUntil = className?.match(/\bhidden\s+(sm|md|lg|xl):block\b/)?.[1]
+  const hasHero = usePageHasHero()
+  useRegisterActions(actions, "hidden md:flex flex-wrap items-center justify-end gap-2.5")
   const rawItems = breadcrumbs ?? []
   const breadcrumbItems: Array<{ label: string; href?: string }> = [
     { label: "Home", href: homeHref },
@@ -263,6 +274,7 @@ export function DesktopPageHeader({
     { label: title },
   ]
   return (
+    <>
     <header
       className={cn(
         "portal-desktop-topbar sticky top-0 z-50 w-full shrink-0 border-b border-[var(--border)] bg-[var(--sidebar)]",
@@ -298,9 +310,14 @@ export function DesktopPageHeader({
             </span>
           )}
         </div>
-        {actions ? <div className="flex shrink-0 items-center gap-2.5">{actions}</div> : null}
       </div>
     </header>
+    {actions && !hasHero ? (
+      <ActionsAfterHero className={cn("portal-page-body flex flex-wrap items-center justify-end gap-2.5 !pb-4 pt-4", hiddenUntil ? `hidden ${hiddenUntil}:flex` : "hidden md:flex")}>
+        {actions}
+      </ActionsAfterHero>
+    ) : null}
+    </>
   )
 }
 

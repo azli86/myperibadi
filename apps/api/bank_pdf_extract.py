@@ -117,8 +117,6 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                         break
                 if header_idx is None:
                     continue
-                for ri, row in enumerate(rows[:14]):
-                    print(f"[pdf-table] hdr={header_idx} r{ri}: {row}", flush=True)
                 expanded_rows: list[list[str]] = []
                 for row in rows[header_idx + 1 :]:
                     split_cells = [[part.strip() for part in str(cell or "").splitlines()] for cell in row]
@@ -126,6 +124,16 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                     for line_index in range(line_count):
                         expanded_rows.append([parts[line_index] if line_index < len(parts) else "" for parts in split_cells])
                 previous_date: str | None = None
+                # When the single amount column carries signs (Maybank: `22.53-` / `30.00+`),
+                # the sign is the direction. Without any minus in the table, fall back to wording.
+                signed_table = False
+                if amount_col is not None:
+                    for cells in expanded_rows:
+                        if amount_col < len(cells):
+                            value = _parse_amount(cells[amount_col])
+                            if value is not None and value < 0:
+                                signed_table = True
+                                break
                 for cells in expanded_rows:
                     if len(cells) < 3:
                         continue
@@ -144,8 +152,6 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                         date_str = previous_date
                     if not date_str:
                         continue
-                    if not date_str:
-                        continue
                     debit_val = _parse_amount(cells[debit_col]) if debit_col is not None and debit_col < len(cells) else None
                     credit_val = _parse_amount(cells[credit_col]) if credit_col is not None and credit_col < len(cells) else None
                     amount_val = _parse_amount(cells[amount_col]) if amount_col is not None and amount_col < len(cells) else None
@@ -157,13 +163,18 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                     description = re.sub(r"[\s,]*\d{1,3}(?:,\d{3})*\.\d{2}\s*$", "", description).strip()
                     amount: Decimal | None = None
                     txn_type = None
+                    # A debit or credit column can print its figure with a sign or in
+                    # brackets; the column decides the direction, so take the magnitude.
                     if debit_val is not None and debit_val != 0:
-                        amount, txn_type = debit_val, "expense"
+                        amount, txn_type = abs(debit_val), "expense"
                     elif credit_val is not None and credit_val != 0:
-                        amount, txn_type = credit_val, "income"
+                        amount, txn_type = abs(credit_val), "income"
                     elif amount_val is not None and amount_val != 0:
                         amount = abs(amount_val)
-                        txn_type = _type_from_text(" ".join(cells), amount_val)
+                        if signed_table:
+                            txn_type = "expense" if amount_val < 0 else "income"
+                        else:
+                            txn_type = _type_from_text(" ".join(cells), amount_val)
                     if amount is None or txn_type is None or not description or not date_str:
                         continue
                     if amount <= 0 or amount > Decimal("9999999999"):
@@ -211,8 +222,7 @@ def parse_pdf_tables(payload: bytes, password: str | None = None) -> list[dict]:
                 elif carried_header_x:
                     header_x = carried_header_x.copy()
                 else:
-                    sample = " ".join(str(w["text"]) for w in words[:80])[:800]
-                    print(f"[pdf-scan] page={page_number}/{len(pdf.pages)} no-header words={len(words)} sample={sample!r}", flush=True)
+                    print(f"[pdf-scan] page={page_number}/{len(pdf.pages)} no-header words={len(words)}", flush=True)
                 for line in lines.values() if header_x else []:
                     ordered = sorted(line, key=lambda w: float(w["x0"]))
                     date_word = next((w for w in ordered if DATE_HINT.fullmatch(str(w["text"]))), None)

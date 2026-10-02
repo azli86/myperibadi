@@ -685,7 +685,7 @@ function SetupLoading({ phase, lang }: { phase: 0 | 1 | 2 | 3 | 4; lang: "BM" | 
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="fixed inset-0 z-[9999999] flex items-center justify-center bg-[var(--page-bg)]/85 backdrop-blur-md"
+      className="fixed inset-0 z-[9999999] flex items-center justify-center bg-[var(--page-bg)]/85"
     >
       <motion.div
         initial={{ scale: 0.85, y: 20, opacity: 0 }}

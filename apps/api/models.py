@@ -995,6 +995,39 @@ class PeriodCycle(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class ShoppingItem(Base):
+    """One thing on a user's shopping list. Private to the user."""
+    __tablename__ = "shopping_items"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    quantity: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    note: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    done: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    done_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class PeriodDayLog(Base):
+    """What a user noted about one day: flow, symptoms, mood, temperature,
+    an ovulation test and a note. Private, like the cycles."""
+    __tablename__ = "period_day_logs"
+    __table_args__ = (UniqueConstraint("user_id", "log_date", name="uq_period_day_logs_user_date"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(16), ForeignKey("users.id"), nullable=False, index=True)
+    log_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    flow: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)  # spotting | light | medium | heavy
+    symptoms: Mapped[Optional[str]] = mapped_column(Text, nullable=True)  # JSON list of symptom keys
+    mood: Mapped[Optional[str]] = mapped_column(String(24), nullable=True)
+    temperature: Mapped[Optional[float]] = mapped_column(DECIMAL(4, 2), nullable=True)
+    ovulation_test: Mapped[Optional[str]] = mapped_column(String(12), nullable=True)  # positive | negative
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 # ─── My Vehicle ───────────────────────────────────────────────────────────────
 
 class Vehicle(Base):

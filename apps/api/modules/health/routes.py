@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import date
+
+from time_utils import current_business_date, utc_iso
 from typing import Any, Callable, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -184,14 +186,14 @@ def create_health_router(*, get_current_user: Callable[..., Any]) -> APIRouter:
     ):
         if not payload.schedule_id:
             raise HTTPException(400, "schedule_id is required")
-        if payload.status not in ("taken", "skipped"):
-            raise HTTPException(400, "status must be 'taken' or 'skipped'")
+        if payload.status not in ("taken", "skipped", "pending"):
+            raise HTTPException(400, "status must be 'taken', 'skipped' or 'pending'")
         log = await service.tick_dose(
             db,
             medication_id=medication_id,
             user_id=current_user.id,
             schedule_id=payload.schedule_id,
-            dose_date=payload.dose_date or date.today(),
+            dose_date=payload.dose_date or current_business_date(),
             status=payload.status,
         )
         if not log:
@@ -202,7 +204,7 @@ def create_health_router(*, get_current_user: Callable[..., Any]) -> APIRouter:
             "schedule_id": log.schedule_id,
             "dose_date": log.dose_date,
             "status": log.status,
-            "taken_at": log.taken_at,
+            "taken_at": utc_iso(log.taken_at),
         }
 
     @router.patch("/schedules/{schedule_id}")

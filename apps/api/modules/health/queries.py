@@ -8,6 +8,8 @@ from typing import Optional, Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from time_utils import current_business_date
+
 import models
 
 
@@ -34,7 +36,7 @@ async def list_readings(
     stmt = select(models.HealthReading).where(models.HealthReading.user_id == user_id)
     if metric_type:
         stmt = stmt.where(models.HealthReading.metric_type == metric_type)
-    stmt = stmt.where(models.HealthReading.measured_at >= _range_start(range_key, date.today()))
+    stmt = stmt.where(models.HealthReading.measured_at >= _range_start(range_key, current_business_date()))
     stmt = stmt.order_by(models.HealthReading.measured_at.desc())
     return (await db.execute(stmt)).scalars().all()
 

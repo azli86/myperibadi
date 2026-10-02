@@ -440,16 +440,6 @@ export default function WarrantyListPage() {
         <MobilePageHeader
           title={tr("Waranti Saya", "My Warranty")}
           fallbackHref={`/${sessionId}`}
-          action={
-            <div className="flex items-center gap-1">
-              <MobileIconButton label={tr("Semak", "Check")} onClick={openSearchPopup}>
-                <Search className="h-5 w-5" />
-              </MobileIconButton>
-              <MobileIconButton label={tr("Tambah", "Add")} onClick={() => router.push(`/${sessionId}/warranty/add`)}>
-                <Plus className="h-5 w-5" />
-              </MobileIconButton>
-            </div>
-          }
         />
       </div>
 

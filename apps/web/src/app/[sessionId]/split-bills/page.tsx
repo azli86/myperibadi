@@ -922,7 +922,7 @@ export default function SplitBillsPage() {
       {mounted && showCreateSheet
         ? createPortal(
             <div
-              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] backdrop-blur-xs p-0 md:items-center md:p-4"
+              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] p-0 md:items-center md:p-4"
               onClick={requestCreateClose}
             >
               <div
@@ -1316,7 +1316,7 @@ export default function SplitBillsPage() {
       {mounted && detailSplit
         ? createPortal(
             <div
-              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] backdrop-blur-xs p-0 md:items-center md:p-4"
+              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] p-0 md:items-center md:p-4"
               onClick={requestDetailClose}
             >
               <div
@@ -1498,7 +1498,7 @@ export default function SplitBillsPage() {
       {mounted && showPaymentSheet && detailSplit
         ? createPortal(
             <div
-              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] backdrop-blur-xs p-0 md:items-center md:p-4"
+              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] p-0 md:items-center md:p-4"
               onClick={requestPaymentClose}
             >
               <div

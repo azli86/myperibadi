@@ -336,12 +336,12 @@ export default function WalletSettingsPage() {
     setMounted(true)
   }, [])
 
-  async function loadData() {
+  async function loadData(silent = false) {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const token = getAccessToken()
       const headers = { ...(token ? { Authorization: `Bearer ${token}` } : {}) }
-      const res = await fetch("/api/wallets", { headers })
+      const res = await fetch("/api/wallets", { headers, cache: "no-store" })
       if (res.ok) {
         const data = await res.json()
         const normalized: WalletItem[] = Array.isArray(data)
@@ -363,12 +363,32 @@ export default function WalletSettingsPage() {
     } catch (err) {
       console.error("Failed loading data:", err)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
   useEffect(() => {
     loadData()
+  }, [])
+
+  // Balances change outside this page too (the bot, other devices), so fetch again when
+  // the tab comes back into view and every half minute while it stays open, instead of
+  // showing whatever was loaded when the page first opened.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") void loadData(true)
+    }
+    const timer = window.setInterval(refresh, 30000)
+    document.addEventListener("visibilitychange", refresh)
+    window.addEventListener("focus", refresh)
+    window.addEventListener("pageshow", refresh)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener("visibilitychange", refresh)
+      window.removeEventListener("focus", refresh)
+      window.removeEventListener("pageshow", refresh)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

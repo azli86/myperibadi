@@ -270,11 +270,6 @@ export default function HealthMedicationsPage() {
         <MobilePageHeader
           title={isBm ? "Ubat" : "Medications"}
           fallbackHref={`/${sessionId}/health`}
-          action={
-            <MobileIconButton label={isBm ? "Tambah ubat" : "Add medication"} onClick={openAdd}>
-              <Plus />
-            </MobileIconButton>
-          }
         />
       </div>
 
@@ -283,17 +278,19 @@ export default function HealthMedicationsPage() {
           title={isBm ? "Ubat & Reminder" : "Medications & Reminders"}
           homeHref={`/${sessionId}`}
           breadcrumbs={[{ label: isBm ? "Kesihatan" : "Health", href: `/${sessionId}/health` }]}
-          actions={
-            <DesktopPageAction onClick={openAdd}>
-              <Plus />
-              {isBm ? "Tambah Ubat" : "Add Medication"}
-            </DesktopPageAction>
-          }
         />
       </div>
 
       {/* ── MOBILE VIEW ── */}
       <div className="md:hidden px-1 pb-24 pt-1 space-y-4">
+        {meds.length > 0 && (<button
+          type="button"
+          onClick={openAdd}
+          className="ml-auto flex h-12 w-fit items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-[0.98]"
+        >
+          <Plus size={16} />
+          {isBm ? "Tambah ubat" : "Add medication"}
+        </button>)}
         {showDataSkeleton ? (
           <div className="h-28 animate-pulse rounded-2xl bg-[var(--card)]" />
         ) : !meds.length ? (
@@ -388,10 +385,10 @@ export default function HealthMedicationsPage() {
                       </span>
                       {s.enabled ? (
                         dose?.status === "taken" ? (
-                          <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-500">
+                          <span className="flex items-center gap-2"><span className="flex items-center gap-1 text-[11px] font-bold text-emerald-500">
                             <Check size={13} strokeWidth={3} />
                             {isBm ? "Sudah Ambil" : "Taken"}
-                          </span>
+                          </span><button type="button" onClick={() => tickDose(med, s, "pending")} className="text-[11px] font-semibold text-[var(--muted)] underline underline-offset-2 hover:text-[var(--text)]">{isBm ? "Batal" : "Undo"}</button></span>
                         ) : (
                           <button
                             onClick={() => tickDose(med, s, "taken")}
@@ -420,6 +417,14 @@ export default function HealthMedicationsPage() {
       <div className="hidden md:block">
         <DesktopPageBody>
         <div className="mx-auto w-full max-w-[900px] space-y-3 p-4">
+          {meds.length > 0 && (<button
+          type="button"
+          onClick={openAdd}
+          className="ml-auto flex h-12 w-fit items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-[0.98]"
+        >
+          <Plus size={16} />
+          {isBm ? "Tambah ubat" : "Add medication"}
+        </button>)}
           {showDataSkeleton ? (
             <div className="h-24 animate-pulse rounded-2xl bg-[var(--card)]" />
           ) : !meds.length ? (
@@ -498,10 +503,10 @@ export default function HealthMedicationsPage() {
                         </span>
                         {s.enabled ? (
                           dose?.status === "taken" ? (
-                            <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-500">
+                            <span className="flex items-center gap-2"><span className="flex items-center gap-1 text-[11px] font-bold text-emerald-500">
                               <Check size={13} strokeWidth={3} />
                               {isBm ? "Sudah Ambil" : "Taken"}
-                            </span>
+                            </span><button type="button" onClick={() => tickDose(med, s, "pending")} className="text-[11px] font-semibold text-[var(--muted)] underline underline-offset-2 hover:text-[var(--text)]">{isBm ? "Batal" : "Undo"}</button></span>
                           ) : (
                             <button
                               onClick={() => tickDose(med, s, "taken")}

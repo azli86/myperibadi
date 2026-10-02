@@ -81,6 +81,8 @@ _USER_DIRECT_TABLES = [
 # removed. Order is child-first per the live FK graph.
 _EXTRA_USER_TABLES = [
     "period_cycles",
+    "period_day_logs",
+    "shopping_items",
     "tax_transaction_links",   # -> transactions (CASCADE)
     "tax_reliefs",             # -> tax_rules (kept)
     "tax_rebates",             # -> tax_documents + transactions

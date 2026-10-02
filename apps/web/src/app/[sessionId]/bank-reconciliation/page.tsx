@@ -1,72 +1,47 @@
 "use client"
 
-import { WALLET_ACCENTS as CARD_ACCENTS, getWalletAccent } from "@/lib/wallet-accents"
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import {
+  ArrowDownRight,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  Check,
+  CheckCheck,
+  ClipboardPaste,
+  Coins,
+  CreditCard,
+  EyeOff,
+  Eye,
+  FileCheck2,
+  FileSpreadsheet,
+  FolderPlus,
+  KeyRound,
+  Landmark,
+  Link2Off,
+  Loader2,
+  Lock,
   Plus,
   RefreshCw,
-  Search,
-  Check,
-  ChevronRight,
-  Wallet,
-  ArrowRight,
-  ArrowLeft,
-  ArrowUpRight,
-  ArrowDownRight,
-  FileSpreadsheet,
-  ClipboardPaste,
-  CheckCheck,
-  Calendar,
-  Lock,
-  Eye,
-  EyeOff,
-  KeyRound,
-  FileCheck2,
-  AlertCircle,
-  Clock,
-  CheckCircle2,
-  Sparkles,
-  UploadCloud,
-  FileText,
   ScanLine,
-  Landmark,
+  Search,
   Smartphone,
-  CreditCard,
-  Coins,
-  ShieldCheck,
-  Filter,
-  CheckCircle,
-  Info,
-  SlidersHorizontal,
-  X,
-  Layers,
-  HelpCircle,
-  Tag,
-  FolderPlus,
+  Sparkles,
+  TriangleAlert,
+  UploadCloud,
+  Wallet,
 } from "lucide-react"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { usePageAlert } from "@/hooks/usePageAlert"
 import { cn } from "@/lib/utils"
-import {
-  BankTransactionRow,
-  parseCsvStatement,
-  parseTextStatement,
-} from "@/lib/bank-statement-parser"
-import {
-  AppTransaction,
-  reconcileStatements,
-  ReconciliationResult,
-} from "@/lib/reconciliation-matcher"
-import { MoneyAmount } from "@/components/ui/MoneyAmount"
-import {
-  DesktopPageAction,
-  DesktopPageBody,
-  DesktopPageHeader,
-  MobilePageHeader,
-} from "@/components/layout/PageHeader"
+import { BankTransactionRow, parseCsvStatement, parseTextStatement } from "@/lib/bank-statement-parser"
+import { AppTransaction, ReconciliationResult, pairKey, reconcileStatements } from "@/lib/reconciliation-matcher"
+import { AppSheet } from "@/components/ui/AppSheet"
+import { ModenHero, ModenHeroIconButton, heroPrimaryButtonStyle, heroQuietButtonStyle } from "@/components/ui/ModenHero"
+import { DesktopPageBody, DesktopPageHeader, MobilePageHeader } from "@/components/layout/PageHeader"
 
 type WalletItem = {
   id: number
@@ -76,64 +51,24 @@ type WalletItem = {
   balance?: number
   type?: string
   image_url?: string | null
-  card_color?: string
 }
 
 type CategoryItem = {
   id: number
   name: string
   type: "expense" | "income"
-  color?: string
-  icon?: string
 }
 
+type Step = "wallet" | "upload" | "review"
+type Tab = "missing_in_app" | "matched" | "missing_in_bank"
 
+const MAX_FILE_BYTES = 25 * 1024 * 1024
 
-function walletTypeIcon(type?: string) {
-  const t = String(type || "").toLowerCase()
-  if (t === "saving" || t.includes("simpan") || t.includes("tabung")) return Coins
-  if (t === "bank" || t === "bank_digital" || t.includes("bank") || t.includes("digital")) return Landmark
-  if (t === "ewallet" || t.includes("wallet") || t.includes("tng") || t.includes("touch")) return Smartphone
-  if (t === "credit_card" || t.includes("credit") || t.includes("kad")) return CreditCard
-  return Wallet
-}
-
-function WalletIconBadge({
-  wallet,
-  size = "md",
-  className,
-}: {
-  wallet?: WalletItem | null
-  size?: "sm" | "md" | "lg"
-  className?: string
-}) {
-  const type = String(wallet?.type || "").toLowerCase()
-  const IconComponent = walletTypeIcon(type)
-  const sizeClasses = {
-    sm: "h-7 w-7 rounded-lg text-xs",
-    md: "h-10 w-10 rounded-xl text-sm",
-    lg: "h-12 w-12 rounded-2xl text-base",
-  }[size]
-  const iconSizes = { sm: 14, md: 18, lg: 22 }[size]
-
-  if (wallet?.image_url) {
-    return (
-      <div className={cn("relative shrink-0 overflow-hidden border border-[var(--border)] shadow-xs bg-[var(--card)]", sizeClasses, className)}>
-        <img
-          src={wallet.image_url}
-          alt={wallet.label || wallet.name || ""}
-          className="h-full w-full object-cover"
-        />
-      </div>
-    )
-  }
-
-  return (
-    <div className={cn("flex shrink-0 items-center justify-center bg-[var(--surface-tint)] text-[var(--text)] shadow-xs", sizeClasses, className)}>
-      <IconComponent size={iconSizes} strokeWidth={2.2} />
-    </div>
-  )
-}
+/** TNG moves money between its own pockets by itself: the eWallet and GO+ ("GO+ Cash In",
+ *  "via GO+ eWallet") and "eWallet Cash Out". These are internal transfers, not spending or
+ *  income, and are not in the user's records. GO+ daily earnings are real income and are
+ *  not matched here. */
+const GO_PLUS_TRANSFER = /go\s*\+\s*cash\s*(in|out)|via\s+go\s*\+|go\s*\+\s*(wallet|ewallet)\s*(top[- ]?up|transfer)|e-?\s?wallet\s*cash\s*(in|out)/i
 
 const SAMPLE_MAYBANK_TEXT = `01/08/2026 DUITNOW TRSF TO ALI BAKI RM 50.00 DR
 03/08/2026 SALARY CREDIT JULY 2026 RM 4,500.00 CR
@@ -144,15 +79,45 @@ const SAMPLE_MAYBANK_TEXT = `01/08/2026 DUITNOW TRSF TO ALI BAKI RM 50.00 DR
 18/08/2026 SHOPEE PAY PURCHASE RM 64.90 DR
 20/08/2026 DUITNOW IN FROM AHMAD RM 150.00 CR`
 
-const SUPPORTED_BANKS = [
-  { name: "Maybank", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" },
-  { name: "CIMB Bank", color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20" },
-  { name: "Bank Islam", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" },
-  { name: "RHB Bank", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" },
-  { name: "Public Bank", color: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20" },
-  { name: "TNG eWallet", color: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20" },
-  { name: "GXBank / Digital", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" },
-]
+const SUPPORTED_BANKS = ["Maybank", "CIMB Bank", "Bank Islam", "RHB Bank", "Public Bank", "TNG eWallet", "GXBank / Digital"]
+
+function walletTypeIcon(type?: string) {
+  const t = String(type || "").toLowerCase()
+  if (t === "saving" || t.includes("simpan") || t.includes("tabung")) return Coins
+  if (t.includes("bank") || t.includes("digital")) return Landmark
+  if (t === "ewallet" || t.includes("wallet") || t.includes("tng") || t.includes("touch")) return Smartphone
+  if (t.includes("credit") || t.includes("kad")) return CreditCard
+  return Wallet
+}
+
+function WalletBadge({ wallet, size = 40 }: { wallet?: WalletItem | null; size?: number }) {
+  const Icon = walletTypeIcon(wallet?.type)
+  if (wallet?.image_url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={wallet.image_url}
+        alt=""
+        style={{ width: size, height: size }}
+        className="shrink-0 rounded-full border border-[var(--border)] object-cover"
+      />
+    )
+  }
+  return (
+    <span style={{ width: size, height: size }} className="flex shrink-0 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--text)]">
+      <Icon size={Math.round(size * 0.46)} strokeWidth={2.1} />
+    </span>
+  )
+}
+
+const fmt = (n: number) => Number(n || 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+/** YYYY-MM-DD shifted by a number of days, without time-zone drift. */
+function shiftDate(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number)
+  const next = new Date(Date.UTC(y, m - 1, d + days))
+  return next.toISOString().slice(0, 10)
+}
 
 export default function BankReconciliationPage() {
   const params = useParams()
@@ -160,155 +125,129 @@ export default function BankReconciliationPage() {
   const { lang } = useLang()
   const isBm = lang === "BM"
   const tr = (bm: string, en: string) => (isBm ? bm : en)
-
   const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
 
-  // Remote data state
+  // Accounts and categories
   const [wallets, setWallets] = useState<WalletItem[]>([])
   const [categories, setCategories] = useState<CategoryItem[]>([])
-  const [appTransactions, setAppTransactions] = useState<AppTransaction[]>([])
   const [loadingInitial, setLoadingInitial] = useState(true)
+  const [walletSearch, setWalletSearch] = useState("")
+  const [targetWalletId, setTargetWalletId] = useState<number | "">("")
+  const [step, setStep] = useState<Step>("wallet")
 
-  // Input Mode (file vs paste)
+  // The statement
   const [inputMode, setInputMode] = useState<"file" | "paste">("file")
-  const [rawTextContent, setRawTextContent] = useState("")
+  const [rawText, setRawText] = useState("")
   const [fileName, setFileName] = useState<string | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [scanStep, setScanStep] = useState<number>(0)
-
-  // Password-Protected PDF State
-  const [showPasswordModal, setShowPasswordModal] = useState(false)
-  const [pdfPassword, setPdfPassword] = useState("")
-  const [showPasswordText, setShowPasswordText] = useState(false)
-  const [pendingPdfBuffer, setPendingPdfBuffer] = useState<File | null>(null)
-  const [pendingPdfName, setPendingPdfName] = useState<string>("")
-  const [passwordError, setPasswordError] = useState<string | null>(null)
-  const [unlockingPdf, setUnlockingPdf] = useState(false)
-
-  // Parsed Statement Data
   const [bankTxns, setBankTxns] = useState<BankTransactionRow[]>([])
+  const [skippedRows, setSkippedRows] = useState(0)
+  const [isSample, setIsSample] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [scanStep, setScanStep] = useState(0)
 
-  // Active View Tab & Filters
-  const [activeTab, setActiveTab] = useState<"missing_in_app" | "matched" | "missing_in_bank">("missing_in_app")
+  // Password-protected PDF
+  const [pendingPdf, setPendingPdf] = useState<File | null>(null)
+  const [pdfPassword, setPdfPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [unlocking, setUnlocking] = useState(false)
+
+  // What the app has for the statement's period
+  const [appTransactions, setAppTransactions] = useState<AppTransaction[]>([])
+  const [loadingTxns, setLoadingTxns] = useState(false)
+  const [txnsError, setTxnsError] = useState(false)
+
+  // Review
+  const [tab, setTab] = useState<Tab>("missing_in_app")
   const [smartDateMatch, setSmartDateMatch] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
+  const [ignoreGoPlus, setIgnoreGoPlus] = useState(true)
+  const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<"all" | "expense" | "income">("all")
-  const [walletSearchQuery, setWalletSearchQuery] = useState("")
+  const [ignoredIds, setIgnoredIds] = useState<Set<string>>(new Set())
+  const [forbiddenPairs, setForbiddenPairs] = useState<Set<string>>(new Set())
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectionReady, setSelectionReady] = useState(false)
+  const [inlineCategories, setInlineCategories] = useState<Record<string, number>>({})
+  const [batchCategoryId, setBatchCategoryId] = useState<number | "">("")
+  const [importing, setImporting] = useState(false)
 
-  // Quick Add State
-  const [quickAddTxn, setQuickAddTxn] = useState<BankTransactionRow | null>(null)
+  // Add one transaction
+  const [quickAdd, setQuickAdd] = useState<BankTransactionRow | null>(null)
   const [quickAddCategoryId, setQuickAddCategoryId] = useState<number | "">("")
-  const [quickAddWalletId, setQuickAddWalletId] = useState<number | "">("")
   const [quickAddSaving, setQuickAddSaving] = useState(false)
 
-  // Inline Category mapping for missing transactions (txn.id -> category_id)
-  const [inlineCategories, setInlineCategories] = useState<Record<string, number>>({})
-
-  // Batch Selection
-  const [selectedMissingIds, setSelectedMissingIds] = useState<Set<string>>(new Set())
-  const [batchImporting, setBatchImporting] = useState(false)
-  const [batchWalletId, setBatchWalletId] = useState<number | "">("")
-  const [batchCategoryId, setBatchCategoryId] = useState<number | "">("")
-
-  // Target wallet selection
-  const [targetWalletId, setTargetWalletId] = useState<number | "">("")
-  const [wizardStep, setWizardStep] = useState<"wallet" | "upload" | "review">("wallet")
-
-  // Scanning animation steps timer
   useEffect(() => {
-    let interval: NodeJS.Timeout
-    if (isProcessing) {
-      setScanStep(0)
-      interval = setInterval(() => {
-        setScanStep((prev) => (prev < 3 ? prev + 1 : prev))
-      }, 900)
-    }
-    return () => clearInterval(interval)
+    if (!isProcessing) return
+    setScanStep(0)
+    const timer = setInterval(() => setScanStep((prev) => (prev < 3 ? prev + 1 : prev)), 900)
+    return () => clearInterval(timer)
   }, [isProcessing])
 
-  const getAuthHeaders = (): Record<string, string> => {
+  const authHeaders = useCallback((): Record<string, string> => {
     const token = getAccessToken()
-    if (token && !isCookieAuthSentinel(token)) {
-      return { Authorization: `Bearer ${token}` }
-    }
-    return {}
-  }
+    return token && !isCookieAuthSentinel(token) ? { Authorization: `Bearer ${token}` } : {}
+  }, [])
 
-  const parseStatementWithAi = async (text: string, pageImages: string[] = []) => {
-    const response = await fetch("/api/bank-reconciliation/parse", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-      body: JSON.stringify({ text, page_images: pageImages }),
-    })
-    if (!response.ok) {
-      const fallback = parseTextStatement(text)
-      if (fallback.transactions.length) return fallback
-      throw new Error((await response.json().catch(() => null))?.detail || tr("Gagal membaca penyata.", "Failed to read the statement."))
-    }
-    const data = await response.json()
-    return { transactions: Array.isArray(data.transactions) ? (data.transactions as BankTransactionRow[]) : [] }
-  }
+  // ── Loading ────────────────────────────────────────────────────────────
 
-  const parsePdfWithServer = async (file: File, password?: string): Promise<BankTransactionRow[]> => {
-    const formData = new FormData()
-    formData.append("file", file)
-    if (password) formData.append("password", password)
-    const response = await fetch("/api/bank-reconciliation/parse", {
-      method: "POST",
-      credentials: "include",
-      headers: { ...getAuthHeaders() },
-      body: formData,
-    })
-    if (response.status === 401) {
-      const detail = (await response.json().catch(() => null))?.detail
-      if (detail === "PDF_PASSWORD_REQUIRED") {
-        throw new Error("PDF_PASSWORD_REQUIRED")
-      }
-    }
-    if (!response.ok) {
-      throw new Error((await response.json().catch(() => null))?.detail || tr("Gagal membaca penyata.", "Failed to read the statement."))
-    }
-    const data = await response.json()
-    return Array.isArray(data.transactions) ? (data.transactions as BankTransactionRow[]) : []
-  }
-
-  // Load Wallets, Categories, Transactions
-  const loadData = async () => {
-    setLoadingInitial(true)
-    try {
-      const headers = getAuthHeaders()
-
-      const [walletsRes, catsRes, txnsRes] = await Promise.allSettled([
-        fetch("/api/wallets", { credentials: "include", headers }),
-        fetch("/api/categories", { credentials: "include", headers }),
-        fetch(`/api/transactions?limit=5000`, { credentials: "include", headers }),
-      ])
-
-      if (walletsRes.status === "fulfilled" && walletsRes.value.ok) {
-        const wData = await walletsRes.value.json()
-        const list = Array.isArray(wData) ? wData : wData.wallets || []
-        setWallets(list)
-        if (list.length > 0 && !targetWalletId) {
-          setTargetWalletId(list[0].id)
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      try {
+        const headers = authHeaders()
+        const [walletsRes, catsRes] = await Promise.allSettled([
+          fetch("/api/wallets", { credentials: "include", headers, cache: "no-store" }),
+          fetch("/api/categories", { credentials: "include", headers, cache: "no-store" }),
+        ])
+        if (cancelled) return
+        if (walletsRes.status === "fulfilled" && walletsRes.value.ok) {
+          const data = await walletsRes.value.json()
+          const list: WalletItem[] = Array.isArray(data) ? data : data.wallets || []
+          setWallets(list)
+          setTargetWalletId((current) => current || list[0]?.id || "")
         }
+        if (catsRes.status === "fulfilled" && catsRes.value.ok) {
+          const data = await catsRes.value.json()
+          setCategories(Array.isArray(data) ? data : data.categories || [])
+        }
+      } catch (err) {
+        console.error("Failed to load wallets and categories", err)
+      } finally {
+        if (!cancelled) setLoadingInitial(false)
       }
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [authHeaders])
 
-      if (catsRes.status === "fulfilled" && catsRes.value.ok) {
-        const cData = await catsRes.value.json()
-        setCategories(Array.isArray(cData) ? cData : cData.categories || [])
-      }
-
-      if (txnsRes.status === "fulfilled" && txnsRes.value.ok) {
-        const tData = await txnsRes.value.json()
-        const list = Array.isArray(tData) ? tData : tData.transactions || []
+  /** The app's own records for the statement's period. Asking only for that window keeps
+   *  an old statement from being compared against a capped list of recent transactions. */
+  const loadAppTransactions = useCallback(
+    async (rows: BankTransactionRow[]) => {
+      if (rows.length === 0) return
+      const dates = rows.map((r) => r.date).sort()
+      const start = shiftDate(dates[0], -10)
+      const end = shiftDate(dates[dates.length - 1], 10)
+      setLoadingTxns(true)
+      setTxnsError(false)
+      try {
+        const res = await fetch(`/api/transactions?start_date=${start}&end_date=${end}&limit=5000`, {
+          credentials: "include",
+          headers: authHeaders(),
+          cache: "no-store",
+        })
+        if (!res.ok) throw new Error(String(res.status))
+        const data = await res.json()
+        const list = Array.isArray(data) ? data : data.transactions || []
         setAppTransactions(
           list.map((t: any) => ({
             id: t.id,
             amount: Number(t.amount || 0),
             type: t.type,
-            date: t.date || t.txn_date || "",
-            description: t.vendor_or_source || t.description || t.notes || "",
+            date: String(t.date || t.txn_date || "").slice(0, 10),
+            description: t.vendor_or_source || t.description || "",
             notes: t.notes || "",
             category_name: t.category_name,
             category_id: t.category_id,
@@ -318,1995 +257,1376 @@ export default function BankReconciliationPage() {
             is_debt_movement: Boolean(t.is_debt_movement),
           }))
         )
+      } catch {
+        // Matching against nothing would call every bank line "missing in app", so say so instead.
+        setTxnsError(true)
+        setAppTransactions([])
+      } finally {
+        setLoadingTxns(false)
       }
-    } catch (err) {
-      console.error("Failed to load initial data", err)
+    },
+    [authHeaders]
+  )
+
+  // ── Reading the statement ───────────────────────────────────────────────
+
+  const readError = (detail?: string) => detail || tr("Gagal membaca penyata.", "Failed to read the statement.")
+
+  const parseWithAi = async (text: string): Promise<{ rows: BankTransactionRow[]; skipped: number }> => {
+    const response = await fetch("/api/bank-reconciliation/parse", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ text, page_images: [] }),
+    })
+    if (!response.ok) {
+      const fallback = parseTextStatement(text)
+      if (fallback.transactions.length) return { rows: fallback.transactions, skipped: fallback.skipped || 0 }
+      throw new Error(readError((await response.json().catch(() => null))?.detail))
+    }
+    const data = await response.json()
+    return { rows: Array.isArray(data.transactions) ? (data.transactions as BankTransactionRow[]) : [], skipped: 0 }
+  }
+
+  const parsePdf = async (file: File, password?: string): Promise<BankTransactionRow[]> => {
+    const form = new FormData()
+    form.append("file", file)
+    if (password) form.append("password", password)
+    const response = await fetch("/api/bank-reconciliation/parse", {
+      method: "POST",
+      credentials: "include",
+      headers: authHeaders(),
+      body: form,
+    })
+    if (response.status === 401 && (await response.clone().json().catch(() => null))?.detail === "PDF_PASSWORD_REQUIRED") {
+      throw new Error("PDF_PASSWORD_REQUIRED")
+    }
+    if (!response.ok) throw new Error(readError((await response.json().catch(() => null))?.detail))
+    const data = await response.json()
+    return Array.isArray(data.transactions) ? (data.transactions as BankTransactionRow[]) : []
+  }
+
+  /** A statement was read: show it against what the app has. */
+  const openStatement = async (rows: BankTransactionRow[], name: string, opts: { sample?: boolean; skipped?: number } = {}) => {
+    if (rows.length === 0) {
+      showAlert(
+        tr("Tiada transaksi dijumpai", "No transactions found"),
+        tr("Tiada baris transaksi yang boleh dibaca dalam penyata ini.", "No readable transaction rows were found in this statement."),
+        "warning"
+      )
+      return
+    }
+    setBankTxns(rows)
+    setFileName(name)
+    setIsSample(Boolean(opts.sample))
+    setSkippedRows(opts.skipped || 0)
+    setIgnoredIds(new Set())
+    setForbiddenPairs(new Set())
+    setSelectedIds(new Set())
+    setSelectionReady(false)
+    setInlineCategories({})
+    setTab("missing_in_app")
+    setSearch("")
+    setTypeFilter("all")
+    setStep("review")
+    await loadAppTransactions(rows)
+  }
+
+  const requireWallet = () => {
+    if (targetWalletId) return true
+    showAlert(tr("Pilih akaun", "Select an account"), tr("Pilih akaun bank sebelum memuat naik penyata.", "Select the bank account before uploading a statement."), "warning")
+    return false
+  }
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target
+    const file = input.files?.[0]
+    // Clear the input so the same file can be chosen again after "New statement".
+    input.value = ""
+    if (!file || !requireWallet()) return
+    if (file.size > MAX_FILE_BYTES) {
+      showAlert(tr("Fail terlalu besar", "File too large"), tr("Had fail ialah 25 MB.", "The file limit is 25 MB."), "warning")
+      return
+    }
+    const lowered = file.name.toLowerCase()
+    if (!/\.(pdf|csv|tsv|txt)$/.test(lowered)) {
+      showAlert(tr("Jenis fail tidak disokong", "Unsupported file type"), tr("Gunakan PDF, CSV, TSV atau TXT.", "Use a PDF, CSV, TSV or TXT file."), "warning")
+      return
+    }
+
+    setIsProcessing(true)
+    try {
+      if (lowered.endsWith(".pdf")) {
+        try {
+          await openStatement(await parsePdf(file), file.name)
+        } catch (err: any) {
+          if (err.message === "PDF_PASSWORD_REQUIRED") {
+            setPendingPdf(file)
+            setPdfPassword("")
+            setPasswordError(null)
+          } else {
+            showAlert(tr("Ralat membaca penyata", "Statement reading error"), err.message, "error")
+          }
+        }
+        return
+      }
+      const content = await file.text()
+      if (/\.(csv|tsv)$/.test(lowered)) {
+        // A table is read by rules, not sent to an AI: it is exact, free and private.
+        const local = parseCsvStatement(content)
+        if (local.transactions.length > 0) {
+          await openStatement(local.transactions, file.name, { skipped: local.skipped })
+          return
+        }
+      }
+      const ai = await parseWithAi(content)
+      await openStatement(ai.rows, file.name, { skipped: ai.skipped })
+    } catch (err: any) {
+      showAlert(tr("Ralat membaca penyata", "Statement reading error"), err.message, "error")
     } finally {
-      setLoadingInitial(false)
+      setIsProcessing(false)
     }
   }
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  const handleUnlock = async () => {
+    if (!pendingPdf) return
+    if (!pdfPassword.trim()) {
+      setPasswordError(tr("Masukkan kata laluan PDF.", "Enter the PDF password."))
+      return
+    }
+    setUnlocking(true)
+    setPasswordError(null)
+    try {
+      const rows = await parsePdf(pendingPdf, pdfPassword.trim())
+      const name = pendingPdf.name
+      setPendingPdf(null)
+      setPdfPassword("")
+      setIsProcessing(true)
+      await openStatement(rows, name)
+    } catch (err: any) {
+      setPasswordError(
+        err.message === "PDF_PASSWORD_REQUIRED"
+          ? tr("Kata laluan salah. Semak No. IC 12 digit atau 6 digit tarikh lahir anda.", "Incorrect password. Check your 12-digit IC or 6-digit birth date.")
+          : err.message || tr("Ralat semasa membuka PDF.", "Error opening the PDF.")
+      )
+    } finally {
+      setUnlocking(false)
+      setIsProcessing(false)
+    }
+  }
 
-  // A statement belongs to the selected wallet.
-  const filteredAppTransactions = useMemo(
-    () =>
-      targetWalletId
-        ? appTransactions.filter((tx) => Number(tx.wallet_id) === Number(targetWalletId))
-        : [],
+  const handlePaste = async () => {
+    if (!requireWallet()) return
+    if (!rawText.trim()) {
+      showAlert(tr("Perhatian", "Notice"), tr("Tampal teks penyata bank dahulu.", "Paste the bank statement text first."), "warning")
+      return
+    }
+    setIsProcessing(true)
+    try {
+      const ai = await parseWithAi(rawText)
+      await openStatement(ai.rows, tr("Teks penyata bank", "Pasted statement"), { skipped: ai.skipped })
+    } catch (err: any) {
+      showAlert(tr("Ralat membaca penyata", "Statement reading error"), err.message, "error")
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const loadSample = () => {
+    if (!requireWallet()) return
+    const result = parseTextStatement(SAMPLE_MAYBANK_TEXT)
+    void openStatement(result.transactions, tr("Contoh penyata Maybank", "Maybank sample statement"), { sample: true })
+  }
+
+  // ── Matching ────────────────────────────────────────────────────────────
+
+  const selectedWallet = useMemo(() => wallets.find((w) => Number(w.id) === Number(targetWalletId)), [wallets, targetWalletId])
+
+  // A statement belongs to one account.
+  const walletTransactions = useMemo(
+    () => (targetWalletId ? appTransactions.filter((tx) => Number(tx.wallet_id) === Number(targetWalletId)) : []),
     [appTransactions, targetWalletId]
   )
-
-  const selectedWallet = useMemo(
-    () => wallets.find((w) => Number(w.id) === Number(targetWalletId)),
-    [wallets, targetWalletId]
+  const goPlusCount = useMemo(() => bankTxns.filter((t) => GO_PLUS_TRANSFER.test(t.description)).length, [bankTxns])
+  const activeBankTxns = useMemo(
+    () => bankTxns.filter((t) => !ignoredIds.has(t.id) && !(ignoreGoPlus && GO_PLUS_TRANSFER.test(t.description))),
+    [bankTxns, ignoredIds, ignoreGoPlus]
   )
 
-  // Filtered Wallets for Step 1 search
-  const filteredWallets = useMemo(() => {
-    if (!walletSearchQuery.trim()) return wallets
-    const q = walletSearchQuery.toLowerCase()
-    return wallets.filter(
-      (w) =>
-        w.name.toLowerCase().includes(q) ||
-        (w.label && w.label.toLowerCase().includes(q)) ||
-        (w.type && w.type.toLowerCase().includes(q))
-    )
-  }, [wallets, walletSearchQuery])
+  const recon: ReconciliationResult = useMemo(
+    () => reconcileStatements(activeBankTxns, walletTransactions, { maxDateToleranceDays: smartDateMatch ? 2 : 0, forbiddenPairs }),
+    [activeBankTxns, walletTransactions, smartDateMatch, forbiddenPairs]
+  )
 
-  // Process File Upload (CSV, TSV, TXT, PDF)
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (!targetWalletId) {
-      showAlert(
-        tr("Pilih Bank", "Select Bank"),
-        tr("Pilih akaun bank sebelum memuat naik penyata.", "Select the bank account before uploading a statement."),
-        "warning"
-      )
-      e.target.value = ""
-      return
-    }
+  // Once the app's records are in, every line that is missing starts ticked.
+  useEffect(() => {
+    if (step !== "review" || loadingTxns || txnsError || selectionReady) return
+    setSelectedIds(new Set(recon.missingInApp.map((t) => t.id)))
+    setSelectionReady(true)
+  }, [step, loadingTxns, txnsError, selectionReady, recon.missingInApp])
 
-    const isPdf = file.name.toLowerCase().endsWith(".pdf")
-    setFileName(file.name)
-    setBatchWalletId(targetWalletId)
-    setQuickAddWalletId(targetWalletId)
-    setIsProcessing(true)
-
-    if (isPdf) {
-      try {
-        const transactions = await parsePdfWithServer(file)
-        setBankTxns(transactions)
-        setSelectedMissingIds(new Set(transactions.map((t) => t.id)))
-        setWizardStep("review")
-      } catch (err: any) {
-        if (err.message === "PDF_PASSWORD_REQUIRED") {
-          setPendingPdfBuffer(file)
-          setPendingPdfName(file.name)
-          setPasswordError(null)
-          setPdfPassword("")
-          setShowPasswordModal(true)
-        } else {
-          showAlert(tr("Ralat Membaca Penyata", "Statement Reading Error"), err.message, "error")
-        }
-      } finally {
-        setIsProcessing(false)
-      }
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = async (event) => {
-      const content = (event.target?.result as string) || ""
-      try {
-        const result = await parseStatementWithAi(content)
-        setBankTxns(result.transactions)
-        setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
-        setWizardStep("review")
-      } catch (err: any) {
-        showAlert(tr("Ralat Membaca Penyata", "Statement Reading Error"), err.message, "error")
-      } finally {
-        setIsProcessing(false)
-      }
-    }
-    reader.readAsText(file)
+  const matchesQuery = (...parts: Array<string | number | undefined | null>) => {
+    const q = search.trim().toLowerCase()
+    return !q || parts.some((p) => String(p ?? "").toLowerCase().includes(q))
   }
 
-  // Handle Unlocking PDF with Password
-  const handleUnlockPdf = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault()
-    if (!pendingPdfBuffer) return
-    if (!pdfPassword.trim()) {
-      setPasswordError(tr("Sila masukkan kata laluan PDF.", "Please enter the PDF password."))
-      return
+  const missingInApp = useMemo(
+    () => recon.missingInApp.filter((t) => (typeFilter === "all" || t.type === typeFilter) && matchesQuery(t.description, t.amount, t.date)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [recon.missingInApp, typeFilter, search]
+  )
+  const matched = useMemo(
+    () =>
+      recon.matched.filter(
+        (p) => (typeFilter === "all" || p.bankTxn.type === typeFilter) && matchesQuery(p.bankTxn.description, p.appTxn.description, p.appTxn.notes, p.bankTxn.amount, p.bankTxn.date)
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [recon.matched, typeFilter, search]
+  )
+  const missingInBank = useMemo(
+    () => recon.missingInBank.filter((t) => (typeFilter === "all" || t.type === typeFilter) && matchesQuery(t.description, t.notes, t.amount, t.date, t.category_name)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [recon.missingInBank, typeFilter, search]
+  )
+
+  // Why a bank line found no partner: the record is there, but somewhere the match
+  // does not look. Naming it is what lets the user fix the record instead of importing
+  // a second copy.
+  const matchedAppIds = useMemo(() => new Set(recon.matched.map((p) => String(p.appTxn.id))), [recon.matched])
+  const walletNames = useMemo(() => new Map(wallets.map((w) => [Number(w.id), w.label || w.name])), [wallets])
+
+  type Hint = { kind: "other_wallet" | "taken" | "near_amount" | "far_date"; txn: AppTransaction }
+  const hintsFor = (bank: BankTransactionRow): Hint[] => {
+    const days = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) / 86400000
+    const found: Hint[] = []
+    for (const t of appTransactions) {
+      const sameWallet = Number(t.wallet_id) === Number(targetWalletId)
+      const diff = Math.abs(Math.abs(Number(t.amount)) - bank.amount)
+      const apart = days(t.date, bank.date)
+      if (Number.isNaN(apart)) continue
+      const sameDirection = String(t.type) === bank.type
+      if (!sameWallet && diff < 0.01 && apart <= 3) found.push({ kind: "other_wallet", txn: t })
+      else if (sameWallet && diff < 0.01 && matchedAppIds.has(String(t.id)) && apart <= 3) found.push({ kind: "taken", txn: t })
+      else if (sameWallet && sameDirection && diff >= 0.01 && diff <= Math.max(1, bank.amount * 0.02) && apart <= 3 && !matchedAppIds.has(String(t.id))) found.push({ kind: "near_amount", txn: t })
+      else if (sameWallet && sameDirection && diff < 0.01 && apart > 3 && apart <= 14 && !matchedAppIds.has(String(t.id))) found.push({ kind: "far_date", txn: t })
     }
-    setUnlockingPdf(true)
-    setPasswordError(null)
-    setIsProcessing(true)
-    try {
-      const transactions = await parsePdfWithServer(pendingPdfBuffer, pdfPassword.trim())
-      setBankTxns(transactions)
-      setSelectedMissingIds(new Set(transactions.map((t) => t.id)))
-      setShowPasswordModal(false)
-      setPendingPdfBuffer(null)
-      setPdfPassword("")
-      setWizardStep("review")
-    } catch (err: any) {
-      if (err.message === "PDF_PASSWORD_REQUIRED") {
-        setPasswordError(
-          tr(
-            "Kata laluan salah. Sila semak No. IC 12-digit atau 6-digit Tarikh Lahir anda.",
-            "Incorrect password. Please check your 12-digit IC or 6-digit Birthdate."
-          )
+    const order = { other_wallet: 0, near_amount: 1, far_date: 2, taken: 3 } as const
+    return found.sort((a, b) => order[a.kind] - order[b.kind]).slice(0, 2)
+  }
+
+  const hintText = (h: Hint, bank: BankTransactionRow) => {
+    const amount = `RM ${fmt(Math.abs(Number(h.txn.amount)))}`
+    const when = h.txn.date
+    switch (h.kind) {
+      case "other_wallet":
+        return tr(
+          `Ada rekod ${amount} pada ${when} di dompet ${h.txn.wallet_name || walletNames.get(Number(h.txn.wallet_id)) || "lain"}, bukan akaun ini. Betulkan dompetnya, atau pilih akaun yang betul.`,
+          `A ${amount} record on ${when} is in ${h.txn.wallet_name || walletNames.get(Number(h.txn.wallet_id)) || "another wallet"}, not this account. Fix its wallet, or choose the right account.`
         )
-      } else {
-        setPasswordError(err.message || tr("Ralat semasa membuka PDF.", "Error unlocking PDF."))
-      }
-    } finally {
-      setUnlockingPdf(false)
-      setIsProcessing(false)
+      case "near_amount":
+        return tr(
+          `Rekod hampir sama: ${amount} pada ${when} (beza RM ${fmt(Math.abs(Math.abs(Number(h.txn.amount)) - bank.amount))}, mungkin yuran). Betulkan jumlahnya supaya sepadan.`,
+          `A close record: ${amount} on ${when} (RM ${fmt(Math.abs(Math.abs(Number(h.txn.amount)) - bank.amount))} apart, maybe a fee). Fix its amount to match.`
+        )
+      case "far_date":
+        return tr(
+          `Ada rekod ${amount} pada ${when}, lebih 3 hari daripada tarikh bank. Betulkan tarikhnya.`,
+          `A ${amount} record on ${when} is more than 3 days from the bank date. Fix its date.`
+        )
+      default:
+        return tr(
+          `Rekod ${amount} pada ${when} sudah dipadankan dengan baris bank lain. Jika ini transaksi kedua, tambahkan.`,
+          `The ${amount} record on ${when} is already matched to another bank line. If this is a second transaction, add it.`
+        )
     }
   }
 
-  // Process Pasted Text
-  const handleProcessText = async () => {
-    if (!targetWalletId) {
-      showAlert(
-        tr("Pilih Bank", "Select Bank"),
-        tr("Pilih akaun bank sebelum memproses penyata.", "Select the bank account before processing a statement."),
-        "warning"
-      )
-      return
-    }
-    if (!rawTextContent.trim()) {
-      showAlert(
-        tr("Perhatian", "Notice"),
-        tr("Sila tampal teks penyata bank terlebih dahulu.", "Please paste bank statement text first."),
-        "warning"
-      )
-      return
-    }
-    setIsProcessing(true)
-    try {
-      const result = await parseStatementWithAi(rawTextContent)
-      setBankTxns(result.transactions)
-      setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
-      setFileName("Teks Penyata Bank")
-      setBatchWalletId(targetWalletId)
-      setQuickAddWalletId(targetWalletId)
-      setWizardStep("review")
-    } catch (err: any) {
-      showAlert(tr("Ralat Membaca Penyata", "Statement Reading Error"), err.message, "error")
-    } finally {
-      setIsProcessing(false)
-    }
+  // Only what is still missing counts as selected: the set also holds lines that have
+  // since matched or been ignored, which inflated the count and the total.
+  const selectedMissing = useMemo(() => recon.missingInApp.filter((t) => selectedIds.has(t.id)), [recon.missingInApp, selectedIds])
+  const selectedTotal = selectedMissing.reduce((sum, t) => sum + t.amount, 0)
+  const visibleSelected = missingInApp.filter((t) => selectedIds.has(t.id)).length
+  const allVisibleSelected = missingInApp.length > 0 && visibleSelected === missingInApp.length
+
+  const statementRange = useMemo(() => {
+    const dates = bankTxns.map((t) => t.date).sort()
+    return dates.length ? { from: dates[0], to: dates[dates.length - 1] } : null
+  }, [bankTxns])
+
+  // ── Actions ─────────────────────────────────────────────────────────────
+
+  const toggleSelected = (id: string, on: boolean) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (on) next.add(id)
+      else next.delete(id)
+      return next
+    })
+
+  const ignoreLine = (id: string) => {
+    setIgnoredIds((prev) => new Set(prev).add(id))
+    toggleSelected(id, false)
   }
 
-  // Load Sample
-  const loadSample = () => {
-    setRawTextContent(SAMPLE_MAYBANK_TEXT)
-    setInputMode("paste")
-    const result = parseTextStatement(SAMPLE_MAYBANK_TEXT)
-    setBankTxns(result.transactions)
-    setSelectedMissingIds(new Set(result.transactions.map((t) => t.id)))
-    setFileName("Contoh Penyata Maybank")
-    if (targetWalletId) {
-      setBatchWalletId(targetWalletId)
-      setQuickAddWalletId(targetWalletId)
+  const unmatch = (bankId: string, appId: string | number) =>
+    setForbiddenPairs((prev) => new Set(prev).add(pairKey(bankId, appId)))
+
+  const buildPayload = (txn: BankTransactionRow, categoryId: number | null, note: string) => ({
+    type: txn.type,
+    amount: txn.amount,
+    vendor_or_source: txn.description,
+    notes: `${note}: ${txn.description}`,
+    txn_date: txn.date,
+    category_id: categoryId,
+    wallet_id: Number(targetWalletId),
+  })
+
+  const postTransaction = async (payload: ReturnType<typeof buildPayload>) => {
+    const res = await fetch("/api/transactions", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) {
+      const detail = (await res.json().catch(() => null))?.detail
+      throw new Error(typeof detail === "string" ? detail : tr("Gagal menambah transaksi", "Could not add the transaction"))
     }
-    setWizardStep("review")
+    return res.json()
   }
 
-  // Compute Reconciliation
-  const reconResult: ReconciliationResult = useMemo(() => {
-    return reconcileStatements(bankTxns, filteredAppTransactions, {
-      maxDateToleranceDays: smartDateMatch ? 2 : 0,
-    })
-  }, [bankTxns, filteredAppTransactions, smartDateMatch])
+  const rememberCreated = (created: any, txn: BankTransactionRow, payload: ReturnType<typeof buildPayload>) =>
+    setAppTransactions((prev) => [
+      {
+        id: created?.id ?? `imported-${txn.id}-${Date.now()}`,
+        amount: txn.amount,
+        type: txn.type,
+        date: txn.date,
+        description: txn.description,
+        notes: payload.notes,
+        category_id: payload.category_id,
+        wallet_id: payload.wallet_id,
+      },
+      ...prev,
+    ])
 
-  // Filtered Missing in App
-  const filteredMissingInApp = useMemo(() => {
-    return reconResult.missingInApp.filter((txn) => {
-      if (typeFilter !== "all" && txn.type !== typeFilter) return false
-      if (!searchQuery.trim()) return true
-      const q = searchQuery.toLowerCase()
-      return (
-        txn.description.toLowerCase().includes(q) ||
-        txn.amount.toString().includes(q) ||
-        txn.date.includes(q)
-      )
-    })
-  }, [reconResult.missingInApp, typeFilter, searchQuery])
-
-  // Filtered Matched
-  const filteredMatched = useMemo(() => {
-    return reconResult.matched.filter((pair) => {
-      if (typeFilter !== "all" && pair.bankTxn.type !== typeFilter) return false
-      if (!searchQuery.trim()) return true
-      const q = searchQuery.toLowerCase()
-      return (
-        pair.bankTxn.description.toLowerCase().includes(q) ||
-        (pair.appTxn.description && pair.appTxn.description.toLowerCase().includes(q)) ||
-        pair.bankTxn.amount.toString().includes(q) ||
-        pair.bankTxn.date.includes(q)
-      )
-    })
-  }, [reconResult.matched, typeFilter, searchQuery])
-
-  // Filtered Missing in Bank
-  const filteredMissingInBank = useMemo(() => {
-    return reconResult.missingInBank.filter((txn) => {
-      if (typeFilter !== "all" && txn.type !== typeFilter) return false
-      if (!searchQuery.trim()) return true
-      const q = searchQuery.toLowerCase()
-      return (
-        (txn.description && txn.description.toLowerCase().includes(q)) ||
-        txn.amount.toString().includes(q) ||
-        txn.date.includes(q) ||
-        (txn.category_name && txn.category_name.toLowerCase().includes(q))
-      )
-    })
-  }, [reconResult.missingInBank, typeFilter, searchQuery])
-
-  // Single Add to App
-  const handleQuickAdd = async () => {
-    if (!quickAddTxn) return
-    if (!quickAddWalletId) {
-      showAlert(
-        tr("Pilih Bank", "Select Bank"),
-        tr("Pilih dompet atau akaun bank sebelum menyimpan.", "Select a wallet or bank account before saving."),
-        "warning"
-      )
-      return
-    }
+  const saveQuickAdd = async () => {
+    if (!quickAdd || quickAddSaving) return
     setQuickAddSaving(true)
-
     try {
-      const headers = getAuthHeaders()
-      const payload = {
-        type: quickAddTxn.type,
-        amount: quickAddTxn.amount,
-        vendor_or_source: quickAddTxn.description,
-        notes: `Rekonsiliasi Bank: ${quickAddTxn.description}`,
-        txn_date: quickAddTxn.date,
-        category_id: quickAddCategoryId ? Number(quickAddCategoryId) : null,
-        wallet_id: Number(quickAddWalletId),
-      }
-
-      const res = await fetch("/api/transactions", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          ...headers,
-        },
-        body: JSON.stringify(payload),
-      })
-
-      if (!res.ok) {
-        throw new Error("Gagal menambah transaksi")
-      }
-
-      const created = await res.json()
-
-      // Optimistically add to appTransactions
-      setAppTransactions((prev) => [
-        {
-          id: created.id || created.txn_id || Date.now(),
-          amount: quickAddTxn.amount,
-          type: quickAddTxn.type,
-          date: quickAddTxn.date,
-          description: quickAddTxn.description,
-          notes: payload.notes,
-          category_id: payload.category_id,
-          wallet_id: payload.wallet_id,
-        },
-        ...prev,
-      ])
-
-      showAlert(
-        tr("Berjaya Ditambah", "Successfully Added"),
-        tr("Transaksi berjaya direkod ke dalam MyPeribadi!", "Transaction successfully recorded into MyPeribadi!"),
-        "success"
-      )
-      setQuickAddTxn(null)
+      const payload = buildPayload(quickAdd, quickAddCategoryId ? Number(quickAddCategoryId) : null, "Rekonsiliasi Bank")
+      rememberCreated(await postTransaction(payload), quickAdd, payload)
+      toggleSelected(quickAdd.id, false)
+      setQuickAdd(null)
       setQuickAddCategoryId("")
     } catch (err: any) {
-      showAlert(
-        tr("Ralat", "Error"),
-        err.message || tr("Ralat semasa menyimpan transaksi", "Error saving transaction"),
-        "error"
-      )
+      showAlert(tr("Ralat", "Error"), err.message, "error")
     } finally {
       setQuickAddSaving(false)
     }
   }
 
-  // Batch Import Selected Missing Transactions
-  const handleBatchImport = () => {
-    const toImport = reconResult.missingInApp.filter((t) => selectedMissingIds.has(t.id))
-    if (!batchWalletId) {
-      showAlert(
-        tr("Pilih Bank", "Select Bank"),
-        tr("Pilih dompet atau akaun bank untuk transaksi yang akan diimport.", "Select the wallet or bank account for imported transactions."),
-        "warning"
-      )
+  const importSelected = () => {
+    if (importing || isSample) return
+    if (selectedMissing.length === 0) {
+      showAlert(tr("Perhatian", "Notice"), tr("Tiada transaksi dipilih untuk diimport.", "No transactions are selected to import."), "warning")
       return
     }
-    if (toImport.length === 0) {
-      showAlert(
-        tr("Perhatian", "Notice"),
-        tr("Tiada transaksi yang dipilih untuk diimport.", "No transactions selected for import."),
-        "warning"
-      )
-      return
-    }
-
-    const totalAmount = toImport.reduce((sum, item) => sum + item.amount, 0)
-
+    const batch = [...selectedMissing]
+    const label = selectedWallet?.label || selectedWallet?.name || tr("akaun terpilih", "the selected account")
     showConfirm(
-      tr("Sahkan Import Berkelompok", "Confirm Batch Import"),
+      tr("Sahkan import", "Confirm import"),
       tr(
-        `Adakah anda pasti ingin mengimport ${toImport.length} transaksi (Jumlah: RM ${totalAmount.toFixed(2)}) ke dalam akaun ${selectedWallet?.label || selectedWallet?.name || "bank terpilih"}?`,
-        `Are you sure you want to import ${toImport.length} transactions (Total: RM ${totalAmount.toFixed(2)}) into ${selectedWallet?.label || selectedWallet?.name || "selected bank"}?`
+        `Import ${batch.length} transaksi (jumlah RM ${fmt(batch.reduce((s, t) => s + t.amount, 0))}) ke ${label}?`,
+        `Import ${batch.length} transactions (total RM ${fmt(batch.reduce((s, t) => s + t.amount, 0))}) into ${label}?`
       ),
       async () => {
-        setBatchImporting(true)
-        const headers = getAuthHeaders()
-        let successCount = 0
-        const newAdded: AppTransaction[] = []
-
-        for (const item of toImport) {
+        setImporting(true)
+        const failed: string[] = []
+        for (const item of batch) {
           try {
-            const assignedCatId = inlineCategories[item.id] || (batchCategoryId ? Number(batchCategoryId) : null)
-            const payload = {
-              type: item.type,
-              amount: item.amount,
-              vendor_or_source: item.description,
-              notes: `Import Penyata: ${item.description}`,
-              txn_date: item.date,
-              category_id: assignedCatId,
-              wallet_id: Number(batchWalletId),
-            }
-
-            const res = await fetch("/api/transactions", {
-              method: "POST",
-              credentials: "include",
-              headers: {
-                "Content-Type": "application/json",
-                ...headers,
-              },
-              body: JSON.stringify(payload),
-            })
-
-            if (res.ok) {
-              successCount++
-              newAdded.push({
-                id: `imported-${item.id}-${Date.now()}`,
-                amount: item.amount,
-                type: item.type,
-                date: item.date,
-                description: item.description,
-                notes: payload.notes,
-                category_id: payload.category_id,
-                wallet_id: payload.wallet_id,
-              })
-            }
-          } catch (e) {
-            console.error("Batch import item error", e)
+            const categoryId = inlineCategories[item.id] || (batchCategoryId ? Number(batchCategoryId) : null)
+            const payload = buildPayload(item, categoryId, "Import Penyata")
+            rememberCreated(await postTransaction(payload), item, payload)
+            toggleSelected(item.id, false)
+          } catch {
+            failed.push(item.id)
           }
         }
-
-        setAppTransactions((prev) => [...newAdded, ...prev])
-        setBatchImporting(false)
+        setImporting(false)
+        const done = batch.length - failed.length
         showAlert(
-          tr("Selesai Mengimport", "Import Completed"),
-          tr(
-            `${successCount} daripada ${toImport.length} transaksi berjaya diimport ke rekod anda!`,
-            `${successCount} of ${toImport.length} transactions successfully imported!`
-          ),
-          "success"
+          failed.length ? tr("Import separa", "Partly imported") : tr("Import selesai", "Import complete"),
+          failed.length
+            ? tr(`${done} daripada ${batch.length} berjaya. ${failed.length} gagal dan masih ditanda supaya boleh dicuba lagi.`, `${done} of ${batch.length} imported. ${failed.length} failed and stay ticked so you can try again.`)
+            : tr(`${done} transaksi berjaya diimport.`, `${done} transactions imported.`),
+          failed.length ? "warning" : "success"
         )
       },
       "info"
     )
   }
 
-  const scanSteps = [
-    tr("Mengesahkan fail penyata & format...", "Verifying statement file & format..."),
-    tr("Mengekstrak baris urus niaga PDF / CSV...", "Extracting transaction lines..."),
-    tr("Menganalisis amaun debit & kredit...", "Analyzing debit & credit amounts..."),
-    tr("Memadankan rekod dengan data MyPeribadi...", "Cross-matching with MyPeribadi records..."),
-  ]
-
-  // Reset to Wizard Step 1
-  const handleResetWizard = () => {
+  const resetAll = () => {
     setBankTxns([])
     setFileName(null)
-    setRawTextContent("")
-    setSelectedMissingIds(new Set())
-    setWizardStep("wallet")
+    setRawText("")
+    setAppTransactions([])
+    setTxnsError(false)
+    setIgnoredIds(new Set())
+    setForbiddenPairs(new Set())
+    setSelectedIds(new Set())
+    setSelectionReady(false)
+    setIsSample(false)
+    setSkippedRows(0)
+    setStep("upload")
   }
 
-  // Calculate selected total amount
-  const selectedMissingTotal = useMemo(() => {
-    return reconResult.missingInApp
-      .filter((t) => selectedMissingIds.has(t.id))
-      .reduce((sum, t) => sum + t.amount, 0)
-  }, [reconResult.missingInApp, selectedMissingIds])
+  const scanSteps = [
+    tr("Mengesahkan fail penyata…", "Checking the statement file…"),
+    tr("Mengekstrak baris transaksi…", "Extracting transaction lines…"),
+    tr("Menganalisis debit dan kredit…", "Analysing debits and credits…"),
+    tr("Memadankan dengan rekod anda…", "Matching with your records…"),
+  ]
 
-  // Stepper Header
-  const renderStepper = () => (
-    <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5 shadow-xs">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        {/* Title */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--text)] text-[var(--bg)] shadow-sm">
-            <ScanLine size={22} strokeWidth={2.2} />
-          </div>
-          <div>
-            <h1 className="text-lg font-black tracking-tight text-[var(--text)] sm:text-xl">
-              {tr("Rekonsiliasi Bank", "Bank Reconciliation")}
-            </h1>
-            <p className="text-xs font-medium text-[var(--muted)]">
-              {tr("Padankan penyata rasmi bank dengan rekod perbelanjaan MyPeribadi anda.", "Match your official bank statements with MyPeribadi records.")}
-            </p>
-          </div>
-        </div>
+  const filteredWallets = useMemo(() => {
+    const q = walletSearch.trim().toLowerCase()
+    if (!q) return wallets
+    return wallets.filter((w) => w.name.toLowerCase().includes(q) || (w.label || "").toLowerCase().includes(q) || (w.type || "").toLowerCase().includes(q))
+  }, [wallets, walletSearch])
 
-        {/* Steps pills */}
-        <div className="flex items-center gap-1.5 self-start sm:self-auto">
-          {/* Step 1 */}
-          <button
-            type="button"
-            onClick={() => {
-              if (wizardStep !== "wallet") setWizardStep("wallet")
-            }}
-            className={cn(
-              "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-black transition",
-              wizardStep === "wallet"
-                ? "bg-[var(--text)] text-[var(--bg)] shadow-xs"
-                : targetWalletId
-                ? "bg-[var(--surface-tint)] text-[var(--text)] hover:bg-[var(--surface-tint)]/80"
-                : "text-[var(--muted)] opacity-60"
-            )}
-          >
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[var(--bg)]/20 text-[10px]">1</span>
-            <span>{tr("Pilih Bank", "Select Bank")}</span>
-          </button>
+  const rate = recon.summary.matchRatePercent
+  const inReview = step === "review"
 
-          <ChevronRight size={14} className="text-[var(--muted)]" />
+  const steps: Array<{ key: Step; label: string; enabled: boolean }> = [
+    { key: "wallet", label: tr("Akaun", "Account"), enabled: true },
+    { key: "upload", label: tr("Muat naik", "Upload"), enabled: Boolean(targetWalletId) },
+    { key: "review", label: tr("Semakan", "Review"), enabled: bankTxns.length > 0 },
+  ]
 
-          {/* Step 2 */}
-          <button
-            type="button"
-            onClick={() => {
-              if (targetWalletId && wizardStep !== "upload") setWizardStep("upload")
-            }}
-            disabled={!targetWalletId}
-            className={cn(
-              "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-black transition",
-              wizardStep === "upload"
-                ? "bg-[var(--text)] text-[var(--bg)] shadow-xs"
-                : bankTxns.length > 0
-                ? "bg-[var(--surface-tint)] text-[var(--text)] hover:bg-[var(--surface-tint)]/80"
-                : "text-[var(--muted)] opacity-60"
-            )}
-          >
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[var(--bg)]/20 text-[10px]">2</span>
-            <span>{tr("Muat Naik", "Upload")}</span>
-          </button>
+  const categoryOptions = (type?: "expense" | "income") => categories.filter((c) => !type || c.type === type)
 
-          <ChevronRight size={14} className="text-[var(--muted)]" />
-
-          {/* Step 3 */}
-          <button
-            type="button"
-            onClick={() => {
-              if (bankTxns.length > 0) setWizardStep("review")
-            }}
-            disabled={bankTxns.length === 0}
-            className={cn(
-              "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-black transition",
-              wizardStep === "review"
-                ? "bg-[var(--text)] text-[var(--bg)] shadow-xs"
-                : "text-[var(--muted)] opacity-60"
-            )}
-          >
-            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[var(--bg)]/20 text-[10px]">3</span>
-            <span>{tr("Semakan", "Review")}</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+  // ── Render ──────────────────────────────────────────────────────────────
 
   return (
-    <div className="space-y-5 pb-24 md:space-y-6 md:pb-8">
-      {/* ─── Mobile Header ─── */}
-      <div className="space-y-4 md:hidden">
-        <MobilePageHeader
-          title={tr("Rekonsiliasi Bank", "Bank Reconciliation")}
-          fallbackHref={`/${sessionId}/wallet-settings`}
-        />
-        <section className="px-1">{renderStepper()}</section>
+    <div className="pb-24 lg:pb-0">
+      <div className="lg:hidden">
+        <MobilePageHeader title={tr("Rekonsiliasi Bank", "Bank Reconciliation")} fallbackHref={`/${sessionId}/wallet-settings`} />
       </div>
+      <DesktopPageHeader className="hidden lg:block" title={tr("Rekonsiliasi Bank", "Bank Reconciliation")} homeHref={`/${sessionId}`} />
 
-      {/* ─── Desktop Header ─── */}
-      <div className="hidden md:block">
-        <DesktopPageHeader
-          title={tr("Rekonsiliasi Penyata Bank", "Bank Statement Reconciliation")}
-          homeHref={`/${sessionId}`}
-        />
-        <DesktopPageBody className="space-y-6">
-          {renderStepper()}
-
-          {/* ═══════════════════════════════════════════════════════ */}
-          {/* ─── STEP 1: Interactive Wallet Selection Card Grid ─── */}
-          {/* ═══════════════════════════════════════════════════════ */}
-          {wizardStep === "wallet" && (
-            <div className="animate-in fade-in-50 duration-300 space-y-5 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 sm:p-8">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-black tracking-tight text-[var(--text)]">
-                    {tr("1. Pilih Akaun Bank atau Dompet", "1. Choose Bank Account or Wallet")}
-                  </h2>
-                  <p className="mt-1 text-xs font-medium text-[var(--muted)]">
-                    {tr(
-                      "Pilih akaun yang ingin diselaraskan dengan penyata kewangan anda.",
-                      "Choose which account you want to reconcile against your official statement."
-                    )}
-                  </p>
-                </div>
-
-                {/* Wallet search */}
-                {wallets.length > 4 && (
-                  <div className="relative w-full sm:w-64">
-                    <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
-                    <input
-                      type="text"
-                      placeholder={tr("Cari akaun...", "Search account...")}
-                      value={walletSearchQuery}
-                      onChange={(e) => setWalletSearchQuery(e.target.value)}
-                      className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-xs font-semibold text-[var(--text)] outline-none focus:border-[var(--text)]/40"
-                    />
-                  </div>
+      <DesktopPageBody className="mt-2 flex flex-col gap-4 px-1 lg:mt-0 lg:gap-5 lg:px-0">
+        <ModenHero
+          label={
+            <>
+              <ScanLine size={16} />
+              {inReview ? tr("Semakan penyata", "Statement review") : tr("Rekonsiliasi bank", "Bank reconciliation")}
+            </>
+          }
+          actions={
+            inReview ? (
+              <ModenHeroIconButton onClick={resetAll} aria-label={tr("Penyata baru", "New statement")}>
+                <RefreshCw size={17} />
+              </ModenHeroIconButton>
+            ) : null
+          }
+          currency={inReview ? null : "RM"}
+          amount={
+            inReview
+              ? loadingTxns
+                ? <Loader2 className="animate-spin" size={28} />
+                : `${rate}%`
+              : selectedWallet
+                ? fmt(selectedWallet.balance || 0)
+                : "0.00"
+          }
+          amountSize="clamp(2rem, 9vw, 2.75rem)"
+          stats={
+            inReview && !loadingTxns && !txnsError
+              ? [
+                  { key: "app", tone: "out", icon: <ArrowDownRight size={15} strokeWidth={2.3} />, label: tr("Belum direkod", "Not recorded"), value: String(recon.summary.missingInAppCount) },
+                  { key: "bank", tone: "neutral", icon: <FileCheck2 size={15} strokeWidth={2.2} />, label: tr("Tiada di bank", "Not on statement"), value: String(recon.summary.missingInBankCount) },
+                ]
+              : undefined
+          }
+        >
+          {inReview ? (
+            <>
+              <p className="text-[0.8125rem] font-medium leading-snug" style={{ color: "var(--hero-muted)" }}>
+                {loadingTxns
+                  ? tr("Memadankan dengan rekod anda…", "Matching with your records…")
+                  : txnsError
+                    ? tr("Rekod anda tidak dapat dimuatkan, jadi pemadanan dihentikan.", "Your records could not be loaded, so matching is paused.")
+                    : tr(`${recon.summary.matchedCount} daripada ${recon.summary.totalBankTxns} transaksi bank sepadan.`, `${recon.summary.matchedCount} of ${recon.summary.totalBankTxns} bank transactions matched.`)}
+              </p>
+              <div className="h-2 w-full overflow-hidden rounded-full" style={{ background: "var(--hero-chip)" }}>
+                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(100, rate)}%`, background: "var(--btn-primary-bg)" }} />
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold" style={{ color: "var(--hero-muted)" }}>
+                <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5" style={heroQuietButtonStyle}>
+                  <WalletBadge wallet={selectedWallet} size={18} />
+                  {selectedWallet?.label || selectedWallet?.name}
+                </span>
+                <span className="inline-flex max-w-[14rem] items-center gap-1.5 truncate rounded-full px-3 py-1.5" style={heroQuietButtonStyle}>
+                  <FileCheck2 size={13} />
+                  <span className="truncate">{fileName}</span>
+                </span>
+                {statementRange && (
+                  <span className="rounded-full px-3 py-1.5" style={heroQuietButtonStyle}>
+                    {statementRange.from} → {statementRange.to}
+                  </span>
                 )}
               </div>
+            </>
+          ) : (
+            <p className="text-[0.8125rem] font-medium leading-snug" style={{ color: "var(--hero-muted)" }}>
+              {selectedWallet
+                ? tr(`Baki ${selectedWallet.label || selectedWallet.name} dalam app.`, `${selectedWallet.label || selectedWallet.name} balance in the app.`)
+                : tr("Pilih akaun yang mahu dipadankan dengan penyata bank.", "Choose the account to match against your bank statement.")}
+            </p>
+          )}
 
-              {/* Account Cards Grid */}
+          <div role="tablist" aria-label={tr("Langkah", "Steps")} className="flex gap-1.5">
+            {steps.map((s, i) => {
+              const active = step === s.key
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  disabled={!s.enabled}
+                  onClick={() => setStep(s.key)}
+                  className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-full text-[0.8125rem] font-semibold transition active:scale-[0.98] disabled:opacity-40"
+                  style={active ? heroPrimaryButtonStyle : heroQuietButtonStyle}
+                >
+                  <span className="text-xs opacity-80">{i + 1}</span>
+                  {s.label}
+                </button>
+              )
+            })}
+          </div>
+        </ModenHero>
+
+        {/* ── Step 1: the account ── */}
+        {step === "wallet" && (
+          <section className="space-y-4 rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-base font-bold text-[var(--text)]">{tr("Pilih akaun", "Choose an account")}</h2>
+                <p className="mt-0.5 text-sm text-[var(--muted)]">{tr("Akaun yang penyata anda kepunyai.", "The account your statement belongs to.")}</p>
+              </div>
+              {wallets.length > 6 && (
+                <div className="relative w-full sm:w-64">
+                  <Search size={15} className="absolute left-4 top-3.5 text-[var(--muted)]" />
+                  <input
+                    value={walletSearch}
+                    onChange={(e) => setWalletSearch(e.target.value)}
+                    placeholder={tr("Cari akaun…", "Search accounts…")}
+                    className="h-11 w-full rounded-full border border-[var(--border)] bg-transparent pl-11 pr-4 text-base text-[var(--text)] outline-none focus:border-[var(--btn-primary-bg)] md:text-sm"
+                  />
+                </div>
+              )}
+            </div>
+
+            {loadingInitial ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-24 animate-pulse rounded-[1.5rem] bg-[var(--surface-tint)]" />
+                ))}
+              </div>
+            ) : wallets.length === 0 ? (
+              <div className="rounded-[1.5rem] border border-dashed border-[var(--border)] p-8 text-center">
+                <Landmark size={30} className="mx-auto text-[var(--muted)]" />
+                <p className="mt-3 text-sm font-semibold text-[var(--text)]">{tr("Tiada akaun atau dompet dijumpai.", "No accounts or wallets found.")}</p>
+                <Link href={`/${sessionId}/wallet-settings`} className="mt-4 inline-flex h-11 items-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-5 text-sm font-semibold text-[var(--btn-primary-text)]">
+                  <Plus size={15} />
+                  {tr("Cipta akaun", "Create an account")}
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label={tr("Akaun", "Account")}>
                 {filteredWallets.map((wallet) => {
-                  const isSelected = Number(targetWalletId) === Number(wallet.id)
-                  const accent = getWalletAccent(wallet)
-
+                  const selected = Number(targetWalletId) === Number(wallet.id)
                   return (
-                    <div
+                    <button
                       key={wallet.id}
-                      onClick={() => {
-                        setTargetWalletId(wallet.id)
-                        setBatchWalletId(wallet.id)
-                        setQuickAddWalletId(wallet.id)
-                      }}
-                      style={{
-                        background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 16%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 8%, var(--card)) 100%)`,
-                      }}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => setTargetWalletId(wallet.id)}
                       className={cn(
-                        "group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border p-4 transition-all duration-200 shadow-xs",
-                        isSelected
-                          ? "border-[var(--text)] shadow-md ring-2 ring-[var(--text)]/25"
-                          : "border-[var(--border)] hover:border-[var(--border-strong)] hover:shadow-sm"
+                        "flex items-center gap-3 rounded-[1.5rem] border p-4 text-left transition active:scale-[0.99]",
+                        selected ? "border-[var(--btn-primary-bg)] bg-[var(--surface-tint)]" : "border-[var(--border)] hover:bg-[var(--surface-tint)]"
                       )}
                     >
-                      {/* Background watermark image if wallet has image_url */}
-                      {wallet.image_url && (
-                        <>
-                          <img
-                            src={wallet.image_url}
-                            alt=""
-                            className="pointer-events-none absolute -right-5 -top-8 h-[135%] w-[62%] rotate-[9deg] object-cover opacity-20 [mask-image:linear-gradient(to_right,transparent_0%,transparent_8%,black_55%)]"
-                          />
-                        </>
-                      )}
-
-                      <div className="relative flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          {/* Wallet Avatar / Icon from wallet-settings */}
-                          <WalletIconBadge wallet={wallet} size="lg" />
-
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-black text-[var(--text)]">
-                              {wallet.label || wallet.name}
-                            </p>
-                            <span className="mt-0.5 inline-block rounded-md bg-[var(--surface-tint)] px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                              {wallet.type?.toUpperCase() || "BANK"}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div
-                          className={cn(
-                            "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition",
-                            isSelected
-                              ? "border-[var(--text)] bg-[var(--text)] text-[var(--bg)]"
-                              : "border-[var(--border)] text-transparent"
-                          )}
-                        >
-                          <Check size={13} strokeWidth={3} />
-                        </div>
-                      </div>
-
-                      <div className="relative mt-4 flex items-baseline justify-between border-t border-[var(--border)]/70 pt-3">
-                        <span className="text-[0.6875rem] font-bold text-[var(--muted)]">
-                          {tr("Baki Semasa", "Current Balance")}
+                      <WalletBadge wallet={wallet} size={44} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-[var(--text)]">{wallet.label || wallet.name}</span>
+                        <span className="block text-xs text-[var(--muted)]">
+                          {(wallet.type || "bank").toString()} · RM {fmt(wallet.balance || 0)}
                         </span>
-                        <div className="text-right">
-                          <MoneyAmount value={wallet.balance || 0} size="sm" />
-                        </div>
-                      </div>
-                    </div>
+                      </span>
+                      <span
+                        className={cn(
+                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border",
+                          selected ? "border-transparent bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "border-[var(--border-strong)] text-transparent"
+                        )}
+                      >
+                        <Check size={13} strokeWidth={3} />
+                      </span>
+                    </button>
                   )
                 })}
               </div>
+            )}
 
-              {wallets.length === 0 && !loadingInitial && (
-                <div className="rounded-2xl border border-dashed border-[var(--border)] p-8 text-center">
-                  <Landmark size={32} className="mx-auto text-[var(--muted)]" />
-                  <p className="mt-3 text-sm font-bold text-[var(--text)]">
-                    {tr("Tiada akaun bank atau dompet dijumpai.", "No bank accounts or wallets found.")}
-                  </p>
-                  <Link
-                    href={`/${sessionId}/wallet-settings`}
-                    className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-4 py-2 text-xs font-black text-[var(--bg)]"
-                  >
-                    <Plus size={14} />
-                    <span>{tr("Cipta Akaun Sekarang", "Create Account Now")}</span>
-                  </Link>
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setStep("upload")}
+                disabled={!targetWalletId}
+                className="flex h-12 items-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-[0.98] disabled:opacity-40"
+              >
+                {tr("Teruskan", "Continue")}
+                <ArrowRight size={16} />
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* ── Step 2: the statement ── */}
+        {step === "upload" && (
+          <section className="space-y-4 rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 md:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <WalletBadge wallet={selectedWallet} size={44} />
+                <div>
+                  <p className="text-xs font-semibold text-[var(--muted)]">{tr("Akaun dipilih", "Selected account")}</p>
+                  <p className="text-sm font-bold text-[var(--text)]">{selectedWallet?.label || selectedWallet?.name || "—"}</p>
                 </div>
-              )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setStep("wallet")}
+                className="flex h-10 w-fit items-center gap-1.5 rounded-full border border-[var(--border)] px-4 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface-tint)]"
+              >
+                <ArrowLeft size={14} />
+                {tr("Tukar akaun", "Change account")}
+              </button>
+            </div>
 
-              {/* Proceed CTA */}
-              <div className="flex items-center justify-between border-t border-[var(--border)] pt-5">
-                <div className="flex items-center gap-2 text-xs font-medium text-[var(--muted)]">
-                  {selectedWallet && (
-                    <>
-                      <WalletIconBadge wallet={selectedWallet} size="sm" />
-                      <span>
-                        {tr("Dipilih:", "Selected:")}{" "}
-                        <strong className="font-bold text-[var(--text)]">
-                          {selectedWallet.label || selectedWallet.name}
-                        </strong>
-                      </span>
-                    </>
+            <div role="tablist" className="flex gap-1.5">
+              {(
+                [
+                  ["file", tr("Muat naik fail", "Upload a file"), UploadCloud],
+                  ["paste", tr("Tampal teks", "Paste text"), ClipboardPaste],
+                ] as const
+              ).map(([mode, label, Icon]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  role="tab"
+                  aria-selected={inputMode === mode}
+                  onClick={() => setInputMode(mode)}
+                  className={cn(
+                    "flex h-10 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition",
+                    inputMode === mode ? "border-transparent bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]"
                   )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setWizardStep("upload")}
-                  disabled={!targetWalletId}
-                  className="flex h-11 items-center gap-2 rounded-xl bg-[var(--text)] px-6 text-sm font-black text-[var(--bg)] transition active:scale-98 disabled:opacity-40"
                 >
-                  <span>{tr("Teruskan ke Muat Naik", "Continue to Upload")}</span>
-                  <ArrowRight size={16} strokeWidth={2.5} />
+                  <Icon size={14} />
+                  {label}
                 </button>
-              </div>
+              ))}
             </div>
-          )}
 
-          {/* ═══════════════════════════════════════════════════════ */}
-          {/* ─── STEP 2: Statement Upload & Drag-Drop Zone ─────── */}
-          {/* ═══════════════════════════════════════════════════════ */}
-          {wizardStep === "upload" && (
-            <div className="animate-in fade-in-50 duration-300 space-y-5 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 sm:p-8">
-              {/* Top Bank Header Bar */}
-              <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <WalletIconBadge wallet={selectedWallet} size="lg" />
-                  <div>
-                    <span className="text-[0.625rem] font-black uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Akaun Bank Dipilih", "Selected Bank Account")}
-                    </span>
-                    <p className="text-sm font-black text-[var(--text)]">
-                      {selectedWallet?.label || selectedWallet?.name || tr("Akaun Bank", "Bank Account")}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setWizardStep("wallet")}
-                    className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-1.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-tint)]"
-                  >
-                    <ArrowLeft size={13} strokeWidth={2.5} />
-                    <span>{tr("Tukar Akaun", "Change Account")}</span>
-                  </button>
-
-                  {/* Mode Selector */}
-                  <div className="flex rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1">
-                    <button
-                      type="button"
-                      onClick={() => setInputMode("file")}
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold transition",
-                        inputMode === "file"
-                          ? "bg-[var(--text)] text-[var(--bg)] shadow-xs"
-                          : "text-[var(--muted)] hover:text-[var(--text)]"
-                      )}
-                    >
-                      <UploadCloud size={13} />
-                      <span>{tr("Muat Naik Fail", "File Upload")}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setInputMode("paste")}
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold transition",
-                        inputMode === "paste"
-                          ? "bg-[var(--text)] text-[var(--bg)] shadow-xs"
-                          : "text-[var(--muted)] hover:text-[var(--text)]"
-                      )}
-                    >
-                      <ClipboardPaste size={13} />
-                      <span>{tr("Tampal Teks", "Paste Text")}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Mode 1: File Dropzone */}
-              {inputMode === "file" ? (
-                <div className="space-y-4">
-                  <label className="group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)]/15 p-8 text-center transition-all cursor-pointer hover:border-[var(--text)]/50 hover:bg-[var(--surface-tint)]/30 active:scale-[0.99] sm:p-12">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--text)] text-[var(--bg)] shadow-md transition group-hover:scale-105">
-                      <UploadCloud size={30} strokeWidth={2.2} />
-                    </div>
-
-                    <p className="mt-4 text-base font-black text-[var(--text)]">
-                      {tr("Ketik atau heret penyata bank ke sini", "Tap or drag bank statement file here")}
-                    </p>
-                    <p className="mt-1 max-w-md text-xs font-medium text-[var(--muted)]">
-                      {tr(
-                        "Menyokong PDF Penyata Rasmi (termasuk PDF berkunci kata laluan IC/DOB), CSV, TSV atau TXT.",
-                        "Supports Official Bank Statement PDFs (including password-encrypted), CSV, TSV or TXT."
-                      )}
-                    </p>
-
-                    <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--bg)] px-3 py-1 text-[0.6875rem] font-bold text-[var(--muted)]">
-                      <Lock size={12} className="text-emerald-500" />
-                      <span>{tr("Selamat & Diproses Secara Terus", "Secure & Directly Processed")}</span>
-                    </div>
-
-                    <input
-                      type="file"
-                      accept=".pdf,.csv,.tsv,.txt"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                  </label>
-
-                  {/* Malaysian Banks Tags */}
-                  <div className="space-y-2">
-                    <p className="text-[0.6875rem] font-black uppercase tracking-wider text-[var(--muted)]">
-                      {tr("Format Bank Disokong:", "Supported Bank Formats:")}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {SUPPORTED_BANKS.map((b) => (
-                        <span
-                          key={b.name}
-                          className={cn("rounded-lg border px-2.5 py-1 text-xs font-bold", b.color)}
-                        >
-                          {b.name}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* Mode 2: Paste Statement Text */
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">
-                      {tr("Tampal Teks Penyata Bank / Salinan Transaksi", "Paste Bank Statement / Transaction Text")}
-                    </label>
-                    <div className="mt-2 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)]">
-                      <textarea
-                        rows={7}
-                        value={rawTextContent}
-                        onChange={(e) => setRawTextContent(e.target.value)}
-                        placeholder={tr(
-                          "01/08/2026 DUITNOW TRSF TO ALI BAKI RM 50.00 DR\n03/08/2026 SALARY CREDIT JULY 2026 RM 4,500.00 CR\n05/08/2026 MCDONALDS MIDVALLEY RM 28.50 DR\n08/08/2026 TNB BILL PAYMENT RM 120.00 DR",
-                          "01/08/2026 DUITNOW TRSF TO ALI BAKI RM 50.00 DR\n03/08/2026 SALARY CREDIT JULY 2026 RM 4,500.00 CR"
-                        )}
-                        className="w-full bg-transparent p-4 font-mono text-xs font-medium leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleProcessText}
-                    disabled={isProcessing || !rawTextContent.trim()}
-                    className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--text)] text-sm font-black text-[var(--bg)] transition active:scale-98 disabled:opacity-50"
-                  >
-                    <Sparkles size={16} />
-                    <span>{tr("Proses & Padankan Sekarang", "Process & Match Statement Now")}</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Sample statement button */}
-              <div className="flex items-center justify-between border-t border-[var(--border)] pt-4">
-                <span className="text-xs font-medium text-[var(--muted)]">
-                  {tr("Ingin mencuba fungsi rekonsiliasi tanpa muat naik fail?", "Want to test reconciliation without uploading a file?")}
-                </span>
-
-                <button
-                  type="button"
-                  onClick={loadSample}
-                  className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-1.5 text-xs font-black text-[var(--text)] transition hover:bg-[var(--surface-tint)]/80"
-                >
-                  <FileSpreadsheet size={14} className="text-amber-500" />
-                  <span>{tr("Cuba Contoh Penyata Maybank", "Try Maybank Sample Statement")}</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ═══════════════════════════════════════════════════════ */}
-          {/* ─── STEP 3: Comprehensive Reconciliation Review UI ── */}
-          {/* ═══════════════════════════════════════════════════════ */}
-          {wizardStep === "review" && (
-            <div className="animate-in fade-in-50 duration-300 space-y-6">
-              {/* Statement Context Ribbon */}
-              <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <div className="flex items-center gap-2 rounded-xl bg-[var(--surface-tint)] px-3 py-1.5">
-                    <WalletIconBadge wallet={selectedWallet} size="sm" />
-                    <span className="text-xs font-black text-[var(--text)]">
-                      {selectedWallet?.label || selectedWallet?.name || "Akaun Bank"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 rounded-xl bg-[var(--surface-tint)] px-3 py-1.5">
-                    <FileCheck2 size={15} className="text-emerald-500" />
-                    <span className="max-w-[180px] truncate text-xs font-bold text-[var(--text)]">
-                      {fileName || "Penyata Bank"}
-                    </span>
-                  </div>
-
-                  <span className="rounded-xl bg-emerald-500/10 px-3 py-1.5 text-xs font-black text-emerald-600 dark:text-emerald-400">
-                    {reconResult.summary.totalBankTxns} {tr("transaksi dikesan", "txns detected")}
+            {inputMode === "file" ? (
+              <div className="space-y-4">
+                <label className="flex cursor-pointer flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[var(--border-strong)] p-8 text-center transition hover:bg-[var(--surface-tint)] md:p-12">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]">
+                    <UploadCloud size={26} />
                   </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleResetWizard}
-                    className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] px-3 py-1.5 text-xs font-black text-[var(--text)] transition hover:bg-[var(--surface-tint)] active:scale-95"
-                  >
-                    <RefreshCw size={13} />
-                    <span>{tr("Penyata Baru", "New Statement")}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* ─── Hero KPI Analytics Cards ─── */}
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-                {/* Match Rate Card */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-teal-700 to-cyan-900 p-6 text-white shadow-lg lg:col-span-1">
-                  <div className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full bg-white/10 blur-xl" />
-                  <div className="pointer-events-none absolute -bottom-10 -left-6 h-40 w-40 rounded-full bg-cyan-400/20 blur-2xl" />
-
-                  <div className="relative flex h-full flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[0.6875rem] font-black uppercase tracking-[0.14em] text-white/80">
-                          {tr("Kadar Padanan", "Match Rate")}
-                        </span>
-                        <span className="rounded-full bg-white/15 px-2 py-0.5 text-[0.65rem] font-black text-white">
-                          {reconResult.summary.matchedCount}/{reconResult.summary.totalBankTxns}
-                        </span>
-                      </div>
-
-                      <div className="mt-3 flex items-baseline gap-1.5">
-                        <span className="text-4xl font-black tracking-tight">
-                          {reconResult.summary.matchRatePercent}%
-                        </span>
-                        <span className="text-xs font-bold text-white/75">{tr("sepadan", "matched")}</span>
-                      </div>
-
-                      {/* Progress Bar */}
-                      <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/20">
-                        <div
-                          className="h-full rounded-full bg-white transition-all duration-700"
-                          style={{ width: `${Math.min(100, reconResult.summary.matchRatePercent)}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    <p className="mt-4 text-[0.7rem] font-medium text-white/80">
-                      {reconResult.summary.matchRatePercent === 100
-                        ? tr("Hebat! Semua transaksi bank telah sepadan.", "Great! All bank transactions matched.")
-                        : tr(
-                            `${reconResult.summary.missingInAppCount} transaksi perlu ditambah ke rekod.`,
-                            `${reconResult.summary.missingInAppCount} transactions need to be added.`
-                          )}
-                    </p>
-                  </div>
-                </div>
-
-                {/* 3 Metric Cards */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:col-span-3">
-                  {/* Missing In App */}
-                  <div className="flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">
-                        {tr("Tertinggal Dalam App", "Missing in App")}
-                      </span>
-                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                        <AlertCircle size={16} />
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <p className="text-2xl font-black tabular-nums text-[var(--text)]">
-                        {reconResult.summary.missingInAppCount}
-                      </p>
-                      <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">
-                        {tr("Rekod belum dimasukkan", "Unrecorded transactions")}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Total Bank Outflow (Debit) */}
-                  <div className="flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">
-                        {tr("Jumlah Debit (Keluar)", "Total Debit (Outflow)")}
-                      </span>
-                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                        <ArrowDownRight size={16} />
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <div className="text-2xl font-black text-rose-500">
-                        <MoneyAmount value={reconResult.summary.bankDebitTotal} size="md" />
-                      </div>
-                      <p className="mt-0.5 text-xs font-medium text-[var(--muted)]">
-                        {tr("Berdasarkan penyata bank", "From bank statement")}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Net Variance */}
-                  <div className="flex flex-col justify-between rounded-2xl border border-[var(--border)] bg-[var(--card)] p-5 shadow-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">
-                        {tr("Beza Bersih (Variance)", "Net Variance")}
-                      </span>
-                      <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                        <Layers size={16} />
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <div className="text-2xl font-black text-[var(--text)]">
-                        <MoneyAmount value={Math.abs(reconResult.summary.netVariance)} size="md" />
-                      </div>
-                      <span
-                        className={cn(
-                          "mt-1 inline-block rounded-md px-2 py-0.5 text-[0.65rem] font-black uppercase tracking-wider",
-                          reconResult.summary.netVariance === 0
-                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                            : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                        )}
-                      >
-                        {reconResult.summary.netVariance === 0
-                          ? tr("Seimbang Sempurna", "Perfect Balance")
-                          : tr("Terdapat Perbezaan", "Variance Exists")}
-                      </span>
-                    </div>
-                  </div>
+                  <span className="mt-4 text-base font-bold text-[var(--text)]">{tr("Ketik atau heret penyata bank ke sini", "Tap or drag your bank statement here")}</span>
+                  <span className="mt-1 max-w-md text-sm text-[var(--muted)]">
+                    {tr("PDF rasmi (termasuk yang berkata laluan), CSV, TSV atau TXT. Had 25 MB.", "Official PDF (including password-protected), CSV, TSV or TXT. Up to 25 MB.")}
+                  </span>
+                  <span className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-xs font-semibold text-[var(--muted)]">
+                    <Lock size={12} className="text-emerald-500" />
+                    {tr("CSV dibaca terus tanpa dihantar ke AI", "CSV is read directly, never sent to an AI")}
+                  </span>
+                  <input type="file" accept=".pdf,.csv,.tsv,.txt" onChange={handleFile} className="hidden" />
+                </label>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="mr-1 text-xs font-semibold text-[var(--muted)]">{tr("Format disokong:", "Supported:")}</span>
+                  {SUPPORTED_BANKS.map((b) => (
+                    <span key={b} className="rounded-full border border-[var(--border)] px-2.5 py-1 text-xs font-semibold text-[var(--muted)]">
+                      {b}
+                    </span>
+                  ))}
                 </div>
               </div>
+            ) : (
+              <div className="space-y-3">
+                <label className="block text-xs font-semibold text-[var(--muted)]" htmlFor="statement-text">
+                  {tr("Tampal teks penyata atau salinan transaksi", "Paste the statement or copied transactions")}
+                </label>
+                <textarea
+                  id="statement-text"
+                  rows={7}
+                  value={rawText}
+                  onChange={(e) => setRawText(e.target.value)}
+                  placeholder={"01/08/2026 DUITNOW TRSF TO ALI RM 50.00 DR\n03/08/2026 SALARY CREDIT JULY 2026 RM 4,500.00 CR"}
+                  className="w-full rounded-[1.25rem] border border-[var(--border)] bg-transparent p-4 font-mono text-sm leading-relaxed text-[var(--text)] outline-none placeholder:text-[var(--muted)]/50 focus:border-[var(--btn-primary-bg)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handlePaste()}
+                  disabled={isProcessing || !rawText.trim()}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-[0.98] disabled:opacity-50"
+                >
+                  <Sparkles size={16} />
+                  {tr("Proses dan padankan", "Process and match")}
+                </button>
+              </div>
+            )}
 
-              {/* ─── Control Bar (Search, Smart Date Match & Filters) ─── */}
-              <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 sm:flex-row sm:items-center sm:justify-between">
-                {/* Search & Type Filter */}
-                <div className="flex flex-1 flex-wrap items-center gap-2">
-                  <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
-                    <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
-                    <input
-                      type="text"
-                      placeholder={tr("Cari keterangan atau amaun...", "Search description or amount...")}
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="h-10 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-9 pr-3 text-xs font-semibold text-[var(--text)] outline-none focus:border-[var(--text)]/40"
-                    />
-                  </div>
+            <div className="flex flex-col gap-2 border-t border-[var(--border)] pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-sm text-[var(--muted)]">{tr("Mahu cuba tanpa fail? Contoh ini tidak boleh diimport.", "Want to try it without a file? The sample cannot be imported.")}</span>
+              <button
+                type="button"
+                onClick={loadSample}
+                className="flex h-10 w-fit items-center gap-1.5 rounded-full border border-[var(--border)] px-4 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface-tint)]"
+              >
+                <FileSpreadsheet size={14} />
+                {tr("Cuba contoh penyata", "Try a sample statement")}
+              </button>
+            </div>
+          </section>
+        )}
 
-                  <div className="flex rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1">
-                    <button
-                      type="button"
-                      onClick={() => setTypeFilter("all")}
-                      className={cn(
-                        "rounded-lg px-3 py-1 text-xs font-bold transition",
-                        typeFilter === "all" ? "bg-[var(--text)] text-[var(--bg)]" : "text-[var(--muted)]"
-                      )}
-                    >
-                      {tr("Semua", "All")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTypeFilter("expense")}
-                      className={cn(
-                        "rounded-lg px-3 py-1 text-xs font-bold transition",
-                        typeFilter === "expense" ? "bg-[var(--text)] text-[var(--bg)]" : "text-[var(--muted)]"
-                      )}
-                    >
-                      {tr("Debit (Keluar)", "Debit")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTypeFilter("income")}
-                      className={cn(
-                        "rounded-lg px-3 py-1 text-xs font-bold transition",
-                        typeFilter === "income" ? "bg-[var(--text)] text-[var(--bg)]" : "text-[var(--muted)]"
-                      )}
-                    >
-                      {tr("Kredit (Masuk)", "Credit")}
-                    </button>
-                  </div>
+        {/* ── Step 3: the review ── */}
+        {step === "review" && (
+          <>
+            {isSample && (
+              <p className="flex items-start gap-2 rounded-[1.25rem] border border-amber-500/40 px-4 py-3 text-sm text-[var(--text)]">
+                <TriangleAlert size={16} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                {tr("Ini penyata contoh. Anda boleh melihat cara pemadanan, tetapi ia tidak boleh diimport ke rekod anda.", "This is a sample statement. You can see how matching works, but it cannot be imported into your records.")}
+              </p>
+            )}
+            {txnsError && (
+              <div className="flex flex-col gap-3 rounded-[1.25rem] border border-rose-500/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="flex items-start gap-2 text-sm text-[var(--text)]">
+                  <TriangleAlert size={16} className="mt-0.5 shrink-0 text-rose-500" />
+                  {tr("Rekod anda tidak dapat dimuatkan. Tanpanya, setiap baris bank akan nampak seperti belum direkod.", "Your records could not be loaded. Without them, every bank line would look unrecorded.")}
+                </p>
+                <button type="button" onClick={() => void loadAppTransactions(bankTxns)} className="h-10 w-fit shrink-0 rounded-full bg-[var(--btn-primary-bg)] px-5 text-sm font-semibold text-[var(--btn-primary-text)]">
+                  {tr("Cuba lagi", "Try again")}
+                </button>
+              </div>
+            )}
+            {skippedRows > 0 && (
+              <p className="flex items-start gap-2 rounded-[1.25rem] border border-amber-500/40 px-4 py-3 text-sm text-[var(--text)]">
+                <TriangleAlert size={16} className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                {tr(`${skippedRows} baris tidak dapat dibaca (tarikh atau amaun tidak sah) dan dilangkau. Semak penyata anda untuk baris itu.`, `${skippedRows} rows could not be read (invalid date or amount) and were skipped. Check your statement for them.`)}
+              </p>
+            )}
+
+            {/* Totals */}
+            <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
+              {[
+                [tr("Debit bank", "Bank debits"), recon.summary.bankDebitTotal, "text-rose-500"],
+                [tr("Kredit bank", "Bank credits"), recon.summary.bankCreditTotal, "text-emerald-600 dark:text-emerald-400"],
+                [tr("Belanja dalam app", "App expenses"), recon.summary.appExpenseTotal, "text-[var(--text)]"],
+                [tr("Pendapatan dalam app", "App income"), recon.summary.appIncomeTotal, "text-[var(--text)]"],
+              ].map(([label, value, color]) => (
+                <div key={String(label)} className="rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)] p-3.5">
+                  <p className="text-xs font-semibold text-[var(--muted)]">{label as string}</p>
+                  <p className={cn("mt-0.5 text-base font-bold tabular-nums", color as string)}>RM {fmt(value as number)}</p>
                 </div>
+              ))}
+            </div>
+            <p className="px-1 text-xs text-[var(--muted)]">
+              {tr("Beza bersih bank dan app", "Net difference, bank versus app")}:{" "}
+              <strong className={cn("tabular-nums", Math.abs(recon.summary.netVariance) < 0.005 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
+                RM {fmt(recon.summary.netVariance)}
+              </strong>
+              {Math.abs(recon.summary.netVariance) < 0.005 ? ` · ${tr("seimbang", "balanced")}` : ""}
+            </p>
 
-                {/* Smart Date Match Toggle */}
+            {/* Controls */}
+            <div className="space-y-3 rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4">
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
+                  <Search size={15} className="absolute left-4 top-3.5 text-[var(--muted)]" />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder={tr("Cari keterangan atau amaun…", "Search description or amount…")}
+                    className="h-11 w-full rounded-full border border-[var(--border)] bg-transparent pl-11 pr-4 text-base text-[var(--text)] outline-none focus:border-[var(--btn-primary-bg)] md:text-sm"
+                  />
+                </div>
+                <div className="flex gap-1.5">
+                  {(
+                    [
+                      ["all", tr("Semua", "All")],
+                      ["expense", tr("Debit", "Debit")],
+                      ["income", tr("Kredit", "Credit")],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setTypeFilter(key)}
+                      aria-pressed={typeFilter === key}
+                      className={cn(
+                        "h-10 rounded-full border px-4 text-sm font-semibold transition",
+                        typeFilter === key ? "border-transparent bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]"
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={smartDateMatch}
+                onClick={() => setSmartDateMatch((v) => !v)}
+                className="flex w-full items-center justify-between gap-3 rounded-[1.25rem] border border-[var(--border)] px-4 py-3 text-left transition hover:bg-[var(--surface-tint)]"
+              >
+                <span>
+                  <span className="block text-sm font-semibold text-[var(--text)]">{tr("Padanan tarikh pintar (±2 hari)", "Smart date match (±2 days)")}</span>
+                  <span className="block text-xs text-[var(--muted)]">{tr("Padankan walaupun bank memproses pada hari lain", "Match even when the bank clears it on another day")}</span>
+                </span>
+                <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition-colors", smartDateMatch ? "bg-[var(--btn-primary-bg)]" : "bg-[var(--surface-tint-strong)]")}>
+                  <span className={cn("absolute top-1 h-4 w-4 rounded-full bg-white transition-all", smartDateMatch ? "left-5" : "left-1")} />
+                </span>
+              </button>
+              {goPlusCount > 0 && (
                 <button
                   type="button"
                   role="switch"
-                  aria-checked={smartDateMatch}
-                  onClick={() => setSmartDateMatch((v) => !v)}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2 text-left transition hover:bg-[var(--surface-tint)]"
+                  aria-checked={ignoreGoPlus}
+                  onClick={() => {
+                    setIgnoreGoPlus((v) => !v)
+                    setSelectionReady(false)
+                  }}
+                  className="flex w-full items-center justify-between gap-3 rounded-[1.25rem] border border-[var(--border)] px-4 py-3 text-left transition hover:bg-[var(--surface-tint)]"
                 >
-                  <div className="min-w-0">
-                    <p className="text-xs font-black text-[var(--text)]">
-                      {tr("Padanan Tarikh Pintar (±2 Hari)", "Smart Date Match (±2 Days)")}
-                    </p>
-                    <p className="text-[0.65rem] font-medium text-[var(--muted)]">
-                      {tr("Padankan walaupun tarikh proses bank berbeza", "Match even if clearing date differs")}
-                    </p>
-                  </div>
-                  <span
-                    className={cn(
-                      "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-                      smartDateMatch ? "bg-emerald-500" : "bg-[var(--muted)]/30"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all",
-                        smartDateMatch ? "left-[1.125rem]" : "left-0.5"
-                      )}
-                    />
+                  <span>
+                    <span className="block text-sm font-semibold text-[var(--text)]">
+                      {tr("Abaikan pindahan dalaman TNG", "Ignore TNG internal transfers")} ({goPlusCount})
+                    </span>
+                    <span className="block text-xs text-[var(--muted)]">
+                      {tr("“GO+ Cash In”, “via GO+ eWallet” dan “eWallet Cash Out” ialah pindahan dalam sistem TNG, bukan belanja atau pendapatan", "“GO+ Cash In”, “via GO+ eWallet” and “eWallet Cash Out” are TNG's own transfers, not spending or income")}
+                    </span>
+                  </span>
+                  <span className={cn("relative h-6 w-10 shrink-0 rounded-full transition-colors", ignoreGoPlus ? "bg-[var(--btn-primary-bg)]" : "bg-[var(--surface-tint-strong)]")}>
+                    <span className={cn("absolute top-1 h-4 w-4 rounded-full bg-white transition-all", ignoreGoPlus ? "left-5" : "left-1")} />
                   </span>
                 </button>
+              )}
+            </div>
+
+            {/* Tabs */}
+            <div role="tablist" className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {(
+                [
+                  ["missing_in_app", tr("Belum direkod", "Not recorded"), recon.summary.missingInAppCount],
+                  ["matched", tr("Sepadan", "Matched"), recon.summary.matchedCount],
+                  ["missing_in_bank", tr("Tiada di bank", "Not on statement"), recon.summary.missingInBankCount],
+                ] as const
+              ).map(([key, label, count]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === key}
+                  onClick={() => setTab(key)}
+                  className={cn(
+                    "flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition",
+                    tab === key ? "border-transparent bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]"
+                  )}
+                >
+                  {label}
+                  <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", tab === key ? "bg-white/20" : "bg-[var(--surface-tint-strong)]")}>{count}</span>
+                </button>
+              ))}
+            </div>
+
+            {loadingTxns ? (
+              <div className="space-y-2.5">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-20 animate-pulse rounded-[1.5rem] bg-[var(--surface-tint)]" />
+                ))}
               </div>
-
-              {/* ─── Segmented Tabs ─── */}
-              <div className="flex gap-2 border-b border-[var(--border)] pb-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("missing_in_app")}
-                  className={cn(
-                    "flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black transition",
-                    activeTab === "missing_in_app"
-                      ? "bg-[var(--text)] text-[var(--bg)] shadow-xs"
-                      : "text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)]"
-                  )}
-                >
-                  <AlertCircle size={15} />
-                  <span>{tr("Perlu Ditambah Ke App", "Missing in App")}</span>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-[0.65rem] font-black",
-                      activeTab === "missing_in_app"
-                        ? "bg-[var(--bg)] text-[var(--text)]"
-                        : "bg-[var(--surface-tint)] text-[var(--text)]"
-                    )}
-                  >
-                    {reconResult.summary.missingInAppCount}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("matched")}
-                  className={cn(
-                    "flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black transition",
-                    activeTab === "matched"
-                      ? "bg-[var(--text)] text-[var(--bg)] shadow-xs"
-                      : "text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)]"
-                  )}
-                >
-                  <CheckCircle2 size={15} />
-                  <span>{tr("Berjaya Dipadankan", "Matched Records")}</span>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-[0.65rem] font-black",
-                      activeTab === "matched"
-                        ? "bg-[var(--bg)] text-[var(--text)]"
-                        : "bg-[var(--surface-tint)] text-[var(--text)]"
-                    )}
-                  >
-                    {reconResult.summary.matchedCount}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("missing_in_bank")}
-                  className={cn(
-                    "flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black transition",
-                    activeTab === "missing_in_bank"
-                      ? "bg-[var(--text)] text-[var(--bg)] shadow-xs"
-                      : "text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)]"
-                  )}
-                >
-                  <Clock size={15} />
-                  <span>{tr("Hanya Dalam App", "Only in App")}</span>
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-[0.65rem] font-black",
-                      activeTab === "missing_in_bank"
-                        ? "bg-[var(--bg)] text-[var(--text)]"
-                        : "bg-[var(--surface-tint)] text-[var(--text)]"
-                    )}
-                  >
-                    {reconResult.summary.missingInBankCount}
-                  </span>
-                </button>
-              </div>
-
-              {/* ═══════════════════════════════════════════════════════ */}
-              {/* ─── TAB 1 CONTENT: Missing in App (Batch Import) ─── */}
-              {/* ═══════════════════════════════════════════════════════ */}
-              {activeTab === "missing_in_app" && (
-                <div className="space-y-4">
-                  {reconResult.missingInApp.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-12 text-center">
-                      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-500">
-                        <CheckCheck size={28} />
-                      </div>
-                      <h3 className="mt-4 text-base font-black text-[var(--text)]">
-                        {tr("Semua Transaksi Bank Telah Direkod!", "All Bank Transactions Are Reconciled!")}
-                      </h3>
-                      <p className="mt-1 text-xs font-medium text-[var(--muted)]">
-                        {tr(
-                          "Tiada transaksi bank yang tercicir dalam simpanan rekod MyPeribadi anda.",
-                          "No missing bank transactions were found in your MyPeribadi records."
-                        )}
-                      </p>
-                    </div>
+            ) : txnsError ? null : (
+              <>
+                {tab === "missing_in_app" &&
+                  (recon.missingInApp.length === 0 ? (
+                    <EmptyState icon={<CheckCheck size={26} />} tone="ok" title={tr("Semua transaksi bank sudah direkod", "Every bank transaction is recorded")} text={tr("Tiada baris penyata yang tercicir daripada rekod anda.", "No statement line is missing from your records.")} />
                   ) : (
-                    <>
-                      {/* Batch Action Toolbar */}
-                      <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 sm:flex-row sm:items-center sm:justify-between shadow-xs">
-                        <div className="flex items-center gap-3">
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-3 rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 lg:flex-row lg:items-center lg:justify-between">
+                        <label className="flex cursor-pointer items-center gap-3">
                           <input
                             type="checkbox"
-                            checked={
-                              selectedMissingIds.size === filteredMissingInApp.length &&
-                              filteredMissingInApp.length > 0
+                            checked={allVisibleSelected}
+                            onChange={(e) =>
+                              setSelectedIds((prev) => {
+                                const next = new Set(prev)
+                                missingInApp.forEach((t) => (e.target.checked ? next.add(t.id) : next.delete(t.id)))
+                                return next
+                              })
                             }
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedMissingIds(new Set(filteredMissingInApp.map((t) => t.id)))
-                              } else {
-                                setSelectedMissingIds(new Set())
-                              }
-                            }}
-                            className="h-5 w-5 cursor-pointer rounded-md accent-[var(--text)]"
+                            className="h-5 w-5 rounded-md accent-[var(--btn-primary-bg)]"
                           />
-                          <div>
-                            <p className="text-xs font-black text-[var(--text)]">
-                              {tr("Pilih Semua Transaksi", "Select All Transactions")} ({filteredMissingInApp.length})
-                            </p>
-                            <p className="text-[0.6875rem] font-medium text-[var(--muted)]">
-                              {selectedMissingIds.size}{" "}
-                              {tr("dipilih · Jumlah:", "selected · Total:")}{" "}
-                              <strong className="font-bold text-[var(--text)]">
-                                RM {selectedMissingTotal.toFixed(2)}
-                              </strong>
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                          {/* Batch category picker */}
+                          <span>
+                            <span className="block text-sm font-semibold text-[var(--text)]">
+                              {tr("Pilih semua", "Select all")} ({missingInApp.length})
+                            </span>
+                            <span className="block text-xs text-[var(--muted)]">
+                              {selectedMissing.length} {tr("dipilih · jumlah", "selected · total")} <strong className="text-[var(--text)]">RM {fmt(selectedTotal)}</strong>
+                            </span>
+                          </span>
+                        </label>
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                           <select
                             value={batchCategoryId}
                             onChange={(e) => setBatchCategoryId(e.target.value ? Number(e.target.value) : "")}
-                            className="h-10 rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-xs font-bold text-[var(--text)] outline-none"
+                            aria-label={tr("Kategori untuk semua", "Category for all")}
+                            className="h-11 w-full rounded-full border border-[var(--border)] bg-transparent px-4 text-base text-[var(--text)] outline-none md:text-sm lg:w-auto"
                           >
-                            <option value="">{tr("Set Kategori Keseluruhan...", "Set Overall Category...")}</option>
-                            {categories.map((cat) => (
+                            <option value="">{tr("Kategori untuk semua…", "Category for all…")}</option>
+                            {categoryOptions().map((cat) => (
                               <option key={cat.id} value={cat.id}>
-                                {cat.name} ({cat.type === "expense" ? "Belanja" : "Pendapatan"})
+                                {cat.name} ({cat.type === "expense" ? tr("Belanja", "Expense") : tr("Pendapatan", "Income")})
                               </option>
                             ))}
                           </select>
-
                           <button
                             type="button"
-                            onClick={handleBatchImport}
-                            disabled={batchImporting || selectedMissingIds.size === 0}
-                            className="flex h-10 items-center gap-2 rounded-xl bg-[var(--text)] px-4 text-xs font-black text-[var(--bg)] transition active:scale-95 disabled:opacity-40"
+                            onClick={importSelected}
+                            disabled={importing || selectedMissing.length === 0 || isSample}
+                            className="hidden h-11 items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-5 text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-[0.98] disabled:opacity-40 lg:flex"
                           >
-                            <FolderPlus size={15} />
-                            <span>
-                              {batchImporting
-                                ? tr("Mengimport...", "Importing...")
-                                : tr(`Import Terpilih (${selectedMissingIds.size})`, `Import Selected (${selectedMissingIds.size})`)}
-                            </span>
+                            {importing ? <Loader2 size={15} className="animate-spin" /> : <FolderPlus size={15} />}
+                            {importing ? tr("Mengimport…", "Importing…") : tr(`Import (${selectedMissing.length})`, `Import (${selectedMissing.length})`)}
                           </button>
                         </div>
                       </div>
 
-                      {/* Missing List Items */}
-                      <div className="space-y-2.5">
-                        {filteredMissingInApp.map((txn) => {
-                          const isSelected = selectedMissingIds.has(txn.id)
-                          const isExp = txn.type === "expense"
-                          const currentCatId = inlineCategories[txn.id] || ""
-
+                      <ul className="space-y-2.5">
+                        {missingInApp.map((txn) => {
+                          const out = txn.type === "expense"
                           return (
-                            <div
-                              key={txn.id}
-                              className={cn(
-                                "group flex flex-col gap-3 rounded-2xl border p-4 transition-all duration-150 sm:flex-row sm:items-center sm:justify-between",
-                                isSelected
-                                  ? "border-[var(--border-strong)] bg-[var(--card)] shadow-xs"
-                                  : "border-[var(--border)] bg-[var(--card)]/70 hover:bg-[var(--card)]"
-                              )}
-                            >
-                              <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                            <li key={txn.id} className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4">
+                              <div className="flex items-start gap-3">
                                 <input
                                   type="checkbox"
-                                  checked={isSelected}
-                                  onChange={(e) => {
-                                    const next = new Set(selectedMissingIds)
-                                    if (e.target.checked) next.add(txn.id)
-                                    else next.delete(txn.id)
-                                    setSelectedMissingIds(next)
-                                  }}
-                                  className="mt-1 h-5 w-5 shrink-0 cursor-pointer rounded-md accent-[var(--text)]"
+                                  checked={selectedIds.has(txn.id)}
+                                  onChange={(e) => toggleSelected(txn.id, e.target.checked)}
+                                  aria-label={txn.description}
+                                  className="mt-0.5 h-5 w-5 shrink-0 rounded-md accent-[var(--btn-primary-bg)]"
                                 />
-
-                                <div
-                                  className={cn(
-                                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold",
-                                    isExp
-                                      ? "bg-rose-500/10 text-rose-500"
-                                      : "bg-emerald-500/10 text-emerald-500"
-                                  )}
-                                >
-                                  {isExp ? <ArrowDownRight size={18} /> : <ArrowUpRight size={18} />}
+                                <div className="hidden lg:block">
+                                  <DirectionDot out={out} />
                                 </div>
-
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-bold leading-snug text-[var(--text)]">
-                                    {txn.description}
-                                  </p>
-                                  <div className="mt-1 flex flex-wrap items-center gap-2 text-[0.6875rem] font-semibold text-[var(--muted)]">
-                                    <span>{txn.date}</span>
-                                    <span>·</span>
-                                    <span
-                                      className={cn(
-                                        "rounded-md px-1.5 py-0.5 text-[0.625rem] font-black uppercase",
-                                        isExp ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                                      )}
-                                    >
-                                      {isExp ? tr("Debit (Keluar)", "Debit") : tr("Kredit (Masuk)", "Credit")}
+                                  <div className="flex items-start justify-between gap-3">
+                                    <p className="line-clamp-2 min-w-0 break-words text-sm font-semibold leading-snug text-[var(--text)]">{txn.description}</p>
+                                    <span className={cn("shrink-0 whitespace-nowrap text-base font-bold tabular-nums", out ? "text-rose-500" : "text-emerald-600 dark:text-emerald-400")}>
+                                      {out ? "−" : "+"}RM {fmt(txn.amount)}
                                     </span>
+                                  </div>
+                                  <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--muted)]">
+                                    <span>{txn.date}</span>
+                                    <span aria-hidden>·</span>
+                                    <span className={cn("font-semibold", out ? "text-rose-500" : "text-emerald-600 dark:text-emerald-400")}>{out ? tr("Debit", "Debit") : tr("Kredit", "Credit")}</span>
+                                  </p>
+                                  {hintsFor(txn).map((hint) => {
+                                    const hintId = Number(hint.txn.id)
+                                    return (
+                                      <p key={`${hint.kind}-${hint.txn.id}`} className="mt-2 rounded-[1rem] border border-amber-500/30 px-3 py-2 text-xs leading-relaxed text-[var(--text)]">
+                                        {hintText(hint, txn)}
+                                        {Number.isFinite(hintId) && (
+                                          <>
+                                            {" "}
+                                            <Link href={`/${sessionId}/transactions/${hintId}`} className="font-semibold underline underline-offset-4">
+                                              {tr("Buka rekod", "Open record")}
+                                            </Link>
+                                          </>
+                                        )}
+                                      </p>
+                                    )
+                                  })}
+                                  <div className="mt-3 flex items-center gap-2">
+                                    <select
+                                      value={inlineCategories[txn.id] || ""}
+                                      onChange={(e) =>
+                                        setInlineCategories((prev) => {
+                                          const next = { ...prev }
+                                          if (e.target.value) next[txn.id] = Number(e.target.value)
+                                          else delete next[txn.id]
+                                          return next
+                                        })
+                                      }
+                                      aria-label={tr("Kategori", "Category")}
+                                      className="h-10 min-w-0 flex-1 truncate rounded-full border border-[var(--border)] bg-transparent px-3.5 text-base text-[var(--text)] outline-none md:text-sm lg:max-w-[14rem] lg:flex-none"
+                                    >
+                                      <option value="">{tr("Kategori…", "Category…")}</option>
+                                      {categoryOptions(txn.type).map((cat) => (
+                                        <option key={cat.id} value={cat.id}>
+                                          {cat.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setQuickAdd(txn)
+                                        setQuickAddCategoryId(inlineCategories[txn.id] || "")
+                                      }}
+                                      disabled={isSample}
+                                      className="flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-[var(--btn-primary-bg)] px-4 text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-95 disabled:opacity-40"
+                                    >
+                                      <Plus size={14} />
+                                      {tr("Tambah", "Add")}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => ignoreLine(txn.id)}
+                                      aria-label={tr("Abaikan baris ini", "Ignore this line")}
+                                      title={tr("Abaikan baris ini", "Ignore this line")}
+                                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--muted)] transition hover:text-[var(--text)]"
+                                    >
+                                      <EyeOff size={15} />
+                                    </button>
                                   </div>
                                 </div>
                               </div>
-
-                              {/* Right side: Category Dropdown, Amount & Quick Add */}
-                              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-3 sm:border-0 sm:pt-0">
-                                {/* Inline category selector */}
-                                <select
-                                  value={currentCatId}
-                                  onChange={(e) => {
-                                    const val = e.target.value ? Number(e.target.value) : undefined
-                                    setInlineCategories((prev) => {
-                                      const next = { ...prev }
-                                      if (val) next[txn.id] = val
-                                      else delete next[txn.id]
-                                      return next
-                                    })
-                                  }}
-                                  className="h-9 max-w-[160px] rounded-xl border border-[var(--border)] bg-[var(--bg)] px-2.5 text-[0.6875rem] font-semibold text-[var(--text)] outline-none"
-                                >
-                                  <option value="">{tr("Pilih Kategori...", "Pick Category...")}</option>
-                                  {categories
-                                    .filter((c) => c.type === txn.type)
-                                    .map((cat) => (
-                                      <option key={cat.id} value={cat.id}>
-                                        {cat.name}
-                                      </option>
-                                    ))}
-                                </select>
-
-                                <span
-                                  className={cn(
-                                    "text-base font-black tabular-nums tracking-tight",
-                                    isExp ? "text-rose-500" : "text-emerald-500"
-                                  )}
-                                >
-                                  {isExp ? "-" : "+"}RM {txn.amount.toFixed(2)}
-                                </span>
-
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setQuickAddTxn(txn)
-                                    if (inlineCategories[txn.id]) {
-                                      setQuickAddCategoryId(inlineCategories[txn.id])
-                                    }
-                                  }}
-                                  className="flex h-9 items-center gap-1.5 rounded-xl bg-[var(--text)] px-3 text-xs font-black text-[var(--bg)] transition active:scale-95"
-                                >
-                                  <Plus size={13} strokeWidth={2.5} />
-                                  <span>{tr("Tambah", "Add")}</span>
-                                </button>
-                              </div>
-                            </div>
+                            </li>
                           )
                         })}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
+                      </ul>
 
-              {/* ═══════════════════════════════════════════════════════ */}
-              {/* ─── TAB 2 CONTENT: Matched Transactions ──────────── */}
-              {/* ═══════════════════════════════════════════════════════ */}
-              {activeTab === "matched" && (
-                <div className="space-y-3">
-                  {filteredMatched.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-12 text-center">
-                      <HelpCircle size={32} className="mx-auto text-[var(--muted)]" />
-                      <p className="mt-3 text-sm font-bold text-[var(--text)]">
-                        {tr("Tiada transaksi sepadan dijumpai.", "No matched transactions found.")}
-                      </p>
-                    </div>
-                  ) : (
-                    filteredMatched.map((pair) => (
-                      <div
-                        key={pair.id}
-                        className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-xs"
-                      >
-                        {/* Status bar */}
-                        <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle2 size={16} className="text-emerald-500" />
-                            <span className="text-xs font-black uppercase tracking-wider text-emerald-500">
-                              {pair.confidence === "exact"
-                                ? tr("Padan Tepat", "Exact Match")
-                                : tr("Padan Tarikh Pintar", "Smart Date Match")}
-                            </span>
-                            {pair.dateDiffDays > 0 && (
-                              <span className="rounded-md bg-[var(--surface-tint)] px-2 py-0.5 text-[0.625rem] font-bold text-[var(--muted)]">
-                                {tr(`Beza ${pair.dateDiffDays} hari`, `${pair.dateDiffDays} days diff`)}
-                              </span>
-                            )}
-                          </div>
-
-                          <span className="text-sm font-black tabular-nums text-[var(--text)]">
-                            RM {pair.bankTxn.amount.toFixed(2)}
-                          </span>
-                        </div>
-
-                        {/* Side by side comparison */}
-                        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                          {/* Left: Statement */}
-                          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/25 p-3">
-                            <span className="text-[0.625rem] font-black uppercase tracking-widest text-[var(--muted)]">
-                              {tr("Rekod Penyata Bank", "Bank Statement Record")}
-                            </span>
-                            <p className="mt-1 text-xs font-bold text-[var(--text)]">
-                              {pair.bankTxn.description}
-                            </p>
-                            <p className="mt-0.5 text-[0.6875rem] font-medium text-[var(--muted)]">
-                              {pair.bankTxn.date} · {pair.bankTxn.type === "expense" ? "Debit" : "Kredit"}
-                            </p>
-                          </div>
-
-                          {/* Right: App record */}
-                          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]/25 p-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[0.625rem] font-black uppercase tracking-widest text-[var(--muted)]">
-                                {tr("Rekod MyPeribadi", "MyPeribadi Record")}
-                              </span>
-                              <WalletIconBadge wallet={selectedWallet} size="sm" />
-                            </div>
-                            <p className="mt-1 text-xs font-bold text-[var(--text)]">
-                              {pair.appTxn.description || "Transaksi"}
-                            </p>
-                            <p className="mt-0.5 text-[0.6875rem] font-medium text-[var(--muted)]">
-                              {pair.appTxn.date} · {pair.appTxn.category_name || tr("Kategori", "Category")}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-
-              {/* ═══════════════════════════════════════════════════════ */}
-              {/* ─── TAB 3 CONTENT: Missing In Bank (Only In App) ─── */}
-              {/* ═══════════════════════════════════════════════════════ */}
-              {activeTab === "missing_in_bank" && (
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 text-xs font-medium text-[var(--text)]">
-                    <p className="font-bold text-blue-600 dark:text-blue-400">
-                      ℹ️ {tr("Mengenai Rekod Ini:", "About These Records:")}
-                    </p>
-                    <p className="mt-1 text-[var(--muted)]">
-                      {tr(
-                        "Transaksi ini direkodkan dalam MyPeribadi tetapi tidak dijumpai dalam penyata bank yang dimuat naik (mungkin belum diproses bank, dibayar dengan kaedah lain, atau tersalah akaun).",
-                        "These transactions exist in MyPeribadi but were not found in this bank statement (could be uncleared cheques, alternate payment methods, or logged to the wrong account)."
-                      )}
-                    </p>
-                  </div>
-
-                  {filteredMissingInBank.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)] p-12 text-center text-xs font-bold text-[var(--muted)]">
-                      {tr("Tiada rekod tergantung dalam sistem MyPeribadi anda.", "No pending records in your MyPeribadi app.")}
-                    </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {filteredMissingInBank.map((txn) => {
-                        const isExp = txn.type === "expense"
-                        return (
-                          <div
-                            key={`app-missing-${txn.id}`}
-                            className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4"
-                          >
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div
-                                className={cn(
-                                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold",
-                                  isExp ? "bg-rose-500/10 text-rose-500" : "bg-emerald-500/10 text-emerald-500"
-                                )}
-                              >
-                                {isExp ? <ArrowDownRight size={18} /> : <ArrowUpRight size={18} />}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-bold text-[var(--text)]">
-                                  {txn.description || "Transaksi"}
-                                </p>
-                                <p className="mt-0.5 text-[0.6875rem] font-semibold text-[var(--muted)]">
-                                  {txn.date} · {txn.category_name || tr("Tanpa Kategori", "No Category")}
-                                </p>
-                              </div>
-                            </div>
-
-                            <span
-                              className={cn(
-                                "text-base font-black tabular-nums",
-                                isExp ? "text-rose-500" : "text-emerald-500"
-                              )}
-                            >
-                              {isExp ? "-" : "+"}RM {Number(txn.amount || 0).toFixed(2)}
-                            </span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </DesktopPageBody>
-      </div>
-
-      {/* ─── Mobile View Content Container ─── */}
-      <div className="space-y-4 px-1 md:hidden">
-        {/* Mobile Step 1 */}
-        {wizardStep === "wallet" && (
-          <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
-            <h2 className="text-base font-black text-[var(--text)]">
-              {tr("Pilih Akaun Bank / Dompet", "Choose Bank Account / Wallet")}
-            </h2>
-
-            <div className="space-y-2">
-              {wallets.map((wallet) => {
-                const isSelected = Number(targetWalletId) === Number(wallet.id)
-                const accent = getWalletAccent(wallet)
-                return (
-                  <div
-                    key={wallet.id}
-                    onClick={() => {
-                      setTargetWalletId(wallet.id)
-                      setBatchWalletId(wallet.id)
-                      setQuickAddWalletId(wallet.id)
-                    }}
-                    style={{
-                      background: `linear-gradient(135deg, color-mix(in srgb, ${accent.from} 14%, var(--card)) 0%, color-mix(in srgb, ${accent.to} 6%, var(--card)) 100%)`,
-                    }}
-                    className={cn(
-                      "relative flex items-center justify-between overflow-hidden rounded-xl border p-3 transition",
-                      isSelected
-                        ? "border-[var(--text)] shadow-xs ring-2 ring-[var(--text)]/20"
-                        : "border-[var(--border)]"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <WalletIconBadge wallet={wallet} size="md" />
-                      <div>
-                        <p className="text-xs font-black text-[var(--text)]">{wallet.label || wallet.name}</p>
-                        <span className="text-[0.625rem] font-bold text-[var(--muted)]">
-                          {wallet.type?.toUpperCase()}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <MoneyAmount value={wallet.balance || 0} size="xs" />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setWizardStep("upload")}
-              disabled={!targetWalletId}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--text)] text-xs font-black text-[var(--bg)]"
-            >
-              <span>{tr("Teruskan ke Muat Naik", "Continue to Upload")}</span>
-              <ArrowRight size={15} />
-            </button>
-          </div>
-        )}
-
-        {/* Mobile Step 2 */}
-        {wizardStep === "upload" && (
-          <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4">
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setWizardStep("wallet")}
-                className="flex items-center gap-1 text-xs font-bold text-[var(--muted)]"
-              >
-                <ArrowLeft size={14} />
-                <span>{tr("Kembali", "Back")}</span>
-              </button>
-              <div className="flex items-center gap-2">
-                <WalletIconBadge wallet={selectedWallet} size="sm" />
-                <span className="text-xs font-black text-[var(--text)]">{selectedWallet?.label || selectedWallet?.name}</span>
-              </div>
-            </div>
-
-            <label className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--border-strong)] bg-[var(--surface-tint)]/15 p-6 text-center">
-              <UploadCloud size={32} className="text-[var(--text)]" />
-              <p className="mt-3 text-sm font-black text-[var(--text)]">{tr("Pilih Penyata Bank", "Choose Statement")}</p>
-              <p className="mt-1 text-[0.6875rem] text-[var(--muted)]">PDF (termasuk berkunci), CSV, TXT</p>
-              <input type="file" accept=".pdf,.csv,.tsv,.txt" onChange={handleFileUpload} className="hidden" />
-            </label>
-
-            <button
-              type="button"
-              onClick={loadSample}
-              className="flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-[var(--border)] text-xs font-black text-[var(--text)]"
-            >
-              <FileSpreadsheet size={14} />
-              <span>{tr("Cuba Contoh Penyata Maybank", "Try Maybank Sample")}</span>
-            </button>
-          </div>
-        )}
-
-        {/* Mobile Step 3: Review */}
-        {wizardStep === "review" && (
-          <div className="space-y-4">
-            {/* Mobile Summary Card */}
-            <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-800 p-5 text-white shadow-md">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black uppercase tracking-wider text-white/80">
-                  {tr("Kadar Padanan", "Match Rate")}
-                </span>
-                <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-black">
-                  {reconResult.summary.matchedCount}/{reconResult.summary.totalBankTxns}
-                </span>
-              </div>
-              <div className="mt-2 flex items-baseline gap-1">
-                <span className="text-4xl font-black">{reconResult.summary.matchRatePercent}%</span>
-                <span className="text-xs font-bold text-white/70">{tr("padan", "matched")}</span>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 border-t border-white/20 pt-3">
-                <div>
-                  <span className="text-[0.625rem] text-white/70">{tr("Tertinggal", "Missing")}</span>
-                  <p className="text-base font-black">{reconResult.summary.missingInAppCount}</p>
-                </div>
-                <div>
-                  <span className="text-[0.625rem] text-white/70">{tr("Jumlah Debit", "Debit")}</span>
-                  <p className="text-sm font-black truncate">RM {reconResult.summary.bankDebitTotal.toFixed(2)}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Mobile Tab Pills */}
-            <div className="flex rounded-xl border border-[var(--border)] bg-[var(--card)] p-1">
-              <button
-                type="button"
-                onClick={() => setActiveTab("missing_in_app")}
-                className={cn(
-                  "flex-1 rounded-lg py-2 text-center text-[0.6875rem] font-black uppercase",
-                  activeTab === "missing_in_app" ? "bg-[var(--text)] text-[var(--bg)]" : "text-[var(--muted)]"
-                )}
-              >
-                {tr("Tertinggal", "Missing")} ({reconResult.summary.missingInAppCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("matched")}
-                className={cn(
-                  "flex-1 rounded-lg py-2 text-center text-[0.6875rem] font-black uppercase",
-                  activeTab === "matched" ? "bg-[var(--text)] text-[var(--bg)]" : "text-[var(--muted)]"
-                )}
-              >
-                {tr("Padan", "Matched")} ({reconResult.summary.matchedCount})
-              </button>
-            </div>
-
-            {/* Tab 1 Mobile List */}
-            {activeTab === "missing_in_app" && (
-              <div className="space-y-3">
-                {selectedMissingIds.size > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleBatchImport}
-                    disabled={batchImporting}
-                    className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[var(--text)] text-xs font-black text-[var(--bg)]"
-                  >
-                    <FolderPlus size={15} />
-                    <span>{tr(`Import Semua Dipilih (${selectedMissingIds.size})`, `Import Selected (${selectedMissingIds.size})`)}</span>
-                  </button>
-                )}
-
-                {reconResult.missingInApp.map((txn) => {
-                  const isSelected = selectedMissingIds.has(txn.id)
-                  const isExp = txn.type === "expense"
-                  return (
-                    <div
-                      key={txn.id}
-                      className={cn(
-                        "rounded-xl border p-3.5",
-                        isSelected ? "border-[var(--border-strong)] bg-[var(--card)]" : "border-[var(--border)] bg-[var(--card)]"
-                      )}
-                    >
-                      <div className="flex items-start gap-3">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={(e) => {
-                            const next = new Set(selectedMissingIds)
-                            if (e.target.checked) next.add(txn.id)
-                            else next.delete(txn.id)
-                            setSelectedMissingIds(next)
-                          }}
-                          className="mt-0.5 h-5 w-5 rounded-md accent-[var(--text)]"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-bold leading-tight text-[var(--text)]">{txn.description}</p>
-                          <p className="mt-0.5 text-[0.625rem] text-[var(--muted)]">{txn.date}</p>
-                        </div>
-                      </div>
-                      <div className="mt-2.5 flex items-center justify-between border-t border-[var(--border)] pt-2">
-                        <span className={cn("text-sm font-black", isExp ? "text-rose-500" : "text-emerald-500")}>
-                          {isExp ? "-" : "+"}RM {txn.amount.toFixed(2)}
+                      {/* Phones: the import button stays in reach while the list scrolls. */}
+                      <div className="sticky bottom-24 z-10 flex items-center justify-between gap-3 rounded-full border border-[var(--border)] bg-[var(--card)] py-2 pl-5 pr-2 lg:hidden">
+                        <span className="min-w-0 text-sm">
+                          <span className="font-bold text-[var(--text)]">{selectedMissing.length}</span>{" "}
+                          <span className="text-[var(--muted)]">{tr("dipilih", "selected")}</span>
+                          <span className="block truncate text-xs font-semibold tabular-nums text-[var(--text)]">RM {fmt(selectedTotal)}</span>
                         </span>
                         <button
                           type="button"
-                          onClick={() => setQuickAddTxn(txn)}
-                          className="flex h-8 items-center gap-1 rounded-lg bg-[var(--text)] px-3 text-xs font-black text-[var(--bg)]"
+                          onClick={importSelected}
+                          disabled={importing || selectedMissing.length === 0 || isSample}
+                          className="flex h-11 shrink-0 items-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-5 text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-[0.98] disabled:opacity-40"
                         >
-                          <Plus size={12} />
-                          <span>{tr("Tambah", "Add")}</span>
+                          {importing ? <Loader2 size={15} className="animate-spin" /> : <FolderPlus size={15} />}
+                          {importing ? tr("Mengimport…", "Importing…") : tr("Import", "Import")}
                         </button>
                       </div>
                     </div>
-                  )
-                })}
-              </div>
-            )}
+                  ))}
 
-            {/* Tab 2 Mobile Matched */}
-            {activeTab === "matched" && (
-              <div className="space-y-2.5">
-                {reconResult.matched.map((pair) => (
-                  <div key={pair.id} className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3.5">
-                    <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
-                      <span className="text-[0.6875rem] font-black uppercase text-emerald-500">
-                        {pair.confidence === "exact" ? tr("Padan Tepat", "Exact") : tr("Padan Pintar", "Smart")}
-                      </span>
-                      <span className="text-xs font-black text-[var(--text)]">RM {pair.bankTxn.amount.toFixed(2)}</span>
+                {tab === "matched" &&
+                  (matched.length === 0 ? (
+                    <EmptyState icon={<Link2Off size={24} />} title={tr("Tiada padanan", "No matches")} text={tr("Tiada transaksi sepadan dengan carian ini.", "No matched transactions for this search.")} />
+                  ) : (
+                    <ul className="space-y-2.5">
+                      {matched.map((pair) => {
+                        const out = pair.bankTxn.type === "expense"
+                        const appId = Number(pair.appTxn.id)
+                        const label =
+                          pair.directionMismatch ? tr("Arah berbeza", "Different direction")
+                          : pair.confidence === "exact" ? tr("Tepat", "Exact")
+                          : pair.confidence === "high" ? tr("Hampir tepat", "Close")
+                          : tr("Mungkin", "Possible")
+                        return (
+                          <li key={pair.id} className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4">
+                            <div className="flex items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
+                              <span
+                                className={cn(
+                                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold",
+                                  pair.directionMismatch ? "border-amber-500/40 text-amber-600 dark:text-amber-400" : pair.confidence === "partial" ? "border-[var(--border)] text-[var(--muted)]" : "border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                                )}
+                              >
+                                {pair.directionMismatch ? <TriangleAlert size={12} /> : <Check size={12} />}
+                                {label}
+                                {pair.dateDiffDays > 0 ? ` · ${pair.dateDiffDays} ${tr("hari", pair.dateDiffDays === 1 ? "day" : "days")}` : ""}
+                              </span>
+                              <span className={cn("text-base font-bold tabular-nums", out ? "text-rose-500" : "text-emerald-600 dark:text-emerald-400")}>
+                                {out ? "−" : "+"}RM {fmt(pair.bankTxn.amount)}
+                              </span>
+                            </div>
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-[var(--muted)]">{tr("Penyata bank", "Bank statement")}</p>
+                                <p className="truncate text-sm font-semibold text-[var(--text)]">{pair.bankTxn.description}</p>
+                                <p className="text-xs text-[var(--muted)]">{pair.bankTxn.date}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-[var(--muted)]">{tr("Rekod anda", "Your record")}</p>
+                                <p className="truncate text-sm font-semibold text-[var(--text)]">{pair.appTxn.description || pair.appTxn.notes || pair.appTxn.category_name || "—"}</p>
+                                <p className="text-xs text-[var(--muted)]">
+                                  {pair.appTxn.date}
+                                  {pair.appTxn.category_name ? ` · ${pair.appTxn.category_name}` : ""}
+                                </p>
+                              </div>
+                            </div>
+                            {pair.directionMismatch && (
+                              <p className="mt-3 rounded-[1rem] border border-amber-500/30 px-3 py-2 text-xs text-[var(--text)]">
+                                {tr(
+                                  `Bank menunjukkan ${out ? "debit" : "kredit"}, tetapi dalam app ia direkod sebagai ${pair.appTxn.type === "expense" ? "belanja" : "pendapatan"}. Betulkan jenisnya.`,
+                                  `The bank shows a ${out ? "debit" : "credit"}, but the app has it as ${pair.appTxn.type === "expense" ? "an expense" : "income"}. Fix its type.`
+                                )}
+                              </p>
+                            )}
+                            <div className="mt-3 flex flex-wrap justify-end gap-2">
+                              {Number.isFinite(appId) && (
+                                <Link href={`/${sessionId}/transactions/${appId}`} className="flex h-9 items-center rounded-full border border-[var(--border)] px-4 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface-tint)]">
+                                  {tr("Buka rekod", "Open record")}
+                                </Link>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => unmatch(pair.bankTxn.id, pair.appTxn.id)}
+                                className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--border)] px-4 text-sm font-semibold text-[var(--muted)] transition hover:text-[var(--text)]"
+                              >
+                                <Link2Off size={14} />
+                                {tr("Bukan padanan", "Not a match")}
+                              </button>
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  ))}
+
+                {tab === "missing_in_bank" &&
+                  (missingInBank.length === 0 ? (
+                    <EmptyState icon={<CheckCheck size={26} />} tone="ok" title={tr("Semua rekod anda ada pada penyata", "Every record of yours is on the statement")} text={tr("Hanya rekod dalam tempoh penyata ini dibandingkan.", "Only records inside this statement's period are compared.")} />
+                  ) : (
+                    <div className="space-y-2.5">
+                      <p className="px-1 text-sm text-[var(--muted)]">
+                        {tr("Rekod ini ada dalam app tetapi tiada pada penyata. Mungkin bank belum memprosesnya, atau jumlah atau akaunnya salah.", "These are in the app but not on the statement. The bank may not have cleared them yet, or the amount or account is wrong.")}
+                      </p>
+                      <ul className="space-y-2.5">
+                        {missingInBank.map((txn) => {
+                          const out = txn.type === "expense"
+                          const id = Number(txn.id)
+                          return (
+                            <li key={String(txn.id)} className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4">
+                              <div className="flex items-start gap-3">
+                                <div className="hidden lg:block">
+                                  <DirectionDot out={out} />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <p className="line-clamp-2 min-w-0 break-words text-sm font-semibold leading-snug text-[var(--text)]">{txn.description || txn.notes || txn.category_name || "—"}</p>
+                                    <span className={cn("shrink-0 whitespace-nowrap text-base font-bold tabular-nums", out ? "text-rose-500" : "text-emerald-600 dark:text-emerald-400")}>
+                                      {out ? "−" : "+"}RM {fmt(Number(txn.amount))}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1 flex items-center justify-between gap-3">
+                                    <p className="min-w-0 truncate text-xs text-[var(--muted)]">
+                                      {txn.date}
+                                      {txn.category_name ? ` · ${txn.category_name}` : ""}
+                                    </p>
+                                    {Number.isFinite(id) && (
+                                      <Link href={`/${sessionId}/transactions/${id}`} className="flex h-9 shrink-0 items-center rounded-full border border-[var(--border)] px-4 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface-tint)]">
+                                        {tr("Buka", "Open")}
+                                      </Link>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </li>
+                          )
+                        })}
+                      </ul>
                     </div>
-                    <p className="mt-2 text-xs font-bold text-[var(--text)]">{pair.bankTxn.description}</p>
-                    <p className="mt-0.5 text-[0.625rem] text-[var(--muted)]">{pair.bankTxn.date}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+                  ))}
 
-      {/* ─── PDF Password Prompt Modal ─── */}
-      {showPasswordModal && (
-        <div
-          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
-          onClick={() => {
-            if (!unlockingPdf) {
-              setShowPasswordModal(false)
-              setPendingPdfBuffer(null)
-            }
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl space-y-4"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--text)] text-[var(--bg)] shadow-xs">
-                <Lock size={20} />
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-base font-black text-[var(--text)]">
-                  {tr("Penyata PDF Berkunci", "Password-Protected PDF")}
-                </h3>
-                <p className="text-xs font-semibold text-[var(--muted)] truncate">
-                  {pendingPdfName}
-                </p>
-              </div>
-            </div>
-
-            <div
-              className="space-y-4"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !unlockingPdf && pdfPassword.trim()) {
-                  e.preventDefault()
-                  handleUnlockPdf()
-                }
-              }}
-            >
-              <div>
-                <label className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">
-                  {tr("Kata Laluan Penyata Bank", "Bank Statement Password")}
-                </label>
-                <div className="relative mt-1.5">
-                  <KeyRound size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
-                  <input
-                    type="text"
-                    inputMode="text"
-                    name="pdf-doc-code"
-                    id="pdf-doc-code"
-                    autoComplete="off"
-                    autoCorrect="off"
-                    autoCapitalize="off"
-                    spellCheck={false}
-                    data-lpignore="true"
-                    data-form-type="other"
-                    autoFocus
-                    value={pdfPassword}
-                    onChange={(e) => {
-                      setPdfPassword(e.target.value)
-                      setPasswordError(null)
-                    }}
-                    placeholder={tr("cth: No. IC 12-digit / Tarikh Lahir 6-digit", "e.g. 12-digit IC / 6-digit DOB")}
-                    style={
-                      {
-                        WebkitTextSecurity: showPasswordText ? "none" : "disc",
-                      } as React.CSSProperties
-                    }
-                    className="h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] pl-10 pr-10 text-sm font-semibold text-[var(--text)] outline-none placeholder:text-[var(--muted)]/50 focus:border-[var(--text)]/40"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswordText(!showPasswordText)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--text)]"
-                  >
-                    {showPasswordText ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-
-                {passwordError && (
-                  <p className="mt-1.5 text-xs font-bold text-rose-500 flex items-center gap-1">
-                    <AlertCircle size={13} />
-                    {passwordError}
+                {ignoredIds.size > 0 && (
+                  <p className="flex flex-wrap items-center gap-2 px-1 text-sm text-[var(--muted)]">
+                    <Eye size={14} />
+                    {tr(`${ignoredIds.size} baris diabaikan.`, `${ignoredIds.size} lines ignored.`)}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIgnoredIds(new Set())
+                        setSelectionReady(false)
+                      }}
+                      className="font-semibold text-[var(--text)] underline underline-offset-4"
+                    >
+                      {tr("Pulihkan semua", "Restore all")}
+                    </button>
                   </p>
                 )}
-              </div>
+              </>
+            )}
+          </>
+        )}
+      </DesktopPageBody>
 
-              <div className="rounded-xl bg-[var(--surface-tint)]/30 p-3.5 text-[0.6875rem] font-medium text-[var(--muted)] space-y-1 border border-[var(--border)]">
-                <p className="font-bold text-[var(--text)]">💡 {tr("Petua kata laluan bank Malaysia:", "Malaysia bank password tips:")}</p>
-                <p>• Maybank, RHB, Bank Islam, Hong Leong: <strong>No. IC 12-digit</strong> (cth: 901231015432)</p>
-                <p>• CIMB Bank: <strong>Tarikh Lahir 6-digit DDMMYY</strong> (cth: 311290)</p>
-              </div>
+      {/* Password-protected PDF */}
+      <AppSheet
+        open={Boolean(pendingPdf)}
+        onClose={() => {
+          if (!unlocking) setPendingPdf(null)
+        }}
+        id="bank-pdf-password"
+        title={tr("PDF berkata laluan", "Password-protected PDF")}
+        subtitle={pendingPdf?.name}
+        icon={<Lock size={18} />}
+        size="sm"
+        footer={
+          <button
+            type="button"
+            onClick={() => void handleUnlock()}
+            disabled={unlocking || !pdfPassword.trim()}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-50"
+          >
+            {unlocking ? <Loader2 size={16} className="animate-spin" /> : <KeyRound size={16} />}
+            {tr("Buka dan baca", "Unlock and read")}
+          </button>
+        }
+      >
+        <div className="space-y-2">
+          <label htmlFor="pdf-doc-code" className="text-xs font-semibold text-[var(--muted)]">
+            {tr("Kata laluan penyata", "Statement password")}
+          </label>
+          <div className="relative">
+            <input
+              id="pdf-doc-code"
+              name="pdf-doc-code"
+              type={showPassword ? "text" : "password"}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              data-lpignore="true"
+              autoFocus
+              value={pdfPassword}
+              onChange={(e) => setPdfPassword(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !unlocking) {
+                  e.preventDefault()
+                  void handleUnlock()
+                }
+              }}
+              placeholder={tr("No. IC 12 digit atau 6 digit tarikh lahir", "12-digit IC or 6-digit birth date")}
+              className="h-12 w-full rounded-full border border-[var(--border)] bg-transparent pl-4 pr-12 text-base text-[var(--text)] outline-none focus:border-[var(--btn-primary-bg)]"
+            />
+            <button type="button" onClick={() => setShowPassword((v) => !v)} aria-label={showPassword ? tr("Sembunyi", "Hide") : tr("Tunjuk", "Show")} className="absolute right-3 top-3 text-[var(--muted)]">
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+          {passwordError && <p className="text-sm font-semibold text-rose-500">{passwordError}</p>}
+        </div>
+      </AppSheet>
 
-              <div className="flex gap-2.5 pt-1">
-                <button
-                  type="button"
-                  disabled={unlockingPdf}
-                  onClick={() => {
-                    setShowPasswordModal(false)
-                    setPendingPdfBuffer(null)
-                  }}
-                  className="h-11 flex-1 rounded-xl border border-[var(--border)] text-xs font-bold text-[var(--muted)] transition hover:bg-[var(--surface-tint)]"
-                >
-                  {tr("Batal", "Cancel")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleUnlockPdf()}
-                  disabled={unlockingPdf || !pdfPassword.trim()}
-                  className="h-11 flex-1 rounded-xl bg-[var(--text)] text-xs font-black text-[var(--bg)] transition active:scale-98 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {unlockingPdf ? tr("Membuka...", "Unlocking...") : tr("Buka & Imbas", "Unlock & Scan")}
-                </button>
+      {/* Add one transaction */}
+      <AppSheet
+        open={Boolean(quickAdd)}
+        onClose={() => setQuickAdd(null)}
+        id="bank-quick-add"
+        title={tr("Tambah ke rekod", "Add to your records")}
+        size="sm"
+        footer={
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setQuickAdd(null)} className="h-12 flex-1 rounded-full border border-[var(--border)] text-sm font-semibold text-[var(--text)]">
+              {tr("Batal", "Cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={() => void saveQuickAdd()}
+              disabled={quickAddSaving}
+              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-50"
+            >
+              {quickAddSaving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+              {tr("Simpan", "Save")}
+            </button>
+          </div>
+        }
+      >
+        {quickAdd && (
+          <div className="space-y-4">
+            <div className="rounded-[1.25rem] border border-[var(--border)] p-3.5">
+              <p className="text-sm font-semibold text-[var(--text)]">{quickAdd.description}</p>
+              <div className="mt-1 flex items-center justify-between text-sm">
+                <span className="text-[var(--muted)]">{quickAdd.date}</span>
+                <span className={cn("font-bold tabular-nums", quickAdd.type === "expense" ? "text-rose-500" : "text-emerald-600 dark:text-emerald-400")}>
+                  {quickAdd.type === "expense" ? "−" : "+"}RM {fmt(quickAdd.amount)}
+                </span>
               </div>
+            </div>
+            <div className="flex items-center gap-2.5 text-sm text-[var(--muted)]">
+              <WalletBadge wallet={selectedWallet} size={28} />
+              {tr("Disimpan ke", "Saved to")} <strong className="text-[var(--text)]">{selectedWallet?.label || selectedWallet?.name}</strong>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="quick-category" className="text-xs font-semibold text-[var(--muted)]">
+                {tr("Kategori", "Category")}
+              </label>
+              <select
+                id="quick-category"
+                value={quickAddCategoryId}
+                onChange={(e) => setQuickAddCategoryId(e.target.value ? Number(e.target.value) : "")}
+                className="h-12 w-full rounded-full border border-[var(--border)] bg-transparent px-4 text-base text-[var(--text)] outline-none"
+              >
+                <option value="">{tr("Tanpa kategori", "No category")}</option>
+                {categoryOptions(quickAdd.type).map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AppSheet>
 
-      {/* ─── Statement Scanner Loading Overlay ─── */}
+      {/* Reading the statement */}
       {isProcessing && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/65 px-4 backdrop-blur-xs" role="status" aria-live="polite">
-          <div className="w-full max-w-sm rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 text-center shadow-2xl">
-            {/* Animated Document Scan Box */}
-            <div className="relative mx-auto flex h-28 w-24 flex-col justify-between overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 shadow-inner">
-              <div className="space-y-1.5">
-                <div className="h-2 w-8 rounded bg-[var(--muted)]/40" />
-                <div className="h-1.5 w-full rounded bg-[var(--muted)]/20" />
-                <div className="h-1.5 w-3/4 rounded bg-[var(--muted)]/20" />
-                <div className="h-1.5 w-full rounded bg-[var(--muted)]/20" />
-              </div>
-              <div className="h-1.5 w-1/2 rounded bg-emerald-500/40" />
-              <div className="pointer-events-none absolute inset-x-0 h-1 bg-[var(--text)] opacity-80 shadow-md animate-[scan_1.8s_ease-in-out_infinite]" />
-            </div>
-
-            <p className="mt-4 text-base font-black text-[var(--text)]">
-              {tr("Mengimbas Penyata Bank...", "Scanning Bank Statement...")}
-            </p>
-            <p className="mt-1 text-xs font-semibold text-[var(--muted)]">
-              {scanSteps[scanStep]}
-            </p>
-
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 px-4" role="status" aria-live="polite">
+          <div className="w-full max-w-sm rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-6 text-center">
+            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]">
+              <ScanLine size={26} className="animate-pulse" />
+            </span>
+            <p className="mt-4 text-base font-bold text-[var(--text)]">{tr("Membaca penyata bank…", "Reading the bank statement…")}</p>
+            <p className="mt-1 text-sm text-[var(--muted)]">{scanSteps[scanStep]}</p>
             <div className="mx-auto mt-4 flex w-fit gap-1.5">
-              {[0, 1, 2, 3].map((step) => (
-                <span
-                  key={step}
-                  className={cn(
-                    "h-2 w-2 rounded-full transition-all duration-300",
-                    step <= scanStep ? "bg-[var(--text)] scale-110" : "bg-[var(--muted)]/30"
-                  )}
-                />
+              {[0, 1, 2, 3].map((i) => (
+                <span key={i} className={cn("h-2 w-2 rounded-full transition-all duration-300", i <= scanStep ? "scale-110 bg-[var(--btn-primary-bg)]" : "bg-[var(--surface-tint-strong)]")} />
               ))}
             </div>
           </div>
         </div>
       )}
 
-      {/* ─── Quick Add Transaction Modal ─── */}
-      {quickAddTxn && (
-        <div
-          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4 backdrop-blur-xs"
-          onClick={() => setQuickAddTxn(null)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-t-2xl sm:rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]">
-                  <Plus size={18} strokeWidth={2.5} />
-                </div>
-                <h3 className="text-base font-black text-[var(--text)]">
-                  {tr("Tambah Transaksi Ke MyPeribadi", "Add Transaction to MyPeribadi")}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setQuickAddTxn(null)}
-                className="rounded-full p-1.5 text-[var(--muted)] hover:bg-[var(--surface-tint)]"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="rounded-xl bg-[var(--surface-tint)]/30 p-3.5 text-xs space-y-1 border border-[var(--border)]">
-              <p className="font-bold text-[var(--text)]">{quickAddTxn.description}</p>
-              <div className="flex items-center justify-between text-[var(--muted)]">
-                <span>{quickAddTxn.date}</span>
-                <span className="font-black text-sm text-[var(--text)]">
-                  RM {quickAddTxn.amount.toFixed(2)}
-                </span>
-              </div>
-            </div>
-
-            {/* Wallet Dropdown */}
-            <div>
-              <label className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">
-                {tr("Dompet / Akaun Bank", "Wallet / Bank Account")} <span className="text-rose-500">*</span>
-              </label>
-              <select
-                value={quickAddWalletId}
-                onChange={(e) => setQuickAddWalletId(e.target.value ? Number(e.target.value) : "")}
-                className="mt-1.5 h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-sm font-semibold text-[var(--text)] outline-none"
-              >
-                <option value="">{tr("Pilih Bank / Dompet...", "Select Bank / Wallet...")}</option>
-                {wallets.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.label || w.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Category Dropdown */}
-            <div>
-              <label className="text-xs font-black uppercase tracking-wider text-[var(--muted)]">
-                {tr("Pilih Kategori", "Select Category")}
-              </label>
-              <select
-                value={quickAddCategoryId}
-                onChange={(e) => setQuickAddCategoryId(e.target.value ? Number(e.target.value) : "")}
-                className="mt-1.5 h-11 w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 text-sm font-semibold text-[var(--text)] outline-none"
-              >
-                <option value="">{tr("Pilih Kategori...", "Choose Category...")}</option>
-                {categories
-                  .filter((c) => c.type === quickAddTxn.type)
-                  .map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            <div className="flex gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setQuickAddTxn(null)}
-                className="h-11 flex-1 rounded-xl border border-[var(--border)] text-xs font-bold text-[var(--muted)] transition hover:bg-[var(--surface-tint)]"
-              >
-                {tr("Batal", "Cancel")}
-              </button>
-              <button
-                type="button"
-                onClick={handleQuickAdd}
-                disabled={quickAddSaving || !quickAddWalletId}
-                className="h-11 flex-1 rounded-xl bg-[var(--text)] text-xs font-black text-[var(--bg)] transition active:scale-98 disabled:opacity-50"
-              >
-                {quickAddSaving ? tr("Menyimpan...", "Saving...") : tr("Simpan Transaksi", "Save Transaction")}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {alertModal}
+    </div>
+  )
+}
+
+function DirectionDot({ out }: { out: boolean }) {
+  return (
+    <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full", out ? "bg-rose-500/10 text-rose-500" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400")}>
+      {out ? <ArrowDownRight size={18} /> : <ArrowUpRight size={18} />}
+    </span>
+  )
+}
+
+function EmptyState({ icon, title, text, tone }: { icon: React.ReactNode; title: string; text: string; tone?: "ok" }) {
+  return (
+    <div className="rounded-[1.5rem] border border-dashed border-[var(--border)] bg-[var(--card)] p-10 text-center">
+      <span className={cn("mx-auto flex h-12 w-12 items-center justify-center rounded-full", tone === "ok" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-[var(--surface-tint-strong)] text-[var(--muted)]")}>{icon}</span>
+      <p className="mt-3 text-sm font-semibold text-[var(--text)]">{title}</p>
+      <p className="mt-1 text-sm text-[var(--muted)]">{text}</p>
     </div>
   )
 }

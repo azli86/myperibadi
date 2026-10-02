@@ -400,7 +400,6 @@ body {
     var(--skeleton-highlight) 48%,
     var(--skeleton-base) 100%
   ) !important;
-  backdrop-filter: blur(8px);
   background-size: 220% 100% !important;
   animation: skeleton-shimmer 1.35s ease-in-out infinite;
 }
@@ -411,7 +410,6 @@ body {
   isolation: isolate;
   background: linear-gradient(135deg, var(--skeleton-panel), transparent 48%, var(--skeleton-panel-highlight)) !important;
   border-color: var(--skeleton-border) !important;
-  backdrop-filter: blur(10px);
 }
 
 .skeleton-panel::after {
@@ -3472,6 +3470,13 @@ html[data-theme="light"] .portal-personal-shell .event-photo-overlay .event-phot
 
 div:has(> .app-sheet-panel) {
   animation: app-sheet-scrim 200ms ease-out both;
+}
+
+/* The menu sheet fills the screen: its shadow and its rise would only make the
+   phone repaint a full-screen layer, so it just fades in. */
+.app-sheet-panel.moden-surface {
+  box-shadow: none;
+  animation: app-sheet-scrim 160ms ease-out both;
 }
 
 @keyframes app-sheet-rise {

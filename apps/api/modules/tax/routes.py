@@ -104,6 +104,11 @@ def create_tax_router(*, get_current_user: Callable[..., Any], publish_realtime:
             profile.tax_identifier_encrypted = _encrypt_tin(tin) if tin else None
         for k, v in changes.items():
             setattr(profile, k, v)
+        if profile.marital_status != "married":
+            # A spouse's income and a joint assessment only exist for a married taxpayer.
+            # Left behind, they would keep giving the spouse relief after a change of status.
+            profile.spouse_income_status = None
+            profile.assessment_type = None
         await db.commit()
         _publish(current_user.id)
         return service.serialize_profile(profile)
@@ -302,6 +307,28 @@ def create_tax_router(*, get_current_user: Callable[..., Any], publish_realtime:
         _publish(current_user.id)
         return service.serialize_ea(row)
 
+    @router.delete("/ea-forms/{ea_id}")
+    async def delete_ea(
+        ea_id: int,
+        db: AsyncSession = Depends(database.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        """Remove an EA form and the income that came from it."""
+        row = await _get_ea_or_404(db, ea_id, current_user.id)
+        linked = await db.execute(
+            select(models.TaxIncome).where(
+                models.TaxIncome.user_id == current_user.id,
+                models.TaxIncome.source_type == "ea",
+                models.TaxIncome.source_id == row.id,
+            )
+        )
+        for income in linked.scalars().all():
+            await db.delete(income)
+        await db.delete(row)
+        await db.commit()
+        _publish(current_user.id)
+        return {"detail": "Borang EA dipadam."}
+
     @router.post("/ea-forms/{ea_id}/confirm")
     async def confirm_ea(
         ea_id: int,
@@ -393,6 +420,18 @@ def create_tax_router(*, get_current_user: Callable[..., Any], publish_realtime:
         current_user: models.User = Depends(get_current_user),
     ):
         data = payload.model_dump()
+        for key in ("gross_amount", "taxable_amount", "business_expenses"):
+            if data.get(key) is not None and data[key] < 0:
+                raise HTTPException(status_code=400, detail="Jumlah tidak boleh negatif.")
+        if data.get("taxable_amount") is None and data.get("gross_amount") is not None:
+            # No figure given: a business is taxed on what is left after its expenses.
+            expenses = data.get("business_expenses") if data.get("income_type") == "business" else None
+            data["taxable_amount"] = max(0.0, data["gross_amount"] - (expenses or 0))
+        if data.get("status") is None:
+            # Income typed in by the user is theirs to stand behind, so it counts at once.
+            # The tax estimate only adds up confirmed income; one left as a draft was
+            # silently missing from every total.
+            data["status"] = "confirmed" if data.get("source_type") == "manual" else "draft"
         profile = await service.get_profile_or_create(db, current_user.id, payload.assessment_year)
         row = models.TaxIncome(user_id=current_user.id, tax_profile_id=profile.id, **data)
         db.add(row)
@@ -533,7 +572,13 @@ def create_tax_router(*, get_current_user: Callable[..., Any], publish_realtime:
         if assessment_year == 0:
             assessment_year = 2026
         rules = await tax_engine.get_active_relief_rules(db, assessment_year)
-        rule_map = {r.rule_code: r for r in rules}
+        profile = await tax_engine.get_profile(db, current_user.id, assessment_year)
+        engine = await tax_engine.compute_reliefs(
+            db, current_user.id, assessment_year, profile,
+            await tax_engine.get_dependants(db, profile),
+            await tax_engine.ea_totals(db, current_user.id, assessment_year),
+        )
+        applied = {line["code"]: line for line in engine["lines"]}
         res = await db.execute(
             select(models.TaxRelief).where(
                 models.TaxRelief.user_id == current_user.id,
@@ -545,24 +590,29 @@ def create_tax_router(*, get_current_user: Callable[..., Any], publish_realtime:
         for r in rules:
             claim = claims.get(r.rule_code)
             limit = float(r.limit_amount) if r.limit_amount is not None else None
-            group = "other"
-            if r.eligibility_rule:
-                try:
-                    group = json.loads(r.eligibility_rule).get("group", "other")
-                except Exception:
-                    group = "other"
-            if claim:
-                item = service.serialize_relief(claim, limit=limit)
-                item["group"] = group
-                result.append(item)
-            else:
-                result.append({
+            extra = tax_engine._extra(r)
+            line = applied.get(r.rule_code)
+            item = (
+                service.serialize_relief(claim, limit=limit)
+                if claim
+                else {
                     "id": None, "assessment_year": assessment_year,
                     "relief_code": r.rule_code, "name": r.name,
                     "claimed_amount": 0, "eligible_amount": 0,
                     "max_limit": limit, "source": "manual", "status": "claimed",
-                    "group": group, "doc_requirement": r.document_requirement,
-                })
+                    "doc_requirement": r.document_requirement,
+                }
+            )
+            item["name"] = r.name
+            item["group"] = extra.get("group", "other")
+            item["note"] = extra.get("note")
+            # "auto" reliefs come from the profile; the rest are claimed by hand.
+            item["auto"] = extra.get("auto") in {"individual", "disabled_self", "spouse", "child"}
+            item["auto_kind"] = extra.get("auto")
+            item["shared"] = extra.get("shared")
+            item["applied_amount"] = line["amount"] if line else 0
+            item["applied_source"] = line["source"] if line else None
+            result.append(item)
         return result
 
     @router.post("/reliefs")
@@ -576,6 +626,15 @@ def create_tax_router(*, get_current_user: Callable[..., Any], publish_realtime:
         rule = rule_map.get(payload.relief_code)
         if rule is None:
             raise HTTPException(status_code=404, detail="Relief rule tidak dijumpai.")
+        if tax_engine._extra(rule).get("auto") in {"individual", "disabled_self", "spouse", "child"}:
+            raise HTTPException(status_code=400, detail="Pelepasan ini dikira automatik daripada profil cukai anda.")
+        if payload.claimed_amount is None or payload.claimed_amount < 0:
+            raise HTTPException(status_code=400, detail="Jumlah tuntutan tidak boleh negatif.")
+        if rule.limit_amount is not None:
+            # What counts is never more than the limit, however much was spent.
+            payload.eligible_amount = min(float(payload.claimed_amount), float(rule.limit_amount))
+        else:
+            payload.eligible_amount = float(payload.claimed_amount)
         res = await db.execute(
             select(models.TaxRelief).where(
                 models.TaxRelief.user_id == current_user.id,
@@ -598,7 +657,7 @@ def create_tax_router(*, get_current_user: Callable[..., Any], publish_realtime:
             relief_code=payload.relief_code,
             name=rule.name,
             claimed_amount=payload.claimed_amount,
-            eligible_amount=payload.eligible_amount or payload.claimed_amount,
+            eligible_amount=payload.eligible_amount,
             source=payload.source,
         )
         db.add(row)
@@ -656,9 +715,13 @@ def create_tax_router(*, get_current_user: Callable[..., Any], publish_realtime:
         db: AsyncSession = Depends(database.get_db),
         current_user: models.User = Depends(get_current_user),
     ):
+        if payload.amount is None or payload.amount <= 0:
+            raise HTTPException(status_code=400, detail="Jumlah rebat mesti lebih daripada sifar.")
         rules = await tax_engine.get_active_rebate_rules(db, payload.assessment_year)
         rule_map = {r.rule_code: r for r in rules}
         rule = rule_map.get(payload.rebate_code)
+        if rule is not None and tax_engine._extra(rule).get("auto"):
+            raise HTTPException(status_code=400, detail="Rebat ini dikira automatik.")
         name = rule.name if rule else ("Zakat / Fitrah & Harta" if payload.rebate_code == "rebate_zakat" else payload.rebate_code)
         row = models.TaxRebate(
             user_id=current_user.id,

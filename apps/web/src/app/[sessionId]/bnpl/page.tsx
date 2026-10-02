@@ -704,7 +704,7 @@ export default function BnplPage() {
       {mounted && showSheet
         ? createPortal(
             <div
-              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] backdrop-blur-xs p-0 md:items-center md:p-4"
+              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] p-0 md:items-center md:p-4"
               onClick={requestSheetClose}
             >
               <div
@@ -999,7 +999,7 @@ export default function BnplPage() {
           if (!item) return null
           return createPortal(
             <div
-              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] backdrop-blur-xs p-0 md:items-center md:p-4"
+              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] p-0 md:items-center md:p-4"
               onClick={() => setPayingId(null)}
             >
               <div

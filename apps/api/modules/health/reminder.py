@@ -19,6 +19,7 @@ from typing import Any, Awaitable, Callable, Optional
 from sqlalchemy import select
 
 import models
+from time_utils import utc_to_business_naive
 
 # A pending dose becomes "missed" if its scheduled time passed by this many
 # minutes and it was never taken (or held for remind-later past that window).
@@ -75,9 +76,14 @@ async def run_reminder_cycle(
     send_whatsapp: Callable[..., Awaitable[Any]],
     now: Optional[datetime] = None,
 ) -> dict[str, int]:
+    # Two clocks. A dose time such as 08:00 is the user's local wall-clock time, so "due" and
+    # "today" come from the business timezone; the timestamps the handlers store (remind-later,
+    # notified, missed) are UTC. Comparing a local schedule with the UTC clock made every
+    # reminder arrive eight hours late and logged doses against the wrong day.
     now = now or datetime.utcnow()
-    today = now.date()
-    now_time = now.time().replace(microsecond=0)
+    now_local = utc_to_business_naive(now)
+    today = now_local.date()
+    now_time = now_local.time().replace(microsecond=0)
     counts = {"sent": 0, "missed": 0, "users": 0}
 
     users = (await db.execute(select(models.User).where(models.User.is_active == True))).scalars().all()  # noqa: E712
@@ -120,7 +126,7 @@ async def run_reminder_cycle(
                     continue
                 # mark missed if long past its scheduled time
                 scheduled_dt = datetime.combine(today, sc.time)
-                if log.status == "pending" and (now - scheduled_dt) >= timedelta(minutes=MISSED_AFTER_MINUTES):
+                if log.status == "pending" and (now_local - scheduled_dt) >= timedelta(minutes=MISSED_AFTER_MINUTES):
                     if log.remind_later_at is None or log.remind_later_at <= now:
                         log.status = "missed"
                         log.missed_at = now

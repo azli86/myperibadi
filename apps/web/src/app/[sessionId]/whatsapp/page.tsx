@@ -712,7 +712,7 @@ export default function WhatsAppPage() {
       </ModenHero>
 
       {/* Tabs */}
-      <div className="sticky top-2 z-20 flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--card)] p-1 backdrop-blur">
+      <div className="sticky top-2 z-20 flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--card)] p-1">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.key
           return (

@@ -146,7 +146,7 @@ export default function RecordSheet({
   const chip = (active: boolean) =>
     cn(
       "shrink-0 rounded-full px-3.5 py-2 text-xs font-bold transition active:scale-95",
-      active ? "bg-[var(--text)] text-[var(--bg)]" : "bg-[var(--card)] text-[var(--text-soft)] shadow-[var(--shadow-card)]"
+      active ? "bg-[var(--text)] text-[var(--bg)]" : "bg-[var(--card)] text-[var(--text-soft)]"
     )
   const primaryButton =
     "flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] text-sm font-black text-[var(--btn-primary-text)] transition active:scale-[0.98] disabled:opacity-40"
@@ -174,14 +174,14 @@ export default function RecordSheet({
         type="button"
         onClick={() => setStep(step === 3 ? 2 : 1)}
         aria-label={tr("Kembali", "Back")}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--card)] text-[var(--text)] shadow-[var(--shadow-card)] transition active:scale-90"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--card)] text-[var(--text)] transition active:scale-90"
       >
         <ChevronLeft size={18} strokeWidth={2.4} />
       </button>
       <button
         type="button"
         onClick={() => setStep(1)}
-        className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl bg-[var(--card)] px-4 py-2.5 text-left shadow-[var(--shadow-card)] transition active:scale-[0.99]"
+        className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl bg-[var(--card)] px-4 py-2.5 text-left transition active:scale-[0.99]"
       >
         <span className="min-w-0">
           <span className="block text-[0.6875rem] font-bold text-[var(--muted)]">
@@ -211,7 +211,7 @@ export default function RecordSheet({
             setCategoryId(null)
             setStep(3)
           }}
-          className="flex h-12 flex-1 items-center justify-center rounded-full bg-[var(--card)] text-sm font-bold text-[var(--text-soft)] shadow-[var(--shadow-card)] transition active:scale-[0.98]"
+          className="flex h-12 flex-1 items-center justify-center rounded-full bg-[var(--card)] text-sm font-bold text-[var(--text-soft)] transition active:scale-[0.98]"
         >
           {tr("Langkau", "Skip")}
         </button>
@@ -262,7 +262,7 @@ export default function RecordSheet({
                   onClick={() => switchKind(k)}
                   className={cn(
                     "flex flex-1 items-center justify-center gap-1.5 rounded-full py-3 text-sm font-black transition",
-                    active ? "bg-[var(--card)] text-[var(--text)] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.18)]" : "text-[var(--muted)]"
+                    active ? "bg-[var(--card)] text-[var(--text)]" : "text-[var(--muted)]"
                   )}
                 >
                   <span className={cn("h-2 w-2 rounded-full", k === "expense" ? "bg-[var(--expense)]" : "bg-[var(--income)]", !active && "opacity-50")} />
@@ -321,7 +321,7 @@ export default function RecordSheet({
                 ))}
               </div>
             ) : kindCategories.length === 0 ? (
-              <p className="rounded-2xl bg-[var(--card)] px-4 py-3 text-xs font-medium text-[var(--muted)] shadow-[var(--shadow-card)]">
+              <p className="rounded-2xl bg-[var(--card)] px-4 py-3 text-xs font-medium text-[var(--muted)]">
                 {tr("Tiada kategori untuk jenis ini. Tekan Langkau untuk teruskan.", "No categories of this kind. Tap Skip to go on.")}
               </p>
             ) : (
@@ -341,7 +341,7 @@ export default function RecordSheet({
                           ? isExpense
                             ? "bg-rose-500/12 text-rose-700 ring-2 ring-rose-500/50 dark:text-rose-300"
                             : "bg-emerald-500/12 text-emerald-700 ring-2 ring-emerald-500/50 dark:text-emerald-300"
-                          : "bg-[var(--card)] text-[var(--text-soft)] shadow-[var(--shadow-card)]"
+                          : "bg-[var(--card)] text-[var(--text-soft)]"
                       )}
                     >
                       {c.name}
@@ -367,7 +367,7 @@ export default function RecordSheet({
               maxLength={200}
               onChange={(e) => setNote(e.target.value)}
               placeholder={isExpense ? tr("Cth: Nasi lemak", "E.g. Lunch") : tr("Cth: Gaji September", "E.g. September salary")}
-              className="h-12 w-full rounded-2xl border-0 bg-[var(--card)] px-4 text-sm font-semibold text-[var(--text)] shadow-[var(--shadow-card)] outline-none placeholder:font-medium placeholder:text-[var(--muted)]/70 focus:ring-2 focus:ring-[var(--text)]/20"
+              className="h-12 w-full rounded-2xl border-0 bg-[var(--card)] px-4 text-sm font-semibold text-[var(--text)] outline-none placeholder:font-medium placeholder:text-[var(--muted)]/70 focus:ring-2 focus:ring-[var(--text)]/20"
             />
           </label>
 
@@ -389,7 +389,7 @@ export default function RecordSheet({
                 aria-label={tr("Pilih tarikh", "Pick a date")}
                 className={cn(
                   "h-9 min-w-0 flex-1 rounded-full border-0 px-3 text-xs font-bold outline-none",
-                  date !== today && date !== yesterday ? "bg-[var(--text)] text-[var(--bg)]" : "bg-[var(--card)] text-[var(--text-soft)] shadow-[var(--shadow-card)]"
+                  date !== today && date !== yesterday ? "bg-[var(--text)] text-[var(--bg)]" : "bg-[var(--card)] text-[var(--text-soft)]"
                 )}
               />
             </div>

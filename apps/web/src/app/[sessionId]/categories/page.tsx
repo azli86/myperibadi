@@ -1,8 +1,7 @@
 "use client"
 
 import { getAccessToken } from "@/lib/auth-session"
-import React, { useState, useEffect, useMemo } from "react"
-import { createPortal } from "react-dom"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import {
   Plus,
   Search,
@@ -21,7 +20,6 @@ import {
   MoveUp,
   MoveDown,
   Upload,
-  Sparkles,
 } from "lucide-react"
 import { useParams } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -30,11 +28,10 @@ import { useTheme } from "@/components/theme/ThemeProvider"
 import EmojiPicker, { Theme } from "emoji-picker-react"
 import { CategoryIconGlyph } from "@/lib/category-icons"
 import { usePageAlert } from "@/hooks/usePageAlert"
-import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
-import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 import { MoneyAmount } from "@/components/ui/MoneyAmount"
-import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
+import { AppSheet } from "@/components/ui/AppSheet"
+import { ModenHero, ModenHeroIconButton } from "@/components/ui/ModenHero"
 import {
   DesktopPageAction,
   DesktopPageBody,
@@ -53,6 +50,8 @@ type Category = {
   transactionCountMonth?: number
   status: string
   system_code?: string | null
+  transactionCount?: number
+  is_default?: boolean
 }
 type Keyword = { id: number; keyword: string; match_type: string; status: string }
 type KeywordsMap = { [categoryId: number]: Keyword[] }
@@ -150,20 +149,20 @@ function CategoryIconPicker({ value, kind, onChange, compact = false }: Category
   const selectedLabel = selectedIcon ? getQuickLabel(selectedIcon) : copy.emoji
 
   return (
-    <div className="flex w-full flex-col gap-2.5 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-xs">
+    <div className="flex w-full flex-col gap-2.5 rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-3">
       {/* Selected Header */}
-      <div className="flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2.5">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--card)] text-[var(--text)] shadow-xs ring-1 ring-[var(--border)]">
+      <div className="flex items-center gap-3 rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface-tint)] p-2.5">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--card)] text-[var(--text)] ring-1 ring-[var(--border)]">
           <CategoryIconGlyph iconName={value} categoryName={selectedLabel} kind={kind} size={28} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">{copy.selected}</p>
+          <p className="text-xs font-bold text-[var(--muted)]">{copy.selected}</p>
           <p className="truncate text-sm font-bold text-[var(--text)]">{selectedLabel}</p>
         </div>
         <button
           type="button"
           onClick={() => setShowFullPicker((prev) => !prev)}
-          className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs font-bold text-[var(--muted)] hover:text-[var(--text)] transition-all active:scale-95 shadow-2xs"
+          className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs font-bold text-[var(--muted)] hover:text-[var(--text)] transition-all active:scale-95"
         >
           {showFullPicker ? copy.compact : copy.more}
         </button>
@@ -172,7 +171,7 @@ function CategoryIconPicker({ value, kind, onChange, compact = false }: Category
       {/* Brand Quick Icons */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between px-1">
-          <span className="text-[10px] font-black uppercase tracking-wider text-[var(--muted)]">{copy.brand}</span>
+          <span className="text-xs font-bold text-[var(--muted)]">{copy.brand}</span>
         </div>
         <div className="grid grid-cols-4 gap-1.5">
           {BRAND_QUICK_ICONS.map((item) => {
@@ -183,9 +182,9 @@ function CategoryIconPicker({ value, kind, onChange, compact = false }: Category
                 type="button"
                 onClick={() => onChange(item.value)}
                 className={cn(
-                  "flex h-11 items-center justify-center rounded-2xl border transition-all active:scale-95",
+                  "flex h-11 items-center justify-center rounded-[1.25rem] border transition-all active:scale-95",
                   isSelected
-                    ? "border-[var(--text)] bg-[var(--surface-tint-strong)] text-[var(--text)] ring-2 ring-[var(--text)]/20 shadow-xs"
+                    ? "border-[var(--text)] bg-[var(--surface-tint-strong)] text-[var(--text)] ring-2 ring-[var(--text)]/20"
                     : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] hover:bg-[var(--surface-tint-strong)]"
                 )}
                 title={item.label}
@@ -201,7 +200,7 @@ function CategoryIconPicker({ value, kind, onChange, compact = false }: Category
       {/* Quick Category Icons */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between px-1">
-          <span className="text-[10px] font-black uppercase tracking-wider text-[var(--muted)]">{copy.quick}</span>
+          <span className="text-xs font-bold text-[var(--muted)]">{copy.quick}</span>
         </div>
         <div className="grid grid-cols-5 gap-1.5">
           {quickIcons.map((item) => {
@@ -213,16 +212,16 @@ function CategoryIconPicker({ value, kind, onChange, compact = false }: Category
                 type="button"
                 onClick={() => onChange(item.value)}
                 className={cn(
-                  "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border px-1 transition-all active:scale-95",
+                  "flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-[1.25rem] border px-1 transition-all active:scale-95",
                   isSelected
-                    ? "border-[var(--text)] bg-[var(--text)] text-[var(--bg)] shadow-xs"
+                    ? "border-[var(--text)] bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
                     : "border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] hover:bg-[var(--surface-tint-strong)]"
                 )}
                 title={label}
                 aria-label={label}
               >
                 <CategoryIconGlyph iconName={item.value} categoryName={label} kind={kind} size={20} />
-                <span className="max-w-full truncate text-[9px] font-semibold leading-none">{label}</span>
+                <span className="max-w-full truncate text-xs font-semibold leading-none">{label}</span>
               </button>
             )
           })}
@@ -231,7 +230,7 @@ function CategoryIconPicker({ value, kind, onChange, compact = false }: Category
 
       {/* Emoji Picker Full Panel */}
       {showFullPicker && (
-        <div className="overflow-hidden rounded-2xl border border-[var(--border)] shadow-md [&>aside]:border-none">
+        <div className="overflow-hidden rounded-[1.25rem] border border-[var(--border)] [&>aside]:border-none">
           <EmojiPicker
             className="category-emoji-picker"
             theme={isDark ? Theme.DARK : Theme.LIGHT}
@@ -302,6 +301,7 @@ export default function CategoriesPage() {
   const [mainGroupCategory, setMainGroupCategory] = useState<Category | null>(null)
   const [newGroupNameForCat, setNewGroupNameForCat] = useState("")
 
+  const [reassignTo, setReassignTo] = useState<number | "">("")
   const [kwPhrase, setKwPhrase] = useState("")
   const [kwMatchType, setKwMatchType] = useState("contains")
   const [kwPhraseError, setKwPhraseError] = useState("")
@@ -376,13 +376,6 @@ export default function CategoriesPage() {
     lang === "EN"
       ? "Organize expense and income labels with auto-matching keywords"
       : "Urus label belanja dan pendapatan dengan keyword auto-padanan"
-
-  const getMatchTypeLabel = (matchType: string) => {
-    if (matchType === "contains") return t.matchContains
-    if (matchType === "exact") return t.matchExact
-    if (matchType === "startsWith") return t.matchStartsWith
-    return matchType
-  }
 
   const keywordNoSpaceAlert =
     lang === "EN"
@@ -466,10 +459,12 @@ export default function CategoriesPage() {
           if (!cancelled) {
             if (Array.isArray(data.order) && data.order.length) setOrder(data.order)
             if (Array.isArray(data.groups)) setGroups(data.groups)
+            skipNextLayoutSave.current = true
+            setLayoutLoaded(true)
           }
         }
       } catch {
-        /* ignore */
+        /* ignore: without the stored layout nothing is saved over it */
       }
     })()
     return () => {
@@ -477,8 +472,16 @@ export default function CategoriesPage() {
     }
   }, [sessionId])
 
+  const [layoutLoaded, setLayoutLoaded] = useState(false)
+  const skipNextLayoutSave = useRef(true)
   useEffect(() => {
-    if (!sessionId || (order === null && groups.length === 0)) return
+    // Nothing is saved before the stored layout has arrived (it would overwrite it), nor for
+    // the change that loading itself makes.
+    if (!sessionId || !layoutLoaded) return
+    if (skipNextLayoutSave.current) {
+      skipNextLayoutSave.current = false
+      return
+    }
     const t = setTimeout(() => {
       const token = getAccessToken()
       const headers: HeadersInit = {
@@ -493,7 +496,7 @@ export default function CategoriesPage() {
       })
     }, 600)
     return () => clearTimeout(t)
-  }, [order, groups, sessionId])
+  }, [order, groups, sessionId, layoutLoaded])
 
   useEffect(() => {
     fetchCategories()
@@ -519,50 +522,6 @@ export default function CategoriesPage() {
     setEditCatKind("expense")
     setEditCatIconName("🏷️")
   }
-
-  const { requestClose: requestModalClose } = useOverlayBackClose({
-    id: "categories-sheet",
-    isOpen: Boolean(modal),
-    onClose: closeModal,
-  })
-  const { requestClose: requestGroupClose } = useOverlayBackClose({
-    id: "group-name-sheet",
-    isOpen: groupModalOpen,
-    onClose: () => setGroupModalOpen(false),
-  })
-  const { requestClose: requestMainGroupClose } = useOverlayBackClose({
-    id: "category-main-group-sheet",
-    isOpen: Boolean(mainGroupCategory),
-    onClose: () => {
-      setMainGroupCategory(null)
-      setNewGroupNameForCat("")
-    },
-  })
-  const sheetSwipe = useSwipeDownToClose(requestModalClose)
-
-  useEffect(() => {
-    const hidden = Boolean(modal) || groupModalOpen || Boolean(mainGroupCategory)
-    if (hidden) {
-      document.body.style.overflow = "hidden"
-    } else {
-      document.body.style.overflow = ""
-    }
-
-    window.dispatchEvent(
-      new CustomEvent("portal:mobile-bottom-nav-visibility", {
-        detail: { hidden },
-      })
-    )
-
-    return () => {
-      document.body.style.overflow = ""
-      window.dispatchEvent(
-        new CustomEvent("portal:mobile-bottom-nav-visibility", {
-          detail: { hidden: false },
-        })
-      )
-    }
-  }, [modal, groupModalOpen, mainGroupCategory])
 
   async function uploadCategoryIcon(file: File, onChange: (url: string) => void) {
     if (file.size > 256 * 1024) {
@@ -591,7 +550,7 @@ export default function CategoriesPage() {
   }
 
   const IconUpload = ({ onChange }: { onChange: (url: string) => void }) => (
-    <label className="mt-2.5 flex h-11 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)] px-3 text-xs font-bold text-[var(--muted)] hover:text-[var(--text)] transition active:scale-98">
+    <label className="mt-2.5 flex h-11 cursor-pointer items-center justify-center gap-2 rounded-[1.25rem] border border-dashed border-[var(--border)] bg-[var(--surface-tint)] px-3 text-xs font-bold text-[var(--muted)] hover:text-[var(--text)] transition active:scale-98">
       <Upload size={14} /> {lang === "EN" ? "Upload custom icon (max 256 KB)" : "Muat naik ikon (maks 256 KB)"}
       <input
         type="file"
@@ -720,20 +679,35 @@ export default function CategoriesPage() {
     }
   }
 
+  /** Open the delete confirmation. A category in use hands its records to another of the
+   *  same kind; the household's default is offered first. */
+  function openDeleteCategory() {
+    if (!selectedCategory) return
+    const options = categories.filter((c) => c.kind === selectedCategory.kind && c.id !== selectedCategory.id && c.status !== "archived")
+    const preferred = options.find((c) => c.is_default) || options[0]
+    setReassignTo(preferred ? preferred.id : "")
+    setModal("archiveCategory")
+  }
+
   async function archiveCategory() {
     if (!selectedCategory) return
     setSaving(true)
     try {
       const token = getAccessToken()
-      const res = await fetch(`/api/categories/${selectedCategory.id}`, {
+      const target = reassignTo ? `?reassign_to=${reassignTo}` : ""
+      const res = await fetch(`/api/categories/${selectedCategory.id}${target}`, {
         credentials: "include",
         method: "DELETE",
         headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       })
       if (res.ok) {
-        setCategories((prev) => prev.filter((c) => c.id !== selectedCategory.id))
+        const deletedId = selectedCategory.id
+        // A deleted category must not linger in the saved order or in a group.
+        setGroups((prev) => prev.map((g) => ({ ...g, members: g.members.filter((m) => m !== deletedId) })))
+        setOrder((prev) => (prev ? prev.filter((id) => id !== deletedId) : prev))
         setSelectedId(null)
         setModal(null)
+        void fetchCategories()
         showAlert(
           lang === "EN" ? "Deleted" : "Berjaya Dipadam",
           lang === "EN" ? "Category deleted successfully." : "Kategori berjaya dipadam.",
@@ -968,6 +942,14 @@ export default function CategoriesPage() {
   const saveGroup = () => {
     const name = groupName.trim()
     if (!name) return
+    if (groups.some((g) => g.id !== editingGroupId && g.name.trim().toLowerCase() === name.toLowerCase())) {
+      showAlert(
+        lang === "EN" ? "Group exists" : "Kumpulan sudah ada",
+        lang === "EN" ? "A group with this name already exists." : "Kumpulan dengan nama ini sudah wujud.",
+        "warning"
+      )
+      return
+    }
     if (editingGroupId) {
       setGroups((prev) => prev.map((g) => (g.id === editingGroupId ? { ...g, name } : g)))
     } else {
@@ -979,7 +961,7 @@ export default function CategoriesPage() {
   const sheetTitle = (() => {
     if (modal === "categoryDetail") return lang === "EN" ? "Edit Category" : "Ubah Kategori"
     if (modal === "addCategory") return t.addCategory
-    if (modal === "archiveCategory") return t.archiveCategory
+    if (modal === "archiveCategory") return lang === "EN" ? "Delete Category?" : "Padam Kategori?"
     if (modal === "addKeyword") return t.addKeyword
     if (modal === "editKeyword") return lang === "EN" ? "Edit Keyword" : "Ubah Keyword"
     if (modal === "deleteKeyword") return t.deleteKeyword
@@ -1018,7 +1000,7 @@ export default function CategoriesPage() {
         <button type="button" onClick={onClick} className="flex min-w-0 flex-1 items-center gap-3 text-left active:opacity-70">
           <span
             className={cn(
-              "flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.95rem]",
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
               isExp ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
             )}
           >
@@ -1027,9 +1009,9 @@ export default function CategoriesPage() {
 
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-1.5">
-              <span className="truncate text-[0.9375rem] font-bold tracking-tight text-[var(--text)]">{category.name}</span>
+              <span className="truncate text-[0.9375rem] font-bold text-[var(--text)]">{category.name}</span>
               {category.system_code === "monthly_salary" && (
-                <span className="shrink-0 rounded-full bg-[var(--surface-tint-strong)] px-1.5 py-px text-[0.5625rem] font-black uppercase tracking-wide text-[var(--muted)]">
+                <span className="shrink-0 rounded-full bg-[var(--surface-tint-strong)] px-1.5 py-px text-xs font-bold text-[var(--muted)]">
                   System
                 </span>
               )}
@@ -1121,8 +1103,7 @@ export default function CategoriesPage() {
     )
   }
 
-  const listCardClass =
-    "overflow-hidden rounded-[1.25rem] bg-[var(--card)] shadow-[var(--shadow-card)] divide-y divide-[color-mix(in_srgb,var(--divider)_55%,transparent)]"
+  const listCardClass = "overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] divide-y divide-[var(--border)]"
 
   // ─── Group (folder) ───
   const renderGroupCard = (g: Group) => {
@@ -1149,11 +1130,11 @@ export default function CategoriesPage() {
           aria-expanded={!collapsed}
           className="flex cursor-pointer items-center gap-2 px-3.5 py-3"
         >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.95rem] bg-orange-500/10 text-orange-600 dark:text-orange-400">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--text)]">
             <FolderTree size={19} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[0.9375rem] font-black tracking-tight text-[var(--text)]">{g.name}</p>
+            <p className="truncate text-[0.9375rem] font-bold text-[var(--text)]">{g.name}</p>
             <div className="mt-0.5 flex items-center gap-2">
               {members.length > 0 ? (
                 <div className="flex items-center -space-x-1.5">
@@ -1175,7 +1156,7 @@ export default function CategoriesPage() {
                   {members.length > 4 && (
                     <span
                       style={{ zIndex: 4 }}
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--text)] text-[0.5rem] font-black text-[var(--bg)] ring-2 ring-[var(--card)]"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--text)] text-[0.5rem] font-bold text-[var(--bg)] ring-2 ring-[var(--card)]"
                     >
                       +{members.length - 4}
                     </span>
@@ -1278,12 +1259,11 @@ export default function CategoriesPage() {
 
   // ─── Belanja / Pendapatan switch ───
   const kindTabs = (
-    <div role="tablist" className="flex w-full rounded-full bg-[var(--surface-tint-strong)] p-1">
+    <div role="tablist" aria-label={lang === "EN" ? "Category type" : "Jenis kategori"} className="flex gap-1.5">
       {(["expense", "income"] as const).map((kind) => {
         const active = activeKindTab === kind
         const count = kind === "expense" ? stats.expenseCount : stats.incomeCount
         const isExp = kind === "expense"
-
         return (
           <button
             key={kind}
@@ -1292,13 +1272,13 @@ export default function CategoriesPage() {
             aria-selected={active}
             onClick={() => setActiveKindTab(kind)}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-xs font-black transition-all active:scale-[0.98]",
-              active ? "bg-[var(--card)] text-[var(--text)] shadow-[0_2px_8px_-2px_rgba(0,0,0,0.18)]" : "text-[var(--muted)] hover:text-[var(--text)]"
+              "flex h-11 flex-1 items-center justify-center gap-2 rounded-full border text-sm font-semibold transition active:scale-[0.98]",
+              active ? "border-transparent bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]"
             )}
           >
-            <span className={cn("h-1.5 w-1.5 rounded-full", isExp ? "bg-rose-500" : "bg-emerald-500", !active && "opacity-50")} />
-            <span>{isExp ? t.expense : t.income}</span>
-            <span className="tabular-nums text-[var(--muted)]">{count}</span>
+            <span className={cn("h-2 w-2 rounded-full", isExp ? "bg-rose-400" : "bg-emerald-400")} />
+            {isExp ? t.expense : t.income}
+            <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold tabular-nums", active ? "bg-white/20" : "bg-[var(--surface-tint-strong)]")}>{count}</span>
           </button>
         )
       })}
@@ -1313,7 +1293,7 @@ export default function CategoriesPage() {
         type="search"
         placeholder={t.searchCategory}
         aria-label={t.searchCategory}
-        className="h-11 w-full rounded-full border-0 bg-[var(--card)] pl-10 pr-10 text-sm font-semibold text-[var(--text)] shadow-[var(--shadow-card)] outline-none transition placeholder:font-medium placeholder:text-[var(--muted)]/70 focus:ring-2 focus:ring-orange-500/30"
+        className="h-11 w-full rounded-full border border-[var(--border)] bg-transparent pl-11 pr-10 text-base text-[var(--text)] outline-none transition placeholder:text-[var(--muted)]/70 focus:border-[var(--btn-primary-bg)] md:text-sm"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
       />
@@ -1330,54 +1310,33 @@ export default function CategoriesPage() {
     </div>
   )
 
-  // ─── This month, for the tab on show ───
-  const monthSummary = (
-    <section className="px-2">
-      <p className="text-sm font-semibold text-[var(--muted)]">
-        {activeKindTab === "expense"
-          ? lang === "EN" ? "Spent this month" : "Belanja bulan ini"
-          : lang === "EN" ? "Received this month" : "Pendapatan bulan ini"}
-      </p>
-      <div className="mt-1 text-[var(--text)]">
-        {showDataSkeleton ? (
-          <div className="h-9 w-40 animate-pulse rounded-lg bg-[var(--surface-tint-strong)]" />
-        ) : (
-          <MoneyAmount value={kindMonthTotal} digits={2} size="hero" className="!text-[2.25rem] font-black" />
-        )}
-      </div>
-      <p className="mt-1.5 text-xs font-medium text-[var(--muted)]">
-        {showDataSkeleton ? "—" : `${activeKindTab === "expense" ? stats.expenseCount : stats.incomeCount} ${lang === "EN" ? "categories" : "kategori"} · ${stats.keywordTotal} keyword ${lang === "EN" ? "in total" : "keseluruhan"}`}
-      </p>
-    </section>
-  )
-
   // ─── List toolbar: count + new group ───
   const listToolbar = (
     <div className="flex items-center justify-between gap-2 px-1">
-      <p className="text-xs font-bold text-[var(--muted)]">
+      <p className="text-sm font-semibold text-[var(--muted)]">
         {tabCategories.length} {lang === "EN" ? "shown" : "dipapar"}
       </p>
       <button
         type="button"
         onClick={openCreateGroup}
-        className="inline-flex items-center gap-1.5 rounded-full bg-[var(--card)] px-3.5 py-1.5 text-xs font-bold text-[var(--text)] shadow-[var(--shadow-card)] transition hover:bg-[var(--surface-tint)] active:scale-95"
+        className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[var(--border)] px-4 text-sm font-semibold text-[var(--text)] transition hover:bg-[var(--surface-tint)] active:scale-95"
       >
-        <FolderTree size={13} />
-        <span>{lang === "EN" ? "New Group" : "Kumpulan Baru"}</span>
+        <FolderTree size={14} />
+        <span>{lang === "EN" ? "New group" : "Kumpulan baru"}</span>
       </button>
     </div>
   )
 
   // ─── Empty State ───
   const emptyState = (
-    <div className="flex flex-col items-center justify-center rounded-[1.25rem] bg-[var(--card)] px-6 py-12 text-center shadow-[var(--shadow-card)]">
-      <div className="grid h-14 w-14 place-items-center rounded-[1.1rem] bg-orange-500/10 text-orange-600 dark:text-orange-400">
+    <div className="flex flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-[var(--border)] px-6 py-12 text-center">
+      <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--muted)]">
         {searchQuery ? <Search size={24} /> : <Tag size={24} />}
-      </div>
-      <p className="mt-4 text-base font-black text-[var(--text)]">
+      </span>
+      <p className="mt-4 text-base font-bold text-[var(--text)]">
         {searchQuery ? (lang === "EN" ? "No matches found" : "Tiada padanan") : t.noCategories}
       </p>
-      <p className="mt-1.5 max-w-xs text-xs font-medium leading-relaxed text-[var(--muted)]">
+      <p className="mt-1.5 max-w-xs text-sm leading-relaxed text-[var(--muted)]">
         {searchQuery
           ? lang === "EN"
             ? "Try searching for another keyword or category name."
@@ -1389,7 +1348,7 @@ export default function CategoriesPage() {
       <button
         type="button"
         onClick={searchQuery ? () => setSearchQuery("") : openAddCategory}
-        className="mt-5 inline-flex items-center gap-2 rounded-full bg-[var(--text)] px-5 py-2.5 text-xs font-black text-[var(--bg)] transition active:scale-95"
+        className="mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-95"
       >
         {searchQuery ? (
           <>
@@ -1410,8 +1369,8 @@ export default function CategoriesPage() {
   const listBody = showDataSkeleton ? (
     <div className={listCardClass}>
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3 px-3.5 py-3">
-          <div className="h-11 w-11 shrink-0 animate-pulse rounded-[0.95rem] bg-[var(--surface-tint-strong)]" />
+        <div key={i} className="flex items-center gap-3 px-4 py-3.5">
+          <div className="h-11 w-11 shrink-0 animate-pulse rounded-full bg-[var(--surface-tint-strong)]" />
           <div className="flex-1 space-y-2">
             <div className="h-3.5 w-1/3 animate-pulse rounded bg-[var(--surface-tint-strong)]" />
             <div className="h-3 w-1/2 animate-pulse rounded bg-[var(--surface-tint-strong)]" />
@@ -1445,7 +1404,7 @@ export default function CategoriesPage() {
       <button
         type="button"
         onClick={openAddCategory}
-        className="flex w-full items-center justify-center gap-2 rounded-[1.25rem] border border-dashed border-[var(--divider)] p-3.5 text-sm font-bold text-[var(--muted)] transition hover:border-[var(--text-soft)] hover:text-[var(--text)] active:scale-[0.99]"
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-full border border-dashed border-[var(--border-strong)] text-sm font-semibold text-[var(--muted)] transition hover:text-[var(--text)] active:scale-[0.99]"
       >
         <Plus size={16} strokeWidth={2.5} />
         <span>{t.addCategory}</span>
@@ -1453,158 +1412,76 @@ export default function CategoriesPage() {
     </div>
   )
 
-  // ─── Desktop side panel: both kinds at a glance ───
-  const kindTile = (kind: "expense" | "income") => {
-    const isExp = kind === "expense"
-    const active = activeKindTab === kind
-    return (
-      <button
-        type="button"
-        onClick={() => setActiveKindTab(kind)}
-        className={cn(
-          "flex w-full flex-col rounded-[1.25rem] bg-[var(--card)] p-4 text-left shadow-[var(--shadow-card)] ring-2 transition active:scale-[0.99]",
-          active ? (isExp ? "ring-rose-500/40" : "ring-emerald-500/40") : "ring-transparent hover:ring-[var(--divider)]"
-        )}
-      >
-        <span className="flex items-center justify-between">
-          <span className="flex items-center gap-2 text-sm font-bold text-[var(--text)]">
-            <span
-              className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-[0.7rem]",
-                isExp ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-              )}
-            >
-              {isExp ? <TrendingDown size={16} /> : <TrendingUp size={16} />}
-            </span>
-            {isExp ? t.expense : t.income}
-          </span>
-          <span className="text-xs font-bold tabular-nums text-[var(--muted)]">
-            {isExp ? stats.expenseCount : stats.incomeCount} {lang === "EN" ? "categories" : "kategori"}
-          </span>
-        </span>
-        <span className="mt-3 text-xs font-semibold text-[var(--muted)]">{lang === "EN" ? "This month" : "Bulan ini"}</span>
-        <MoneyAmount value={isExp ? stats.monthSpend : stats.monthIncome} digits={2} size="md" className="font-black text-[var(--text)]" />
-      </button>
-    )
-  }
-
   if (!mounted) return null
+
+  const activeCount = activeKindTab === "expense" ? stats.expenseCount : stats.incomeCount
+  const money = kindMonthTotal.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   return (
     <>
-      <div className="pb-20 md:pb-8">
-        {/* ─── Mobile ─── */}
-        <div className="space-y-4 md:hidden">
-          <MobilePageHeader
-            title={t.categories_title}
-            fallbackHref={`/${sessionId}`}
-            action={
-              <MobileIconButton onClick={openAddCategory} label={t.addCategory}>
-                <Plus strokeWidth={2.5} />
-              </MobileIconButton>
+      <div className="pb-24 lg:pb-0">
+        <div className="lg:hidden">
+          <MobilePageHeader title={t.categories_title} fallbackHref={`/${sessionId}`} />
+        </div>
+        <DesktopPageHeader className="hidden lg:block" title={t.categories_title} homeHref={`/${sessionId}`} />
+
+        <DesktopPageBody className="mt-2 flex flex-col gap-4 px-1 lg:mt-0 lg:gap-5 lg:px-0">
+          <ModenHero
+            label={
+              <>
+                {activeKindTab === "expense" ? <TrendingDown size={16} /> : <TrendingUp size={16} />}
+                {activeKindTab === "expense"
+                  ? lang === "EN" ? "Spent this month" : "Belanja bulan ini"
+                  : lang === "EN" ? "Received this month" : "Pendapatan bulan ini"}
+              </>
             }
-          />
+            actions={
+              <ModenHeroIconButton onClick={openAddCategory} aria-label={t.addCategory}>
+                <Plus size={18} strokeWidth={2.4} />
+              </ModenHeroIconButton>
+            }
+            currency="RM"
+            amount={showDataSkeleton ? "—" : money}
+            amountSize="clamp(2rem, 9vw, 2.75rem)"
+            stats={[
+              { key: "cats", tone: "neutral", icon: <Tag size={15} strokeWidth={2.2} />, label: lang === "EN" ? "Categories" : "Kategori", value: String(activeCount) },
+              { key: "kw", tone: "in", icon: <Hash size={15} strokeWidth={2.2} />, label: "Keyword", value: String(stats.keywordTotal) },
+            ]}
+          >
+            <p className="text-[0.8125rem] font-medium leading-snug" style={{ color: "var(--hero-muted)" }}>{subtitle}</p>
+          </ModenHero>
 
-          {monthSummary}
-
-          <div className="space-y-3 px-1">
+          <div className="space-y-3">
             {kindTabs}
             {searchField}
           </div>
 
-          <section className="px-1">{listBody}</section>
-        </div>
-
-        {/* ─── Desktop ─── */}
-        <div className="hidden md:block">
-          <DesktopPageHeader
-            title={t.categories_title}
-            homeHref={`/${sessionId}`}
-            actions={
-              <DesktopPageAction onClick={openAddCategory}>
-                <Plus strokeWidth={2.5} />
-                {t.addCategory}
-              </DesktopPageAction>
-            }
-          />
-
-          <DesktopPageBody>
-            <p className="mb-5 text-sm font-medium text-[var(--muted)]">{subtitle}</p>
-
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-              <aside className="grid content-start gap-3 md:grid-cols-3 lg:order-2 lg:sticky lg:top-20 lg:grid-cols-1">
-                {kindTile("expense")}
-                {kindTile("income")}
-                <div className="flex flex-col rounded-[1.25rem] bg-[var(--card)] p-4 shadow-[var(--shadow-card)]">
-                  <span className="flex items-center gap-2 text-sm font-bold text-[var(--text)]">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-[0.7rem] bg-orange-500/10 text-orange-600 dark:text-orange-400">
-                      <Sparkles size={16} />
-                    </span>
-                    Auto-Matching
-                  </span>
-                  <span className="mt-3 flex items-baseline gap-1.5">
-                    <span className="text-xl font-black tabular-nums text-[var(--text)]">{stats.keywordTotal}</span>
-                    <span className="text-xs font-semibold text-[var(--muted)]">{lang === "EN" ? "keywords active" : "keyword aktif"}</span>
-                  </span>
-                  <p className="mt-1 text-xs font-medium leading-relaxed text-[var(--muted)]">
-                    {lang === "EN" ? "Instant classification for bot & receipts" : "Klasifikasi automatik dari bot WhatsApp & resit"}
-                  </p>
-                </div>
-              </aside>
-
-              <div className="min-w-0 space-y-4 lg:order-1">
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="w-full max-w-[18rem]">{kindTabs}</div>
-                  <div className="min-w-[16rem] flex-1">{searchField}</div>
-                </div>
-                {listBody}
-              </div>
-            </div>
-          </DesktopPageBody>
-        </div>
+          <section>{listBody}</section>
+        </DesktopPageBody>
       </div>
 
       {/* ─── Sheets & Modals ─── */}
 
       {/* 1. Category Detail / Edit Sheet */}
-      {mounted && modal
-        ? createPortal(
-            <div
-              className="fixed inset-0 z-50 flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-black/50 backdrop-blur-xs p-0 md:items-center"
-              onClick={requestModalClose}
-              onTouchMove={(e) => e.preventDefault()}
-            >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                data-swipe-sheet
-                {...sheetSwipe}
-                style={{ transform: "translateZ(0)" }}
-                data-prevent-pull-refresh="true"
-                className={cn(
-                  "app-sheet-panel app-sheet-panel--lg max-h-[92dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain rounded-t-[36px] md:rounded-3xl border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] will-change-transform md:max-h-[85vh]",
-                  modal === "categoryDetail" ? "md:max-w-lg" : "md:max-w-md"
-                )}
-              >
-                <AppSheetHeader title={sheetTitle} onClose={requestModalClose} />
-
-                <div className="space-y-4 px-4 py-3 text-[var(--text)] md:px-6 md:py-4">
+      <AppSheet open={Boolean(modal)} onClose={closeModal} id="categories-sheet" title={sheetTitle} size="md">
+        <div className="space-y-4 text-[var(--text)]">
                   {modal === "categoryDetail" && selectedCategory && (
                     <>
                       {/* Name Input */}
                       <div className="space-y-1.5">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--muted)] opacity-80">
+                        <label className="block text-xs font-semibold text-[var(--muted)]">
                           {t.categoryName}
                         </label>
                         <input
                           value={editCatName}
                           onChange={(e) => setEditCatName(e.target.value)}
-                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-base font-bold text-[var(--text)] focus:outline-none focus:bg-[var(--surface-tint-strong)] focus:border-[var(--border-strong)]"
+                          className="w-full rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-base font-bold text-[var(--text)] focus:outline-none focus:bg-[var(--surface-tint-strong)] focus:border-[var(--border-strong)]"
                           placeholder={t.categoryName}
                         />
                       </div>
 
                       {/* Kind Switcher (Expense / Income) */}
-                      <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-1.5">
+                      <div className="grid grid-cols-2 gap-2 rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface-tint)] p-1.5">
                         {(["expense", "income"] as const).map((kind) => {
                           const active = editCatKind === kind
                           const isExp = kind === "expense"
@@ -1614,11 +1491,11 @@ export default function CategoriesPage() {
                               type="button"
                               onClick={() => setEditCatKind(kind)}
                               className={cn(
-                                "flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-black transition-all active:scale-[0.98]",
+                                "flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all active:scale-[0.98]",
                                 active
                                   ? isExp
-                                    ? "bg-rose-500 text-white shadow-2xs"
-                                    : "bg-emerald-500 text-white shadow-2xs"
+                                    ? "bg-rose-500 text-white"
+                                    : "bg-emerald-500 text-white"
                                   : "text-[var(--muted)] hover:text-[var(--text)]"
                               )}
                             >
@@ -1631,7 +1508,7 @@ export default function CategoriesPage() {
 
                       {/* Icon Picker */}
                       <div>
-                        <label className="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-[var(--muted)] opacity-80">
+                        <label className="mb-1.5 block text-xs font-semibold text-[var(--muted)]">
                           {t.categoryIcon}
                         </label>
                         <CategoryIconPicker value={editCatIconName} kind={editCatKind} onChange={setEditCatIconName} compact />
@@ -1639,10 +1516,10 @@ export default function CategoriesPage() {
                       </div>
 
                       {/* Keyword Management Container */}
-                      <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-4 space-y-3">
+                      <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface-tint)]/40 p-4 space-y-3">
                         <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)]">Keywords Padanan</p>
-                          <span className="rounded-full bg-[var(--surface-tint-strong)] px-2.5 py-0.5 text-[10px] font-black tabular-nums text-[var(--text)]">
+                          <p className="text-xs font-bold text-[var(--muted)]">Keywords Padanan</p>
+                          <span className="rounded-full bg-[var(--surface-tint-strong)] px-2.5 py-0.5 text-xs font-bold tabular-nums text-[var(--text)]">
                             {selectedKeywords.length}
                           </span>
                         </div>
@@ -1654,23 +1531,14 @@ export default function CategoriesPage() {
                             onChange={(e) => handleKeywordPhraseChange(e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && addKeyword()}
                             placeholder={t.keywordPlaceholder}
-                            className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] px-3.5 py-2.5 text-sm font-semibold text-[var(--text)] focus:outline-none focus:border-[var(--border-strong)]"
+                            className="w-full rounded-full border border-[var(--border)] bg-[var(--card)] px-3.5 py-2.5 text-sm font-semibold text-[var(--text)] focus:outline-none focus:border-[var(--border-strong)]"
                           />
                           <div className="flex gap-2">
-                            <select
-                              value={kwMatchType}
-                              onChange={(e) => setKwMatchType(e.target.value)}
-                              className="min-w-0 flex-1 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5 text-xs font-bold text-[var(--text)] focus:outline-none"
-                            >
-                              <option value="contains">{t.matchContains}</option>
-                              <option value="exact">{t.matchExact}</option>
-                              <option value="startsWith">{t.matchStartsWith}</option>
-                            </select>
                             <button
                               type="button"
                               onClick={addKeyword}
                               disabled={saving || !kwPhrase.trim() || Boolean(kwPhraseError)}
-                              className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-[var(--text)] px-4 py-2.5 text-xs font-black text-[var(--bg)] shadow-xs transition-all active:scale-95 disabled:opacity-40"
+                              className="flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--text)] px-4 py-2.5 text-xs font-bold text-[var(--bg)] transition-all active:scale-95 disabled:opacity-40"
                             >
                               {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                               <span>{t.add}</span>
@@ -1678,7 +1546,13 @@ export default function CategoriesPage() {
                           </div>
                         </div>
 
-                        {kwPhraseError && <p className="text-xs font-bold text-rose-400">{kwPhraseError}</p>}
+                        {kwPhraseError ? (
+                          <p className="text-xs font-semibold text-rose-500">{kwPhraseError}</p>
+                        ) : (
+                          <p className="text-xs leading-relaxed text-[var(--muted)]">
+                            {lang === "EN" ? "The bot compares the first word of a message with the keyword. For example, “grab” matches “grab 15”." : "Bot membandingkan perkataan pertama mesej dengan keyword. Contoh: keyword “grab” padan mesej “grab 15”."}
+                          </p>
+                        )}
 
                         {/* Existing Keywords List */}
                         <div className="max-h-[160px] space-y-1.5 overflow-y-auto scrollbar-thin">
@@ -1686,13 +1560,11 @@ export default function CategoriesPage() {
                             selectedKeywords.map((kw) => (
                               <div
                                 key={kw.id}
-                                className="flex min-w-0 items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-2.5 shadow-2xs"
+                                className="flex min-w-0 items-center justify-between gap-2 rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)] p-2.5"
                               >
                                 <div className="min-w-0 flex-1">
                                   <p className="truncate text-xs font-bold text-[var(--text)]">{kw.keyword}</p>
-                                  <p className="text-[9px] font-semibold text-[var(--muted)]">
-                                    {getMatchTypeLabel(kw.match_type)}
-                                  </p>
+                                  
                                 </div>
                                 <div className="flex shrink-0 gap-1">
                                   <button
@@ -1725,13 +1597,13 @@ export default function CategoriesPage() {
                         <button
                           onClick={updateCategory}
                           disabled={saving || !editCatName.trim()}
-                          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-[var(--text)] text-sm font-black text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-40 shadow-sm"
+                          className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-[var(--text)] text-sm font-bold text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-40"
                         >
                           {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                           <span>{t.saveChanges}</span>
                         </button>
                         <button
-                          onClick={() => setModal("archiveCategory")}
+                          onClick={() => openDeleteCategory()}
                           disabled={selectedCategory?.system_code === "monthly_salary"}
                           title={
                             selectedCategory?.system_code === "monthly_salary"
@@ -1740,7 +1612,7 @@ export default function CategoriesPage() {
                                 : "Kategori sistem berkunci"
                               : undefined
                           }
-                          className="flex h-12 w-12 items-center justify-center rounded-2xl border border-rose-500/20 bg-rose-500/10 text-rose-500 transition active:scale-[0.98] disabled:opacity-30"
+                          className="flex h-12 w-12 items-center justify-center rounded-full border border-rose-500/20 bg-rose-500/10 text-rose-500 transition active:scale-[0.98] disabled:opacity-30"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -1752,7 +1624,7 @@ export default function CategoriesPage() {
                   {modal === "addCategory" && (
                     <>
                       <div className="space-y-1.5">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--muted)] opacity-80">
+                        <label className="block text-xs font-semibold text-[var(--muted)]">
                           {t.categoryName}
                         </label>
                         <input
@@ -1760,11 +1632,11 @@ export default function CategoriesPage() {
                           placeholder={t.exampleCategoryName}
                           value={newCatName}
                           onChange={(e) => setNewCatName(e.target.value)}
-                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-bold text-[var(--text)] focus:outline-none focus:bg-[var(--surface-tint-strong)] focus:border-[var(--border-strong)]"
+                          className="w-full rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-bold text-[var(--text)] focus:outline-none focus:bg-[var(--surface-tint-strong)] focus:border-[var(--border-strong)]"
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-1.5">
+                      <div className="grid grid-cols-2 gap-2 rounded-[1.25rem] border border-[var(--border)] bg-[var(--surface-tint)] p-1.5">
                         {(["expense", "income"] as const).map((kind) => {
                           const active = newCatKind === kind
                           const isExp = kind === "expense"
@@ -1774,11 +1646,11 @@ export default function CategoriesPage() {
                               type="button"
                               onClick={() => setNewCatKind(kind)}
                               className={cn(
-                                "flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-black transition-all active:scale-[0.98]",
+                                "flex items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold transition-all active:scale-[0.98]",
                                 active
                                   ? isExp
-                                    ? "bg-rose-500 text-white shadow-2xs"
-                                    : "bg-emerald-500 text-white shadow-2xs"
+                                    ? "bg-rose-500 text-white"
+                                    : "bg-emerald-500 text-white"
                                   : "text-[var(--muted)] hover:text-[var(--text)]"
                               )}
                             >
@@ -1790,7 +1662,7 @@ export default function CategoriesPage() {
                       </div>
 
                       <div>
-                        <label className="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-[var(--muted)] opacity-80">
+                        <label className="mb-1.5 block text-xs font-semibold text-[var(--muted)]">
                           {t.categoryIcon}
                         </label>
                         <CategoryIconPicker value={newCatIconName} kind={newCatKind} onChange={setNewCatIconName} compact />
@@ -1801,7 +1673,7 @@ export default function CategoriesPage() {
                         <button
                           onClick={addCategory}
                           disabled={!newCatName.trim() || saving}
-                          className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--text)] text-sm font-black text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-40 shadow-sm"
+                          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--text)] text-sm font-bold text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-40"
                         >
                           {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                           <span>{lang === "EN" ? "Create Category" : "Cipta Kategori"}</span>
@@ -1811,20 +1683,57 @@ export default function CategoriesPage() {
                   )}
 
                   {/* 3. Archive / Delete Confirm Sheet */}
-                  {modal === "archiveCategory" && (
+                  {modal === "archiveCategory" && selectedCategory && (
                     <>
-                      <p className="text-sm leading-relaxed text-[var(--muted)]">{t.archiveDesc}</p>
+                      {selectedCategory.is_default ? (
+                        <p className="rounded-[1.25rem] border border-amber-500/40 px-4 py-3 text-sm leading-relaxed text-[var(--text)]">
+                          {lang === "EN"
+                            ? "This is a default category. It receives transactions that have no category, so it cannot be deleted."
+                            : "Ini kategori lalai. Ia menerima transaksi tanpa kategori, jadi tidak boleh dipadam."}
+                        </p>
+                      ) : (
+                        <>
+                          <p className="text-sm leading-relaxed text-[var(--muted)]">
+                            {lang === "EN"
+                              ? `Delete “${selectedCategory.name}” and its ${selectedCategory.keywordCount} keywords. This cannot be undone.`
+                              : `Padam “${selectedCategory.name}” dan ${selectedCategory.keywordCount} keyword-nya. Ini tidak boleh dibatalkan.`}
+                          </p>
+                          {(selectedCategory.transactionCount || 0) > 0 && (
+                            <div className="space-y-1.5 rounded-[1.25rem] border border-[var(--border)] p-3.5">
+                              <label htmlFor="reassign-to" className="block text-sm font-semibold text-[var(--text)]">
+                                {lang === "EN"
+                                  ? `${selectedCategory.transactionCount} transactions use this category. Move them to:`
+                                  : `${selectedCategory.transactionCount} transaksi menggunakan kategori ini. Pindahkan ke:`}
+                              </label>
+                              <select
+                                id="reassign-to"
+                                value={reassignTo}
+                                onChange={(e) => setReassignTo(e.target.value ? Number(e.target.value) : "")}
+                                className="h-12 w-full rounded-full border border-[var(--border)] bg-transparent px-4 text-base text-[var(--text)] outline-none"
+                              >
+                                {categories
+                                  .filter((c) => c.kind === selectedCategory.kind && c.id !== selectedCategory.id)
+                                  .map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                      {c.name}
+                                    </option>
+                                  ))}
+                              </select>
+                            </div>
+                          )}
+                        </>
+                      )}
                       <div className="grid grid-cols-2 gap-3 pt-2">
                         <button
                           onClick={() => setModal("categoryDetail")}
-                          className="h-12 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-sm font-bold text-[var(--text)] transition active:scale-[0.98]"
+                          className="h-12 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] text-sm font-bold text-[var(--text)] transition active:scale-[0.98]"
                         >
                           {t.cancel}
                         </button>
                         <button
                           onClick={archiveCategory}
-                          disabled={saving}
-                          className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-rose-500 text-sm font-black text-white transition active:scale-[0.98] disabled:opacity-50"
+                          disabled={saving || selectedCategory.is_default || ((selectedCategory.transactionCount || 0) > 0 && !reassignTo)}
+                          className="flex h-12 items-center justify-center gap-2 rounded-full bg-rose-500 text-sm font-bold text-white transition active:scale-[0.98] disabled:opacity-50"
                         >
                           {saving ? <Loader2 size={16} className="animate-spin" /> : t.delete}
                         </button>
@@ -1836,7 +1745,7 @@ export default function CategoriesPage() {
                   {modal === "addKeyword" && (
                     <>
                       <div className="space-y-1.5">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--muted)] opacity-80">
+                        <label className="block text-xs font-semibold text-[var(--muted)]">
                           {t.phrase}
                         </label>
                         <input
@@ -1844,29 +1753,20 @@ export default function CategoriesPage() {
                           value={kwPhrase}
                           onChange={(e) => handleKeywordPhraseChange(e.target.value)}
                           placeholder="cth: grab"
-                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-bold text-[var(--text)] focus:outline-none focus:bg-[var(--surface-tint-strong)]"
+                          className="w-full rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-bold text-[var(--text)] focus:outline-none focus:bg-[var(--surface-tint-strong)]"
                         />
                         {kwPhraseError && <p className="text-xs font-bold text-rose-400">{kwPhraseError}</p>}
                       </div>
-                      <div className="space-y-1.5">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--muted)] opacity-80">
-                          {t.type}
-                        </label>
-                        <select
-                          value={kwMatchType}
-                          onChange={(e) => setKwMatchType(e.target.value)}
-                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-bold text-[var(--text)] focus:outline-none"
-                        >
-                          <option value="contains">{t.matchContains}</option>
-                          <option value="exact">{t.matchExact}</option>
-                          <option value="startsWith">{t.matchStartsWith}</option>
-                        </select>
-                      </div>
+                      <p className="text-xs leading-relaxed text-[var(--muted)]">
+                          {lang === "EN"
+                            ? "The bot compares the first word of a message with the keyword. For example, “grab” matches “grab 15”."
+                            : "Bot membandingkan perkataan pertama mesej dengan keyword. Contoh: keyword “grab” padan mesej “grab 15”."}
+                        </p>
                       <div className="-mx-4 border-t border-[var(--border)] bg-[var(--sheet-bg)] px-4 pt-3.5 md:-mx-6 md:px-6">
                         <button
                           onClick={addKeyword}
                           disabled={!kwPhrase.trim() || saving || Boolean(kwPhraseError)}
-                          className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--text)] text-sm font-black text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-40 shadow-sm"
+                          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--text)] text-sm font-bold text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-40"
                         >
                           {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                           <span>{lang === "EN" ? "Save Keyword" : "Simpan Keyword"}</span>
@@ -1879,36 +1779,27 @@ export default function CategoriesPage() {
                   {modal === "editKeyword" && (
                     <>
                       <div className="space-y-1.5">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--muted)] opacity-80">
+                        <label className="block text-xs font-semibold text-[var(--muted)]">
                           {t.phrase}
                         </label>
                         <input
                           type="text"
                           value={kwPhrase}
                           onChange={(e) => handleKeywordPhraseChange(e.target.value)}
-                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-bold text-[var(--text)] focus:outline-none focus:bg-[var(--surface-tint-strong)]"
+                          className="w-full rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-bold text-[var(--text)] focus:outline-none focus:bg-[var(--surface-tint-strong)]"
                         />
                         {kwPhraseError && <p className="text-xs font-bold text-rose-400">{kwPhraseError}</p>}
                       </div>
-                      <div className="space-y-1.5">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--muted)] opacity-80">
-                          {t.type}
-                        </label>
-                        <select
-                          value={kwMatchType}
-                          onChange={(e) => setKwMatchType(e.target.value)}
-                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-bold text-[var(--text)] focus:outline-none"
-                        >
-                          <option value="contains">{t.matchContains}</option>
-                          <option value="exact">{t.matchExact}</option>
-                          <option value="startsWith">{t.matchStartsWith}</option>
-                        </select>
-                      </div>
+                      <p className="text-xs leading-relaxed text-[var(--muted)]">
+                          {lang === "EN"
+                            ? "The bot compares the first word of a message with the keyword. For example, “grab” matches “grab 15”."
+                            : "Bot membandingkan perkataan pertama mesej dengan keyword. Contoh: keyword “grab” padan mesej “grab 15”."}
+                        </p>
                       <div className="-mx-4 border-t border-[var(--border)] bg-[var(--sheet-bg)] px-4 pt-3.5 md:-mx-6 md:px-6">
                         <button
                           onClick={saveEditKeyword}
                           disabled={!kwPhrase.trim() || saving || Boolean(kwPhraseError)}
-                          className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--text)] text-sm font-black text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-40 shadow-sm"
+                          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--text)] text-sm font-bold text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-40"
                         >
                           {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                           <span>{t.saveChanges}</span>
@@ -1924,56 +1815,34 @@ export default function CategoriesPage() {
                       <div className="grid grid-cols-2 gap-3 pt-2">
                         <button
                           onClick={() => setModal("categoryDetail")}
-                          className="h-12 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-sm font-bold text-[var(--text)] transition active:scale-[0.98]"
+                          className="h-12 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] text-sm font-bold text-[var(--text)] transition active:scale-[0.98]"
                         >
                           {t.cancel}
                         </button>
                         <button
                           onClick={confirmDeleteKeyword}
                           disabled={saving}
-                          className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-rose-500 text-sm font-black text-white transition active:scale-[0.98] disabled:opacity-50"
+                          className="flex h-12 items-center justify-center gap-2 rounded-full bg-rose-500 text-sm font-bold text-white transition active:scale-[0.98] disabled:opacity-50"
                         >
                           {saving ? <Loader2 size={16} className="animate-spin" /> : t.delete}
                         </button>
                       </div>
                     </>
                   )}
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
+        </div>
+      </AppSheet>
 
       {/* 2. Group Name Create / Rename Sheet */}
-      {mounted && groupModalOpen
-        ? createPortal(
-            <div
-              className="fixed inset-0 z-50 flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-black/50 backdrop-blur-xs p-0 md:items-center"
-              onClick={() => setGroupModalOpen(false)}
-              onTouchMove={(e) => e.preventDefault()}
-            >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                style={{ transform: "translateZ(0)" }}
-                data-prevent-pull-refresh="true"
-                className="app-sheet-panel app-sheet-panel--lg max-h-[90dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain rounded-t-[36px] md:rounded-3xl border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] will-change-transform md:max-w-md md:max-h-[85vh]"
-              >
-                <AppSheetHeader
-                  title={
-                    editingGroupId
-                      ? lang === "EN"
-                        ? "Rename Group"
-                        : "Tukar Nama Kumpulan"
-                      : lang === "EN"
-                        ? "Create Group"
-                        : "Buat Kumpulan"
-                  }
-                  onClose={requestGroupClose}
-                />
-                <div className="space-y-4 px-4 py-4 md:px-6 md:py-6">
+      <AppSheet
+        open={groupModalOpen}
+        onClose={() => setGroupModalOpen(false)}
+        id="group-name-sheet"
+        title={editingGroupId ? (lang === "EN" ? "Rename Group" : "Tukar Nama Kumpulan") : lang === "EN" ? "Create Group" : "Buat Kumpulan"}
+        size="sm"
+      >
+        <div className="space-y-4">
                   <div className="space-y-1.5">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--muted)] opacity-80">
+                    <label className="block text-xs font-semibold text-[var(--muted)]">
                       {lang === "EN" ? "Group Name" : "Nama Kumpulan"}
                     </label>
                     <input
@@ -1984,50 +1853,43 @@ export default function CategoriesPage() {
                       }}
                       autoFocus
                       placeholder={lang === "EN" ? "e.g. Bills & Utilities" : "cth. Bil & Utiliti"}
-                      className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-base font-bold text-[var(--text)] focus:outline-none focus:bg-[var(--surface-tint-strong)] focus:border-[var(--border-strong)]"
+                      className="w-full rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-base font-bold text-[var(--text)] focus:outline-none focus:bg-[var(--surface-tint-strong)] focus:border-[var(--border-strong)]"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3 pt-2">
                     <button
                       onClick={() => setGroupModalOpen(false)}
-                      className="h-12 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-sm font-bold text-[var(--text)] transition active:scale-[0.98]"
+                      className="h-12 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] text-sm font-bold text-[var(--text)] transition active:scale-[0.98]"
                     >
                       {lang === "EN" ? "Cancel" : "Batal"}
                     </button>
                     <button
                       onClick={saveGroup}
                       disabled={!groupName.trim()}
-                      className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--text)] text-sm font-black text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-40 shadow-sm"
+                      className="flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--text)] text-sm font-bold text-[var(--bg)] transition active:scale-[0.98] disabled:opacity-40"
                     >
                       {lang === "EN" ? (editingGroupId ? "Save" : "Create") : editingGroupId ? "Simpan" : "Cipta"}
                     </button>
                   </div>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
+        </div>
+      </AppSheet>
 
       {/* 3. Main Group Assignment Sheet */}
-      {mounted && mainGroupCategory
-        ? createPortal(
-            <div
-              className="fixed inset-0 z-50 flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-black/50 backdrop-blur-xs p-0 md:items-center"
-              onClick={requestMainGroupClose}
-              onTouchMove={(e) => e.preventDefault()}
-            >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                style={{ transform: "translateZ(0)" }}
-                data-prevent-pull-refresh="true"
-                className="app-sheet-panel app-sheet-panel--lg max-h-[90dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain rounded-t-[36px] md:rounded-3xl border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1rem+env(safe-area-inset-bottom,0px))] will-change-transform md:max-w-md md:max-h-[85vh]"
-              >
-                <AppSheetHeader title={lang === "EN" ? "Main Group" : "Kumpulan Utama"} onClose={requestMainGroupClose} />
-                <div className="space-y-4 px-4 py-4 text-[var(--text)] md:px-6 md:py-5">
+      <AppSheet
+        open={Boolean(mainGroupCategory)}
+        onClose={() => {
+          setMainGroupCategory(null)
+          setNewGroupNameForCat("")
+        }}
+        id="category-main-group-sheet"
+        title={lang === "EN" ? "Main Group" : "Kumpulan Utama"}
+        size="md"
+      >
+        {mainGroupCategory && (
+        <div className="space-y-4 text-[var(--text)]">
                   {/* Category Preview Card */}
-                  <div className="flex items-center gap-3.5 rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-3.5">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--card)] text-[var(--text)] shadow-xs">
+                  <div className="flex items-center gap-3.5 rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface-tint)]/40 p-3.5">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--text)]">
                       <CategoryIconGlyph
                         iconName={mainGroupCategory.icon_name}
                         categoryName={mainGroupCategory.name}
@@ -2043,7 +1905,7 @@ export default function CategoriesPage() {
                             mainGroupCategory.kind === "expense" ? "bg-rose-500" : "bg-emerald-500"
                           )}
                         />
-                        <p className="truncate text-sm font-black text-[var(--text)]">{mainGroupCategory.name}</p>
+                        <p className="truncate text-sm font-bold text-[var(--text)]">{mainGroupCategory.name}</p>
                       </div>
                       <p className="mt-0.5 truncate text-xs font-semibold text-[var(--muted)]">
                         {(() => {
@@ -2057,7 +1919,7 @@ export default function CategoriesPage() {
 
                   {/* Groups Picker */}
                   <div className="space-y-2">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--muted)] opacity-80">
+                    <label className="block text-xs font-semibold text-[var(--muted)]">
                       {lang === "EN" ? "Assign to Group" : "Pilih Kumpulan"}
                     </label>
 
@@ -2076,9 +1938,9 @@ export default function CategoriesPage() {
                               setMainGroupCategory(null)
                             }}
                             className={cn(
-                              "flex w-full items-center justify-between gap-3 rounded-2xl border p-3 text-left transition-all active:scale-[0.99]",
+                              "flex w-full items-center justify-between gap-3 rounded-[1.25rem] border p-3 text-left transition-all active:scale-[0.99]",
                               isStandalone
-                                ? "border-[var(--text)] bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold shadow-xs"
+                                ? "border-[var(--text)] bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold"
                                 : "border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[var(--surface-tint)]"
                             )}
                           >
@@ -2090,13 +1952,13 @@ export default function CategoriesPage() {
                                 <p className="truncate text-xs font-bold">
                                   {lang === "EN" ? "None (Standalone)" : "Tiada Kumpulan (Bebas)"}
                                 </p>
-                                <p className="text-[10px] font-semibold text-[var(--muted)]">
+                                <p className="text-xs font-semibold text-[var(--muted)]">
                                   {lang === "EN" ? "Show directly in category list" : "Papar terus dalam senarai"}
                                 </p>
                               </div>
                             </div>
                             {isStandalone && (
-                              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)]">
+                              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]">
                                 <Check size={12} strokeWidth={3} />
                               </div>
                             )}
@@ -2116,9 +1978,9 @@ export default function CategoriesPage() {
                               setMainGroupCategory(null)
                             }}
                             className={cn(
-                              "flex w-full items-center justify-between gap-3 rounded-2xl border p-3 text-left transition-all active:scale-[0.99]",
+                              "flex w-full items-center justify-between gap-3 rounded-[1.25rem] border p-3 text-left transition-all active:scale-[0.99]",
                               isAssigned
-                                ? "border-[var(--text)] bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold shadow-xs"
+                                ? "border-[var(--text)] bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold"
                                 : "border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:bg-[var(--surface-tint)]"
                             )}
                           >
@@ -2128,13 +1990,13 @@ export default function CategoriesPage() {
                               </div>
                               <div className="min-w-0">
                                 <p className="truncate text-xs font-bold">{g.name}</p>
-                                <p className="text-[10px] font-semibold text-[var(--muted)]">
+                                <p className="text-xs font-semibold text-[var(--muted)]">
                                   {g.members.length} {lang === "EN" ? "categories" : "kategori"}
                                 </p>
                               </div>
                             </div>
                             {isAssigned && (
-                              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--text)] text-[var(--bg)]">
+                              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]">
                                 <Check size={12} strokeWidth={3} />
                               </div>
                             )}
@@ -2145,8 +2007,8 @@ export default function CategoriesPage() {
                   </div>
 
                   {/* Create New Group Card */}
-                  <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3.5 space-y-2">
-                    <label className="block text-[10px] font-black uppercase tracking-widest text-[var(--muted)] opacity-80">
+                  <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3.5 space-y-2">
+                    <label className="block text-xs font-semibold text-[var(--muted)]">
                       {lang === "EN" ? "+ Create & Assign to New Group" : "+ Cipta & Masukkan ke Kumpulan Baru"}
                     </label>
                     <div className="flex gap-2">
@@ -2169,7 +2031,7 @@ export default function CategoriesPage() {
                           }
                         }}
                         placeholder={lang === "EN" ? "e.g. Bills & Utilities" : "cth. Bil & Utiliti"}
-                        className="min-w-0 flex-1 rounded-2xl border border-[var(--border)] bg-[var(--card)] px-3.5 py-2.5 text-xs font-bold text-[var(--text)] focus:outline-none focus:border-[var(--border-strong)]"
+                        className="min-w-0 flex-1 rounded-full border border-[var(--border)] bg-[var(--card)] px-3.5 py-2.5 text-xs font-bold text-[var(--text)] focus:outline-none focus:border-[var(--border-strong)]"
                       />
                       <button
                         type="button"
@@ -2188,19 +2050,16 @@ export default function CategoriesPage() {
                           setMainGroupCategory(null)
                         }}
                         disabled={!newGroupNameForCat.trim()}
-                        className="flex shrink-0 items-center gap-1 rounded-2xl bg-[var(--text)] px-4 py-2.5 text-xs font-black text-[var(--bg)] shadow-xs transition-all active:scale-95 disabled:opacity-40"
+                        className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--text)] px-4 py-2.5 text-xs font-bold text-[var(--bg)] transition-all active:scale-95 disabled:opacity-40"
                       >
                         <Plus size={14} />
                         <span>{lang === "EN" ? "Create" : "Cipta"}</span>
                       </button>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
-        : null}
+        </div>
+        )}
+      </AppSheet>
 
       {alertModal}
     </>

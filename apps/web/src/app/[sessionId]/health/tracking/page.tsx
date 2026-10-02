@@ -1432,28 +1432,11 @@ export default function HealthTrackingPage() {
 
       {/* ── MOBILE WORKSPACE (ATHLETIC RUN TRACKER & RUN HISTORY) ── */}
       <div className="md:hidden flex flex-col flex-1">
-        <MobilePageHeader
-          title="RunTracker"
-          fallbackHref={`/${sessionId}/health`}
-          action={
-            <div className="flex items-center gap-1.5">
-              {activeTab === "tracker" && (
-                <button
-                  type="button"
-                  onClick={() => setViewMode(viewMode === "cockpit" ? "map" : "cockpit")}
-                  className="flex h-9 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-3 text-xs font-bold text-[var(--text)]"
-                >
-                  {viewMode === "cockpit" ? <Route size={14} /> : <Gauge size={14} />}
-                  <span>{viewMode === "cockpit" ? (isBm ? "HUD Peta" : "Map HUD") : (isBm ? "Metrik" : "Metrics")}</span>
-                </button>
-              )}
-            </div>
-          }
-        />
+        <MobilePageHeader title="RunTracker" fallbackHref={`/${sessionId}/health`} />
 
       {/* ── COUNTDOWN OVERLAY ── */}
       {trackingState === "countdown" && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--overlay)] p-4 backdrop-blur-2xl">
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--overlay)] p-4">
           <span className="text-xs font-bold uppercase tracking-[0.3em] text-[var(--muted)]">
             {isBm ? "BERSEDIA" : "GET READY"}
           </span>
@@ -1468,6 +1451,18 @@ export default function HealthTrackingPage() {
 
       {/* ── MAIN CONTENT: FULL-WIDE ON MOBILE (px-1) MATCHING HEALTH DASHBOARD ── */}
       <main className="flex-1 pb-24">
+        {activeTab === "tracker" && (
+          <div className="px-3 pb-1 pt-2">
+            <button
+              type="button"
+              onClick={() => setViewMode(viewMode === "cockpit" ? "map" : "cockpit")}
+              className="ml-auto flex h-11 w-fit items-center justify-center gap-2 rounded-full border border-[var(--border)] px-5 text-sm font-semibold text-[var(--text)] transition active:scale-[0.98]"
+            >
+              {viewMode === "cockpit" ? <Route size={15} /> : <Gauge size={15} />}
+              <span>{viewMode === "cockpit" ? (isBm ? "Paparan peta" : "Map view") : (isBm ? "Paparan metrik" : "Metrics view")}</span>
+            </button>
+          </div>
+        )}
         {/* TOP STATUS RIBBON */}
         <div className="mx-auto w-full max-w-5xl px-1 pt-1 md:px-6 md:pt-4">
           <div className="flex items-center justify-between gap-2 border-b border-[var(--divider)] pb-3">
@@ -2245,7 +2240,7 @@ export default function HealthTrackingPage() {
 
       {/* ── WORKOUT COMPLETED MODAL (NIKE / STRAVA SHARE CARD) ── */}
       {completedSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-3 backdrop-blur-md md:p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-3 md:p-4">
           <div className="modern-card relative w-full max-w-md overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl md:rounded-[var(--radius-3xl)] md:p-6">
             <div className="flex flex-col items-center text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] text-[var(--text)] shadow-xs md:h-16 md:w-16">

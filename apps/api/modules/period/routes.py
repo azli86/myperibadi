@@ -1,4 +1,4 @@
-"""My Cycle HTTP routes: record periods and predict the next one.
+"""Period Tracker HTTP routes: periods, daily logs, preferences and export.
 
 Every route answers 404 until the user switches the feature on in Settings,
 so the calendar stays invisible to anyone who has not asked for it.
@@ -6,26 +6,28 @@ so the calendar stays invisible to anyone who has not asked for it.
 
 from __future__ import annotations
 
-from datetime import date, timedelta
-from statistics import mean
+import csv
+import io
+from datetime import date
 from typing import Any, Callable, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import database
 import models
+from modules.period import service
+from modules.period.service import (  # re-exported for older imports
+    MAX_PERIOD_DAYS,
+    close_open_cycle_before,
+    compute_summary,
+    date_problem,
+)
 from time_utils import current_business_date
 
-DEFAULT_CYCLE_LENGTH = 28
-DEFAULT_PERIOD_LENGTH = 5
-MAX_PERIOD_DAYS = 15
-# Gaps outside this range are a missed record, not a cycle; leave them out.
-MIN_CYCLE_DAYS = 15
-MAX_CYCLE_DAYS = 60
-RECENT_CYCLES = 6
+__all__ = ["create_period_router", "MAX_PERIOD_DAYS", "close_open_cycle_before", "compute_summary", "date_problem"]
 
 
 class PeriodCycleIn(BaseModel):
@@ -41,124 +43,13 @@ class PeriodCycleUpdate(BaseModel):
     notes: Optional[str] = Field(default=None, max_length=500)
 
 
-def _serialize(cycle: models.PeriodCycle) -> dict[str, Any]:
-    length = (cycle.end_date - cycle.start_date).days + 1 if cycle.end_date else None
-    return {
-        "id": cycle.id,
-        "start_date": cycle.start_date.isoformat(),
-        "end_date": cycle.end_date.isoformat() if cycle.end_date else None,
-        "period_length": length,
-        "notes": cycle.notes,
-    }
-
-
-def compute_summary(cycles: list[models.PeriodCycle], today: date) -> dict[str, Any]:
-    """Averages and predictions from the recorded periods, oldest first.
-
-    The cycle length is the gap between consecutive starts; the period length
-    is start to end inclusive. Ovulation is taken as 14 days before the next
-    period, with the fertile window the five days before it and the day after.
-    These are estimates only."""
-    ordered = sorted(cycles, key=lambda c: c.start_date)
-    gaps = [
-        (b.start_date - a.start_date).days
-        for a, b in zip(ordered, ordered[1:])
-        if MIN_CYCLE_DAYS <= (b.start_date - a.start_date).days <= MAX_CYCLE_DAYS
-    ][-RECENT_CYCLES:]
-    lengths = [(c.end_date - c.start_date).days + 1 for c in ordered if c.end_date][-RECENT_CYCLES:]
-
-    avg_cycle = round(mean(gaps)) if gaps else DEFAULT_CYCLE_LENGTH
-    avg_period = round(mean(lengths)) if lengths else DEFAULT_PERIOD_LENGTH
-    summary: dict[str, Any] = {
-        "avg_cycle_length": avg_cycle,
-        "avg_period_length": avg_period,
-        "cycle_length_known": bool(gaps),
-        "cycles_counted": len(gaps),
-        "regular": (max(gaps) - min(gaps) <= 7) if len(gaps) >= 2 else None,
-        "status": "no_data",
-        "cycle_day": None,
-        "period_day": None,
-        "days_until_next": None,
-        "days_late": None,
-        "next_start": None,
-        "next_end": None,
-        "ovulation_date": None,
-        "fertile_start": None,
-        "fertile_end": None,
-        "upcoming": [],
-    }
-    if not ordered:
-        return summary
-
-    last = ordered[-1]
-    next_start = last.start_date + timedelta(days=avg_cycle)
-    summary["cycle_day"] = (today - last.start_date).days + 1
-
-    ongoing = last.end_date is None and (today - last.start_date).days < MAX_PERIOD_DAYS
-    in_recorded = last.end_date is not None and last.start_date <= today <= last.end_date
-    if ongoing or in_recorded:
-        summary["status"] = "period"
-        summary["period_day"] = (today - last.start_date).days + 1
-    elif today >= next_start:
-        summary["status"] = "late"
-        summary["days_late"] = (today - next_start).days
-    else:
-        summary["status"] = "waiting"
-        summary["days_until_next"] = (next_start - today).days
-
-    # A late period is expected any day now: predict from today, not the past.
-    # The fertile window stays where it was predicted, so it does not drift.
-    anchor = max(next_start, today) if summary["status"] == "late" else next_start
-    ovulation = next_start - timedelta(days=14)
-    summary.update(
-        next_start=anchor.isoformat(),
-        next_end=(anchor + timedelta(days=avg_period - 1)).isoformat(),
-        ovulation_date=ovulation.isoformat(),
-        fertile_start=(ovulation - timedelta(days=5)).isoformat(),
-        fertile_end=(ovulation + timedelta(days=1)).isoformat(),
-    )
-    # The next few periods and fertile windows, for the calendar.
-    upcoming = []
-    for k in range(3):
-        start = anchor + timedelta(days=avg_cycle * k)
-        ov = start - timedelta(days=14)
-        upcoming.append(
-            {
-                "start": start.isoformat(),
-                "end": (start + timedelta(days=avg_period - 1)).isoformat(),
-                "ovulation": ov.isoformat(),
-                "fertile_start": (ov - timedelta(days=5)).isoformat(),
-                "fertile_end": (ov + timedelta(days=1)).isoformat(),
-            }
-        )
-    summary["upcoming"] = upcoming
-    return summary
-
-
-def date_problem(start: date, end: Optional[date], others: list[models.PeriodCycle], today: date) -> Optional[str]:
-    """Why these dates cannot be saved, or None when they can. Shared by the
-    API and the bot commands, so both refuse the same things."""
-    if start > today:
-        return "The start date cannot be in the future."
-    if end is not None:
-        if end < start:
-            return "The end date cannot be before the start date."
-        if (end - start).days + 1 > MAX_PERIOD_DAYS:
-            return f"A period cannot be longer than {MAX_PERIOD_DAYS} days."
-    new_end = end or start
-    for other in others:
-        other_end = other.end_date or other.start_date
-        if start <= other_end and other.start_date <= new_end:
-            return "These dates overlap another recorded period."
-    return None
-
-
-def close_open_cycle_before(cycles: list[models.PeriodCycle], start: date) -> None:
-    """Starting a new period closes one still left open, the day before."""
-    open_cycle = next((c for c in cycles if c.end_date is None), None)
-    if open_cycle and open_cycle.start_date < start:
-        closing = min(start - timedelta(days=1), open_cycle.start_date + timedelta(days=MAX_PERIOD_DAYS - 1))
-        open_cycle.end_date = max(closing, open_cycle.start_date)
+class PeriodDayIn(BaseModel):
+    flow: Optional[str] = None
+    symptoms: Optional[list[str]] = None
+    mood: Optional[str] = None
+    temperature: Optional[float] = None
+    ovulation_test: Optional[str] = None
+    notes: Optional[str] = Field(default=None, max_length=500)
 
 
 def create_period_router(*, get_current_user: Callable[..., Any]) -> APIRouter:
@@ -173,29 +64,13 @@ def create_period_router(*, get_current_user: Callable[..., Any]) -> APIRouter:
         if problem:
             raise HTTPException(status_code=400, detail=problem)
 
-    async def own_cycles(db: AsyncSession, user_id: str) -> list[models.PeriodCycle]:
-        result = await db.execute(
-            select(models.PeriodCycle)
-            .where(models.PeriodCycle.user_id == user_id)
-            .order_by(models.PeriodCycle.start_date.desc())
-        )
-        return list(result.scalars().all())
-
-    async def overview(db: AsyncSession, user: models.User) -> dict[str, Any]:
-        cycles = await own_cycles(db, user.id)
-        return {
-            "cycles": [_serialize(c) for c in cycles],
-            "summary": compute_summary(cycles, current_business_date()),
-            "today": current_business_date().isoformat(),
-        }
-
     @router.get("")
     async def get_period_overview(
         db: AsyncSession = Depends(database.get_db),
         current_user: models.User = Depends(get_current_user),
     ):
         require_enabled(current_user)
-        return await overview(db, current_user)
+        return await service.build_overview(db, current_user)
 
     @router.post("/cycles")
     async def create_cycle(
@@ -205,18 +80,21 @@ def create_period_router(*, get_current_user: Callable[..., Any]) -> APIRouter:
     ):
         require_enabled(current_user)
         today = current_business_date()
-        others = await own_cycles(db, current_user.id)
+        others = await service.own_cycles(db, current_user.id)
+        if service.running_period(others, body.start_date):
+            raise HTTPException(status_code=400, detail="A period is already open. End it first, or edit it.")
         close_open_cycle_before(others, body.start_date)
         validate(body.start_date, body.end_date, others, today)
-        cycle = models.PeriodCycle(
-            user_id=current_user.id,
-            start_date=body.start_date,
-            end_date=body.end_date,
-            notes=(body.notes or "").strip() or None,
+        db.add(
+            models.PeriodCycle(
+                user_id=current_user.id,
+                start_date=body.start_date,
+                end_date=body.end_date,
+                notes=(body.notes or "").strip() or None,
+            )
         )
-        db.add(cycle)
         await db.commit()
-        return await overview(db, current_user)
+        return await service.build_overview(db, current_user)
 
     @router.patch("/cycles/{cycle_id}")
     async def update_cycle(
@@ -226,7 +104,7 @@ def create_period_router(*, get_current_user: Callable[..., Any]) -> APIRouter:
         current_user: models.User = Depends(get_current_user),
     ):
         require_enabled(current_user)
-        cycles = await own_cycles(db, current_user.id)
+        cycles = await service.own_cycles(db, current_user.id)
         cycle = next((c for c in cycles if c.id == cycle_id), None)
         if not cycle:
             raise HTTPException(status_code=404, detail="Not found")
@@ -238,7 +116,7 @@ def create_period_router(*, get_current_user: Callable[..., Any]) -> APIRouter:
         if body.notes is not None:
             cycle.notes = body.notes.strip() or None
         await db.commit()
-        return await overview(db, current_user)
+        return await service.build_overview(db, current_user)
 
     @router.delete("/cycles/{cycle_id}")
     async def delete_cycle(
@@ -247,12 +125,96 @@ def create_period_router(*, get_current_user: Callable[..., Any]) -> APIRouter:
         current_user: models.User = Depends(get_current_user),
     ):
         require_enabled(current_user)
-        cycles = await own_cycles(db, current_user.id)
+        cycles = await service.own_cycles(db, current_user.id)
         cycle = next((c for c in cycles if c.id == cycle_id), None)
         if not cycle:
             raise HTTPException(status_code=404, detail="Not found")
         await db.delete(cycle)
         await db.commit()
-        return await overview(db, current_user)
+        return await service.build_overview(db, current_user)
+
+    @router.put("/days/{day}")
+    async def save_day_log(
+        day: date,
+        body: PeriodDayIn,
+        db: AsyncSession = Depends(database.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        require_enabled(current_user)
+        if day > current_business_date():
+            raise HTTPException(status_code=400, detail="A day in the future cannot be logged.")
+        fields = body.model_dump(exclude_unset=True)
+        if "temperature" in fields and fields["temperature"] is not None and not 34 <= float(fields["temperature"]) <= 42:
+            raise HTTPException(status_code=400, detail="The temperature must be between 34 and 42 °C.")
+        await service.upsert_day_log(db, current_user.id, day, fields)
+        await db.commit()
+        return await service.build_overview(db, current_user)
+
+    @router.delete("/days/{day}")
+    async def delete_day_log(
+        day: date,
+        db: AsyncSession = Depends(database.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        require_enabled(current_user)
+        log = await service.log_for_day(db, current_user.id, day)
+        if log:
+            await db.delete(log)
+            await db.commit()
+        return await service.build_overview(db, current_user)
+
+    @router.put("/prefs")
+    async def save_prefs(
+        patch: dict[str, Any] = Body(...),
+        db: AsyncSession = Depends(database.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        require_enabled(current_user)
+        prefs = await service.load_prefs(db, current_user.id)
+        try:
+            prefs = service.merge_prefs(prefs, patch)
+        except service.PrefsError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        except (TypeError, ValueError, IndexError, KeyError):
+            raise HTTPException(status_code=400, detail="These settings are not valid.")
+        if prefs.get("spend_category_id"):
+            category = await db.get(models.Category, int(prefs["spend_category_id"]))
+            if not category or category.household_id != current_user.default_household_id:
+                raise HTTPException(status_code=400, detail="That category was not found.")
+        await service.save_json_setting(db, current_user.id, service.PREFS_KEY, prefs)
+        await db.commit()
+        return await service.build_overview(db, current_user)
+
+    @router.get("/export.csv")
+    async def export_csv(
+        db: AsyncSession = Depends(database.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        """Every period and daily log, for the user's own records or a doctor."""
+        require_enabled(current_user)
+        cycles = sorted(await service.own_cycles(db, current_user.id), key=lambda c: c.start_date)
+        logs = await service.own_logs(db, current_user.id, date(1970, 1, 1))
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(["Periods"])
+        writer.writerow(["start_date", "end_date", "period_days", "cycle_days", "notes"])
+        for i, c in enumerate(cycles):
+            gap = (c.start_date - cycles[i - 1].start_date).days if i else ""
+            length = (c.end_date - c.start_date).days + 1 if c.end_date else ""
+            writer.writerow([c.start_date.isoformat(), c.end_date.isoformat() if c.end_date else "", length, gap, c.notes or ""])
+        writer.writerow([])
+        writer.writerow(["Daily logs"])
+        writer.writerow(["date", "flow", "symptoms", "mood", "temperature_c", "ovulation_test", "notes"])
+        for log in logs:
+            row = service.serialize_log(log)
+            writer.writerow([
+                row["date"], row["flow"] or "", " ".join(row["symptoms"]), row["mood"] or "",
+                row["temperature"] if row["temperature"] is not None else "", row["ovulation_test"] or "", row["notes"] or "",
+            ])
+        return Response(
+            content="﻿" + buf.getvalue(),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="period-tracker-{current_business_date().isoformat()}.csv"'},
+        )
 
     return router

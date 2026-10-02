@@ -1285,6 +1285,29 @@ async def start_health_reminder_task():
 
 
 @app.on_event("startup")
+async def start_period_reminder_task():
+    """Background task: Period Tracker reminders, to the user's own chats only."""
+    async def _period_loop():
+        from modules.period import reminder as _period_reminder
+        print("[period-reminder] background loop started")
+        while True:
+            await asyncio.sleep(600)
+            try:
+                async with database.SessionLocal() as db:
+                    stats = await _period_reminder.run_period_reminder_cycle(
+                        db,
+                        send_telegram=_send_telegram_message,
+                        send_whatsapp=_send_worker_health_wa,
+                    )
+                    if stats.get("sent"):
+                        print(f"[period-reminder] cycle: {stats}")
+            except Exception as exc:
+                print(f"[period-reminder] error: {exc}")
+
+    asyncio.create_task(_period_loop())
+
+
+@app.on_event("startup")
 async def start_account_verification_email_task():
     """Background task: email a verification request when an account is deactivated.
     Sends at most once per account (tracked by verification_email_sent_at).
@@ -11121,12 +11144,18 @@ async def add_category_keyword(cat_id: int, kw_in: schemas.KeywordCreate, db: As
     )
 
 @app.delete("/categories/{cat_id}")
-async def delete_category(cat_id: int, db: AsyncSession = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
+async def delete_category(
+    cat_id: int,
+    reassign_to: int | None = Query(default=None),
+    db: AsyncSession = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user),
+):
     return await _module_delete_category_route(
         cat_id=cat_id,
         db=db,
         current_user=current_user,
         get_mutable_category=_get_mutable_category,
+        reassign_to=reassign_to,
     )
 
 @app.delete("/keywords/{kw_id}")
@@ -14142,6 +14171,8 @@ from modules.vehicles import create_vehicles_router
 app.include_router(create_vehicles_router(get_current_user=get_current_user))
 from modules.period import create_period_router
 app.include_router(create_period_router(get_current_user=get_current_user))
+from modules.shopping import create_shopping_router
+app.include_router(create_shopping_router(get_current_user=get_current_user))
 
 from modules.warranties import create_warranties_router
 app.include_router(create_warranties_router(get_current_user=get_current_user))
@@ -14247,19 +14278,6 @@ async def parse_bank_statement_ai(
                     raise HTTPException(status_code=401, detail="PDF_PASSWORD_REQUIRED") from exc
                 raise
             if not transactions:
-                # Dump raw text for debugging when table extraction fails.
-                import io as _io, pdfplumber
-                try:
-                    pdf = pdfplumber.open(_io.BytesIO(payload), password=password or "")
-                    with pdf:
-                        for pi, page in enumerate(pdf.pages[:3]):
-                            words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
-                            lines: dict[int, list[str]] = {}
-                            for w in words:
-                                y = round(float(w["top"]) / 3) * 3
-                                lines.setdefault(y, []).append(str(w["text"]))
-                except Exception:
-                    pass
                 raise HTTPException(status_code=422, detail="Jadual transaksi tidak dapat dikenal pasti")
             return {"transactions": transactions}
 
