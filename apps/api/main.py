@@ -982,6 +982,9 @@ async def ensure_database_schema():
                 text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS last_payment_date DATE NULL")
             )
             await conn.execute(
+                text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS due_reset_at DATE NULL")
+            )
+            await conn.execute(
                 text("CREATE UNIQUE INDEX IF NOT EXISTS uq_wallets_owner_name ON wallets (owner_user_id, LOWER(name)) WHERE owner_user_id IS NOT NULL")
             )
             await conn.execute(
@@ -11512,6 +11515,9 @@ async def reset_subscription_due(
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found.")
     sub.last_payment_date = None
+    # The payments already made no longer count: without this the transactions kept
+    # supplying the last payment date and the reset changed nothing.
+    sub.due_reset_at = current_business_date()
     await db.commit()
     return {"ok": True}
 

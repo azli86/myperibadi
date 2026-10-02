@@ -13,6 +13,7 @@ import models
 import storage_service
 from modules.events import queries, storage
 from modules.events.schemas import EventCreate, EventUpdate
+from time_utils import current_business_date
 
 
 def _parse_date(value: Optional[str], field: str = "date") -> Optional[date]:
@@ -39,13 +40,19 @@ def _num(value: Any) -> Optional[float]:
 
 
 def compute_event_status(row: models.Event, *, today: Optional[date] = None) -> str:
-    if row.status and row.status not in ("", "upcoming"):
-        return row.status
-    ref = today or date.today()
+    """upcoming (not begun), ongoing (today is inside the window) or ended.
+
+    It used to look at the end date alone, so a trip that had started but not finished still
+    read "upcoming", and it used the UTC date. A status the user set to "cancelled" stays."""
+    if row.status == "cancelled":
+        return "cancelled"
+    ref = today or current_business_date()
     if row.end_date and row.end_date < ref:
         return "ended"
-    if row.end_date and row.end_date == ref:
-        return "today"
+    if row.start_date and row.start_date > ref:
+        return "upcoming"
+    if row.start_date or row.end_date:
+        return "ongoing"
     return "upcoming"
 
 
@@ -153,7 +160,10 @@ async def create_event(
         raise HTTPException(status_code=400, detail="Event name is required.")
     end_date = _parse_date(payload.end_date, "end_date")
     start_date = _parse_date(payload.start_date, "start_date")
-    if start_date and end_date and start_date > end_date:
+    if not start_date or not end_date:
+        # Membership is the date window; without both dates an event claims nothing.
+        raise HTTPException(status_code=400, detail="Start date and end date are required.")
+    if start_date > end_date:
         raise HTTPException(status_code=400, detail="Start date cannot be after end date.")
     if payload.budget is not None and float(payload.budget) < 0:
         raise HTTPException(status_code=400, detail="Budget cannot be negative.")
@@ -232,7 +242,10 @@ async def update_event(
         row.wallet_id = wallet_id
 
     if "status" in data:
-        row.status = (payload.status or "upcoming").strip() or "upcoming"
+        status = (payload.status or "upcoming").strip() or "upcoming"
+        if status not in ("upcoming", "cancelled"):
+            raise HTTPException(status_code=400, detail="Status must be 'upcoming' or 'cancelled'.")
+        row.status = status
 
     row.updated_at = datetime.utcnow()
     await db.commit()

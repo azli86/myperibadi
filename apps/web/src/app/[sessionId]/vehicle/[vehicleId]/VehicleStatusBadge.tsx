@@ -21,6 +21,8 @@ const STATUS_TONE: Record<MaintenanceStatus, string> = {
   "NOT SET": "ring-1 ring-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]",
 }
 
+const LABEL: Record<MaintenanceStatus, string> = { GOOD: "Good", "DUE SOON": "Due soon", OVERDUE: "Overdue", "NOT SET": "Not set" }
+
 export function VehicleStatusBadge({
   status,
   className,
@@ -31,12 +33,12 @@ export function VehicleStatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[0.6rem] font-black uppercase tracking-[0.08em]",
+        "inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[0.6875rem] font-semibold",
         STATUS_TONE[status] || STATUS_CLASS[status],
         className
       )}
     >
-      {status}
+      {LABEL[status] || status}
     </span>
   )
 }

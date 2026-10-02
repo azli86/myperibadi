@@ -12,16 +12,31 @@ import schemas
 import whatsapp_service
 
 
-async def _last_payment_date(db: AsyncSession, user_id: str, subscription_id: int, column_date: Optional[date] = None) -> Optional[date]:
-    txn_max = await db.scalar(
-        select(func.max(models.Transaction.txn_date)).where(
-            models.Transaction.user_id == user_id,
-            models.Transaction.subscription_id == subscription_id,
-        )
+async def _last_payment_date(db: AsyncSession, user_id: str, sub: models.Subscription) -> Optional[date]:
+    """The latest payment that still counts: a transaction after the last reset, else the stored date."""
+    stmt = select(func.max(models.Transaction.txn_date)).where(
+        models.Transaction.user_id == user_id,
+        models.Transaction.subscription_id == sub.id,
     )
+    if sub.due_reset_at:
+        stmt = stmt.where(models.Transaction.txn_date > sub.due_reset_at)
+    txn_max = await db.scalar(stmt)
     if txn_max:
         return txn_max
-    return column_date
+    column = sub.last_payment_date
+    if column and sub.due_reset_at and column <= sub.due_reset_at:
+        return None
+    return column
+
+
+async def _validate_category(db: AsyncSession, current_user: models.User, household_id: Optional[int], category_id: Optional[int]) -> None:
+    """A category must be one of this household's own (it was accepted from anyone)."""
+    if category_id is None:
+        return
+    cat = await db.get(models.Category, int(category_id))
+    if cat is None or cat.household_id != household_id or cat.is_internal:
+        raise HTTPException(status_code=400, detail="Category not found.")
+
 
 async def get_subscriptions_route(
     *,
@@ -38,7 +53,7 @@ async def get_subscriptions_route(
     rows = list(result.scalars().all())
     response = []
     for c in rows:
-        paid = await _last_payment_date(db, current_user.id, c.id, c.last_payment_date)
+        paid = await _last_payment_date(db, current_user.id, c)
         response.append(_serialize_subscription(c, paid))
     return response
 
@@ -78,6 +93,7 @@ async def create_subscription_route(
     if due_day < 1 or due_day > 31:
         raise HTTPException(status_code=400, detail="due_day_of_month must be between 1 and 31.")
     household_id = await ensure_current_user_household(db, current_user)
+    await _validate_category(db, current_user, household_id, payload.category_id)
     key = whatsapp_service.counterparty_key(name)
     existing = await db.execute(
         select(models.Subscription).where(models.Subscription.user_id == current_user.id, models.Subscription.key == key)
@@ -99,7 +115,7 @@ async def create_subscription_route(
     db.add(c)
     await db.commit()
     await db.refresh(c)
-    return _serialize_subscription(c, c.last_payment_date)
+    return _serialize_subscription(c, await _last_payment_date(db, current_user.id, c))
 
 
 async def update_subscription_route(
@@ -117,7 +133,7 @@ async def update_subscription_route(
         raise HTTPException(status_code=404, detail="Subscription not found.")
     updates = payload.model_dump(exclude_unset=True)
     if not updates:
-        return _serialize_subscription(c)
+        return _serialize_subscription(c, await _last_payment_date(db, current_user.id, c))
     if "name" in updates:
         name = str(payload.name or "").strip()
         if not name:
@@ -152,12 +168,15 @@ async def update_subscription_route(
     if "notes" in updates:
         c.notes = (payload.notes or "").strip() or None
     if "category_id" in updates:
+        await _validate_category(db, current_user, c.household_id, payload.category_id)
         c.category_id = payload.category_id
     if "status" in updates and payload.status:
+        if payload.status not in ("active", "settled"):
+            raise HTTPException(status_code=400, detail="Status must be 'active' or 'settled'.")
         c.status = payload.status
     await db.commit()
     await db.refresh(c)
-    return _serialize_subscription(c, c.last_payment_date)
+    return _serialize_subscription(c, await _last_payment_date(db, current_user.id, c))
 
 
 async def get_subscription_route(
@@ -172,13 +191,7 @@ async def get_subscription_route(
     c = result.scalars().first()
     if not c:
         raise HTTPException(status_code=404, detail="Subscription not found.")
-    paid = await db.scalar(
-        select(func.max(models.Transaction.txn_date)).where(
-            models.Transaction.user_id == current_user.id,
-            models.Transaction.subscription_id == c.id,
-        )
-    )
-    return _serialize_subscription(c, paid)
+    return _serialize_subscription(c, await _last_payment_date(db, current_user.id, c))
 
 
 async def delete_subscription_route(

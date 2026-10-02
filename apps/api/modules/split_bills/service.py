@@ -9,6 +9,8 @@ import json
 
 from fastapi import HTTPException
 from sqlalchemy import select
+
+from time_utils import current_business_date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
@@ -103,7 +105,9 @@ def _parse_time(value: Optional[str]) -> Optional[time]:
 
 
 def compute_split_status(row: models.SplitBill) -> str:
-    if row.status in ("completed", "cancelled"):
+    if row.status == "cancelled":
+        return row.status
+    if row.status == "completed" and _dec(row.balance_amount) <= Decimal("0.011"):
         return row.status
     balance = _dec(row.balance_amount)
     collect = _dec(row.collect_amount)
@@ -126,6 +130,8 @@ def recompute_amounts(row: models.SplitBill) -> None:
     row.balance_amount = float(
         (collect - total_received).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     )
+    if row.status == "completed" and _dec(row.balance_amount) > Decimal("0.011"):
+        row.status = "active"  # more is owed again, so it is no longer finished
     row.status = compute_split_status(row)
     row.updated_at = datetime.utcnow()
 
@@ -170,7 +176,8 @@ def serialize_split(row: models.SplitBill) -> dict:
 
 def serialize_split_detail(row: models.SplitBill) -> dict:
     data = serialize_split(row)
-    data["payments"] = [serialize_payment(p) for p in row.payments]
+    ordered = sorted(row.payments, key=lambda p: (p.payment_date or date.min, p.id), reverse=True)
+    data["payments"] = [serialize_payment(p) for p in ordered]
     return data
 
 
@@ -210,7 +217,13 @@ async def create_split(
         if payload.total_amount is not None:
             total_amount = float(payload.total_amount)
 
+    if total_amount is not None and total_amount <= 0:
+        raise HTTPException(status_code=400, detail="Jumlah resit mesti lebih daripada sifar.")
+    if payload.members is None and payload.total_amount is None and transaction is None:
+        raise HTTPException(status_code=400, detail="Masukkan jumlah resit atau pilih transaksi.")
     people_count = max(1, int(payload.people_count))
+    if people_count > 100:
+        raise HTTPException(status_code=400, detail="Bilangan orang terlalu banyak.")
     share = payload.share_amount
     if share is None and total_amount is not None and people_count > 0:
         share = round(float(Decimal(str(total_amount)) / people_count), 2)
@@ -228,6 +241,8 @@ async def create_split(
     if collect is None:
         collect = 0.0
     collect = max(0.0, float(collect))
+    if total_amount is not None and collect > float(total_amount) + 0.011:
+        raise HTTPException(status_code=400, detail="Amaun untuk dikutip melebihi jumlah resit.")
 
     members_json = None
     if payload.members is not None:
@@ -287,29 +302,47 @@ async def update_split(
         row.notes = (payload.notes or "").strip() or None
 
     if "people_count" in data and payload.people_count:
+        if payload.people_count > 100:
+            raise HTTPException(status_code=400, detail="Bilangan orang terlalu banyak.")
         row.people_count = max(1, int(payload.people_count))
 
     if "am_i_included" in data:
         row.am_i_included = bool(payload.am_i_included)
 
-    if "members" in data:
-        if payload.members:
-            members_json, share, collect, people_count = _custom_math(
-                [m for m in payload.members if (m.name or "").strip()],
-                row.total_amount,
-                bool(row.am_i_included),
-            )
-            row.members = members_json
-            row.share_amount = share
-            row.collect_amount = collect
-            row.people_count = people_count
-        elif payload.members is None:
+    if "members" in data and payload.members:
+        members_json, share, collect, people_count = _custom_math(
+            [m for m in payload.members if (m.name or "").strip()],
+            row.total_amount,
+            bool(row.am_i_included),
+        )
+        row.members = members_json
+        row.share_amount = share
+        row.collect_amount = collect
+        row.people_count = people_count
+    else:
+        if "members" in data and payload.members is None:
             row.members = None
-        row.share_amount = payload.share_amount
-    if "collect_amount" in data:
-        row.collect_amount = max(0.0, float(payload.collect_amount) if payload.collect_amount is not None else 0.0)
+        if "share_amount" in data:
+            row.share_amount = payload.share_amount
+        if "collect_amount" in data:
+            row.collect_amount = max(0.0, float(payload.collect_amount) if payload.collect_amount is not None else 0.0)
+        elif not row.members and row.total_amount is not None and ("people_count" in data or "am_i_included" in data):
+            # An equal split follows the headcount: changing who shares it must change what is
+            # collected, or the old figure stayed and the balance was wrong.
+            total = Decimal(str(row.total_amount))
+            n = max(1, int(row.people_count))
+            if row.am_i_included:
+                row.share_amount = round(float(total / n), 2)
+                row.collect_amount = round(float(total * (n - 1) / n), 2) if n > 1 else 0.0
+            else:
+                row.share_amount = 0.0
+                row.collect_amount = round(float(total), 2)
 
     if "status" in data and payload.status:
+        if payload.status not in ("active", "partial", "completed", "cancelled"):
+            raise HTTPException(status_code=400, detail="Status tidak sah.")
+        if payload.status == "completed" and _dec(row.collect_amount) - sum((_dec(p.amount) for p in row.payments), Decimal("0")) > Decimal("0.011"):
+            raise HTTPException(status_code=400, detail="Baki belum sifar. Rekod semua bayaran dahulu.")
         row.status = payload.status
 
     recompute_amounts(row)
@@ -339,12 +372,15 @@ async def record_payment(
     payload: SplitBillPaymentCreate,
 ) -> models.SplitBill:
     split = await queries.get_split_or_404(db, split_id=split_id, user_id=current_user.id)
-    if split.status == "completed":
+    if split.status in ("completed", "cancelled"):
         raise HTTPException(status_code=409, detail="This split bill is already completed.")
 
     amount = round(float(payload.amount), 2)
     if amount <= 0:
         raise HTTPException(status_code=400, detail="Payment amount must be greater than zero.")
+    owed = _dec(split.balance_amount)
+    if Decimal(str(amount)) > owed + Decimal("0.011"):
+        raise HTTPException(status_code=400, detail=f"Bayaran melebihi baki yang perlu dikutip (RM {float(owed):.2f}).")
 
     wallet = None
     if payload.wallet_id:
@@ -360,7 +396,7 @@ async def record_payment(
         raise HTTPException(status_code=400, detail="A receiving wallet is required.")
 
     household_id = split.household_id or await queries.ensure_household(db, current_user)
-    payment_date = _parse_date(payload.payment_date, "payment_date") or date.today()
+    payment_date = _parse_date(payload.payment_date, "payment_date") or current_business_date()
     payment_time = _parse_time(payload.payment_time)
 
     # Reimbursement transaction (income)
@@ -463,3 +499,35 @@ async def attach_payment_media(
     return await queries.get_split_or_404(
         db, split_id=int(split.id), user_id=current_user.id
     )
+
+
+async def delete_payment(
+    db: AsyncSession,
+    *,
+    current_user: models.User,
+    split_id: int,
+    payment_id: int,
+) -> models.SplitBill:
+    """Remove a payment that was recorded by mistake, together with the income it created,
+    so the wallet balance and the split's balance both go back."""
+    split = await queries.get_split_or_404(db, split_id=split_id, user_id=current_user.id)
+    payment = next((p for p in split.payments if int(p.id) == payment_id), None)
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found.")
+    media_key = payment.media_object_key
+    txn_id = payment.transaction_id
+    split.payments.remove(payment)
+    await db.delete(payment)
+    await db.flush()
+    if txn_id:
+        txn = await db.get(models.Transaction, txn_id)
+        if txn is not None and txn.user_id == current_user.id and txn.transaction_kind == "reimbursement":
+            await db.delete(txn)
+    recompute_amounts(split)
+    await db.commit()
+    if media_key:
+        try:
+            storage_service.delete_receipt_object(media_key)
+        except Exception:
+            pass
+    return await queries.get_split_or_404(db, split_id=int(split.id), user_id=current_user.id)

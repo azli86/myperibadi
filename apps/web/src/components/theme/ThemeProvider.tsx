@@ -143,10 +143,8 @@ function applyTheme(theme: ThemeMode, resolvedTheme: ResolvedTheme) {
   setMetaContent("msapplication-navbutton-color", pwaThemeColor)
   setMetaContent("apple-mobile-web-app-status-bar-style", resolvedTheme === "dark" ? "black-translucent" : "default")
 
-  const metaCS = document.querySelector('meta[name="color-scheme"]')
-  if (metaCS) {
-    metaCS.setAttribute("content", resolvedTheme)
-  }
+  // The color-scheme meta stays "light dark" (set in layout) so the phone's auto dark mode
+  // never runs over the page; the html element's own color-scheme carries the chosen theme.
 
   const manifest = document.querySelector('link[rel="manifest"]')
   if (manifest) {

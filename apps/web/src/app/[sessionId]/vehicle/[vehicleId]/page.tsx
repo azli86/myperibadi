@@ -5,23 +5,22 @@ import {
   ExternalLink,
   FileText,
   Fuel,
+  Gauge,
   Loader2,
   Paperclip,
   Plus,
+  Settings2,
   Trash2,
-  X,
+  Wrench,
 } from "lucide-react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { createPortal } from "react-dom"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
 import { usePageAlert } from "@/hooks/usePageAlert"
-import { DesktopPageHeader, MobilePageHeader } from "@/components/layout/PageHeader"
-import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
+import { DesktopPageAction, DesktopPageBody, DesktopPageHeader, MobileIconButton, MobilePageHeader } from "@/components/layout/PageHeader"
+import { AppSheet } from "@/components/ui/AppSheet"
 import { VehicleHeroCard } from "./VehicleHeroCard"
-import { VehicleQuickActions } from "./VehicleQuickActions"
-import { VehicleSummaryCard } from "./VehicleSummaryCard"
 import { MaintenanceGroupCard, type MaintenanceRowView } from "./MaintenanceGroupCard"
 import {
   MAINTENANCE_GROUPS,
@@ -30,7 +29,6 @@ import {
   matchCatalogKey,
 } from "./maintenanceCatalog"
 import { invalidateVehicleImageCache } from "@/lib/vehicle-image-cache"
-import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
 
 const R2_ACCEPT = "image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf"
 
@@ -131,8 +129,18 @@ async function apiFetch(url: string, init?: RequestInit) {
   })
 }
 
+function todayKey() {
+  const kl = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kuala_Lumpur" }))
+  return `${kl.getFullYear()}-${String(kl.getMonth() + 1).padStart(2, "0")}-${String(kl.getDate()).padStart(2, "0")}`
+}
+
+async function errorOf(res: Response, fallback: string) {
+  const payload = (await res.json().catch(() => null)) as { detail?: unknown } | null
+  return typeof payload?.detail === "string" && payload.detail.trim() ? payload.detail : fallback
+}
+
 const inputCls =
-  "w-full rounded-2xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2.5 text-sm font-semibold text-[var(--text)] outline-none focus:border-[var(--accent2)]"
+  "w-full min-h-12 rounded-[1.25rem] border border-[var(--border)] bg-transparent px-4 py-3 text-base text-[var(--text)] outline-none focus:border-[var(--btn-primary-bg)]"
 
 export default function VehicleDetailPage() {
   const params = useParams()
@@ -161,12 +169,12 @@ export default function VehicleDetailPage() {
   const [mounted, setMounted] = useState(false)
 
   const [odoForm, setOdoForm] = useState({
-    reading_date: new Date().toISOString().slice(0, 10),
+    reading_date: todayKey(),
     odometer: "",
   })
   const [serviceForm, setServiceForm] = useState({
     service_type: "",
-    service_date: new Date().toISOString().slice(0, 10),
+    service_date: todayKey(),
     odometer: "",
     workshop: "",
     total_cost: "",
@@ -197,7 +205,7 @@ export default function VehicleDetailPage() {
     file: null as File | null,
   })
   const [fuelForm, setFuelForm] = useState({
-    log_date: new Date().toISOString().slice(0, 10),
+    log_date: todayKey(),
     odometer: "",
     litres: "",
     total_amount: "",
@@ -304,40 +312,10 @@ export default function VehicleDetailPage() {
     }
   }, [sheet])
 
-  useEffect(() => {
-    if (!sheet) return
-
-    const scrollY = window.scrollY
-    const previousBodyOverflow = document.body.style.overflow
-    const previousBodyOverscroll = document.body.style.overscrollBehavior
-    const previousBodyPosition = document.body.style.position
-    const previousBodyTop = document.body.style.top
-    const previousBodyWidth = document.body.style.width
-    const previousHtmlOverscroll = document.documentElement.style.overscrollBehavior
-
-    document.body.style.overflow = "hidden"
-    document.body.style.overscrollBehavior = "none"
-    document.body.style.position = "fixed"
-    document.body.style.top = `-${scrollY}px`
-    document.body.style.width = "100%"
-    document.documentElement.style.overscrollBehavior = "none"
-
-    return () => {
-      document.body.style.overflow = previousBodyOverflow
-      document.body.style.overscrollBehavior = previousBodyOverscroll
-      document.body.style.position = previousBodyPosition
-      document.body.style.top = previousBodyTop
-      document.body.style.width = previousBodyWidth
-      document.documentElement.style.overscrollBehavior = previousHtmlOverscroll
-      window.scrollTo(0, scrollY)
-    }
-  }, [sheet])
-
   const closeSheet = useCallback(() => {
     setSheet(null)
     setActiveItem(null)
   }, [])
-  const sheetSwipe = useSwipeDownToClose(() => closeSheet())
 
   /** Latest maintenance record per catalog item key */
   const latestByCatalog = useMemo(() => {
@@ -400,7 +378,7 @@ export default function VehicleDetailPage() {
       : null
     setServiceForm({
       service_type: row.item.name,
-      service_date: existing?.service_date || new Date().toISOString().slice(0, 10),
+      service_date: existing?.service_date || todayKey(),
       odometer:
         existing?.odometer != null
           ? String(existing.odometer)
@@ -435,7 +413,7 @@ export default function VehicleDetailPage() {
     setActiveItem(null)
     setServiceForm({
       service_type: "",
-      service_date: new Date().toISOString().slice(0, 10),
+      service_date: todayKey(),
       odometer: vehicle?.current_odometer != null ? String(vehicle.current_odometer) : "",
       workshop: "",
       total_cost: "",
@@ -450,7 +428,7 @@ export default function VehicleDetailPage() {
 
   function openOdometer() {
     setOdoForm({
-      reading_date: new Date().toISOString().slice(0, 10),
+      reading_date: todayKey(),
       odometer: vehicle?.current_odometer != null ? String(vehicle.current_odometer) : "",
     })
     setSheet("odometer")
@@ -487,7 +465,7 @@ export default function VehicleDetailPage() {
 
   function openFuelForm() {
     setFuelForm({
-      log_date: new Date().toISOString().slice(0, 10),
+      log_date: todayKey(),
       odometer: vehicle?.current_odometer != null ? String(vehicle.current_odometer) : "",
       litres: "",
       total_amount: "",
@@ -561,6 +539,10 @@ export default function VehicleDetailPage() {
   async function handleCreateFuel(e: React.FormEvent) {
     e.preventDefault()
     const amount = Number(fuelForm.total_amount)
+    if (!(amount > 0)) {
+      showAlert(tr("Maklumat tak lengkap", "Incomplete"), tr("Masukkan jumlah minyak lebih daripada 0.", "Enter a fuel amount above 0."), "error")
+      return
+    }
     const createTxn = Boolean(fuelForm.create_transaction) && amount > 0
     if (createTxn && !fuelForm.wallet_id) {
       showAlert(
@@ -627,7 +609,7 @@ export default function VehicleDetailPage() {
             const res = await apiFetch(`/api/vehicles/${vehicleId}/documents/${doc.id}`, {
               method: "DELETE",
             })
-            if (!res.ok) throw new Error(tr("Gagal padam.", "Failed to delete."))
+            if (!res.ok) throw new Error(await errorOf(res, tr("Gagal padam.", "Failed to delete.")))
             await loadAll()
             showAlert(tr("Dipadam", "Deleted"), tr("Dokumen dipadam.", "Document deleted."), "success")
           } catch (err) {
@@ -655,7 +637,7 @@ export default function VehicleDetailPage() {
             const res = await apiFetch(`/api/vehicles/${vehicleId}/maintenance/${recordId}`, {
               method: "DELETE",
             })
-            if (!res.ok) throw new Error(tr("Gagal padam.", "Failed to delete."))
+            if (!res.ok) throw new Error(await errorOf(res, tr("Gagal padam.", "Failed to delete.")))
             closeSheet()
             await loadAll()
             showAlert(tr("Dipadam", "Deleted"), tr("Rekod servis dipadam.", "Service record deleted."), "success")
@@ -684,7 +666,7 @@ export default function VehicleDetailPage() {
             const res = await apiFetch(`/api/vehicles/${vehicleId}/fuel/${row.id}`, {
               method: "DELETE",
             })
-            if (!res.ok) throw new Error(tr("Gagal padam.", "Failed to delete."))
+            if (!res.ok) throw new Error(await errorOf(res, tr("Gagal padam.", "Failed to delete.")))
             await loadAll()
             showAlert(tr("Dipadam", "Deleted"), tr("Rekod minyak dipadam.", "Fuel log deleted."), "success")
           } catch (err) {
@@ -711,7 +693,7 @@ export default function VehicleDetailPage() {
           setSaving(true)
           try {
             const res = await apiFetch(`/api/vehicles/${vehicleId}`, { method: "DELETE" })
-            if (!res.ok) throw new Error(tr("Gagal padam.", "Failed to delete."))
+            if (!res.ok) throw new Error(await errorOf(res, tr("Gagal padam.", "Failed to delete.")))
             await invalidateVehicleImageCache(vehicleId)
             showAlert(tr("Dipadam", "Deleted"), tr("Kenderaan dipadam.", "Vehicle deleted."), "success")
             router.push(`/${sessionId}/vehicle`)
@@ -757,6 +739,10 @@ export default function VehicleDetailPage() {
 
   async function handleOdometer(e: React.FormEvent) {
     e.preventDefault()
+    if (!(Number(odoForm.odometer) >= 0) || odoForm.odometer === "") {
+      showAlert(tr("Maklumat tak lengkap", "Incomplete"), tr("Masukkan bacaan odometer yang sah.", "Enter a valid odometer reading."), "error")
+      return
+    }
     setSaving(true)
     try {
       const res = await apiFetch(`/api/vehicles/${vehicleId}/odometer`, {
@@ -935,103 +921,97 @@ export default function VehicleDetailPage() {
               ? activeItem?.label || tr("Log servis", "Log service")
               : tr("Log servis", "Log service")
 
+
+  const formId =
+    sheet === "odometer"
+      ? "vehicle-odo-form"
+      : sheet === "settings"
+        ? "vehicle-settings-form"
+        : sheet === "document"
+          ? "vehicle-doc-form"
+          : sheet === "fuel"
+            ? "vehicle-fuel-form"
+            : "vehicle-service-form"
+
+  const listHref = `/${sessionId}/vehicle`
+  const actionBtn = "inline-flex h-8 items-center gap-1.5 rounded-full border border-[var(--border)] px-3 text-xs font-bold text-[var(--text)]"
+  const sectionCls = "rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5"
+  const iconTile = "flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--text)]"
+  const addBtn = "inline-flex h-9 items-center gap-1 rounded-full bg-[var(--btn-primary-bg)] px-4 text-xs font-semibold text-[var(--btn-primary-text)]"
+
   return (
-    <div className="min-h-[70vh] w-full bg-[var(--page-bg)]">
-      <div className="hidden md:block">
-        <DesktopPageHeader
+    <div className="min-h-[70vh] w-full">
+      <div className="md:hidden">
+        <MobilePageHeader
           title={vehicle.name}
-          breadcrumbs={[{ label: tr("Kenderaan", "My Vehicle"), href: `/${sessionId}/vehicle` }]}
-          homeHref={`/${sessionId}`}
-          backHref={`/${sessionId}/vehicle`}
-          actions={(
-            <button
-              type="button"
-              disabled={saving}
-              onClick={confirmDeleteVehicle}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-rose-500/25 bg-rose-500/10 px-3 text-xs font-bold text-rose-600 transition active:scale-95 disabled:opacity-60 dark:text-rose-400"
-            >
-              <Trash2 size={15} />
-              {tr("Padam", "Delete")}
-            </button>
-          )}
+          fallbackHref={listHref}
+          backPreferHistory
+          action={
+            <>
+              <MobileIconButton onClick={openLogService} label={tr("Log servis", "Log service")}>
+                <Wrench />
+              </MobileIconButton>
+              <MobileIconButton onClick={openOdometer} label="Odometer">
+                <Gauge />
+              </MobileIconButton>
+              <MobileIconButton onClick={openSettings} label={tr("Tetapan", "Settings")}>
+                <Settings2 />
+              </MobileIconButton>
+            </>
+          }
         />
       </div>
-      <div className="mx-auto w-full space-y-4 px-1 pb-24 pt-0 md:max-w-6xl md:space-y-4 md:px-6 md:pb-16 lg:max-w-7xl">
-        <div className="space-y-5 md:hidden">
-          <MobilePageHeader
-            title={vehicle.name}
-            fallbackHref={`/${sessionId}/vehicle`}
-            backPreferHistory
-            alignLeft
-            action={(
-              <button
-                type="button"
-                disabled={saving}
-                onClick={confirmDeleteVehicle}
-                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-rose-500/25 bg-rose-500/10 px-3 text-xs font-bold text-rose-600 transition active:scale-95 disabled:opacity-60 dark:text-rose-400"
-                aria-label={tr("Padam kenderaan", "Delete vehicle")}
-              >
-                <Trash2 size={15} />
-                <span className="hidden sm:inline">{tr("Padam", "Delete")}</span>
-              </button>
-            )}
-          />
-        </div>
+      <DesktopPageHeader
+        className="hidden md:block"
+        title={vehicle.name}
+        breadcrumbs={[{ label: tr("Kenderaan", "My Vehicle"), href: listHref }]}
+        homeHref={`/${sessionId}`}
+        backHref={listHref}
+        actions={
+          <>
+            <DesktopPageAction onClick={openLogService}>
+              <Plus strokeWidth={2.5} />
+              {tr("Log servis", "Log service")}
+            </DesktopPageAction>
+            <button type="button" onClick={openOdometer} className={actionBtn}>
+              <Gauge size={14} />
+              {tr("Odometer", "Odometer")}
+            </button>
+            <button type="button" onClick={openSettings} className={actionBtn}>
+              <Settings2 size={14} />
+              {tr("Tetapan", "Settings")}
+            </button>
+          </>
+        }
+      />
 
-        {/* Full-width hero (desktop spans entire page) */}
+      <DesktopPageBody className="mt-2 space-y-4 px-1 pb-24 md:mt-0 md:space-y-5 md:px-0 md:pb-16">
         <VehicleHeroCard
           vehicle={vehicle}
           imageBust={imageBust}
           isBm={isBm}
           uploadingImage={uploadingImage}
-          onSettings={openSettings}
+          monthCost={Number(summary?.total_cost || 0)}
+          monthLabel={summary?.month_key}
+          dueCount={statusCounts.overdue + statusCounts.dueSoon}
+          overdueCount={statusCounts.overdue}
           onImagePick={handleImagePick}
         />
 
-        {/* Content below hero: mobile single column; desktop 2-col */}
         <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-start">
           <div className="space-y-4">
-            <VehicleQuickActions
-              isBm={isBm}
-              onUpdateOdometer={openOdometer}
-              onLogService={openLogService}
-            />
-
-            <VehicleSummaryCard
-              isBm={isBm}
-              monthKey={summary?.month_key}
-              totalCost={Number(summary?.total_cost || 0)}
-              fuelCost={Number(summary?.fuel_cost || 0)}
-              maintenanceCost={Number(summary?.maintenance_cost || 0)}
-              overdueCount={statusCounts.overdue}
-              dueSoonCount={statusCounts.dueSoon}
-            />
-
-            {/* Documents — road tax / insurance / files (R2) */}
-            <section
-              ref={documentsSectionRef}
-              id="vehicle-documents"
-              className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5"
-            >
-              <div className="mb-3.5 flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]">
+            <section ref={documentsSectionRef} id="vehicle-documents" className={sectionCls}>
+              <div className="mb-3.5 flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className={iconTile}>
                     <FileText size={18} />
                   </span>
                   <div className="min-w-0">
-                    <h2 className="text-sm font-black tracking-tight text-[var(--text)]">
-                      {tr("Dokumen", "Documents")}
-                    </h2>
-                    <p className="mt-0.5 text-[11px] font-semibold text-[var(--muted)]">
-                      {tr("Road tax, insurans & fail R2", "Road tax, insurance & R2 files")}
-                    </p>
+                    <h2 className="text-base font-bold text-[var(--text)]">{tr("Dokumen", "Documents")}</h2>
+                    <p className="text-xs text-[var(--muted)]">{tr("Road tax, insurans dan fail", "Road tax, insurance and files")}</p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={openDocumentForm}
-                  className="inline-flex h-9 items-center gap-1 rounded-full bg-[var(--btn-primary-bg)] px-3.5 text-xs font-semibold text-[var(--btn-primary-text)] transition hover:bg-[var(--btn-primary-hover)] active:scale-95"
-                >
+                <button type="button" onClick={openDocumentForm} className={addBtn}>
                   <Plus size={14} strokeWidth={2.5} />
                   {tr("Tambah", "Add")}
                 </button>
@@ -1040,262 +1020,144 @@ export default function VehicleDetailPage() {
               {(summary?.road_tax_expiry || summary?.insurance_expiry) && (
                 <div className="mb-3 grid grid-cols-2 gap-2">
                   {summary?.road_tax_expiry && (
-                    <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
-                        Road tax
-                      </p>
-                      <p className="mt-1 truncate text-sm font-black text-[var(--text)]">{summary.road_tax_expiry}</p>
+                    <div className="min-w-0 rounded-[1.25rem] border border-[var(--border)] p-3">
+                      <p className="text-xs text-[var(--muted)]">Road tax</p>
+                      <p className="mt-0.5 truncate text-sm font-bold text-[var(--text)]">{summary.road_tax_expiry}</p>
                     </div>
                   )}
                   {summary?.insurance_expiry && (
-                    <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/30 p-3">
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--muted)]">
-                        {tr("Insurans", "Insurance")}
-                      </p>
-                      <p className="mt-1 truncate text-sm font-black text-[var(--text)]">{summary.insurance_expiry}</p>
+                    <div className="min-w-0 rounded-[1.25rem] border border-[var(--border)] p-3">
+                      <p className="text-xs text-[var(--muted)]">{tr("Insurans", "Insurance")}</p>
+                      <p className="mt-0.5 truncate text-sm font-bold text-[var(--text)]">{summary.insurance_expiry}</p>
                     </div>
                   )}
                 </div>
               )}
 
               {documents.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/20 px-4 py-8 text-center">
-                  <FileText size={28} className="mx-auto text-[var(--muted)]/40" />
-                  <p className="mt-2 text-sm font-bold text-[var(--muted)]">
-                    {tr("Tiada dokumen lagi", "No documents yet")}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={openDocumentForm}
-                    className="mt-3 text-xs font-bold text-[var(--btn-primary-bg)]"
-                  >
+                <div className="rounded-[1.25rem] border border-dashed border-[var(--border)] px-4 py-8 text-center">
+                  <p className="text-sm font-semibold text-[var(--muted)]">{tr("Tiada dokumen lagi", "No documents yet")}</p>
+                  <button type="button" onClick={openDocumentForm} className="mt-2 text-xs font-bold text-[var(--btn-primary-bg)]">
                     {tr("Tambah road tax / insurans", "Add road tax / insurance")}
                   </button>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <ul className="space-y-2">
                   {documents.map((doc) => {
                     const tone = docExpiryTone(doc.expiry_date)
                     return (
-                      <div
-                        key={doc.id}
-                        className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/25 p-3"
-                      >
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--card)] text-[var(--accent2)]">
-                          <FileText size={18} />
+                      <li key={doc.id} className="flex items-center gap-3 rounded-[1.25rem] border border-[var(--border)] p-3">
+                        <span className={iconTile}>
+                          <FileText size={17} />
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-bold text-[var(--text)]">{doc.title}</p>
-                          <p className="mt-0.5 text-[11px] font-semibold text-[var(--muted)]">
+                          <p className="truncate text-xs text-[var(--muted)]">
                             {docTypeLabel(doc.doc_type)}
                             {doc.provider ? ` · ${doc.provider}` : ""}
-                            {doc.amount != null
-                              ? ` · RM ${Number(doc.amount).toLocaleString("en-MY", { maximumFractionDigits: 0 })}`
-                              : ""}
+                            {doc.amount != null ? ` · RM ${Number(doc.amount).toLocaleString("en-MY", { maximumFractionDigits: 0 })}` : ""}
                           </p>
                           {doc.expiry_date && (
-                            <p
-                              className={cn(
-                                "mt-1 text-[11px] font-bold",
-                                tone === "overdue" && "text-rose-600 dark:text-rose-400",
-                                tone === "soon" && "text-amber-700 dark:text-amber-300",
-                                tone === "ok" && "text-[var(--muted)]",
-                                tone === "muted" && "text-[var(--muted)]"
-                              )}
-                            >
-                              {tr("Tamat", "Expires")}: {doc.expiry_date}
+                            <p className={cn("mt-0.5 text-xs font-semibold", tone === "overdue" ? "text-rose-500" : tone === "soon" ? "text-amber-600 dark:text-amber-400" : "text-[var(--muted)]")}>
+                              {tone === "overdue" ? tr("Tamat tempoh", "Expired") : tr("Tamat", "Expires")}: {doc.expiry_date}
                             </p>
                           )}
                         </div>
-                        <div className="flex shrink-0 items-center gap-0.5">
+                        <div className="flex shrink-0 items-center">
                           {doc.file_attachment_id ? (
-                            <a
-                              href={`/api/vehicles/attachments/${doc.file_attachment_id}/file`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="rounded-lg p-1.5 text-[var(--accent2)]"
-                              title={tr("Lihat fail", "View file")}
-                            >
-                              <ExternalLink size={14} />
+                            <a href={`/api/vehicles/attachments/${doc.file_attachment_id}/file`} target="_blank" rel="noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--text)]" title={tr("Lihat fail", "View file")}>
+                              <ExternalLink size={15} />
                             </a>
                           ) : null}
-                          <label
-                            className={cn(
-                              "cursor-pointer rounded-lg p-1.5 text-[var(--muted)]",
-                              uploadingKey === `documents-${doc.id}` && "opacity-50"
-                            )}
-                            title={tr("Upload fail R2", "Upload R2 file")}
-                          >
-                            {uploadingKey === `documents-${doc.id}` ? (
-                              <Loader2 size={14} className="animate-spin" />
-                            ) : (
-                              <Paperclip size={14} />
-                            )}
-                            <input
-                              type="file"
-                              accept={R2_ACCEPT}
-                              className="hidden"
-                              onChange={(e) => {
-                                void handleDocFileUpload(doc.id, e.target.files?.[0] || null)
-                                e.currentTarget.value = ""
-                              }}
-                            />
+                          <label className={cn("flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-[var(--muted)]", uploadingKey === `documents-${doc.id}` && "opacity-50")} title={tr("Muat naik fail", "Upload a file")}>
+                            {uploadingKey === `documents-${doc.id}` ? <Loader2 size={15} className="animate-spin" /> : <Paperclip size={15} />}
+                            <input type="file" accept={R2_ACCEPT} className="hidden" onChange={(e) => { void handleDocFileUpload(doc.id, e.target.files?.[0] || null); e.currentTarget.value = "" }} />
                           </label>
-                          <button
-                            type="button"
-                            onClick={() => confirmDeleteDocument(doc)}
-                            className="rounded-lg p-1.5 text-[var(--muted)]"
-                            title={tr("Padam", "Delete")}
-                          >
-                            <Trash2 size={14} />
+                          <button type="button" onClick={() => confirmDeleteDocument(doc)} className="flex h-9 w-9 items-center justify-center rounded-full text-rose-500/80" title={tr("Padam", "Delete")}>
+                            <Trash2 size={15} />
                           </button>
                         </div>
-                      </div>
+                      </li>
                     )
                   })}
-                </div>
+                </ul>
               )}
             </section>
 
-            {/* Fuel logs (compact) */}
-            <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5">
-              <div className="mb-3.5 flex items-start justify-between gap-3">
-                <div className="flex min-w-0 items-start gap-3">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]">
+            <section className={sectionCls}>
+              <div className="mb-3.5 flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className={iconTile}>
                     <Fuel size={18} />
                   </span>
                   <div className="min-w-0">
-                    <h2 className="text-sm font-black tracking-tight text-[var(--text)]">
-                      {tr("Minyak", "Fuel")}
-                    </h2>
-                    <p className="mt-0.5 text-[11px] font-semibold text-[var(--muted)]">
-                      {tr("Rekod isi minyak", "Fuel fill-up logs")}
-                    </p>
+                    <h2 className="text-base font-bold text-[var(--text)]">{tr("Minyak", "Fuel")}</h2>
+                    <p className="text-xs text-[var(--muted)]">{tr("Rekod isi minyak", "Fill-up log")}</p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={openFuelForm}
-                  className="inline-flex h-9 items-center gap-1 rounded-full bg-[var(--btn-primary-bg)] px-3.5 text-xs font-semibold text-[var(--btn-primary-text)] transition hover:bg-[var(--btn-primary-hover)] active:scale-95"
-                >
+                <button type="button" onClick={openFuelForm} className={addBtn}>
                   <Plus size={14} strokeWidth={2.5} />
                   {tr("Tambah", "Add")}
                 </button>
               </div>
               {fuel.length === 0 ? (
-                <p className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-6 text-center text-sm font-semibold text-[var(--muted)]">
-                  {tr("Tiada rekod minyak", "No fuel logs")}
-                </p>
+                <p className="rounded-[1.25rem] border border-dashed border-[var(--border)] px-4 py-6 text-center text-sm font-semibold text-[var(--muted)]">{tr("Tiada rekod minyak", "No fuel logs")}</p>
               ) : (
-                <div className="space-y-2">
+                <ul className="space-y-2">
                   {fuel.slice(0, 8).map((row) => (
-                    <div
-                      key={row.id}
-                      className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/25 px-3 py-2.5"
-                    >
+                    <li key={row.id} className="flex items-center justify-between gap-3 rounded-[1.25rem] border border-[var(--border)] px-3.5 py-2.5">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-[var(--text)]">
-                          RM {Number(row.total_amount || 0).toLocaleString("en-MY", { minimumFractionDigits: 2 })}
-                        </p>
-                        <p className="text-[11px] font-semibold text-[var(--muted)]">
+                        <p className="text-sm font-bold tabular-nums text-[var(--text)]">RM {Number(row.total_amount || 0).toLocaleString("en-MY", { minimumFractionDigits: 2 })}</p>
+                        <p className="truncate text-xs text-[var(--muted)]">
                           {row.log_date}
                           {row.litres != null ? ` · ${row.litres} L` : ""}
                           {row.station ? ` · ${row.station}` : ""}
                         </p>
                         {row.transaction_reference_id || row.transaction_id ? (
-                          <a
-                            href={`/${sessionId}/transactions/${row.transaction_reference_id || row.transaction_id}`}
-                            className="mt-0.5 inline-block text-[10px] font-bold text-[var(--accent2)] hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
+                          <a href={`/${sessionId}/transactions/${row.transaction_reference_id || row.transaction_id}`} className="mt-0.5 inline-block text-xs font-semibold text-[var(--btn-primary-bg)] hover:underline">
                             {row.transaction_reference_id || `TXN-${row.transaction_id}`}
                           </a>
                         ) : null}
                       </div>
-                      <div className="flex shrink-0 items-center gap-0.5">
+                      <div className="flex shrink-0 items-center">
                         {row.receipt_attachment_id ? (
-                          <a
-                            href={`/api/vehicles/attachments/${row.receipt_attachment_id}/file`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="rounded-lg p-1.5 text-[var(--accent2)]"
-                          >
-                            <ExternalLink size={14} />
+                          <a href={`/api/vehicles/attachments/${row.receipt_attachment_id}/file`} target="_blank" rel="noreferrer" className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--text)]">
+                            <ExternalLink size={15} />
                           </a>
                         ) : null}
-                        <button
-                          type="button"
-                          onClick={() => confirmDeleteFuel(row)}
-                          className="rounded-lg p-1.5 text-[var(--muted)]"
-                          title={tr("Padam", "Delete")}
-                        >
-                          <Trash2 size={14} />
+                        <button type="button" onClick={() => confirmDeleteFuel(row)} className="flex h-9 w-9 items-center justify-center rounded-full text-rose-500/80" title={tr("Padam", "Delete")}>
+                          <Trash2 size={15} />
                         </button>
                       </div>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
             </section>
           </div>
 
-          <div className="space-y-3.5">
-            <div className="flex items-end justify-between gap-3 px-0.5">
-              <div>
-                <p className="text-[0.65rem] font-black uppercase tracking-[0.16em] text-[var(--muted)]">
-                  {tr("Penyelenggaraan", "Maintenance")}
-                </p>
-
-              </div>
-            </div>
-
+          <div className="space-y-4">
+            <h2 className="px-1 text-base font-bold text-[var(--text)]">{tr("Penyelenggaraan", "Maintenance")}</h2>
             {groupRows.map(({ group, rows }) => (
-              <MaintenanceGroupCard
-                key={group.key}
-                group={group}
-                isBm={isBm}
-                rows={rows}
-                onItemClick={openServiceForItem}
-              />
+              <MaintenanceGroupCard key={group.key} group={group} isBm={isBm} rows={rows} onItemClick={openServiceForItem} />
             ))}
           </div>
         </div>
-      </div>
+      </DesktopPageBody>
 
-      {/* Sheets */}
-      {mounted &&
-        sheet &&
-        createPortal(
-          <div className="fixed inset-0 z-[140] flex h-[100dvh] w-screen touch-none items-end justify-center overscroll-none bg-transparent p-0 md:items-center md:p-4">
-            <div
-              data-swipe-sheet
-              className="app-sheet-panel flex max-h-[82dvh] w-full flex-col overflow-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl touch-pan-y md:max-h-[85vh] md:max-w-[30rem] md:rounded-2xl"
-              {...sheetSwipe}
-            >
-              <AppSheetHeader
-                title={sheetTitle}
-                onClose={closeSheet}
-                action={
-                  <button
-                    type="submit"
-                    form={sheet === "odometer"
-                      ? "vehicle-odo-form"
-                      : sheet === "settings"
-                        ? "vehicle-settings-form"
-                        : sheet === "document"
-                          ? "vehicle-doc-form"
-                          : sheet === "fuel"
-                            ? "vehicle-fuel-form"
-                            : "vehicle-service-form"}
-                    disabled={saving}
-                    className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
-                  >
-                    {saving ? (isBm ? "Menyimpan…" : "Saving…") : tr("Simpan", "Save")}
-                  </button>
-                }
-              />
-
-              <div data-swipe-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
+      <AppSheet
+        open={sheet !== null}
+        onClose={closeSheet}
+        id="vehicle-detail-sheet"
+        title={sheetTitle}
+        size="md"
+        footer={
+          <button type="submit" form={formId} disabled={saving} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-40">
+            {saving ? <Loader2 size={16} className="animate-spin" /> : null}
+            {tr("Simpan", "Save")}
+          </button>
+        }
+      >
                 {sheet === "odometer" && (
                   <form id="vehicle-odo-form" onSubmit={handleOdometer} className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
@@ -1820,11 +1682,7 @@ export default function VehicleDetailPage() {
                     </div>
                   </form>
                 )}
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
+      </AppSheet>
 
       {alertModal}
     </div>
@@ -1842,7 +1700,7 @@ function Field({
 }) {
   return (
     <label className={cn("block min-w-0", className)}>
-      <span className="mb-1 block text-xs font-bold text-[var(--muted)]">{label}</span>
+      <span className="mb-1.5 block text-xs font-semibold text-[var(--muted)]">{label}</span>
       {children}
     </label>
   )

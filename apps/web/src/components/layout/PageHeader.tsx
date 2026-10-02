@@ -30,7 +30,7 @@ export function MobilePageHeader({
   beta?: boolean
 }) {
   const hasHero = usePageHasHero()
-  useRegisterActions(action, "md:hidden lg:hidden "+"flex w-full flex-wrap gap-2 px-1 pb-2 pt-3 [&>*]:min-w-0 [&>*]:flex-1 [&>*]:basis-[calc(50%-0.25rem)] [&>div]:flex [&>div]:gap-2 [&>div>*]:flex-1")
+  useRegisterActions(action, "md:hidden lg:hidden "+"mt-1 flex w-full flex-wrap gap-2 [&>*]:min-w-0 [&>*]:flex-1 [&>*]:basis-[calc(50%-0.25rem)] [&>div]:flex [&>div]:gap-2 [&>div>*]:flex-1")
   const headerRef = useRef<HTMLDivElement>(null)
   const [spacer, setSpacer] = useState(0)
   const [compact, setCompact] = useState(false)
@@ -123,7 +123,7 @@ export function MobilePageHeader({
           They sit in the page flow right under it, as full-width buttons, so they are
           easy to reach and never crowd the title. */}
       {action && !hasHero ? (
-        <ActionsAfterHero className={"md:hidden lg:hidden flex w-full flex-wrap gap-2 px-1 pb-2 pt-3 [&>*]:min-w-0 [&>*]:flex-1 [&>*]:basis-[calc(50%-0.25rem)] [&>div]:flex [&>div]:gap-2 [&>div>*]:flex-1"}>{action}</ActionsAfterHero>
+        <ActionsAfterHero insideClassName="md:hidden lg:hidden mt-3 flex w-full flex-wrap gap-2 [&>*]:min-w-0 [&>*]:flex-1 [&>*]:basis-[calc(50%-0.25rem)] [&>div]:flex [&>div]:gap-2 [&>div>*]:flex-1" className={"md:hidden lg:hidden flex w-full flex-wrap gap-2 px-1 pb-2 pt-3 [&>*]:min-w-0 [&>*]:flex-1 [&>*]:basis-[calc(50%-0.25rem)] [&>div]:flex [&>div]:gap-2 [&>div>*]:flex-1"}>{action}</ActionsAfterHero>
       ) : null}
     </>
   )
@@ -313,7 +313,7 @@ export function DesktopPageHeader({
       </div>
     </header>
     {actions && !hasHero ? (
-      <ActionsAfterHero className={cn("portal-page-body flex flex-wrap items-center justify-end gap-2.5 !pb-4 pt-4", hiddenUntil ? `hidden ${hiddenUntil}:flex` : "hidden md:flex")}>
+      <ActionsAfterHero insideClassName={cn("mt-3 flex flex-wrap items-center justify-end gap-2.5", hiddenUntil ? `hidden ${hiddenUntil}:flex` : "hidden md:flex")} className={cn("portal-page-body flex flex-wrap items-center justify-end gap-2.5 !pb-4 pt-4", hiddenUntil ? `hidden ${hiddenUntil}:flex` : "hidden md:flex")}>
         {actions}
       </ActionsAfterHero>
     ) : null}

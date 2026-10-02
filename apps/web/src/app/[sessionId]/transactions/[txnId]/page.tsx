@@ -1573,6 +1573,7 @@ export default function TransactionDetailPage() {
 
   const summaryCardActions = (
     <>
+      <TxnActionButton icon={receiptDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} label={lang === "BM" ? "Resit" : "Receipt"} onClick={() => downloadStandardReceipt()} disabled={receiptDownloading || !txn} />
       <TxnActionButton icon={<Edit3 size={18} />} label={langT.edit} onClick={() => setShowEditModal(true)} disabled={saving || !txn} />
       {refundButtonState !== "hidden" ? (
         <TxnActionButton

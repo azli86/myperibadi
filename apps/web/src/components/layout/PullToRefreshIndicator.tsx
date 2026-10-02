@@ -49,6 +49,7 @@ export function PullToRefreshIndicator({
   return (
     <div
       aria-live="polite"
+      data-motion
       className={cn(
         "pointer-events-none fixed inset-x-0 z-[125] flex flex-col items-center",
         barBottom ? "pt-3" : "pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:pt-5"

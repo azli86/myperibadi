@@ -3782,3 +3782,18 @@ html[data-theme="light"] {
   --home-card: var(--card);
   --home-line: var(--border);
 }
+
+/* No animations or transitions anywhere: popups, sheets and pages appear at once.
+   Spinners keep turning so a loading state still reads as loading. */
+*:not([data-motion]):not([data-motion] *), *::before, *::after {
+  animation-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-duration: 0s !important;
+  transition-delay: 0s !important;
+  scroll-behavior: auto !important;
+}
+/* The one exception: the pull-to-refresh badge (marked data-motion) keeps its motion. */
+.animate-spin, .animate-spin * {
+  animation-duration: 1s !important;
+  animation-iteration-count: infinite !important;
+}

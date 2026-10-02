@@ -61,7 +61,8 @@ async def list_splits(
     term = (search or "").strip()
     if term:
         query = query.where(models.SplitBill.title.ilike(f"%{term}%"))
-    result = await db.execute(query)
+    # Newest first; without an order the list came back in whatever order the database liked.
+    result = await db.execute(query.order_by(models.SplitBill.created_at.desc(), models.SplitBill.id.desc()))
     return list(result.scalars().all())
 
 
@@ -126,9 +127,12 @@ async def find_or_create_reimbursement_category(
     household_id: Optional[int],
 ) -> models.Category:
     """Return the 'Split reimbursement' income category, creating it if missing."""
+    # This household's own category. Looked up by code alone it found whichever household
+    # created one first, so reimbursements were filed under another family's category.
     result = await db.execute(
         select(models.Category).where(
             models.Category.system_code == "split_reimbursement",
+            models.Category.household_id == household_id,
         )
     )
     cat = result.scalars().first()

@@ -1,37 +1,24 @@
 "use client"
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ArrowLeft, CreditCard, Loader2, Plus, Wallet, CalendarClock, X, Pencil, Trash2, BadgeCheck, ChevronDown } from "lucide-react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { createPortal } from "react-dom"
+import { BadgeCheck, CalendarClock, Check, CreditCard, Loader2, Plus } from "lucide-react"
 import { getAccessToken } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
-import { CategoryIconGlyph } from "@/lib/category-icons"
 import { usePageAlert } from "@/hooks/usePageAlert"
-import HistoryBackButton from "@/components/navigation/HistoryBackButton"
-import {
-  DesktopPageAction,
-  DesktopPageBody,
-  DesktopPageHeader,
-  MobileIconButton,
-  MobilePageHeader,
-} from "@/components/layout/PageHeader"
-import { AmountSkeleton } from "@/components/ui/DataSkeleton"
-import { MoneyAmount } from "@/components/ui/MoneyAmount"
-import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
+import { DesktopPageAction, DesktopPageBody, DesktopPageHeader, MobileIconButton, MobilePageHeader } from "@/components/layout/PageHeader"
+import { AppSheet } from "@/components/ui/AppSheet"
+import { ModenHero } from "@/components/ui/ModenHero"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
-import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
-import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
 
 type LoanItem = {
   id: number
   name: string
-  key: string
   opening_amount: number
   outstanding_amount: number
   monthly_payment?: number | null
-  paid_amount?: number
+  paid_amount: number
   remaining_months?: number | null
   start_date: string
   notes?: string | null
@@ -41,802 +28,291 @@ type LoanItem = {
   last_payment_at?: string | null
 }
 
-type LoanFormState = {
-  name: string
-  opening_amount: string
-  monthly_payment: string
-  category_id: string
-  notes: string
-}
+type Category = { id: number; name: string; kind: string }
+type Form = { name: string; opening_amount: string; monthly_payment: string; category_id: string; notes: string }
+const emptyForm: Form = { name: "", opening_amount: "", monthly_payment: "", category_id: "", notes: "" }
 
-const defaultForm = (): LoanFormState => ({
-  name: "",
-  opening_amount: "",
-  monthly_payment: "",
-  category_id: "",
-  notes: "",
-})
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value))
-}
+const money = (n: number | null | undefined) =>
+  Number(n || 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export default function LoanPage() {
   const params = useParams()
   const router = useRouter()
-  const { lang } = useLang()
-  const [detailId, setDetailId] = useState<string | number | null>(null)
-  const detailHistoryArmedRef = useRef(false)
-  const openDetail = (id: string | number) => {
-    detailHistoryArmedRef.current = false
-    setDetailId(id)
-  }
-  const armDetailHistory = () => {
-    if (detailHistoryArmedRef.current) return
-    detailHistoryArmedRef.current = true
-    window.history.pushState({ detailSlide: true }, "")
-  }
-  useEffect(() => {
-    const closeDetailOnBack = () => {
-      detailHistoryArmedRef.current = false
-      setDetailId(null)
-    }
-    window.addEventListener("popstate", closeDetailOnBack)
-    return () => window.removeEventListener("popstate", closeDetailOnBack)
-  }, [])
-  const closeDetail = () => {
-    if (window.history.state?.detailSlide) window.history.back()
-    else setDetailId(null)
-  }
-  const [mounted, setMounted] = useState(false)
   const sessionId = (params.sessionId as string) || ""
-  const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
-  const showAlertRef = useRef(showAlert)
-
-  const [loans, setLoans] = useState<LoanItem[]>([])
-  const [includeSettled, setIncludeSettled] = useState(false)
-  const [showCreateSheet, setShowCreateSheet] = useState(false)
-  const [editingLoan, setEditingLoan] = useState<LoanItem | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [hasLoadedLoans, setHasLoadedLoans] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const showDataSkeleton = useDelayedSkeleton(loading && !hasLoadedLoans)
-  const [form, setForm] = useState<LoanFormState>(defaultForm)
-
-  const [categories, setCategories] = useState<{ id: number; name: string; icon_name?: string | null; kind: string }[]>([])
-  const [catOpen, setCatOpen] = useState(false)
-  const catById = useMemo(() => {
-    const m = new Map<number, { id: number; name: string; icon_name?: string | null; kind: string }>()
-    for (const c of categories) m.set(c.id, c)
-    return m
-  }, [categories])
-  const catName = (id: string) => {
-    if (!id) return tr("Pilih kategori", "Select category")
-    const c = catById.get(Number(id))
-    return c ? c.name : tr("Kategori lain", "Other")
-  }
-
+  const { lang } = useLang()
   const isBm = lang === "BM"
   const tr = useCallback((bm: string, en: string) => (isBm ? bm : en), [isBm])
+  const { showAlert, alertModal } = usePageAlert(lang)
 
-  useEffect(() => {
-    showAlertRef.current = showAlert
-  }, [showAlert])
+  const [loans, setLoans] = useState<LoanItem[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [filter, setFilter] = useState<"active" | "all" | "settled">("active")
+  const [loading, setLoading] = useState(true)
+  const [hasLoaded, setHasLoaded] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState<Form>(emptyForm)
+  const showSkeleton = useDelayedSkeleton(loading && !hasLoaded)
 
-  const formatCurrency = useCallback((value: number) => {
-    return `RM ${Number(value || 0).toLocaleString("en-MY", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
-  }, [])
-
-  const formatCurrencyPrecise = useCallback((value: number) => {
-    return `RM ${Number(value || 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-  }, [])
-
-  const getLoanMonths = useCallback((loan: LoanItem) => {
-    if (typeof loan.remaining_months === "number") return loan.remaining_months
-    const outstanding = Number(loan.outstanding_amount || 0)
-    const monthly = Number(loan.monthly_payment || 0)
-    if (monthly <= 0) return null
-    return Math.ceil(outstanding / monthly)
-  }, [])
-
-  const loadLoans = useCallback(
-    async (options: { forceSkeleton?: boolean } = {}) => {
-      if (options.forceSkeleton || !hasLoadedLoans) setLoading(true)
-      try {
-        const token = getAccessToken()
-        const res = await fetch(`/api/loans?include_settled=${includeSettled ? "true" : "false"}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        })
-        if (!res.ok) throw new Error(tr("Gagal muat data loan.", "Failed to load loans."))
-        const data = await res.json()
-        setLoans(Array.isArray(data) ? data : [])
-        setHasLoadedLoans(true)
-      } catch (err) {
-        showAlertRef.current(
-          tr("Ralat loan", "Loan error"),
-          err instanceof Error ? err.message : tr("Gagal muat data loan.", "Failed to load loans."),
-          "error",
-        )
-      } finally {
-        setLoading(false)
-      }
-    },
-    [hasLoadedLoans, includeSettled, tr],
-  )
-
-  useEffect(() => {
-    loadLoans({ forceSkeleton: !hasLoadedLoans })
-  }, [loadLoans])
-
-  useEffect(() => {
+  const headers = useCallback((json = false): Record<string, string> => {
     const token = getAccessToken()
-    void fetch("/api/categories", {
-      credentials: "include",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      cache: "no-store",
-    })
-      .then((r) => r.json())
-      .then((list) => {
-        if (Array.isArray(list)) setCategories(list.filter((c) => c.kind === "expense"))
-      })
-      .catch(() => {
-        /* ignore */
-      })
+    return { ...(json ? { "Content-Type": "application/json" } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) }
   }, [])
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/loans?include_settled=true", { headers: headers(), cache: "no-store" })
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setLoans(Array.isArray(data) ? data : [])
+      setHasLoaded(true)
+      setLoadFailed(false)
+    } catch {
+      setLoadFailed(true)
+    } finally {
+      setLoading(false)
+    }
+  }, [headers])
 
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent("portal:mobile-bottom-nav-visibility", { detail: { hidden: showCreateSheet } }))
-    return () => {
-      window.dispatchEvent(new CustomEvent("portal:mobile-bottom-nav-visibility", { detail: { hidden: false } }))
-    }
-  }, [showCreateSheet])
+    void load()
+    void (async () => {
+      try {
+        const res = await fetch("/api/categories", { credentials: "include", headers: headers(), cache: "no-store" })
+        const list = await res.json()
+        if (Array.isArray(list)) setCategories(list.filter((c: Category) => c.kind === "expense"))
+      } catch {
+        // optional
+      }
+    })()
+  }, [load, headers])
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const open = useMemo(() => loans.filter((l) => l.outstanding_amount > 0.004), [loans])
+  const owed = open.reduce((s, l) => s + Number(l.outstanding_amount || 0), 0)
+  const monthly = open.reduce((s, l) => s + Number(l.monthly_payment || 0), 0)
+  const paid = loans.reduce((s, l) => s + Number(l.paid_amount || 0), 0)
+  const visible = loans.filter((l) => (filter === "all" ? true : filter === "active" ? l.outstanding_amount > 0.004 : l.outstanding_amount <= 0.004))
 
-  const summary = useMemo(() => {
-    return loans.reduce(
-      (acc, loan) => {
-        const opening = Number(loan.opening_amount || 0)
-        const outstanding = Number(loan.outstanding_amount || 0)
-        const monthly = Number(loan.monthly_payment || 0)
-        const paid = Number(loan.paid_amount || Math.max(0, opening - outstanding))
-        acc.totalLoan += opening
-        acc.totalOutstanding += outstanding
-        acc.totalPaid += paid
-        if (monthly > 0) acc.totalMonthly += monthly
-        if (outstanding > 0.004) acc.activeCount += 1
-        return acc
-      },
-      { totalLoan: 0, totalOutstanding: 0, totalPaid: 0, totalMonthly: 0, activeCount: 0 },
-    )
-  }, [loans])
+  const openingNum = parseFloat(form.opening_amount) || 0
+  const monthlyNum = parseFloat(form.monthly_payment) || 0
+  const problem = !form.name.trim()
+    ? tr("Nama diperlukan.", "A name is required.")
+    : openingNum <= 0
+      ? tr("Masukkan jumlah pinjaman.", "Enter the loan amount.")
+      : monthlyNum < 0 || monthlyNum > openingNum
+        ? tr("Bayaran bulanan mesti tidak melebihi jumlah pinjaman.", "The monthly payment cannot be more than the loan.")
+        : null
 
-  const sortedLoans = useMemo(() => {
-    return [...loans].sort((a, b) => Number(b.outstanding_amount || 0) - Number(a.outstanding_amount || 0))
-  }, [loans])
-
-  const resetForm = useCallback(() => setForm(defaultForm()), [])
-
-  const openCreateSheet = useCallback(() => {
-    setEditingLoan(null)
-    resetForm()
-    setShowCreateSheet(true)
-  }, [resetForm])
-
-  const openEditSheet = useCallback((loan: LoanItem) => {
-    setEditingLoan(loan)
-    setForm({
-      name: loan.name || "",
-      opening_amount: String(Number(loan.opening_amount || 0)),
-      monthly_payment: loan.monthly_payment ? String(Number(loan.monthly_payment || 0)) : "",
-      category_id: loan.category_id ? String(loan.category_id) : "",
-      notes: loan.notes || "",
-    })
-    setShowCreateSheet(true)
-  }, [])
-
-  const closeCreateSheet = useCallback(() => {
-    setShowCreateSheet(false)
-    setEditingLoan(null)
-    resetForm()
-  }, [resetForm])
-
-  const { requestClose: requestCreateSheetClose } = useOverlayBackClose({
-    id: "loan-create-sheet",
-    isOpen: showCreateSheet,
-    onClose: closeCreateSheet,
-  })
-  const showCreateSheetSwipe = useSwipeDownToClose(requestCreateSheetClose)
-
-  async function handleSaveLoan(e: React.FormEvent) {
-    e.preventDefault()
-    const openingAmount = Number(form.opening_amount)
-    const monthlyPayment = Number(form.monthly_payment || 0)
-    if (!form.name.trim() || openingAmount <= 0) {
-      showAlert(
-        tr("Maklumat tak lengkap", "Incomplete info"),
-        tr("Nama loan dan jumlah perlu diisi.", "Loan name and amount are required."),
-        "error",
-      )
-      return
-    }
-    if (monthlyPayment < 0 || monthlyPayment > openingAmount) {
-      showAlert(
-        tr("Bulanan tak sah", "Invalid monthly amount"),
-        tr("Bayaran bulanan mesti lebih kecil atau sama dengan jumlah loan.", "Monthly payment must be less than or equal to total loan."),
-        "error",
-      )
+  const save = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (saving) return
+    if (problem) {
+      showAlert(tr("Maklumat tak lengkap", "Incomplete info"), problem, "error")
       return
     }
     setSaving(true)
     try {
-      const token = getAccessToken()
-      const res = await fetch(editingLoan ? `/api/loans/${editingLoan.id}` : "/api/loans", {
-        method: editingLoan ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      const res = await fetch("/api/loans", {
+        method: "POST",
+        headers: headers(true),
         body: JSON.stringify({
           name: form.name.trim(),
-          opening_amount: openingAmount,
-          monthly_payment: monthlyPayment > 0 ? monthlyPayment : null,
+          opening_amount: openingNum,
+          monthly_payment: monthlyNum > 0 ? monthlyNum : null,
           category_id: form.category_id ? Number(form.category_id) : null,
           notes: form.notes.trim() || null,
         }),
       })
       if (!res.ok) {
-        const payload = (await res.json().catch(() => null)) as { detail?: string } | null
-        throw new Error(payload?.detail || tr("Gagal simpan loan.", "Failed to save loan."))
+        const body = (await res.json().catch(() => null)) as { detail?: unknown } | null
+        throw new Error(typeof body?.detail === "string" ? body.detail : tr("Gagal simpan loan.", "Failed to save the loan."))
       }
-      closeCreateSheet()
-      await loadLoans()
+      setShowForm(false)
+      await load()
     } catch (err) {
-      showAlert(tr("Gagal simpan", "Save failed"), err instanceof Error ? err.message : tr("Gagal simpan loan.", "Failed to save loan."), "error")
+      showAlert(tr("Gagal simpan", "Save failed"), err instanceof Error ? err.message : "", "error")
     } finally {
       setSaving(false)
     }
   }
 
-  const handleDeleteLoan = useCallback(
-    (loan: LoanItem) => {
-      showConfirm(
-        tr("Padam loan?", "Delete loan?"),
-        tr(
-          `Padam ${loan.name}? Bayaran loan berkaitan akan dibuang daripada rekod loan.`,
-          `Delete ${loan.name}? Related loan payment records will be removed from loan records.`,
-        ),
-        async () => {
-          setSaving(true)
-          try {
-            const token = getAccessToken()
-            const res = await fetch(`/api/loans/${loan.id}`, {
-              method: "DELETE",
-              headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-            })
-            if (!res.ok) {
-              const payload = (await res.json().catch(() => null)) as { detail?: string } | null
-              throw new Error(payload?.detail || tr("Gagal padam loan.", "Failed to delete loan."))
-            }
-            closeCreateSheet()
-            await loadLoans()
-          } catch (err) {
-            showAlert(tr("Gagal padam", "Delete failed"), err instanceof Error ? err.message : tr("Gagal padam loan.", "Failed to delete loan."), "error")
-          } finally {
-            setSaving(false)
-          }
-        },
-        "warning",
-      )
-    },
-    [closeCreateSheet, tr, loadLoans, showAlert, showConfirm],
-  )
+  const field = "h-12 w-full rounded-full border border-[var(--border)] bg-transparent px-4 text-base text-[var(--text)] outline-none focus:border-[var(--btn-primary-bg)]"
+  const label = "mb-1.5 block text-xs font-semibold text-[var(--muted)]"
 
-  const paidPercent = summary.totalLoan > 0 ? clamp((summary.totalPaid / summary.totalLoan) * 100, 0, 100) : 0
-
-  const renderLoanCard = (loan: LoanItem, compact = false) => {
-    const remainingMonths = getLoanMonths(loan)
-    const paidAmount = Number(loan.paid_amount || Math.max(0, Number(loan.opening_amount || 0) - Number(loan.outstanding_amount || 0)))
-    const progress = Number(loan.opening_amount || 0) > 0 ? clamp((paidAmount / Number(loan.opening_amount || 0)) * 100, 0, 100) : 0
-    const isSettled = loan.status === "settled"
-
-    return (
-      <div
-        key={loan.id}
-        className={cn(
-          "group w-full overflow-hidden rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] px-3.5 py-3 transition",
-          compact
-            ? "hover:border-[color-mix(in_srgb,var(--accent2)_30%,var(--border))] md:px-4 md:py-3.5"
-            : "active:scale-[0.985]",
-        )}
-      >
-        <div className="flex items-center gap-3 md:gap-4">
-          <button
-            type="button"
-            onClick={() => openDetail(loan.id)}
-            className={cn(
-              "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border text-sm font-black",
-              isSettled
-                ? "border-emerald-500/20 bg-[var(--btn-primary-bg)]/10 text-emerald-500"
-                : "border-sky-500/20 bg-[var(--surface-tint)] text-[var(--text)]",
-            )}
-            aria-label={loan.name}
-          >
-            {(loan.name?.[0] || "L").toUpperCase()}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => openDetail(loan.id)}
-            className="min-w-0 flex-1 text-left md:w-[12rem] md:flex-none md:shrink-0"
-          >
-            <p className="truncate text-sm font-black leading-tight text-[var(--text)]">{loan.name}</p>
-            <p className="mt-0.5 truncate text-[11px] font-semibold text-[var(--muted)]">
-              {loan.monthly_payment ? (
-                <>
-                  <MoneyAmount value={Number(loan.monthly_payment || 0)} size="xs" className="text-[var(--muted)]" currencyClassName="text-[var(--muted)] opacity-55" />
-                  <span> / {tr("bulan", "mo")}</span>
-                </>
-              ) : (
-                tr("Tiada bulanan", "No monthly")
-              )}
-              {remainingMonths != null ? ` · ${remainingMonths} ${tr("bulan", "mo")}` : ""}
-            </p>
-            <div className="mt-1.5 md:hidden">
-              <div className="mb-1 flex items-center justify-between text-[10px] font-semibold">
-                <span className="text-[var(--muted)]">
-                  <MoneyAmount value={Number(loan.outstanding_amount || 0)} digits={0} size="xs" className="text-[var(--text)]" />
-                </span>
-                <span className="tabular-nums text-[var(--text)]">{progress.toFixed(0)}%</span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all",
-                    isSettled
-                      ? "bg-gradient-to-r from-emerald-400 to-teal-500"
-                      : "bg-gradient-to-r from-[#404040] to-[#171717]",
-                  )}
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => openDetail(loan.id)}
-            className="hidden min-w-0 flex-1 items-center gap-4 text-left md:flex"
-          >
-            <div className="min-w-[7.5rem] shrink-0">
-              <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                {tr("Baki", "Outstanding")}
-              </p>
-              <p className="mt-0.5 truncate leading-none text-[var(--text)]">
-                <MoneyAmount value={Number(loan.outstanding_amount || 0)} digits={0} size="sm" className="text-[var(--text)]" />
-              </p>
-            </div>
-            <div className="min-w-[6.5rem] shrink-0">
-              <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-                {tr("Bulanan", "Monthly")}
-              </p>
-              <p className="mt-0.5 truncate leading-none text-[var(--text)]">
-                {loan.monthly_payment ? (
-                  <MoneyAmount value={Number(loan.monthly_payment || 0)} digits={0} size="sm" className="text-[var(--text)]" />
-                ) : (
-                  "–"
-                )}
-              </p>
-            </div>
-            <div className="min-w-0 max-w-xs flex-1">
-              <div className="mb-1 flex items-center justify-between text-[10px] font-semibold">
-                <span className="text-[var(--muted)]">{tr("Progress", "Progress")}</span>
-                <span className="tabular-nums text-[var(--text)]">{progress.toFixed(0)}%</span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all",
-                    isSettled
-                      ? "bg-gradient-to-r from-emerald-400 to-teal-500"
-                      : "bg-gradient-to-r from-[#404040] to-[#171717]",
-                  )}
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-          </button>
-
-          <div className="ml-auto flex shrink-0 items-center gap-0.5">
-            <span className="mr-0.5 hidden rounded-full bg-[var(--surface-tint)] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] text-[var(--muted)] sm:inline">
-              {isSettled ? tr("Selesai", "Settled") : tr("Aktif", "Active")}
-            </span>
-
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const filterToggle = (
-    <div className="inline-flex rounded-full border border-[var(--border)] bg-[var(--surface-tint)]/40 p-0.5">
-      <button
-        type="button"
-        onClick={() => setIncludeSettled(false)}
-        className={cn(
-          "rounded-full px-3 py-1.5 text-[0.55rem] font-black uppercase tracking-[0.12em] transition",
-          !includeSettled ? "bg-[var(--text)] text-[var(--bg)]" : "text-[var(--muted)]",
-        )}
-      >
-        {tr("Aktif", "Active")}
-      </button>
-      <button
-        type="button"
-        onClick={() => setIncludeSettled(true)}
-        className={cn(
-          "rounded-full px-3 py-1.5 text-[0.55rem] font-black uppercase tracking-[0.12em] transition",
-          includeSettled ? "bg-[var(--text)] text-[var(--bg)]" : "text-[var(--muted)]",
-        )}
-      >
-        {tr("Semua", "All")}
-      </button>
-    </div>
-  )
+  const tabs: Array<["active" | "all" | "settled", string, number]> = [
+    ["active", tr("Aktif", "Active"), open.length],
+    ["settled", tr("Selesai", "Settled"), loans.length - open.length],
+    ["all", tr("Semua", "All"), loans.length],
+  ]
 
   return (
-    <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
-      {/* ─── Mobile ─── */}
-      <div className="space-y-5 md:hidden">
+    <div className="pb-24 lg:pb-0">
+      <div className="lg:hidden">
         <MobilePageHeader
           title="Loan"
           fallbackHref={`/${sessionId}`}
           action={
-            <MobileIconButton onClick={openCreateSheet} label={tr("Tambah Loan", "Add Loan")}>
+            <MobileIconButton onClick={() => { setForm(emptyForm); setShowForm(true) }} label={tr("Tambah loan", "Add loan")}>
               <Plus strokeWidth={2.5} />
             </MobileIconButton>
           }
         />
-
-        <section className="px-1">
-          <div className="loan-detail-hero relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] p-5 text-[#f5f5f5]">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-            <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-            <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
-
-            <div className="relative">
-              <p className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">{tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}</p>
-              <div className="mt-2 text-[#ffffff]">
-                {showDataSkeleton ? <div className="h-7 w-32 animate-pulse rounded bg-white/10" /> : <MoneyAmount value={Number(summary.totalMonthly || 0)} size="hero" className="text-[#ffffff]" currencyClassName="text-[#ffffff] opacity-55" />}
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.625rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">
-                <span>{tr("Aktif", "Active")}: {summary.activeCount}</span>
-                <span>{tr("Semua", "All")}: {loans.length}</span>
-              </div>
-
-              <div className="mt-5 grid grid-cols-3 gap-2.5">
-                {[
-                  { label: tr("Semua", "All"), value: loans.length },
-                  { label: tr("Aktif", "Active"), value: summary.activeCount },
-                  { label: tr("Selesai", "Settled"), value: loans.filter((l) => l.status === "settled").length },
-                ].map((item) => (
-                  <div key={item.label} className="rounded-[1.15rem] bg-white/[0.06] p-3">
-                    <p className="text-[0.5rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">{item.label}</p>
-                    <p className="mt-2 text-sm font-semibold tabular-nums tracking-tight text-[#e5e5e5]">{item.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="px-1">
-          <div className="space-y-3">
-            {showDataSkeleton ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="rounded-[1.35rem] border border-[var(--border)] bg-[var(--card)] p-4">
-                  <AmountSkeleton className="h-4 w-32" />
-                  <AmountSkeleton className="mt-3 h-6 w-24" />
-                  <AmountSkeleton className="mt-2 h-3 w-40" />
-                </div>
-              ))
-            ) : sortedLoans.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 p-8 text-center">
-                <CreditCard size={32} className="mx-auto text-[var(--muted)]/40" />
-                <p className="mt-3 text-sm font-bold text-[var(--muted)]">{tr("Belum ada loan.", "No loans yet.")}</p>
-                <button
-                  type="button"
-                  onClick={openCreateSheet}
-                  className="mt-4 rounded-full bg-[var(--text)] px-4 py-2 text-[0.625rem] font-black uppercase tracking-wider text-[var(--bg)] transition active:scale-95"
-                >
-                  <Plus size={14} className="mr-1 inline" />
-                  {tr("Tambah Loan", "Add Loan")}
-                </button>
-              </div>
-            ) : (
-              sortedLoans.map((loan) => renderLoanCard(loan, false))
-            )}
-          </div>
-        </section>
       </div>
+      <DesktopPageHeader
+        className="hidden lg:block"
+        title="Loan"
+        homeHref={`/${sessionId}`}
+        actions={
+          <DesktopPageAction onClick={() => { setForm(emptyForm); setShowForm(true) }}>
+            <Plus strokeWidth={2.5} />
+            {tr("Tambah loan", "Add loan")}
+          </DesktopPageAction>
+        }
+      />
 
-      {/* ─── Desktop ─── */}
-      <div className="hidden md:block">
-        <DesktopPageHeader
-          title={tr("Papan Loan", "Loan Board")}
-          homeHref={`/${sessionId}`}
-          actions={
-            <DesktopPageAction onClick={openCreateSheet}>
-              <Plus strokeWidth={2.5} />
-              {tr("Tambah Loan", "Add Loan")}
-            </DesktopPageAction>
+      <DesktopPageBody className="mt-2 flex flex-col gap-4 px-1 lg:mt-0 lg:gap-5 lg:px-0">
+        <ModenHero
+          label={
+            <>
+              <CreditCard size={16} />
+              {tr("Baki loan", "Loan balance")}
+            </>
           }
+          currency="RM"
+          amount={showSkeleton ? "—" : money(owed)}
+          amountSize="clamp(2rem, 9vw, 2.75rem)"
+          stats={[
+            { key: "monthly", tone: "out", icon: <CalendarClock size={15} strokeWidth={2.2} />, label: tr("Bayaran sebulan", "Per month"), value: `RM ${money(monthly)}` },
+            { key: "paid", tone: "in", icon: <BadgeCheck size={15} strokeWidth={2.2} />, label: tr("Sudah dibayar", "Paid so far"), value: `RM ${money(paid)}` },
+          ]}
         />
 
-        <DesktopPageBody className="space-y-5">
-        <div className="loan-detail-hero relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] p-6 text-[#f5f5f5]">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-          <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-          <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
-
-          <div className="relative flex items-center gap-5">
-            <div className="min-w-[10rem] shrink-0">
-              <p className="text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[#a3a3a3]">{tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}</p>
-              <div className="mt-2 text-[#ffffff]">
-                {showDataSkeleton ? <div className="h-10 w-40 animate-pulse rounded bg-white/10" /> : <MoneyAmount value={Number(summary.totalMonthly || 0)} size="heroLg" className="text-[#ffffff]" currencyClassName="text-[#ffffff] opacity-55" />}
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3]">
-                <span>{tr("Aktif", "Active")}: {summary.activeCount}</span>
-                <span>{tr("Semua", "All")}: {loans.length}</span>
-              </div>
-            </div>
-
-            <div className="grid min-w-0 flex-1 grid-cols-3 gap-3">
-              {[
-                { label: tr("Semua", "All"), value: loans.length },
-                { label: tr("Aktif", "Active"), value: summary.activeCount },
-                { label: tr("Selesai", "Settled"), value: loans.filter((l) => l.status === "settled").length },
-              ].map((item) => (
-                <div key={item.label} className="rounded-2xl bg-white/[0.06] p-4">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[#a3a3a3]">{item.label}</p>
-                  <p className="mt-3 text-xl font-semibold tabular-nums tracking-tight text-[#e5e5e5]">{item.value}</p>
-                </div>
+        {loadFailed && !hasLoaded ? (
+          <div className="flex flex-col items-center gap-3 rounded-[1.5rem] border border-dashed border-[var(--border)] px-6 py-12 text-center">
+            <p className="text-base font-bold text-[var(--text)]">{tr("Loan tidak dapat dimuatkan", "Loans could not be loaded")}</p>
+            <button type="button" onClick={() => { setLoading(true); void load() }} className="h-11 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)]">
+              {tr("Cuba lagi", "Try again")}
+            </button>
+          </div>
+        ) : (
+          <>
+            <div role="tablist" className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {tabs.map(([key, text, count]) => (
+                <button key={key} type="button" role="tab" aria-selected={filter === key} onClick={() => setFilter(key)} className={cn("flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition", filter === key ? "border-transparent bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]")}>
+                  {text}
+                  <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", filter === key ? "bg-white/20" : "bg-[var(--surface-tint-strong)]")}>{count}</span>
+                </button>
               ))}
             </div>
-          </div>
-        </div>
 
-        <div>
-          <div className="space-y-3">
-            {showDataSkeleton ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="h-36 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
-              ))
-            ) : sortedLoans.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/70 px-6 py-14 text-center">
-                <CreditCard size={40} className="text-[var(--muted)]/30" />
-                <p className="mt-3 text-sm font-bold text-[var(--muted)]">{tr("Belum ada loan.", "No loans yet.")}</p>
-                <button
-                  type="button"
-                  onClick={openCreateSheet}
-                  className="mt-4 rounded-full bg-[var(--text)] px-4 py-2 text-xs font-black uppercase tracking-wider text-[var(--bg)]"
-                >
-                  <Plus size={14} className="mr-1.5 inline" />
-                  {tr("Tambah Loan", "Add Loan")}
-                </button>
+            {showSkeleton ? (
+              <div className="space-y-2.5">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-28 animate-pulse rounded-[1.5rem] bg-[var(--surface-tint)]" />
+                ))}
+              </div>
+            ) : visible.length === 0 ? (
+              <div className="flex flex-col items-center rounded-[1.5rem] border border-dashed border-[var(--border)] px-6 py-12 text-center">
+                <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--muted)]">
+                  <CreditCard size={24} />
+                </span>
+                <p className="mt-4 text-base font-bold text-[var(--text)]">{loans.length ? tr("Tiada dalam tapisan ini", "None in this filter") : tr("Belum ada loan", "No loans yet")}</p>
+                <p className="mt-1 max-w-xs text-sm text-[var(--muted)]">{tr("Jejak pinjaman kereta, rumah atau peribadi dan bayarannya.", "Track a car, home or personal loan and its payments.")}</p>
+                {!loans.length && (
+                  <button type="button" onClick={() => { setForm(emptyForm); setShowForm(true) }} className="mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)]">
+                    <Plus size={15} />
+                    {tr("Tambah loan", "Add loan")}
+                  </button>
+                )}
               </div>
             ) : (
-              sortedLoans.map((loan) => renderLoanCard(loan, true))
-            )}
-          </div>
-        </div>
-        </DesktopPageBody>
-      </div>
-
-      {/* ─── Add/Edit Sheet ─── */}
-      {mounted && showCreateSheet
-        ? createPortal(
-            <div
-              className="fixed inset-0 z-50 flex h-[100dvh] w-screen touch-none items-end justify-center overflow-hidden bg-transparent p-0 md:items-center"
-              onClick={requestCreateSheetClose}
-              onTouchMove={(event) => event.preventDefault()}
-            >
-              <div
-                {...showCreateSheetSwipe}
-                data-swipe-sheet
-                data-prevent-pull-refresh="true"
-                style={{ transform: "translateZ(0)" }}
-                className="app-sheet-panel app-sheet-panel--lg max-h-[88dvh] w-full overflow-y-auto overflow-x-hidden overscroll-contain border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] will-change-transform md:max-h-[85vh] md:max-w-md"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <AppSheetHeader
-                  title={editingLoan ? tr("Edit Loan", "Edit Loan") : tr("Tambah Loan", "Add Loan")}
-                  onClose={requestCreateSheetClose}
-                  action={
-                    <button
-                      type="submit"
-                      form="loan-sheet-form"
-                      disabled={saving}
-                      className="px-1 py-1.5 text-xl font-bold text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
-                    >
-                      {saving
-                        ? (lang === "BM" ? "Menyimpan…" : "Saving…")
-                        : editingLoan ? tr("Update", "Update") : tr("Simpan", "Save")}
-                    </button>
-                  }
-                />
-
-                <form id="loan-sheet-form" className="space-y-4 px-3 py-3 pb-4 text-[var(--text)] md:px-6 md:py-6" onSubmit={handleSaveLoan}>
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Nama Loan", "Loan Name")}
-                    </label>
-                    <input
-                      value={form.name}
-                      onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                      className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                      placeholder={tr("Contoh: Kereta", "Example: Car")}
-                    />
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                        {tr("Jumlah Loan", "Total Loan")}
-                      </label>
-                      <input
-                        inputMode="decimal"
-                        value={form.opening_amount}
-                        onChange={(e) => setForm((prev) => ({ ...prev, opening_amount: e.target.value }))}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                        placeholder="12000"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                        {tr("Bayaran Bulanan", "Monthly Payment")}
-                      </label>
-                      <input
-                        inputMode="decimal"
-                        value={form.monthly_payment}
-                        onChange={(e) => setForm((prev) => ({ ...prev, monthly_payment: e.target.value }))}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                        placeholder="500"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Kategori", "Category")}
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <div className="relative min-w-0 flex-1">
-                        <button
-                          type="button"
-                          onClick={() => setCatOpen((o) => !o)}
-                          className="flex w-full items-center gap-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2.5 text-left"
-                        >
-                          {form.category_id ? (
-                            <CategoryIconGlyph
-                              iconName={catById.get(Number(form.category_id))?.icon_name}
-                              categoryName={catName(form.category_id)}
-                              kind="expense"
-                              size={16}
-                            />
-                          ) : (
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--muted)]">
-                              <CreditCard size={13} />
-                            </span>
-                          )}
-                          <span className={cn("truncate text-sm", form.category_id ? "font-bold text-[var(--text)]" : "text-[var(--muted)]")}>
-                            {catName(form.category_id)}
-                          </span>
-                          <ChevronDown size={16} className="ml-auto shrink-0 text-[var(--muted)]" />
-                        </button>
-                        {catOpen && (
-                          <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 max-h-60 overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1 shadow-xl shadow-black/20">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setForm((prev) => ({ ...prev, category_id: "" }))
-                                setCatOpen(false)
-                              }}
-                              className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm font-semibold text-[var(--muted)] hover:bg-[var(--surface-tint)]"
-                            >
-                              {tr("Tiada kategori", "No category")}
-                            </button>
-                            {categories.map((c) => {
-                              const selected = form.category_id === String(c.id)
-                              return (
-                                <button
-                                  key={c.id}
-                                  type="button"
-                                  onClick={() => {
-                                    setForm((prev) => ({ ...prev, category_id: String(c.id) }))
-                                    setCatOpen(false)
-                                  }}
-                                  className={cn(
-                                    "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left transition",
-                                    selected ? "bg-[var(--surface-tint)]" : "hover:bg-[var(--surface-tint)]",
-                                  )}
-                                >
-                                  <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
-                                    <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind="expense" size={16} />
-                                  </span>
-                                  <span className="truncate text-sm font-semibold text-[var(--text)]">{c.name}</span>
-                                  {selected ? <span className="ml-auto text-[var(--accent2)]">✓</span> : null}
-                                </button>
-                              )
-                            })}
+              <ul className="grid gap-2.5 lg:grid-cols-2">
+                {visible.map((l) => {
+                  const settled = l.outstanding_amount <= 0.004
+                  const pct = l.opening_amount ? Math.min(100, Math.max(0, (l.paid_amount / l.opening_amount) * 100)) : 0
+                  return (
+                    <li key={l.id}>
+                      <button type="button" onClick={() => router.push(`/${sessionId}/loan/${l.id}`)} className="w-full rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 text-left transition hover:bg-[var(--surface-tint)] active:scale-[0.99]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-base font-bold text-[var(--text)]">{l.name}</p>
+                            <p className="mt-0.5 text-xs text-[var(--muted)]">
+                              {l.payment_count} {tr("bayaran", l.payment_count === 1 ? "payment" : "payments")}
+                              {!settled && l.remaining_months ? ` · ${tr(`lagi ${l.remaining_months} bulan`, `${l.remaining_months} months left`)}` : ""}
+                            </p>
                           </div>
-                        )}
-                      </div>
-                      <a
-                        href={`/${sessionId}/categories`}
-                        className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--accent2)] transition hover:bg-[var(--surface-tint-strong)]"
-                        aria-label={tr("Tambah kategori", "Add category")}
-                      >
-                        <Plus size={18} />
-                      </a>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Nota", "Notes")}
-                    </label>
-                    <textarea
-                      value={form.notes}
-                      onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-                      rows={3}
-                      className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                      placeholder={tr("Opsyenal", "Optional")}
-                    />
-                  </div>
-
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/40 p-4">
-                    <p className="mb-3 text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">loanx PAY</p>
-                    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 font-mono text-xs text-[var(--text)]">
-                      LOANX PAY {form.name || tr("KERETA", "CAR")} {form.monthly_payment || "500"}
-                    </div>
-                    <p className="mt-2 text-[0.58rem] text-[var(--muted)]">
-                      {tr("Format: LOANX PAY [nama] [jumlah]", "Format: LOANX PAY [name] [amount]")}
-                    </p>
-                  </div>
-
-                  <div className="mt-6 -mx-3 flex items-center gap-2 border-t border-[var(--border)] bg-[var(--sheet-bg)] px-3 pb-2 pt-5 md:-mx-6 md:px-6">
-                    {editingLoan && (
-                      <button
-                        type="button"
-                        disabled={saving}
-                        onClick={() => handleDeleteLoan(editingLoan)}
-                        className="flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 text-sm font-black text-rose-500 transition active:scale-[0.98] disabled:opacity-50"
-                      >
-                        <Trash2 size={16} />
-                        {tr("Padam", "Delete")}
+                          {settled ? (
+                            <span className="shrink-0 rounded-full border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">{tr("Selesai", "Settled")}</span>
+                          ) : l.monthly_payment ? (
+                            <span className="shrink-0 rounded-full border border-[var(--border)] px-2.5 py-0.5 text-xs font-semibold text-[var(--muted)]">RM {money(l.monthly_payment)} / {tr("bulan", "mo")}</span>
+                          ) : null}
+                        </div>
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
+                          <div className="h-full rounded-full bg-[var(--btn-primary-bg)] transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <div className="mt-2 flex items-baseline justify-between gap-3 text-sm">
+                          <span className="text-[var(--muted)]">
+                            {tr("Dibayar", "Paid")} <span className="font-semibold tabular-nums text-[var(--text)]">RM {money(l.paid_amount)}</span>
+                          </span>
+                          <span className="font-bold tabular-nums text-[var(--text)]">{settled ? tr("Tiada baki", "Nothing left") : `${tr("Baki", "Left")} RM ${money(l.outstanding_amount)}`}</span>
+                        </div>
                       </button>
-                    )}
-                  </div>
-                </form>
-              </div>
-            </div>,
-            document.body,
-          )
-        : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </>
+        )}
+      </DesktopPageBody>
 
-      {detailId !== null && (
-        <div className="fixed inset-0 z-[500]">
-          <button type="button" aria-label={tr("Tutup butiran", "Close details")} onClick={closeDetail} className="absolute inset-0 bg-[var(--overlay)]" />
-          <section className="absolute bottom-0 right-0 top-0 h-[100dvh] w-full overflow-hidden bg-[var(--page-bg)] md:w-[min(420px,80vw)] md:border-l md:border-[var(--border)] md:shadow-2xl">
-            <iframe onLoad={armDetailHistory} title={tr("Butiran loan", "Loan details")} src={`/${sessionId}/loan/${detailId}`} className="block h-[100dvh] w-full border-0" />
-            <button type="button" aria-label={tr("Kembali", "Back")} onClick={closeDetail} className="absolute left-0 top-0 z-[600] h-16 w-16 bg-transparent md:hidden" />
-            <button
-              type="button"
-              aria-label={tr("Tutup butiran", "Close details")}
-              onClick={closeDetail}
-              className="absolute right-3 top-3 z-[600] hidden h-8 w-8 items-center justify-center rounded-full bg-[var(--surface-tint)] text-[var(--muted)] shadow transition hover:text-[var(--text)] md:flex"
-            >
-              <X size={16} />
-            </button>
-          </section>
-        </div>
-      )}
+      <AppSheet
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        id="loan-create-sheet"
+        title={tr("Loan baharu", "New loan")}
+        size="md"
+        footer={
+          <button type="button" onClick={() => void save()} disabled={saving} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-40">
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {tr("Tambah loan", "Add loan")}
+          </button>
+        }
+      >
+        <form onSubmit={save} className="space-y-4">
+          <div>
+            <label htmlFor="ln-name" className={label}>{tr("Nama (cth. Kereta, Rumah)", "Name (e.g. Car, Home)")}</label>
+            <input id="ln-name" value={form.name} maxLength={190} onChange={(e) => setForm({ ...form, name: e.target.value })} className={field} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label htmlFor="ln-amount" className={label}>{tr("Jumlah pinjaman (RM)", "Loan amount (RM)")}</label>
+              <input id="ln-amount" inputMode="decimal" value={form.opening_amount} onChange={(e) => setForm({ ...form, opening_amount: e.target.value })} placeholder="0.00" className={field} />
+            </div>
+            <div>
+              <label htmlFor="ln-monthly" className={label}>{tr("Bayaran bulanan (RM)", "Monthly payment (RM)")}</label>
+              <input id="ln-monthly" inputMode="decimal" value={form.monthly_payment} onChange={(e) => setForm({ ...form, monthly_payment: e.target.value })} placeholder="0.00" className={field} />
+            </div>
+          </div>
+          {openingNum > 0 && monthlyNum > 0 && monthlyNum <= openingNum ? (
+            <p className="text-xs text-[var(--muted)]">{tr(`Kira-kira ${Math.ceil(openingNum / monthlyNum)} bulan untuk selesai.`, `About ${Math.ceil(openingNum / monthlyNum)} months to clear it.`)}</p>
+          ) : null}
+          <div>
+            <label htmlFor="ln-cat" className={label}>{tr("Kategori bayaran (pilihan)", "Payment category (optional)")}</label>
+            <select id="ln-cat" value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })} className={field}>
+              <option value="">{tr("Tiada kategori", "No category")}</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="ln-notes" className={label}>{tr("Nota (pilihan)", "Notes (optional)")}</label>
+            <textarea id="ln-notes" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full rounded-[1.25rem] border border-[var(--border)] bg-transparent p-4 text-base text-[var(--text)] outline-none focus:border-[var(--btn-primary-bg)]" />
+          </div>
+        </form>
+      </AppSheet>
 
       {alertModal}
     </div>

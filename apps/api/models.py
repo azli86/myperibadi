@@ -337,6 +337,8 @@ class Subscription(Base):
     status: Mapped[str] = mapped_column(String(20), default="active", index=True)
     start_date: Mapped[datetime] = mapped_column(Date, nullable=False)
     last_payment_date: Mapped[Optional[datetime]] = mapped_column(Date, nullable=True)
+    # "Reset due date": payments on or before this day no longer count towards the cycle.
+    due_reset_at: Mapped[Optional[datetime]] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

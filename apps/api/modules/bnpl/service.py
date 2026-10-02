@@ -7,6 +7,8 @@ from typing import Any, Optional
 
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
+
+from time_utils import clamp_day, current_business_date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
@@ -44,10 +46,32 @@ def _fmt_date(value: Optional[date | datetime]) -> Optional[str]:
 def _num(value: Any) -> float:
     return round(float(value or 0), 2)
 
+def due_info(row: models.Bnpl, today: Optional[date] = None) -> dict:
+    """The next instalment date, and whether this month's is already late."""
+    today = today or current_business_date()
+    if row.status == "settled":
+        return {"next_due_date": None, "overdue": False, "days_overdue": 0}
+    last = row.last_payment_date
+    paid_this_month = bool(last and last.year == today.year and last.month == today.month)
+    this_due = date(today.year, today.month, clamp_day(today.year, today.month, int(row.due_day_of_month)))
+    start = row.start_date.date() if isinstance(row.start_date, datetime) else row.start_date
+    if start and start > this_due and not paid_this_month:
+        # The plan has not begun: the first instalment falls in the start month.
+        first = date(start.year, start.month, clamp_day(start.year, start.month, int(row.due_day_of_month)))
+        return {"next_due_date": _fmt_date(first), "overdue": False, "days_overdue": 0}
+    if paid_this_month:
+        ny, nm = (today.year + (today.month // 12), today.month % 12 + 1)
+        nxt = date(ny, nm, clamp_day(ny, nm, int(row.due_day_of_month)))
+        return {"next_due_date": _fmt_date(nxt), "overdue": False, "days_overdue": 0}
+    late = (today - this_due).days
+    return {"next_due_date": _fmt_date(this_due), "overdue": late > 0, "days_overdue": max(0, late)}
+
+
 def serialize_bnpl(row: models.Bnpl, *, category_name: Optional[str] = None, paid_amount: Optional[float] = None) -> dict:
     if paid_amount is None:
         paid_amount = _num(row.total_amount - row.outstanding_amount)
     return {
+        **due_info(row),
         "id": int(row.id),
         "name": row.name,
         "key": row.key,
@@ -100,10 +124,12 @@ async def create_bnpl(
     if due_day < 1 or due_day > 31:
         raise HTTPException(status_code=400, detail="due_day_of_month must be between 1 and 31.")
 
+    if monthly_amount > total_amount + 0.005:
+        raise HTTPException(status_code=400, detail="Monthly amount cannot be more than the total.")
     household_id = await queries.ensure_household(db, current_user)
     await queries.get_category_or_404(db, category_id=payload.category_id, household_id=household_id)
 
-    start_date = _parse_date(payload.start_date, "start_date") or date.today()
+    start_date = _parse_date(payload.start_date, "start_date") or current_business_date()
 
     import whatsapp_service
 
@@ -151,18 +177,28 @@ async def update_bnpl(
         name = (payload.name or "").strip()
         if not name:
             raise HTTPException(status_code=400, detail="BNPL name is required.")
-        row.name = name
         import whatsapp_service
 
-        row.key = whatsapp_service.counterparty_key(name)
+        key = whatsapp_service.counterparty_key(name)
+        clash = await db.scalar(
+            select(models.Bnpl.id).where(models.Bnpl.user_id == current_user.id, models.Bnpl.key == key, models.Bnpl.id != row.id)
+        )
+        if clash:
+            # The name is unique per user; saving a duplicate failed inside the database.
+            raise HTTPException(status_code=400, detail="A BNPL with this name already exists.")
+        row.name = name
+        row.key = key
     if "provider" in data:
-        row.provider = (payload.provider or "").strip()
+        provider = (payload.provider or "").strip()
+        if not provider:
+            raise HTTPException(status_code=400, detail="BNPL provider is required.")
+        row.provider = provider
     if "notes" in data:
         row.notes = (payload.notes or "").strip() or None
     if "icon_name" in data:
         row.icon_name = (payload.icon_name or "").strip() or None
 
-    if "category_id" in data:
+    if "category_id" in data and payload.category_id is not None:
         household_id = await queries.ensure_household(db, current_user)
         await queries.get_category_or_404(db, category_id=payload.category_id, household_id=household_id)
         row.category_id = payload.category_id
@@ -181,8 +217,21 @@ async def update_bnpl(
         row.due_day_of_month = int(payload.due_day_of_month)
     if "start_date" in data:
         row.start_date = _parse_date(payload.start_date, "start_date") or row.start_date
-    if "status" in data:
-        row.status = (payload.status or "active").strip() or "active"
+    if _num(row.monthly_amount) > _num(row.total_amount) + 0.005:
+        raise HTTPException(status_code=400, detail="Monthly amount cannot be more than the total.")
+    if "status" in data and payload.status:
+        if payload.status not in ("active", "settled"):
+            raise HTTPException(status_code=400, detail="Status must be 'active' or 'settled'.")
+        row.status = payload.status
+
+    # What is still owed follows the total and what has been paid: editing the total used to
+    # leave the old outstanding in place, so the page showed a balance that matched neither.
+    paid = await queries.count_payments(db, bnpl_id=row.id)
+    owed = max(0.0, round(float(row.total_amount) - paid, 2))
+    if "status" in data and payload.status == "settled":
+        owed = 0.0
+    row.outstanding_amount = owed
+    row.status = "settled" if owed <= 0 else "active"
 
     row.updated_at = datetime.utcnow()
     await db.commit()
@@ -306,7 +355,7 @@ async def pay_bnpl(
     remaining = _num(bnpl.outstanding_amount)
     applied = min(pay_amount, remaining)
 
-    pay_date = payment_date or date.today()
+    pay_date = payment_date or current_business_date()
 
     vendor = (vendor_override or "").strip() or bnpl.name
     txn = models.Transaction(
@@ -412,3 +461,56 @@ async def apply_bnpl_auto_payment(
     await db.commit()
     return bnpl
 
+
+
+def serialize_payment(pay: models.BnplPayment) -> dict:
+    return {
+        "id": int(pay.id),
+        "bnpl_id": int(pay.bnpl_id),
+        "wallet_id": int(pay.wallet_id) if pay.wallet_id else None,
+        "transaction_id": int(pay.transaction_id) if pay.transaction_id else None,
+        "amount": _num(pay.amount),
+        "payment_date": _fmt_date(pay.payment_date),
+        "notes": pay.notes,
+        "source_channel": pay.source_channel,
+    }
+
+
+async def list_payments(db: AsyncSession, *, current_user: models.User, bnpl_id: int) -> list[dict]:
+    await queries.get_bnpl_or_404(db, bnpl_id=bnpl_id, user_id=current_user.id)
+    rows = (
+        await db.execute(
+            select(models.BnplPayment)
+            .where(models.BnplPayment.bnpl_id == bnpl_id)
+            .order_by(models.BnplPayment.payment_date.desc(), models.BnplPayment.id.desc())
+        )
+    ).scalars().all()
+    return [serialize_payment(p) for p in rows]
+
+
+async def delete_payment(db: AsyncSession, *, current_user: models.User, bnpl_id: int, payment_id: int) -> models.Bnpl:
+    """Take back a payment recorded by mistake: the expense it created is removed, so the
+    wallet balance and what is owed both go back."""
+    bnpl = await queries.get_bnpl_or_404(db, bnpl_id=bnpl_id, user_id=current_user.id)
+    pay = await db.scalar(
+        select(models.BnplPayment).where(models.BnplPayment.id == payment_id, models.BnplPayment.bnpl_id == bnpl.id)
+    )
+    if not pay:
+        raise HTTPException(status_code=404, detail="Payment not found.")
+    txn_id = pay.transaction_id
+    await db.delete(pay)
+    await db.flush()
+    if txn_id:
+        txn = await db.get(models.Transaction, txn_id)
+        if txn is not None and txn.user_id == current_user.id and txn.bnpl_id == bnpl.id:
+            await db.delete(txn)
+    await db.flush()
+    paid = await queries.count_payments(db, bnpl_id=bnpl.id)
+    bnpl.outstanding_amount = max(0.0, round(float(bnpl.total_amount) - paid, 2))
+    bnpl.status = "settled" if bnpl.outstanding_amount <= 0 else "active"
+    last = await db.scalar(select(models.BnplPayment.payment_date).where(models.BnplPayment.bnpl_id == bnpl.id).order_by(models.BnplPayment.payment_date.desc()).limit(1))
+    bnpl.last_payment_date = last
+    bnpl.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(bnpl)
+    return bnpl

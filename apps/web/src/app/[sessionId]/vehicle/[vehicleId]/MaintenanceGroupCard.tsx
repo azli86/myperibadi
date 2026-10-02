@@ -43,16 +43,16 @@ export function MaintenanceGroupCard({
   return (
     <section
       className={cn(
-        "rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--shadow-card)] sm:p-5",
+        "rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5",
         className
       )}
     >
       <header className="mb-3.5 flex items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--text)]">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--text)]">
           <Icon size={18} />
         </span>
         <div className="min-w-0">
-          <h2 className="text-sm font-black tracking-tight text-[var(--text)]">
+          <h2 className="text-base font-bold text-[var(--text)]">
             {isBm ? group.titleBm : group.title}
           </h2>
           <p className="mt-0.5 text-[11px] font-semibold text-[var(--muted)]">

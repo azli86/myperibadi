@@ -119,6 +119,18 @@ def create_split_bills_router(*, get_current_user: Callable[..., Any]) -> APIRou
             headers={"Content-Disposition": "inline; filename=payment-media"},
         )
 
+    @router.delete("/{split_id}/payments/{payment_id}")
+    async def delete_payment(
+        split_id: int,
+        payment_id: int,
+        db: AsyncSession = Depends(database.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        row = await service.delete_payment(
+            db, current_user=current_user, split_id=split_id, payment_id=payment_id
+        )
+        return service.serialize_split_detail(row)
+
     @router.post("/{split_id}/complete")
     async def mark_completed(
         split_id: int,

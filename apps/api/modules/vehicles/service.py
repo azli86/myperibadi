@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
 import storage_service
+from time_utils import current_business_date
 from modules.vehicles import queries, storage
 from modules.vehicles.schemas import (
     DocumentCreate,
@@ -247,7 +248,7 @@ def serialize_reminder(
     vehicle: Optional[models.Vehicle] = None,
     today: Optional[date] = None,
 ) -> dict:
-    today = today or date.today()
+    today = today or current_business_date()
     days_overdue = None
     km_overdue = None
     is_overdue = False
@@ -376,6 +377,27 @@ async def recalculate_fuel_efficiency(db: AsyncSession, vehicle_id: int, househo
         prev_full = log
 
 
+def _check_year(year: Optional[int]) -> None:
+    if year is not None and not (1950 <= int(year) <= current_business_date().year + 1):
+        raise HTTPException(status_code=400, detail="Year is not valid.")
+
+
+async def _check_plate_unique(
+    db: AsyncSession, *, household_id: int, plate: Optional[str], exclude_id: Optional[int] = None
+) -> None:
+    value = (plate or "").strip().upper()
+    if not value:
+        return
+    stmt = select(models.Vehicle.id).where(
+        models.Vehicle.household_id == household_id,
+        models.Vehicle.registration_number == value,
+    )
+    if exclude_id is not None:
+        stmt = stmt.where(models.Vehicle.id != exclude_id)
+    if (await db.execute(stmt)).first():
+        raise HTTPException(status_code=400, detail="A vehicle with this plate number already exists.")
+
+
 async def create_vehicle(
     db: AsyncSession,
     *,
@@ -389,6 +411,8 @@ async def create_vehicle(
     odometer = payload.current_odometer
     if odometer is not None and odometer < 0:
         raise HTTPException(status_code=400, detail="Odometer cannot be negative.")
+    _check_year(payload.year)
+    await _check_plate_unique(db, household_id=household_id, plate=payload.registration_number)
     vehicle = models.Vehicle(
         household_id=household_id,
         created_by_user_id=current_user.id,
@@ -415,7 +439,7 @@ async def create_vehicle(
             db,
             vehicle,
             odometer=odometer,
-            reading_date=date.today(),
+            reading_date=current_business_date(),
             source="manual",
             source_id=None,
             notes="Initial odometer",
@@ -458,7 +482,12 @@ async def update_vehicle(
             if isinstance(value, str):
                 value = value.strip() or None
             setattr(vehicle, field, value)
+    if "year" in data:
+        _check_year(payload.year)
     if "registration_number" in data:
+        await _check_plate_unique(
+            db, household_id=household_id, plate=payload.registration_number, exclude_id=int(vehicle.id)
+        )
         vehicle.registration_number = (payload.registration_number or "").strip().upper() or None
     if "purchase_date" in data:
         vehicle.purchase_date = _parse_date(payload.purchase_date, "purchase_date")
@@ -470,7 +499,7 @@ async def update_vehicle(
             db,
             vehicle,
             odometer=payload.current_odometer,
-            reading_date=date.today(),
+            reading_date=current_business_date(),
             source="manual",
             source_id=None,
         )
@@ -513,9 +542,11 @@ async def create_fuel_log(
 ) -> models.VehicleFuelLog:
     household_id = await queries.ensure_household(db, current_user)
     vehicle = await queries.get_vehicle_or_404(db, vehicle_id=vehicle_id, household_id=household_id)
-    if payload.total_amount is None or float(payload.total_amount) < 0:
-        raise HTTPException(status_code=400, detail="total_amount is required.")
-    log_date = _parse_date(payload.log_date, "log_date") or date.today()
+    if payload.total_amount is None or float(payload.total_amount) <= 0:
+        raise HTTPException(status_code=400, detail="Enter a fuel amount above zero.")
+    if payload.litres is not None and float(payload.litres) <= 0:
+        raise HTTPException(status_code=400, detail="Litres must be above zero.")
+    log_date = _parse_date(payload.log_date, "log_date") or current_business_date()
     if payload.odometer is not None and payload.odometer < 0:
         raise HTTPException(status_code=400, detail="Odometer cannot be negative.")
 
@@ -661,7 +692,7 @@ async def create_expense(
         raise HTTPException(status_code=400, detail="category is required.")
     if float(payload.amount) < 0:
         raise HTTPException(status_code=400, detail="amount must be >= 0.")
-    expense_date = _parse_date(payload.expense_date, "expense_date") or date.today()
+    expense_date = _parse_date(payload.expense_date, "expense_date") or current_business_date()
     transaction_id = payload.transaction_id
     amount = float(payload.amount)
     if transaction_id is not None:
@@ -787,7 +818,7 @@ async def create_maintenance(
     service_type = (payload.service_type or "").strip()
     if not service_type:
         raise HTTPException(status_code=400, detail="service_type is required.")
-    service_date = _parse_date(payload.service_date, "service_date") or date.today()
+    service_date = _parse_date(payload.service_date, "service_date") or current_business_date()
     labour = float(payload.labour_cost or 0)
     parts = float(payload.parts_cost or 0)
     total = payload.total_cost
@@ -1309,7 +1340,7 @@ async def create_odometer(
     vehicle = await queries.get_vehicle_or_404(db, vehicle_id=vehicle_id, household_id=household_id)
     if payload.odometer < 0:
         raise HTTPException(status_code=400, detail="Odometer cannot be negative.")
-    reading_date = _parse_date(payload.reading_date, "reading_date") or date.today()
+    reading_date = _parse_date(payload.reading_date, "reading_date") or current_business_date()
     row = models.VehicleOdometerReading(
         vehicle_id=vehicle.id,
         household_id=household_id,
@@ -1590,7 +1621,7 @@ async def delete_attachment(
 
 def _month_bounds(month_key: Optional[str]) -> tuple[str, date, date]:
     if not month_key:
-        today = date.today()
+        today = current_business_date()
         month_key = today.strftime("%Y-%m")
     try:
         year, month = map(int, month_key.split("-"))
@@ -1768,7 +1799,7 @@ async def build_due_reminders(
     reminders = await queries.list_reminders(
         db, household_id=household_id, vehicle_id=vehicle_id, statuses=("pending",)
     )
-    today = date.today()
+    today = current_business_date()
     items = []
     orphan_ids: list[int] = []
     seen_keys: set[tuple] = set()

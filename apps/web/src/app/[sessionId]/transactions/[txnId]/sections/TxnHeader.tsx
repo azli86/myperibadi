@@ -30,19 +30,6 @@ export default function TxnHeader({
           title={title}
           fallbackHref={`/${sessionId}/transactions`}
           backPreferHistory
-          action={
-            <button
-              type="button"
-              onClick={onDownloadReceipt}
-              disabled={downloading}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#0550B8] px-3.5 text-xs font-semibold transition active:scale-[0.98] disabled:opacity-40"
-              style={{ color: "#ffffff" }}
-              aria-label={isBm ? "Muat turun resit" : "Download receipt"}
-            >
-              {downloading ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
-              {isBm ? "Resit" : "Receipt"}
-            </button>
-          }
         />
       </div>
     </>

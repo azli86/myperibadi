@@ -555,47 +555,6 @@ export default function LoanDetailPage() {
           title={title}
           fallbackHref={loanListHref}
           backPreferHistory
-          action={
-            <div ref={mobileMenuRef} className="relative">
-              <MobileIconButton
-                onClick={() => setMobileMenuOpen((v) => !v)}
-                label={tr("Menu", "Menu")}
-              >
-                <MoreVertical size={16} />
-              </MobileIconButton>
-              {mobileMenuOpen ? (
-                <div className="absolute right-0 top-11 z-50 w-44 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg)] py-1 shadow-lg shadow-black/10">
-                  <button
-                    type="button"
-                    onClick={() => { setMobileMenuOpen(false); setShowPaymentForm(true) }}
-                    disabled={!canPay}
-                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--text)] transition active:scale-[0.98] disabled:opacity-40"
-                  >
-                    <Plus size={16} className="text-[var(--accent2)]" />
-                    {tr("Bayar", "Pay")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setMobileMenuOpen(false); openEditLoanSheet() }}
-                    disabled={loading || !loan}
-                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-[var(--text)] transition active:scale-[0.98] disabled:opacity-40"
-                  >
-                    <Pencil size={16} className="text-amber-500" />
-                    {tr("Edit", "Edit")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setMobileMenuOpen(false); handleDeleteLoan() }}
-                    disabled={deletingLoan || loading || !loan}
-                    className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-semibold text-rose-500 transition active:scale-[0.98] disabled:opacity-40"
-                  >
-                    {deletingLoan ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
-                    {tr("Padam", "Delete")}
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          }
         />
       </div>
       <DesktopPageHeader

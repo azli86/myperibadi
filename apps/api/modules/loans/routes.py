@@ -12,6 +12,15 @@ import schemas
 import whatsapp_service
 
 
+async def _validate_category(db: AsyncSession, household_id: int | None, category_id: int | None) -> None:
+    """A category must be one of this household's own; any id used to be accepted."""
+    if category_id is None:
+        return
+    cat = await db.get(models.Category, int(category_id))
+    if cat is None or cat.household_id != household_id or cat.is_internal:
+        raise HTTPException(status_code=400, detail="Category not found.")
+
+
 async def get_loans_route(
     *,
     include_settled: bool,
@@ -71,6 +80,7 @@ async def create_loan_route(
     if monthly_payment - opening_amount > 0.004:
         raise HTTPException(status_code=400, detail="monthly_payment cannot be greater than opening_amount.")
     household_id = await ensure_current_user_household(db, current_user)
+    await _validate_category(db, household_id, payload.category_id)
     loan_key = whatsapp_service.counterparty_key(loan_name)
     existing_result = await db.execute(
         select(models.Loan).where(models.Loan.user_id == current_user.id, models.Loan.key == loan_key)
@@ -149,6 +159,9 @@ async def update_loan_route(
         new_opening_amount = float(payload.opening_amount or 0)
         if new_opening_amount <= 0:
             raise HTTPException(status_code=400, detail="Opening amount must be greater than zero.")
+        if new_opening_amount + 0.004 < paid_amount:
+            # Less than already repaid would silently show the loan as cleared.
+            raise HTTPException(status_code=400, detail=f"Opening amount cannot be less than the RM {paid_amount:.2f} already paid.")
         loan.opening_amount = new_opening_amount
         loan.outstanding_amount = max(0.0, new_opening_amount - paid_amount)
 
@@ -173,6 +186,7 @@ async def update_loan_route(
         loan.notes = (payload.notes or "").strip() or None
 
     if "category_id" in updates:
+        await _validate_category(db, loan.household_id, payload.category_id)
         loan.category_id = payload.category_id
 
     loan.status = "settled" if float(loan.outstanding_amount or 0) <= 0.004 else "active"

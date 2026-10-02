@@ -109,6 +109,7 @@ export function ModenHero({
           )
         ) : null}
         {children}
+        {pageActions ? <HeroActionsSlot heroId={heroId} /> : null}
       </div>
       {stats && stats.length && statsLayout === "rows" ? (
         <div className="flex flex-col px-4 pb-2 pt-1.5" style={{ color: HERO_STRIP_TEXT }}>
@@ -166,7 +167,6 @@ export function ModenHero({
       ) : null}
       {footer}
     </section>
-    {pageActions ? <HeroActionsSlot heroId={heroId} /> : null}
     </>
   )
 }

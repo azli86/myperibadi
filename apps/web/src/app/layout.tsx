@@ -98,6 +98,9 @@ export async function generateViewport(): Promise<Viewport> {
     userScalable: false,
     viewportFit: "cover",
     themeColor: themeColorConfig,
+    // Declares that the page handles dark itself, so a phone set to dark does not run its own
+    // "auto dark" over a light-theme page (that left the page dark with white borders).
+    colorScheme: "light dark",
   }
 }
 

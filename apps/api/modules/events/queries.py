@@ -99,6 +99,11 @@ def event_membership_condition(event: models.Event) -> Optional[object]:
         models.Transaction.user_id == event.user_id,
         models.Transaction.txn_date >= event.start_date,
         models.Transaction.txn_date <= event.end_date,
+        # Moving money between wallets, or settling a debt, is not spending on the event.
+        or_(
+            models.Transaction.category_id.is_(None),
+            ~select(models.Category.id).where(models.Category.id == models.Transaction.category_id, models.Category.is_internal == True).exists(),
+        ),
         ~select(models.EventTransactionExclusion.id)
         .where(
             models.EventTransactionExclusion.event_id == event.id,
@@ -127,6 +132,10 @@ async def list_event_window_transactions(
         models.Transaction.user_id == event.user_id,
         models.Transaction.txn_date >= event.start_date,
         models.Transaction.txn_date <= event.end_date,
+        or_(
+            models.Transaction.category_id.is_(None),
+            ~select(models.Category.id).where(models.Category.id == models.Transaction.category_id, models.Category.is_internal == True).exists(),
+        ),
     ]
     if event.wallet_id is not None:
         conditions.append(models.Transaction.wallet_id == event.wallet_id)

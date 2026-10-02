@@ -46,6 +46,7 @@ import {
   MobilePageHeader,
 } from "@/components/layout/PageHeader"
 import { AmountSkeleton } from "@/components/ui/DataSkeleton"
+import { ModenHero, heroPrimaryButtonStyle } from "@/components/ui/ModenHero"
 import { MoneyAmount, formatCurrencyLabel } from "@/components/ui/MoneyAmount"
 import CurrencySelect from "@/components/ui/CurrencySelect"
 import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
@@ -671,22 +672,33 @@ export default function WalletSettingsPage() {
     createWalletStep !== 2 || (draft.label.trim().length > 0 && draft.name.trim().length > 0)
 
   // ─── Total, in the home's plain style ───
-  const summaryBlock = (desktop = false) => (
-    <div className={desktop ? "" : "px-2"}>
-      <p className="text-sm font-semibold text-[var(--muted)]">
-        {tr(`Jumlah ${wallets.length} dompet`, `Total of ${wallets.length} wallet${wallets.length === 1 ? "" : "s"}`)}
-      </p>
-      <div className="mt-1 text-[var(--text)]">
-        {showDataSkeleton ? (
-          <AmountSkeleton className="h-11 w-44" />
-        ) : (
-          <p className={cn("font-black leading-none tabular-nums tracking-tight", desktop ? "text-[3.25rem]" : "text-[2.75rem]")}>
-            <span className="mr-1.5 align-top text-lg font-bold text-[var(--muted)]">RM</span>
-            {formatMoney(totalBalance)}
-          </p>
-        )}
-      </div>
-    </div>
+  const savingCount = wallets.filter((w) => w.is_saving).length
+  const summaryBlock = (_desktop = false) => (
+    <ModenHero
+      label={
+        <>
+          <Wallet size={16} />
+          {tr(`Jumlah ${wallets.length} dompet`, `Total of ${wallets.length} wallet${wallets.length === 1 ? "" : "s"}`)}
+        </>
+      }
+      currency="RM"
+      amount={showDataSkeleton ? "—" : formatMoney(totalBalance)}
+      amountSize="clamp(2.25rem, 10vw, 3rem)"
+      stats={[
+        { key: "wallets", tone: "neutral", icon: <Wallet size={15} strokeWidth={2.2} />, label: tr("Dompet", "Wallets"), value: String(wallets.length) },
+        { key: "saving", tone: "in", icon: <Coins size={15} strokeWidth={2.2} />, label: tr("Simpanan", "Saving"), value: String(savingCount) },
+      ]}
+    >
+      <button
+        type="button"
+        onClick={openCreateWalletModal}
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold transition active:scale-[0.98]"
+        style={heroPrimaryButtonStyle}
+      >
+        <Plus size={16} strokeWidth={2.5} />
+        {tr("Tambah dompet", "Add wallet")}
+      </button>
+    </ModenHero>
   )
 
   const reconcileLink = (
@@ -918,11 +930,6 @@ export default function WalletSettingsPage() {
         <MobilePageHeader
           title={tr("Dompet", "Wallets")}
           fallbackHref={`/${sessionId}/settings`}
-          action={
-            <MobileIconButton onClick={openCreateWalletModal} label={tr("Tambah Dompet", "Add Wallet")}>
-              <Plus strokeWidth={2.5} />
-            </MobileIconButton>
-          }
         />
 
         {summaryBlock(false)}
@@ -937,19 +944,11 @@ export default function WalletSettingsPage() {
         <DesktopPageHeader
           title={tr("Papan Dompet", "Wallet Board")}
           homeHref={`/${sessionId}`}
-          actions={
-            <DesktopPageAction onClick={openCreateWalletModal}>
-              <Plus strokeWidth={2.5} />
-              {tr("Tambah Dompet", "Add Wallet")}
-            </DesktopPageAction>
-          }
         />
 
         <DesktopPageBody className="space-y-7">
-          <div className="flex flex-wrap items-end justify-between gap-5">
-            {summaryBlock(true)}
-            <div className="w-full max-w-sm">{reconcileLink}</div>
-          </div>
+          {summaryBlock(true)}
+          <div className="w-full max-w-sm">{reconcileLink}</div>
 
           {renderWalletCardsSection(false)}
         </DesktopPageBody>

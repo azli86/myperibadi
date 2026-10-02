@@ -99,6 +99,25 @@ async def create_debt_entry_route(
         except ValueError:
             raise HTTPException(status_code=400, detail="txn_date must be in YYYY-MM-DD format.")
 
+    if payload.event_type in {"payment_in", "payment_out"}:
+        # A settlement can't exceed what is actually owed in that direction.
+        summaries = await whatsapp_service.get_debt_summaries(db, user_id=current_user.id)
+        match = None
+        if payload.debtor_id is not None:
+            match = next((r for r in summaries if r.get("debtor_id") == payload.debtor_id), None)
+        elif payload.counterparty_name:
+            key = whatsapp_service.counterparty_key(whatsapp_service.normalize_counterparty_name(payload.counterparty_name))
+            match = next((r for r in summaries if r["counterparty_key"] == key), None)
+        balance = float(match["balance"]) if match else 0.0
+        owed = balance if payload.event_type == "payment_in" else -balance
+        if owed <= 0.004:
+            raise HTTPException(
+                status_code=400,
+                detail="Nothing is owed in that direction, so there is nothing to settle." ,
+            )
+        if round(float(payload.amount), 2) > round(owed, 2) + 0.004:
+            raise HTTPException(status_code=400, detail=f"Amount is more than the outstanding RM {owed:,.2f}.")
+
     try:
         debt_row, txn = await whatsapp_service.create_debt_event(
             db,

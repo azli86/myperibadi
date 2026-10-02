@@ -100,7 +100,7 @@ function findHero(): HTMLElement | null {
  * rendering it into a placeholder inserted beside the hero. With no hero found the row
  * stays where the header rendered it.
  */
-export function ActionsAfterHero({ className, children }: { className: string; children: React.ReactNode }) {
+export function ActionsAfterHero({ className, insideClassName, children }: { className: string; insideClassName: string; children: React.ReactNode }) {
   const [host, setHost] = React.useState<HTMLElement | null>(null)
   useEffect(() => {
     let placeholder: HTMLElement | null = null
@@ -111,7 +111,9 @@ export function ActionsAfterHero({ className, children }: { className: string; c
       if (!hero) return
       placeholder = document.createElement("div")
       placeholder.setAttribute("data-page-actions-host", "")
-      hero.insertAdjacentElement("afterend", placeholder)
+      hero.appendChild(placeholder)
+      placeholder.style.position = "relative"
+      placeholder.style.zIndex = "1"
       setHost(placeholder)
     }
     place()
@@ -127,8 +129,9 @@ export function ActionsAfterHero({ className, children }: { className: string; c
       setHost(null)
     }
   }, [])
+  // Inside the hero the hero's own padding frames the row; without a hero it sits under the bar.
   const row = (
-    <div data-page-actions className={className}>
+    <div data-page-actions className={host ? insideClassName : className}>
       {children}
     </div>
   )

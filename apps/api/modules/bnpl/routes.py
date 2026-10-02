@@ -85,6 +85,25 @@ def create_bnpl_router(*, get_current_user: Callable[..., Any]) -> APIRouter:
         paid = await queries.count_payments(db, bnpl_id=row.id)
         return service.serialize_bnpl(row, category_name=await service._category_name(db, row.category_id), paid_amount=paid)
 
+    @router.get("/{bnpl_id}/payments")
+    async def list_payments(
+        bnpl_id: int,
+        db: AsyncSession = Depends(database.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        return await service.list_payments(db, current_user=current_user, bnpl_id=bnpl_id)
+
+    @router.delete("/{bnpl_id}/payments/{payment_id}")
+    async def delete_payment(
+        bnpl_id: int,
+        payment_id: int,
+        db: AsyncSession = Depends(database.get_db),
+        current_user: models.User = Depends(get_current_user),
+    ):
+        row = await service.delete_payment(db, current_user=current_user, bnpl_id=bnpl_id, payment_id=payment_id)
+        paid = await queries.count_payments(db, bnpl_id=row.id)
+        return service.serialize_bnpl(row, category_name=await service._category_name(db, row.category_id), paid_amount=paid)
+
     @router.post("/{bnpl_id}/image")
     async def upload_image(
         bnpl_id: int,

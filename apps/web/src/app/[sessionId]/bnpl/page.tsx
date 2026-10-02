@@ -2,54 +2,23 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams } from "next/navigation"
-import { createPortal } from "react-dom"
-import {
-  CalendarDays,
-  CalendarClock,
-  ChevronDown,
-  ChevronRight,
-  CreditCard,
-  Loader2,
-  Plus,
-  Trash2,
-  Upload,
-  Check,
-  Layers,
-  X,
-  Sparkles,
-  CheckCircle2,
-  Clock,
-  Coins,
-  Receipt,
-  AlertTriangle,
-} from "lucide-react"
+import { AlertTriangle, CalendarClock, Check, CreditCard, ImagePlus, Loader2, Pencil, Plus, Trash2 } from "lucide-react"
 import { getAccessToken } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
 import { usePageAlert } from "@/hooks/usePageAlert"
-import {
-  MobileIconButton,
-  MobilePageHeader,
-  DesktopPageHeader,
-  DesktopPageAction,
-  DesktopPageBody,
-} from "@/components/layout/PageHeader"
-import { DataSkeletonList, AmountSkeleton } from "@/components/ui/DataSkeleton"
-import { MoneyAmount } from "@/components/ui/MoneyAmount"
-import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
-import { CategoryIconGlyph } from "@/lib/category-icons"
+import { DesktopPageAction, DesktopPageBody, DesktopPageHeader, MobileIconButton, MobilePageHeader } from "@/components/layout/PageHeader"
+import { AppSheet } from "@/components/ui/AppSheet"
+import { ModenHero } from "@/components/ui/ModenHero"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
-import { useOverlayBackClose } from "@/lib/useOverlayBackClose"
-import { BNPL_PROVIDERS, BnplProviderBadge, bnplProviderBrand } from "@/components/bnpl/bnpl-providers"
+import { BNPL_PROVIDERS, BnplProviderBadge } from "@/components/bnpl/bnpl-providers"
 
 type BnplItem = {
   id: number
   name: string
-  key: string
   provider: string
   category_id: number
   category_name?: string | null
-  icon_name?: string | null
   has_image: boolean
   image_url?: string | null
   total_amount: number
@@ -62,28 +31,19 @@ type BnplItem = {
   paid_amount: number
   status: string
   notes?: string | null
+  next_due_date?: string | null
+  overdue?: boolean
+  days_overdue?: number
 }
 
-type CategoryItem = {
-  id: number
-  name: string
-  icon_name?: string | null
-  kind: string
-}
-
-type WalletItem = {
-  id: number
-  name: string
-  label?: string | null
-  image_url?: string | null
-  currency: string
-}
+type Payment = { id: number; amount: number; payment_date?: string | null; notes?: string | null; wallet_id?: number | null }
+type CategoryItem = { id: number; name: string; kind: string }
+type WalletItem = { id: number; name: string; label?: string | null; currency: string }
 
 type FormState = {
   name: string
   provider: string
   category_id: string
-  icon_name: string
   total_amount: string
   installment_count: string
   monthly_amount: string
@@ -92,13 +52,10 @@ type FormState = {
   notes: string
 }
 
-type FilterTab = "all" | "active" | "settled"
-
-const defaultForm: FormState = {
+const emptyForm: FormState = {
   name: "",
   provider: "SPayLater",
   category_id: "",
-  icon_name: "",
   total_amount: "",
   installment_count: "3",
   monthly_amount: "",
@@ -107,1013 +64,685 @@ const defaultForm: FormState = {
   notes: "",
 }
 
+const money = (n: number | null | undefined) =>
+  Number(n || 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+function fmtDate(value?: string | null, locale = "en-MY") {
+  if (!value) return "—"
+  const d = new Date(`${value}T00:00:00`)
+  return isNaN(d.getTime()) ? value : d.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })
+}
+
 export default function BnplPage() {
   const params = useParams()
   const sessionId = (params?.sessionId as string) || ""
   const { lang } = useLang()
   const isBm = lang === "BM"
-  const tr = (bm: string, en: string) => (isBm ? bm : en)
+  const tr = useCallback((bm: string, en: string) => (isBm ? bm : en), [isBm])
+  const locale = isBm ? "ms-MY" : "en-MY"
   const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
 
   const [items, setItems] = useState<BnplItem[]>([])
-  const [mounted, setMounted] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [categories, setCategories] = useState<CategoryItem[]>([])
   const [wallets, setWallets] = useState<WalletItem[]>([])
-  const [showSheet, setShowSheet] = useState(false)
-  const [editing, setEditing] = useState<BnplItem | null>(null)
-  const [form, setForm] = useState<FormState>(defaultForm)
+  const [loading, setLoading] = useState(true)
+  const [hasLoaded, setHasLoaded] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [payingId, setPayingId] = useState<number | null>(null)
-  const [deletingId, setDeletingId] = useState<number | null>(null)
-  const [uploadingId, setUploadingId] = useState<number | null>(null)
-  const [providerOpen, setProviderOpen] = useState(false)
-  const [categoryOpen, setCategoryOpen] = useState(false)
-  const [payWalletOpen, setPayWalletOpen] = useState(false)
-  const [payWalletId, setPayWalletId] = useState<number | null>(null)
-  const [filterTab, setFilterTab] = useState<FilterTab>("all")
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [filter, setFilter] = useState<"all" | "active" | "settled">("all")
 
-  const { requestClose: requestSheetClose } = useOverlayBackClose({
-    id: "bnpl-sheet",
-    isOpen: showSheet,
-    onClose: () => {
-      setShowSheet(false)
-      setEditing(null)
-      setProviderOpen(false)
-      setCategoryOpen(false)
-    },
-  })
+  const [showForm, setShowForm] = useState(false)
+  const [editing, setEditing] = useState<BnplItem | null>(null)
+  const [form, setForm] = useState<FormState>(emptyForm)
+  const [monthlyTouched, setMonthlyTouched] = useState(false)
+
+  const [detailId, setDetailId] = useState<number | null>(null)
+  const [payments, setPayments] = useState<Payment[]>([])
+  const [showPay, setShowPay] = useState(false)
+  const [payFromList, setPayFromList] = useState(false)
+  const [payForm, setPayForm] = useState({ amount: "", wallet_id: "", notes: "" })
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const detail = items.find((i) => i.id === detailId) || null
+  const showSkeleton = useDelayedSkeleton(loading && !hasLoaded)
+
+  const headers = useCallback((json = false): Record<string, string> => {
+    const token = getAccessToken()
+    return { ...(json ? { "Content-Type": "application/json" } : {}), ...(token && token !== "cookie" ? { Authorization: `Bearer ${token}` } : {}) }
+  }, [])
+  const errorOf = async (res: Response, fallback: string) => {
+    const body = (await res.json().catch(() => null)) as { detail?: unknown } | null
+    return typeof body?.detail === "string" ? body.detail : fallback
+  }
 
   const fetchData = useCallback(async () => {
     try {
-      const token = getAccessToken()
-      const headers: HeadersInit =
-        token && token !== "cookie" ? { Authorization: `Bearer ${token}` } : {}
-      const [bRes, cRes, wRes] = await Promise.all([
-        fetch("/api/bnpl?include_settled=true", { credentials: "include", headers, cache: "no-store" }),
-        fetch("/api/categories", { credentials: "include", headers, cache: "no-store" }),
-        fetch("/api/wallets", { credentials: "include", headers, cache: "no-store" }),
+      const [b, c, w] = await Promise.all([
+        fetch("/api/bnpl?include_settled=true", { credentials: "include", headers: headers(), cache: "no-store" }),
+        fetch("/api/categories", { credentials: "include", headers: headers(), cache: "no-store" }),
+        fetch("/api/wallets", { credentials: "include", headers: headers(), cache: "no-store" }),
       ])
-      if (!bRes.ok) throw new Error("bnpl failed")
-      const bJson = await bRes.json()
-      const list: BnplItem[] = Array.isArray(bJson) ? bJson : []
-      setItems(list)
-      if (cRes.ok) {
-        const cJson = await cRes.json()
-        const cats = Array.isArray(cJson) ? cJson : Array.isArray(cJson?.items) ? cJson.items : []
-        setCategories(cats.filter((c: CategoryItem) => c.kind === "expense"))
-      }
-      if (wRes.ok) {
-        const wJson = await wRes.json()
-        setWallets(Array.isArray(wJson) ? wJson : [])
-      }
+      if (!b.ok) throw new Error()
+      setItems(await b.json())
+      if (c.ok) setCategories(await c.json())
+      if (w.ok) setWallets(await w.json())
+      setHasLoaded(true)
+      setLoadFailed(false)
     } catch {
-      showAlert(tr("Ralat memuat data", "Failed to load data"), "", "error")
+      setLoadFailed(true)
     } finally {
       setLoading(false)
     }
-  }, [showAlert, tr])
+  }, [headers])
 
   useEffect(() => {
     void fetchData()
-    setMounted(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [fetchData])
 
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent("portal:mobile-bottom-nav-visibility", { detail: { hidden: showSheet || payingId !== null } }))
-    return () => {
-      window.dispatchEvent(new CustomEvent("portal:mobile-bottom-nav-visibility", { detail: { hidden: false } }))
-    }
-  }, [showSheet, payingId])
+  const loadPayments = useCallback(
+    async (id: number) => {
+      try {
+        const res = await fetch(`/api/bnpl/${id}/payments`, { credentials: "include", headers: headers(), cache: "no-store" })
+        setPayments(res.ok ? await res.json() : [])
+      } catch {
+        setPayments([])
+      }
+    },
+    [headers]
+  )
 
-  const openCreateSheet = () => {
-    setEditing(null)
-    setForm(defaultForm)
-    setProviderOpen(false)
-    setCategoryOpen(false)
-    setShowSheet(true)
+  const openDetail = (item: BnplItem) => {
+    setDetailId(item.id)
+    setPayments([])
+    void loadPayments(item.id)
   }
 
-  const openEditSheet = (item: BnplItem) => {
+  // ── Totals ───────────────────────────────────────────────────────────────
+
+  const active = useMemo(() => items.filter((i) => i.status === "active"), [items])
+  const owed = active.reduce((s, i) => s + Number(i.outstanding_amount || 0), 0)
+  const monthly = active.reduce((s, i) => s + Number(i.monthly_amount || 0), 0)
+  const lateCount = active.filter((i) => i.overdue).length
+  const visible = useMemo(() => items.filter((i) => filter === "all" || i.status === filter), [items, filter])
+  const expenseCategories = categories.filter((c) => c.kind === "expense")
+
+  // ── Create / edit ────────────────────────────────────────────────────────
+
+  const openCreate = () => {
+    setEditing(null)
+    setForm({ ...emptyForm, category_id: expenseCategories[0] ? String(expenseCategories[0].id) : "" })
+    setMonthlyTouched(false)
+    setShowForm(true)
+  }
+
+  const openEdit = (item: BnplItem) => {
     setEditing(item)
     setForm({
       name: item.name,
       provider: item.provider,
       category_id: String(item.category_id),
-      icon_name: item.icon_name || "",
-      total_amount: item.total_amount != null ? String(item.total_amount) : "",
-      installment_count: String(item.installment_count || 3),
-      monthly_amount: item.monthly_amount != null ? String(item.monthly_amount) : "",
-      due_day_of_month: String(item.due_day_of_month || 15),
+      total_amount: String(item.total_amount),
+      installment_count: String(item.installment_count),
+      monthly_amount: String(item.monthly_amount),
+      due_day_of_month: String(item.due_day_of_month),
       start_date: item.start_date || "",
       notes: item.notes || "",
     })
-    setProviderOpen(false)
-    setCategoryOpen(false)
-    setShowSheet(true)
+    setMonthlyTouched(true)
+    setDetailId(null)
+    setShowForm(true)
   }
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form.name.trim()) return showAlert(tr("Nama perlu diisi", "Name is required"), "", "error")
-    if (!form.category_id) return showAlert(tr("Pilih kategori dahulu", "Select a category first"), "", "error")
-    const total = Number(form.total_amount)
-    const monthly = Number(form.monthly_amount)
-    if (!total || total <= 0) return showAlert(tr("Jumlah perlu sah", "Enter a valid total"), "", "error")
-    if (!monthly || monthly <= 0) return showAlert(tr("Ansuran bulanan perlu sah", "Enter a valid monthly amount"), "", "error")
+  // The monthly amount follows total and count until the user types their own.
+  const setPlan = (patch: Partial<FormState>) => {
+    setForm((prev) => {
+      const next = { ...prev, ...patch }
+      const t = parseFloat(next.total_amount)
+      const n = parseInt(next.installment_count, 10)
+      if (!monthlyTouched && t > 0 && n > 0) next.monthly_amount = (Math.round((t / n) * 100) / 100).toFixed(2)
+      return next
+    })
+  }
 
+  const totalNum = parseFloat(form.total_amount) || 0
+  const monthlyNum = parseFloat(form.monthly_amount) || 0
+  const countNum = parseInt(form.installment_count, 10) || 0
+  const dueNum = parseInt(form.due_day_of_month, 10) || 0
+  const planCovers = monthlyNum > 0 && countNum > 0 ? Math.round(monthlyNum * countNum * 100) / 100 : 0
+
+  const formProblem = (() => {
+    if (!form.name.trim()) return tr("Nama diperlukan.", "A name is required.")
+    if (!form.category_id) return tr("Pilih kategori.", "Choose a category.")
+    if (totalNum <= 0) return tr("Masukkan jumlah keseluruhan.", "Enter the total amount.")
+    if (monthlyNum <= 0) return tr("Masukkan ansuran bulanan.", "Enter the monthly instalment.")
+    if (monthlyNum > totalNum) return tr("Ansuran bulanan melebihi jumlah keseluruhan.", "The monthly instalment is more than the total.")
+    if (countNum < 1 || countNum > 60) return tr("Bilangan ansuran antara 1 dan 60.", "Instalments must be between 1 and 60.")
+    if (dueNum < 1 || dueNum > 31) return tr("Hari bayaran antara 1 dan 31.", "Due day must be between 1 and 31.")
+    if (editing && totalNum + 0.005 < editing.paid_amount) return tr(`Jumlah kurang daripada RM ${money(editing.paid_amount)} yang sudah dibayar.`, `The total is below the RM ${money(editing.paid_amount)} already paid.`)
+    return null
+  })()
+
+  const save = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (saving) return
+    if (formProblem) {
+      showAlert(tr("Maklumat tak lengkap", "Incomplete info"), formProblem, "error")
+      return
+    }
     setSaving(true)
     try {
-      const token = getAccessToken()
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-        ...(token && token !== "cookie" ? { Authorization: `Bearer ${token}` } : {}),
-      }
-      const body = {
-        name: form.name.trim(),
-        provider: form.provider,
-        category_id: Number(form.category_id),
-        icon_name: form.icon_name || null,
-        total_amount: total,
-        installment_count: Number(form.installment_count) || 3,
-        monthly_amount: monthly,
-        due_day_of_month: Number(form.due_day_of_month) || 15,
-        start_date: form.start_date || null,
-        notes: form.notes.trim() || null,
-      }
-      const url = editing ? `/api/bnpl/${editing.id}` : "/api/bnpl"
-      const res = await fetch(url, {
+      const res = await fetch(editing ? `/api/bnpl/${editing.id}` : "/api/bnpl", {
         method: editing ? "PATCH" : "POST",
         credentials: "include",
-        headers,
-        body: JSON.stringify(body),
+        headers: headers(true),
+        body: JSON.stringify({
+          name: form.name.trim(),
+          provider: form.provider,
+          category_id: Number(form.category_id),
+          total_amount: totalNum,
+          installment_count: countNum,
+          monthly_amount: monthlyNum,
+          due_day_of_month: dueNum,
+          start_date: form.start_date || null,
+          notes: form.notes.trim() || null,
+        }),
       })
-      if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        showAlert(err?.detail || tr("Gagal simpan", "Failed to save"), "", "error")
-        return
-      }
-      setShowSheet(false)
+      if (!res.ok) throw new Error(await errorOf(res, tr("Gagal simpan.", "Could not save.")))
+      setShowForm(false)
+      setEditing(null)
       await fetchData()
-    } catch {
-      showAlert(tr("Ralat simpan", "Save error"), "", "error")
+    } catch (err) {
+      showAlert(tr("Gagal simpan", "Save failed"), err instanceof Error ? err.message : "", "error")
     } finally {
       setSaving(false)
     }
   }
 
-  const handlePay = async (item: BnplItem) => {
-    setPayingId(item.id)
+  // ── Pay ──────────────────────────────────────────────────────────────────
+
+  const openPay = (item: BnplItem, fromList = false) => {
+    setPayFromList(fromList)
+    setDetailId(item.id)
+    void loadPayments(item.id)
+    setPayForm({
+      amount: String(Math.min(item.monthly_amount, item.outstanding_amount)),
+      wallet_id: wallets[0] ? String(wallets[0].id) : "",
+      notes: "",
+    })
+    setShowPay(true)
+  }
+
+  const payAmount = parseFloat(payForm.amount) || 0
+  const payProblem = !detail
+    ? null
+    : payAmount <= 0
+      ? tr("Amaun mesti lebih daripada sifar.", "The amount must be above zero.")
+      : payAmount > detail.outstanding_amount + 0.01
+        ? tr(`Melebihi baki RM ${money(detail.outstanding_amount)}.`, `More than the RM ${money(detail.outstanding_amount)} still owed.`)
+        : !payForm.wallet_id
+          ? tr("Pilih dompet.", "Choose a wallet.")
+          : null
+
+  const savePayment = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (!detail || saving) return
+    if (payProblem) {
+      showAlert(tr("Tak sah", "Not valid"), payProblem, "error")
+      return
+    }
+    setSaving(true)
     try {
-      const token = getAccessToken()
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-        ...(token && token !== "cookie" ? { Authorization: `Bearer ${token}` } : {}),
-      }
-      const body: { wallet_id?: number | null; amount?: number | null } = {}
-      if (payWalletId) body.wallet_id = payWalletId
-      const res = await fetch(`/api/bnpl/${item.id}/pay`, {
+      const res = await fetch(`/api/bnpl/${detail.id}/pay`, {
         method: "POST",
         credentials: "include",
-        headers,
-        body: JSON.stringify(body),
+        headers: headers(true),
+        body: JSON.stringify({ amount: payAmount, wallet_id: Number(payForm.wallet_id), notes: payForm.notes.trim() || null }),
       })
-      if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        showAlert(err?.detail || tr("Gagal bayar", "Payment failed"), "", "error")
-        return
-      }
-      setPayWalletId(null)
-      setPayingId(null)
-      showAlert(
-        tr("Ansuran direkod sebagai transaksi kategori", "Installment recorded as category transaction"),
-        "",
-        "success",
-      )
+      if (!res.ok) throw new Error(await errorOf(res, tr("Gagal membayar.", "Payment failed.")))
+      setShowPay(false)
+      if (payFromList) setDetailId(null)
       await fetchData()
-    } catch {
-      showAlert(tr("Ralat bayar", "Payment error"), "", "error")
+      await loadPayments(detail.id)
+    } catch (err) {
+      showAlert(tr("Gagal", "Failed"), err instanceof Error ? err.message : "", "error")
     } finally {
-      setPayingId(null)
+      setSaving(false)
     }
   }
 
-  const handleDelete = (item: BnplItem) => {
+  const undoPayment = (p: Payment) => {
+    if (!detail) return
     showConfirm(
-      tr("Padam BNPL", "Delete BNPL"),
-      tr(`Padam ${item.name}? Tindakan ini tidak boleh dibatalkan.`, `Delete ${item.name}? This cannot be undone.`),
-      () => void doDelete(item),
-      "warning",
+      tr("Padam bayaran?", "Delete payment?"),
+      tr(`Padam bayaran RM ${money(p.amount)}? Belanja yang direkodkan juga dibuang dan baki dompet dikembalikan.`, `Delete the RM ${money(p.amount)} payment? The expense it recorded is removed too and the wallet balance goes back.`),
+      async () => {
+        setSaving(true)
+        try {
+          const res = await fetch(`/api/bnpl/${detail.id}/payments/${p.id}`, { method: "DELETE", credentials: "include", headers: headers() })
+          if (!res.ok) throw new Error(await errorOf(res, tr("Gagal padam bayaran.", "Could not delete the payment.")))
+          await fetchData()
+          await loadPayments(detail.id)
+        } catch (err) {
+          showAlert(tr("Gagal", "Failed"), err instanceof Error ? err.message : "", "error")
+        } finally {
+          setSaving(false)
+        }
+      },
+      "warning"
     )
   }
 
-  const doDelete = async (item: BnplItem) => {
-    setDeletingId(item.id)
-    try {
-      const token = getAccessToken()
-      const headers: HeadersInit =
-        token && token !== "cookie" ? { Authorization: `Bearer ${token}` } : {}
-      const res = await fetch(`/api/bnpl/${item.id}`, {
-        method: "DELETE",
-        credentials: "include",
-        headers,
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        showAlert(err?.detail || tr("Gagal padam", "Delete failed"), "", "error")
-        return
-      }
-      await fetchData()
-    } catch {
-      showAlert(tr("Ralat padam", "Delete error"), "", "error")
-    } finally {
-      setDeletingId(null)
-    }
+  const removeItem = () => {
+    if (!detail) return
+    showConfirm(
+      tr("Padam BNPL?", "Delete BNPL?"),
+      tr(`Padam “${detail.name}”? Bayaran yang sudah direkod kekal sebagai belanja dalam transaksi anda.`, `Delete “${detail.name}”? Payments already recorded stay as expenses in your transactions.`),
+      async () => {
+        setSaving(true)
+        try {
+          const res = await fetch(`/api/bnpl/${detail.id}`, { method: "DELETE", credentials: "include", headers: headers() })
+          if (!res.ok) throw new Error(await errorOf(res, tr("Gagal padam.", "Could not delete.")))
+          setDetailId(null)
+          await fetchData()
+        } catch (err) {
+          showAlert(tr("Gagal", "Failed"), err instanceof Error ? err.message : "", "error")
+        } finally {
+          setSaving(false)
+        }
+      },
+      "warning"
+    )
   }
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    e.target.value = ""
-    if (!file || uploadingId == null) return
-    setUploadingId(uploadingId)
+  const uploadImage = async (file: File) => {
+    if (!detail) return
+    if (file.size > 5 * 1024 * 1024) {
+      showAlert(tr("Fail terlalu besar", "File too large"), tr("Had 5 MB.", "The limit is 5 MB."), "warning")
+      return
+    }
+    setSaving(true)
     try {
-      const token = getAccessToken()
-      const headers: HeadersInit = token && token !== "cookie" ? { Authorization: `Bearer ${token}` } : {}
       const fd = new FormData()
       fd.append("file", file)
-      const res = await fetch(`/api/bnpl/${uploadingId}/image`, {
-        method: "POST",
-        credentials: "include",
-        headers,
-        body: fd,
-      })
-      if (!res.ok) {
-        const err = await res.json().catch(() => null)
-        showAlert(err?.detail || tr("Gagal muat naik", "Upload failed"), "", "error")
-      }
+      const res = await fetch(`/api/bnpl/${detail.id}/image`, { method: "POST", credentials: "include", headers: headers(), body: fd })
+      if (!res.ok) throw new Error(await errorOf(res, tr("Gagal muat naik.", "Upload failed.")))
       await fetchData()
-    } catch {
-      showAlert(tr("Ralat muat naik", "Upload error"), "", "error")
+    } catch (err) {
+      showAlert(tr("Gagal", "Failed"), err instanceof Error ? err.message : "", "error")
     } finally {
-      setUploadingId(null)
+      setSaving(false)
     }
   }
 
-  const progress = (item: BnplItem) => {
-    if (!item.total_amount) return 0
-    const pct = (item.paid_amount / item.total_amount) * 100
-    return Math.min(100, Math.max(0, Math.round(pct)))
-  }
+  // ── Pieces ───────────────────────────────────────────────────────────────
 
-  const active = useMemo(() => items.filter((i) => i.status === "active"), [items])
-  const settled = useMemo(() => items.filter((i) => i.status === "settled"), [items])
+  const field = "h-12 w-full rounded-full border border-[var(--border)] bg-transparent px-4 text-base text-[var(--text)] outline-none focus:border-[var(--btn-primary-bg)]"
+  const label = "mb-1.5 block text-xs font-semibold text-[var(--muted)]"
 
-  const stats = useMemo(() => {
-    const monthlyTotal = active.reduce((s, i) => s + Number(i.monthly_amount || 0), 0)
-    const outstandingTotal = active.reduce((s, i) => s + Number(i.outstanding_amount || 0), 0)
-    const paidTotal = items.reduce((s, i) => s + Number(i.paid_amount || 0), 0)
-    const originalTotal = items.reduce((s, i) => s + Number(i.total_amount || 0), 0)
-    const overallPct = originalTotal > 0 ? Math.min(100, Math.round((paidTotal / originalTotal) * 100)) : 100
-
-    return { monthlyTotal, outstandingTotal, paidTotal, originalTotal, overallPct }
-  }, [items, active])
-
-  const filteredItems = useMemo(() => {
-    if (filterTab === "active") return active
-    if (filterTab === "settled") return settled
-    return items
-  }, [items, active, settled, filterTab])
-
-  const showSkeleton = useDelayedSkeleton(loading)
-
-  const renderCard = (item: BnplItem) => {
-    const brand = bnplProviderBrand(item.provider)
-    const pct = progress(item)
-    const isActive = item.status === "active"
-
+  const dueChip = (item: BnplItem) => {
+    if (item.status === "settled") return <span className="shrink-0 rounded-full border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">{tr("Selesai", "Settled")}</span>
+    if (item.overdue)
+      return (
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-rose-500/40 px-2.5 py-0.5 text-xs font-semibold text-rose-500">
+          <AlertTriangle size={12} />
+          {tr(`Lewat ${item.days_overdue} hari`, `${item.days_overdue}d late`)}
+        </span>
+      )
     return (
-      <div
-        key={item.id}
-        onClick={() => openEditSheet(item)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault()
-            openEditSheet(item)
-          }
-        }}
-        className={cn(
-          "group relative w-full overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 text-left shadow-[var(--shadow-card)] transition hover:border-[var(--border-strong)] hover:shadow-md active:scale-[0.99]",
-          !isActive && "opacity-80"
-        )}
-      >
-        <div className="flex items-start gap-3.5">
-          <BnplProviderBadge provider={item.provider} size={46} rounded="rounded-2xl" />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-2">
-              <p className="truncate text-base font-black tracking-tight text-[var(--text)]">{item.name}</p>
-              {isActive ? (
-                <span className="shrink-0 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-wider text-cyan-500">
-                  {item.due_day_of_month}hb Due
-                </span>
-              ) : (
-                <span className="shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-wider text-emerald-500">
-                  {tr("Selesai", "Settled")}
-                </span>
-              )}
-            </div>
-            <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
-              {item.category_name || tr("Tiada kategori", "No category")} · {item.installment_count} {tr("bulan ansuran", "months")}
-            </p>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                handleDelete(item)
-              }}
-              disabled={deletingId === item.id}
-              className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-rose-500/10 hover:text-rose-500 active:scale-95 disabled:opacity-40"
-              aria-label={tr("Padam", "Delete")}
-            >
-              {deletingId === item.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
-            </button>
-          </div>
-        </div>
-
-        {/* 3-Metric Statistics Grid */}
-        <div className="mt-3.5 grid grid-cols-3 gap-2">
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2">
-            <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-              {tr("Bulanan", "Monthly")}
-            </p>
-            <p className="mt-0.5 truncate text-sm font-black tabular-nums text-[var(--text)]">
-              RM {Number(item.monthly_amount).toLocaleString("en-MY", { minimumFractionDigits: 2 })}
-            </p>
-          </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2">
-            <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-              {tr("Baki", "Due")}
-            </p>
-            <p className="mt-0.5 truncate text-sm font-black tabular-nums text-rose-600 dark:text-rose-400">
-              RM {Number(item.outstanding_amount).toLocaleString("en-MY", { minimumFractionDigits: 2 })}
-            </p>
-          </div>
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2">
-            <p className="text-[0.55rem] font-bold uppercase tracking-wider text-[var(--muted)]">
-              {tr("Due Day", "Due Day")}
-            </p>
-            <p className="mt-0.5 truncate text-sm font-black tabular-nums text-[var(--text)]">
-              {item.due_day_of_month}
-              <span className="text-[0.65rem] font-bold text-[var(--muted)] ml-0.5">
-                {isBm ? "hb" : "th"}
-              </span>
-            </p>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mt-3">
-          <div className="mb-1 flex items-center justify-between text-[0.625rem] font-semibold text-[var(--muted)]">
-            <span>{tr("Bayaran", "Paid")}: {pct}%</span>
-            <span>
-              RM {Number(item.paid_amount).toLocaleString("en-MY", { minimumFractionDigits: 0 })} / RM{" "}
-              {Number(item.total_amount).toLocaleString("en-MY", { minimumFractionDigits: 0 })}
-            </span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
-            <div
-              className={cn("h-full rounded-full transition-all", isActive ? "bg-emerald-500" : "bg-[var(--muted)]")}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Quick Pay Action Button */}
-        {isActive && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              setPayWalletId(null)
-              setPayWalletOpen(false)
-              setPayingId(item.id)
-            }}
-            disabled={payingId === item.id}
-            className="mt-3.5 flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] py-2.5 text-xs font-black text-white shadow-xs transition active:scale-[0.99] hover:opacity-95 disabled:opacity-50"
-          >
-            {payingId === item.id ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <CreditCard size={14} />
-            )}
-            <span>{tr("Bayar Ansuran Ini", "Pay This Installment")}</span>
-          </button>
-        )}
-      </div>
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-0.5 text-xs font-semibold text-[var(--muted)]">
+        <CalendarClock size={12} />
+        {fmtDate(item.next_due_date, locale).replace(/\s\d{4}$/, "")}
+      </span>
     )
   }
 
-  const renderEmpty = () => (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-tint)]/15 py-14 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--surface-tint)] text-[var(--muted)] shadow-xs">
-        <CreditCard size={32} />
-      </div>
-      <p className="text-sm font-bold text-[var(--text)]">{tr("Tiada pelan BNPL lagi", "No BNPL plans yet")}</p>
-      <p className="max-w-xs text-xs text-[var(--muted)]">
-        {tr("Tambah komitmen SPayLater, Atome atau ansuran lain untuk jejak baki & tarikh due bulanan.", "Track SPayLater, Atome or other installments with due date tracking.")}
-      </p>
-      <button
-        type="button"
-        onClick={openCreateSheet}
-        className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-black text-white shadow-sm transition active:scale-95"
-      >
-        <Plus size={15} />
-        <span>{tr("Tambah BNPL Baru", "Add New BNPL")}</span>
-      </button>
-    </div>
-  )
-
-  const catName = (id: string) =>
-    categories.find((c) => String(c.id) === id)?.name || tr("Pilih kategori", "Select category")
-
-  // Hero Card Component (debt layout: total left, metrics right)
-  const renderHeroStats = (isDesktop = false) => (
-    <div className={cn("bnpl-hero relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] text-[#f5f5f5]", isDesktop ? "p-6" : "p-5")}>
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-      <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-      <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
-
-      <div className={cn("relative", isDesktop && "flex items-center gap-5")}>
-        <div className={cn(isDesktop && "min-w-[10rem] shrink-0")}>
-          <p className={cn(
-            "font-bold uppercase tracking-[0.14em] text-[#a3a3a3]",
-            isDesktop ? "text-[0.7rem]" : "text-[0.625rem]",
-          )}>
-            {tr("Jumlah Bayaran Bulanan", "Total Monthly Payment")}
-          </p>
-          <div className="mt-2 text-[#ffffff]">
-            {showSkeleton ? (
-              <div className={cn("animate-pulse rounded bg-white/10", isDesktop ? "h-10 w-40" : "h-7 w-32")} />
-            ) : (
-              <MoneyAmount
-                value={Number(stats.monthlyTotal || 0)}
-                size={isDesktop ? "heroLg" : "hero"}
-                className="text-[#ffffff]"
-                currencyClassName="text-[#ffffff] opacity-55"
-              />
-            )}
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.625rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3] md:text-[0.6875rem]">
-            <span>{tr("Aktif", "Active")}: {active.length}</span>
-            <span>{tr("Selesai", "Settled")}: {settled.length}</span>
-          </div>
-        </div>
-
-        <div className={cn(
-          "grid grid-cols-3",
-          isDesktop ? "min-w-0 flex-1 gap-3" : "mt-5 gap-2.5",
-        )}>
-          {[
-            { label: tr("Semua", "All"), value: items.length },
-            { label: tr("Aktif", "Active"), value: active.length },
-            { label: tr("Selesai", "Settled"), value: settled.length },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className={cn("bg-white/[0.06]", isDesktop ? "rounded-2xl p-4" : "rounded-[1.15rem] p-3")}
-            >
-              <p className={cn(
-                "font-bold uppercase tracking-[0.1em] text-[#a3a3a3]",
-                isDesktop ? "text-[0.6rem] tracking-[0.12em]" : "text-[0.5rem]",
-              )}>
-                {item.label}
-              </p>
-              <p className={cn("font-semibold tabular-nums tracking-tight text-[#e5e5e5]", isDesktop ? "mt-3 text-xl" : "mt-2 text-sm")}>
-                {item.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-
-  // Segmented Filter Tabs
-  const renderFilterTabs = () => (
-    <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-      {[
-        { key: "all" as FilterTab, label: tr("Semua", "All"), count: items.length },
-        { key: "active" as FilterTab, label: tr("Sedang Berjalan", "Active Plans"), count: active.length },
-        { key: "settled" as FilterTab, label: tr("Selesai", "Settled"), count: settled.length },
-      ].map((tab) => (
-        <button
-          key={tab.key}
-          type="button"
-          onClick={() => setFilterTab(tab.key)}
-          className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition active:scale-95",
-            filterTab === tab.key
-              ? "bg-[var(--text)] text-[var(--bg)] shadow-xs"
-              : "bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)]"
-          )}
-        >
-          <span>{tab.label}</span>
-          <span
-            className={cn(
-              "rounded-full px-1.5 py-0.2 text-[0.625rem] font-black",
-              filterTab === tab.key ? "bg-[var(--bg)]/20 text-[var(--bg)]" : "bg-[var(--card)] text-[var(--muted)]"
-            )}
-          >
-            {tab.count}
-          </span>
-        </button>
-      ))}
-    </div>
-  )
+  const tabs: Array<["all" | "active" | "settled", string, number]> = [
+    ["all", tr("Semua", "All"), items.length],
+    ["active", tr("Aktif", "Active"), active.length],
+    ["settled", tr("Selesai", "Settled"), items.length - active.length],
+  ]
 
   return (
-    <div className="space-y-4 pb-20 md:space-y-0 md:pb-0">
-      {/* ─── Mobile ─── */}
-      <div className="space-y-4 md:hidden">
+    <div className="pb-24 lg:pb-0">
+      <div className="lg:hidden">
         <MobilePageHeader
-          title={tr("Buy Now Pay Later", "BNPL")}
+          title="BNPL"
           fallbackHref={`/${sessionId}`}
           action={
-            <MobileIconButton onClick={openCreateSheet} label={tr("Tambah BNPL", "Add BNPL")}>
+            <MobileIconButton onClick={openCreate} label={tr("Tambah BNPL", "Add BNPL")}>
               <Plus strokeWidth={2.5} />
             </MobileIconButton>
           }
         />
-
-        <section className="px-1 space-y-4">
-          {renderHeroStats()}
-          {renderFilterTabs()}
-
-          <div className="space-y-3">
-            {showSkeleton ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-36 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
-              ))
-            ) : filteredItems.length === 0 ? (
-              renderEmpty()
-            ) : (
-              filteredItems.map((item) => renderCard(item))
-            )}
-          </div>
-        </section>
       </div>
+      <DesktopPageHeader
+        className="hidden lg:block"
+        title="BNPL"
+        homeHref={`/${sessionId}`}
+        actions={
+          <DesktopPageAction onClick={openCreate}>
+            <Plus strokeWidth={2.5} />
+            {tr("Tambah BNPL", "Add BNPL")}
+          </DesktopPageAction>
+        }
+      />
 
-      {/* ─── Desktop ─── */}
-      <div className="hidden md:block">
-        <DesktopPageHeader
-          title={tr("Buy Now Pay Later (BNPL)", "Buy Now Pay Later")}
-          homeHref={`/${sessionId}`}
-          actions={
-            <DesktopPageAction onClick={openCreateSheet}>
-              <Plus strokeWidth={2.5} />
-              {tr("Tambah BNPL", "Add BNPL")}
-            </DesktopPageAction>
+      <DesktopPageBody className="mt-2 flex flex-col gap-4 px-1 lg:mt-0 lg:gap-5 lg:px-0">
+        <ModenHero
+          label={
+            <>
+              <CreditCard size={16} />
+              {tr("Baki perlu dibayar", "Still to pay")}
+            </>
           }
+          currency="RM"
+          amount={showSkeleton ? "—" : money(owed)}
+          amountSize="clamp(2rem, 9vw, 2.75rem)"
+          stats={[
+            { key: "monthly", tone: "out", icon: <CalendarClock size={15} strokeWidth={2.2} />, label: tr("Ansuran sebulan", "Per month"), value: `RM ${money(monthly)}` },
+            lateCount > 0
+              ? { key: "late", tone: "out", icon: <AlertTriangle size={15} strokeWidth={2.2} />, label: tr("Lewat bayar", "Overdue"), value: String(lateCount) }
+              : { key: "active", tone: "neutral", icon: <CreditCard size={15} strokeWidth={2.2} />, label: tr("Pelan aktif", "Active plans"), value: String(active.length) },
+          ]}
         />
 
-        <DesktopPageBody className="space-y-6">
-          {renderHeroStats(true)}
-          {renderFilterTabs()}
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {showSkeleton ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-36 animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
-              ))
-            ) : filteredItems.length === 0 ? (
-              <div className="col-span-full">{renderEmpty()}</div>
-            ) : (
-              filteredItems.map((item) => renderCard(item))
-            )}
+        {loadFailed && !hasLoaded ? (
+          <div className="flex flex-col items-center gap-3 rounded-[1.5rem] border border-dashed border-[var(--border)] px-6 py-12 text-center">
+            <p className="text-base font-bold text-[var(--text)]">{tr("BNPL tidak dapat dimuatkan", "BNPL could not be loaded")}</p>
+            <button type="button" onClick={() => { setLoading(true); void fetchData() }} className="h-11 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)]">
+              {tr("Cuba lagi", "Try again")}
+            </button>
           </div>
-        </DesktopPageBody>
-      </div>
+        ) : (
+          <>
+            <div role="tablist" className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {tabs.map(([key, text, count]) => (
+                <button key={key} type="button" role="tab" aria-selected={filter === key} onClick={() => setFilter(key)} className={cn("flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-semibold transition", filter === key ? "border-transparent bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--text)]")}>
+                  {text}
+                  <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", filter === key ? "bg-white/20" : "bg-[var(--surface-tint-strong)]")}>{count}</span>
+                </button>
+              ))}
+            </div>
 
-      {/* ─── Add/Edit Sheet ─── */}
-      {mounted && showSheet
-        ? createPortal(
-            <div
-              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] p-0 md:items-center md:p-4"
-              onClick={requestSheetClose}
-            >
-              <div
-                style={{ transform: "translateZ(0)" }}
-                className="app-sheet-panel relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl md:max-h-[86vh] md:max-w-lg md:rounded-2xl"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <AppSheetHeader
-                  title={editing ? tr("Edit BNPL", "Edit BNPL") : tr("Tambah BNPL", "Add BNPL")}
-                  onClose={requestSheetClose}
-                  action={
-                    <button
-                      type="submit"
-                      form="bnpl-sheet-form"
-                      disabled={saving}
-                      className="px-2 py-1 text-sm font-black text-[var(--btn-primary-bg)] transition-opacity disabled:opacity-60"
-                    >
-                      {saving
-                        ? (isBm ? "Menyimpan…" : "Saving…")
-                        : editing ? tr("Update", "Update") : tr("Simpan", "Save")}
-                    </button>
-                  }
-                />
-
-                <form
-                  id="bnpl-sheet-form"
-                  className="flex min-h-0 flex-1 flex-col overflow-hidden"
-                  onSubmit={handleSave}
-                >
-                  <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 text-[var(--text)] sm:px-6 sm:py-5">
-                    {/* Name */}
-                    <div>
-                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                        {tr("Nama Pembelian / Barang", "Purchase / Item Name")} <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        value={form.name}
-                        onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-semibold text-[var(--text)] outline-none transition focus:border-[var(--btn-primary-bg)] placeholder:text-[var(--muted)]/40"
-                        placeholder={tr("Contoh: iPhone 15 Pro / Kasut Nike", "Example: iPhone 15 / Nike Shoes")}
-                      />
-                    </div>
-
-                    {/* Provider */}
-                    <div>
-                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                        {tr("Penyedia Perkhidmatan BNPL", "BNPL Provider")}
-                      </label>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setProviderOpen((o) => !o)}
-                          className={cn(
-                            "flex w-full items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-3.5 py-3 text-left transition hover:bg-[var(--surface-tint-strong)]",
-                            providerOpen && "border-[var(--btn-primary-bg)]"
-                          )}
-                        >
-                          <span className="flex min-w-0 items-center gap-3">
-                            <BnplProviderBadge provider={form.provider} size={30} rounded="rounded-xl" />
-                            <span className="truncate text-sm font-black text-[var(--text)]">
-                              {form.provider}
-                            </span>
-                          </span>
-                          <ChevronDown size={16} className={cn("shrink-0 text-[var(--muted)] transition-transform", providerOpen && "rotate-180")} />
-                        </button>
-                        {providerOpen && (
-                          <div className="mt-2 max-h-56 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1.5 shadow-xl space-y-1">
-                            {BNPL_PROVIDERS.map((p) => {
-                              const selected = form.provider === p.value
-                              return (
-                                <button
-                                  key={p.value}
-                                  type="button"
-                                  onClick={() => {
-                                    setForm((prev) => ({ ...prev, provider: p.value }))
-                                    setProviderOpen(false)
-                                  }}
-                                  className={cn(
-                                    "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition",
-                                    selected ? "bg-[var(--surface-tint-strong)]" : "hover:bg-[var(--surface-tint)]",
-                                  )}
-                                >
-                                  <BnplProviderBadge provider={p.value} size={28} rounded="rounded-xl" />
-                                  <span className="truncate text-xs font-bold text-[var(--text)]">{p.label}</span>
-                                  {selected && <Check size={14} className="ml-auto text-emerald-500" />}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Category */}
-                    <div>
-                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                        {tr("Kategori Transaksi", "Expense Category")} <span className="text-rose-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setCategoryOpen((o) => !o)}
-                          className={cn(
-                            "flex w-full items-center justify-between gap-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-left transition hover:bg-[var(--surface-tint-strong)]",
-                            categoryOpen && "border-[var(--btn-primary-bg)]"
-                          )}
-                        >
-                          <span className="flex min-w-0 items-center gap-2.5">
-                            {form.category_id ? (
-                              <CategoryIconGlyph
-                                iconName={categories.find((c) => String(c.id) === form.category_id)?.icon_name}
-                                categoryName={catName(form.category_id)}
-                                kind="expense"
-                                size={18}
-                              />
-                            ) : (
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--muted)]">
-                                <Receipt size={12} />
-                              </span>
-                            )}
-                            <span className={cn("truncate text-sm", form.category_id ? "font-black text-[var(--text)]" : "text-[var(--muted)]")}>
-                              {catName(form.category_id)}
-                            </span>
-                          </span>
-                          <ChevronDown size={16} className={cn("shrink-0 text-[var(--muted)] transition-transform", categoryOpen && "rotate-180")} />
-                        </button>
-                        {categoryOpen && (
-                          <div className="mt-2 max-h-52 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1.5 shadow-xl space-y-1">
-                            {categories.length === 0 && (
-                              <div className="px-3 py-3 text-center text-xs text-[var(--muted)]">
-                                {tr("Tiada kategori dijumpai", "No categories found")}
-                              </div>
-                            )}
-                            {categories.map((c) => {
-                              const selected = form.category_id === String(c.id)
-                              return (
-                                <button
-                                  key={c.id}
-                                  type="button"
-                                  onClick={() => {
-                                    setForm((prev) => ({ ...prev, category_id: String(c.id) }))
-                                    setCategoryOpen(false)
-                                  }}
-                                  className={cn(
-                                    "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left transition",
-                                    selected ? "bg-[var(--surface-tint-strong)]" : "hover:bg-[var(--surface-tint)]",
-                                  )}
-                                >
-                                  <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
-                                    <CategoryIconGlyph iconName={c.icon_name} categoryName={c.name} kind="expense" size={14} />
-                                  </span>
-                                  <span className="truncate text-xs font-semibold text-[var(--text)]">{c.name}</span>
-                                  {selected && <Check size={14} className="ml-auto text-emerald-500" />}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Total & Monthly Amount */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                          {tr("Jumlah Penuh (RM)", "Total (RM)")} <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          inputMode="decimal"
-                          value={form.total_amount}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/[^0-9.]/g, "")
-                            setForm((prev) => {
-                              const totalNum = Number(val)
-                              const count = Number(prev.installment_count) || 3
-                              const monthlyCalc = totalNum > 0 && count > 0 ? (totalNum / count).toFixed(2) : prev.monthly_amount
-                              return { ...prev, total_amount: val, monthly_amount: monthlyCalc }
-                            })
-                          }}
-                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-black text-[var(--text)] outline-none transition focus:border-[var(--btn-primary-bg)] placeholder:text-[var(--muted)]/40"
-                          placeholder="0.00"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                          {tr("Ansuran Bulanan (RM)", "Monthly (RM)")} <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          inputMode="decimal"
-                          value={form.monthly_amount}
-                          onChange={(e) => setForm((prev) => ({ ...prev, monthly_amount: e.target.value.replace(/[^0-9.]/g, "") }))}
-                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-black text-[var(--text)] outline-none transition focus:border-[var(--btn-primary-bg)] placeholder:text-[var(--muted)]/40"
-                          placeholder="0.00"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Installments count & Due Day */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                          {tr("Tempoh Ansuran (Bulan)", "Installment Count")}
-                        </label>
-                        <input
-                          inputMode="numeric"
-                          value={form.installment_count}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/[^0-9]/g, "")
-                            setForm((prev) => {
-                              const count = Number(val) || 0
-                              const totalNum = Number(prev.total_amount) || 0
-                              const monthlyCalc = totalNum > 0 && count > 0 ? (totalNum / count).toFixed(2) : prev.monthly_amount
-                              return { ...prev, installment_count: val, monthly_amount: monthlyCalc }
-                            })
-                          }}
-                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-bold text-[var(--text)] outline-none transition focus:border-[var(--btn-primary-bg)]"
-                          placeholder="3"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                          {tr("Hari Tarikh Due (hb)", "Due Day of Month")}
-                        </label>
-                        <input
-                          inputMode="numeric"
-                          value={form.due_day_of_month}
-                          onChange={(e) => setForm((prev) => ({ ...prev, due_day_of_month: e.target.value.replace(/[^0-9]/g, "") }))}
-                          className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm font-bold text-[var(--text)] outline-none transition focus:border-[var(--btn-primary-bg)]"
-                          placeholder="15"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Start Date */}
-                    <div>
-                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                        {tr("Tarikh Mula Langganan", "Start Date")}
-                      </label>
-                      <input
-                        type="date"
-                        value={form.start_date}
-                        onChange={(e) => setForm((prev) => ({ ...prev, start_date: e.target.value }))}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none"
-                      />
-                    </div>
-
-                    {/* Notes */}
-                    <div>
-                      <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                        {tr("Catatan / Nota", "Notes")}
-                      </label>
-                      <textarea
-                        value={form.notes}
-                        onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-                        rows={2}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-sm text-[var(--text)] outline-none placeholder:text-[var(--muted)]/40"
-                        placeholder={tr("Catatan tambahan (opsyenal)", "Additional notes (optional)")}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Sticky Footer */}
-                  <div className="flex items-center gap-3 border-t border-[var(--border)] bg-[var(--sheet-bg)] p-4">
-                    <button
-                      type="button"
-                      onClick={requestSheetClose}
-                      className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-xs font-bold text-[var(--muted)] transition hover:bg-[var(--surface-tint)] active:scale-95"
-                    >
-                      {tr("Batal", "Cancel")}
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="flex-1 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2.5 text-xs md:text-sm font-black text-white shadow-sm transition active:scale-[0.98] disabled:opacity-50"
-                    >
-                      {saving
-                        ? (isBm ? "Menyimpan…" : "Saving…")
-                        : editing ? tr("Kemaskini BNPL", "Update BNPL") : tr("Simpan BNPL", "Save BNPL")}
-                    </button>
-                  </div>
-                </form>
+            {showSkeleton ? (
+              <div className="space-y-2.5">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-32 animate-pulse rounded-[1.5rem] bg-[var(--surface-tint)]" />
+                ))}
               </div>
-            </div>,
-            document.body,
-          )
-        : null}
-
-      {/* ─── Quick Pay Sheet ─── */}
-      {payingId !== null &&
-        (() => {
-          const item = items.find((i) => i.id === payingId)
-          if (!item) return null
-          return createPortal(
-            <div
-              className="fixed inset-0 z-[140] flex h-[100dvh] w-screen items-end justify-center bg-[var(--overlay)] p-0 md:items-center md:p-4"
-              onClick={() => setPayingId(null)}
-            >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="app-sheet-panel relative flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-t-[28px] border border-[var(--border)] bg-[var(--sheet-bg)] shadow-2xl md:max-h-[86vh] md:max-w-md md:rounded-2xl"
-              >
-                <AppSheetHeader title={tr("Bayar Ansuran BNPL", "Pay BNPL Installment")} onClose={() => setPayingId(null)} />
-
-                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 text-[var(--text)] sm:px-6 sm:py-5">
-                  <div className="flex items-center gap-3.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-4">
-                    <BnplProviderBadge provider={item.provider} size={44} rounded="rounded-2xl" />
-                    <div className="min-w-0">
-                      <h3 className="truncate text-base font-black text-[var(--text)]">{item.name}</h3>
-                      <p className="text-xs text-[var(--muted)]">
-                        {tr("Ansuran Bulanan", "Monthly Installment")}:{" "}
-                        <span className="font-bold text-[var(--text)]">
-                          RM {Number(item.monthly_amount).toLocaleString("en-MY", { minimumFractionDigits: 2 })}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-[0.625rem] font-bold uppercase tracking-widest text-[var(--muted)]">
-                      {tr("Dompet Pembayar (Pilihan)", "Payment Wallet (Optional)")}
-                    </label>
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setPayWalletOpen((o) => !o)}
-                        className={cn(
-                          "flex w-full items-center justify-between gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-3 text-left transition hover:bg-[var(--surface-tint-strong)]",
-                          payWalletOpen && "border-[var(--btn-primary-bg)]"
-                        )}
-                      >
-                        {payWalletId ? (
-                          (() => {
-                            const w = wallets.find((x) => x.id === payWalletId)
-                            return (
-                              <span className="flex items-center gap-2 truncate font-bold text-sm text-[var(--text)]">
-                                <CreditCard size={15} className="shrink-0 text-emerald-500" />
-                                <span>{w?.name || "Wallet"}</span>
-                              </span>
-                            )
-                          })()
+            ) : visible.length === 0 ? (
+              <div className="flex flex-col items-center rounded-[1.5rem] border border-dashed border-[var(--border)] px-6 py-12 text-center">
+                <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--muted)]">
+                  <CreditCard size={24} />
+                </span>
+                <p className="mt-4 text-base font-bold text-[var(--text)]">{items.length ? tr("Tiada dalam tapisan ini", "None in this filter") : tr("Belum ada BNPL", "No BNPL yet")}</p>
+                <p className="mt-1 max-w-xs text-sm text-[var(--muted)]">{tr("Jejak bayar-kemudian anda: SPayLater, Atome, Grab dan lain-lain.", "Track your pay-later plans: SPayLater, Atome, Grab and more.")}</p>
+                {!items.length && (
+                  <button type="button" onClick={openCreate} className="mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)]">
+                    <Plus size={15} />
+                    {tr("Tambah BNPL", "Add BNPL")}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <ul className="grid gap-2.5 lg:grid-cols-2">
+                {visible.map((item) => {
+                  const pct = item.total_amount ? Math.min(100, Math.max(0, (item.paid_amount / item.total_amount) * 100)) : 0
+                  return (
+                    <li key={item.id} className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4">
+                      <button type="button" onClick={() => openDetail(item)} className="flex w-full items-center gap-3 text-left">
+                        {item.has_image && item.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={item.image_url} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover" />
                         ) : (
-                          <span className="text-sm text-[var(--muted)]">{tr("Guna wallet lalai / Tunai", "Use default wallet / Cash")}</span>
+                          <BnplProviderBadge provider={item.provider} size={44} rounded="rounded-full" />
                         )}
-                        <ChevronDown size={16} className={cn("shrink-0 text-[var(--muted)] transition-transform", payWalletOpen && "rotate-180")} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-base font-bold text-[var(--text)]">{item.name}</span>
+                          <span className="block truncate text-xs text-[var(--muted)]">
+                            {item.provider}
+                            {item.category_name ? ` · ${item.category_name}` : ""}
+                          </span>
+                        </span>
+                        {dueChip(item)}
                       </button>
-                      {payWalletOpen && (
-                        <div className="mt-2 max-h-48 overflow-y-auto overscroll-contain rounded-2xl border border-[var(--border)] bg-[var(--card)] p-1.5 shadow-xl space-y-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPayWalletId(null)
-                              setPayWalletOpen(false)
-                            }}
-                            className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs text-[var(--muted)] hover:bg-[var(--surface-tint)]"
-                          >
-                            <span>{tr("Wallet lalai", "Default wallet")}</span>
-                            {!payWalletId && <Check size={14} className="text-emerald-500" />}
-                          </button>
-                          {wallets.map((w) => (
-                            <button
-                              key={w.id}
-                              type="button"
-                              onClick={() => {
-                                setPayWalletId(w.id)
-                                setPayWalletOpen(false)
-                              }}
-                              className={cn(
-                                "flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs transition",
-                                payWalletId === w.id ? "bg-[var(--surface-tint-strong)] text-[var(--text)] font-bold" : "hover:bg-[var(--surface-tint)] text-[var(--text)]"
-                              )}
-                            >
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[var(--icon-bg)] text-[var(--icon-fg)]">
-                                <CreditCard size={12} />
-                              </span>
-                              <span className="truncate flex-1 font-medium">{w.name}</span>
-                              {payWalletId === w.id && <Check size={14} className="text-emerald-500" />}
-                            </button>
-                          ))}
-                        </div>
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
+                        <div className="h-full rounded-full bg-[var(--btn-primary-bg)] transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="mt-2 flex items-baseline justify-between gap-3 text-sm">
+                        <span className="text-[var(--muted)]">
+                          RM {money(item.monthly_amount)} / {tr("bulan", "mo")}
+                        </span>
+                        <span className="font-bold tabular-nums text-[var(--text)]">
+                          {item.status === "settled" ? tr("Tiada baki", "Nothing left") : `${tr("Baki", "Left")} RM ${money(item.outstanding_amount)}`}
+                        </span>
+                      </div>
+                      {item.status === "active" && (
+                        <button type="button" onClick={() => openPay(item, true)} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-[0.98]">
+                          <Check size={15} />
+                          {tr("Bayar ansuran", "Pay instalment")}
+                        </button>
                       )}
-                    </div>
-                  </div>
-                </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </>
+        )}
+      </DesktopPageBody>
 
-                {/* Sticky Pay Footer */}
-                <div className="flex items-center gap-3 border-t border-[var(--border)] bg-[var(--sheet-bg)] p-4">
-                  <button
-                    type="button"
-                    onClick={() => setPayingId(null)}
-                    className="rounded-xl border border-[var(--border)] px-4 py-2.5 text-xs font-bold text-[var(--muted)] transition hover:bg-[var(--surface-tint)] active:scale-95"
-                  >
-                    {tr("Batal", "Cancel")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handlePay(item)}
-                    className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2.5 text-xs md:text-sm font-black text-white shadow-sm transition active:scale-[0.98]"
-                  >
-                    <CreditCard size={15} />
-                    <span>{tr("Sahkan Bayaran", "Confirm Payment")}</span>
-                  </button>
-                </div>
+      {/* ── Detail ── */}
+      <AppSheet
+        open={!!detail && !showForm && !(showPay && payFromList)}
+        onClose={() => { setDetailId(null); setShowPay(false) }}
+        id="bnpl-detail-sheet"
+        title={detail?.name || ""}
+        subtitle={detail ? `${detail.provider}${detail.category_name ? ` · ${detail.category_name}` : ""}` : undefined}
+        size="lg"
+        footer={
+          detail ? (
+            <div className="space-y-2">
+              {detail.status === "active" && (
+                <button type="button" onClick={() => openPay(detail)} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] text-sm font-semibold text-[var(--btn-primary-text)] active:scale-[0.98]">
+                  <Check size={16} />
+                  {tr("Bayar ansuran", "Pay instalment")}
+                </button>
+              )}
+              <div className="flex gap-2">
+                <button type="button" onClick={() => openEdit(detail)} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-full border border-[var(--border)] text-sm font-semibold text-[var(--text)]">
+                  <Pencil size={14} />
+                  {tr("Ubah", "Edit")}
+                </button>
+                <button type="button" onClick={removeItem} disabled={saving} className="flex h-11 flex-1 items-center justify-center gap-2 rounded-full border border-rose-500/30 text-sm font-semibold text-rose-500 disabled:opacity-50">
+                  <Trash2 size={14} />
+                  {tr("Padam", "Delete")}
+                </button>
               </div>
-            </div>,
-            document.body,
-          )
-        })()}
+            </div>
+          ) : null
+        }
+      >
+        {detail && (
+          <div className="space-y-4">
+            <div className="rounded-[1.5rem] border border-[var(--border)] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-[var(--muted)]">{tr("Baki perlu dibayar", "Still to pay")}</span>
+                {dueChip(detail)}
+              </div>
+              <p className="mt-1 text-3xl font-bold tabular-nums tracking-tight text-[var(--text)]">
+                <span className="mr-1.5 text-lg font-semibold text-[var(--muted)]">RM</span>
+                {money(detail.outstanding_amount)}
+              </p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-tint-strong)]">
+                <div className="h-full rounded-full bg-[var(--btn-primary-bg)]" style={{ width: `${detail.total_amount ? Math.min(100, (detail.paid_amount / detail.total_amount) * 100) : 0}%` }} />
+              </div>
+              <dl className="mt-3 grid grid-cols-3 gap-2 text-sm">
+                {[
+                  [tr("Jumlah", "Total"), `RM ${money(detail.total_amount)}`],
+                  [tr("Dibayar", "Paid"), `RM ${money(detail.paid_amount)}`],
+                  [tr("Sebulan", "Monthly"), `RM ${money(detail.monthly_amount)}`],
+                  [tr("Ansuran", "Instalments"), String(detail.installment_count)],
+                  [tr("Hari bayaran", "Due day"), String(detail.due_day_of_month)],
+                  [tr("Mula", "Started"), fmtDate(detail.start_date, locale)],
+                ].map(([k, v]) => (
+                  <div key={k}>
+                    <dt className="text-xs text-[var(--muted)]">{k}</dt>
+                    <dd className="font-semibold tabular-nums text-[var(--text)]">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+              {detail.notes ? <p className="mt-3 text-sm text-[var(--muted)]">{detail.notes}</p> : null}
+            </div>
 
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+            <div>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void uploadImage(f) }} />
+              <button type="button" onClick={() => fileRef.current?.click()} disabled={saving} className="flex h-11 items-center gap-2 rounded-full border border-dashed border-[var(--border-strong)] px-5 text-sm font-semibold text-[var(--muted)] disabled:opacity-50">
+                <ImagePlus size={15} />
+                {detail.has_image ? tr("Tukar gambar", "Change picture") : tr("Tambah gambar (pilihan)", "Add a picture (optional)")}
+              </button>
+            </div>
+
+            <div>
+              <h3 className="mb-2 text-sm font-bold text-[var(--text)]">{tr("Bayaran dibuat", "Payments made")}</h3>
+              {payments.length === 0 ? (
+                <p className="rounded-[1.5rem] border border-dashed border-[var(--border)] px-4 py-6 text-center text-sm text-[var(--muted)]">{tr("Belum ada bayaran.", "No payments yet.")}</p>
+              ) : (
+                <ul className="divide-y divide-[var(--border)] rounded-[1.5rem] border border-[var(--border)]">
+                  {payments.map((p) => (
+                    <li key={p.id} className="flex items-center gap-3 px-4 py-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold tabular-nums text-[var(--text)]">RM {money(p.amount)}</p>
+                        <p className="text-xs text-[var(--muted)]">
+                          {fmtDate(p.payment_date, locale)}
+                          {p.notes ? ` · ${p.notes}` : ""}
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => undoPayment(p)} disabled={saving} aria-label={tr("Padam bayaran", "Delete payment")} className="flex h-9 w-9 items-center justify-center rounded-full text-rose-500 hover:bg-rose-500/10 disabled:opacity-50">
+                        <Trash2 size={15} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
+      </AppSheet>
+
+      {/* ── Create / edit ── */}
+      <AppSheet
+        open={showForm}
+        onClose={() => { setShowForm(false); setEditing(null) }}
+        id="bnpl-sheet"
+        title={editing ? tr("Ubah BNPL", "Edit BNPL") : tr("BNPL baharu", "New BNPL")}
+        size="lg"
+        footer={
+          <button type="button" onClick={() => void save()} disabled={saving} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-40">
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {editing ? tr("Simpan perubahan", "Save changes") : tr("Tambah BNPL", "Add BNPL")}
+          </button>
+        }
+      >
+        <form onSubmit={save} className="space-y-4">
+          <div>
+            <label htmlFor="bn-name" className={label}>{tr("Nama (cth. barang yang dibeli)", "Name (e.g. what you bought)")}</label>
+            <input id="bn-name" value={form.name} maxLength={190} onChange={(e) => setForm({ ...form, name: e.target.value })} className={field} />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label htmlFor="bn-provider" className={label}>{tr("Penyedia", "Provider")}</label>
+              <select id="bn-provider" value={form.provider} onChange={(e) => setForm({ ...form, provider: e.target.value })} className={field}>
+                {BNPL_PROVIDERS.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="bn-cat" className={label}>{tr("Kategori bayaran", "Payment category")}</label>
+              <select id="bn-cat" value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })} className={field}>
+                <option value="">{tr("Pilih…", "Choose…")}</option>
+                {expenseCategories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label htmlFor="bn-total" className={label}>{tr("Jumlah keseluruhan (RM)", "Total (RM)")}</label>
+              <input id="bn-total" inputMode="decimal" value={form.total_amount} onChange={(e) => setPlan({ total_amount: e.target.value })} placeholder="0.00" className={field} />
+            </div>
+            <div>
+              <label htmlFor="bn-count" className={label}>{tr("Bilangan ansuran", "Instalments")}</label>
+              <input id="bn-count" inputMode="numeric" value={form.installment_count} onChange={(e) => setPlan({ installment_count: e.target.value.replace(/\D/g, "") })} className={field} />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="bn-monthly" className={label}>{tr("Ansuran bulanan (RM)", "Monthly instalment (RM)")}</label>
+            <input id="bn-monthly" inputMode="decimal" value={form.monthly_amount} onChange={(e) => { setMonthlyTouched(true); setForm({ ...form, monthly_amount: e.target.value }) }} placeholder="0.00" className={field} />
+            {planCovers > 0 && totalNum > 0 && Math.abs(planCovers - totalNum) > 0.5 ? (
+              <p className="mt-1.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                {tr(`${countNum} × RM ${money(monthlyNum)} = RM ${money(planCovers)}, tidak sama dengan jumlah RM ${money(totalNum)}. Ini lazim jika ada caj; baki dikira daripada jumlah.`, `${countNum} × RM ${money(monthlyNum)} = RM ${money(planCovers)}, which differs from the RM ${money(totalNum)} total. That is normal with fees; the balance counts down from the total.`)}
+              </p>
+            ) : null}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label htmlFor="bn-due" className={label}>{tr("Hari bayaran setiap bulan", "Due day each month")}</label>
+              <input id="bn-due" inputMode="numeric" value={form.due_day_of_month} onChange={(e) => setForm({ ...form, due_day_of_month: e.target.value.replace(/\D/g, "") })} className={field} />
+            </div>
+            <div>
+              <label htmlFor="bn-start" className={label}>{tr("Tarikh mula", "Start date")}</label>
+              <input id="bn-start" type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className={field} />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="bn-notes" className={label}>{tr("Nota (pilihan)", "Notes (optional)")}</label>
+            <textarea id="bn-notes" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full rounded-[1.25rem] border border-[var(--border)] bg-transparent p-4 text-base text-[var(--text)] outline-none focus:border-[var(--btn-primary-bg)]" />
+          </div>
+          {editing ? <p className="text-xs text-[var(--muted)]">{tr("Baki dikira semula daripada jumlah tolak bayaran yang sudah direkod.", "The balance is recalculated from the total less the payments recorded.")}</p> : null}
+        </form>
+      </AppSheet>
+
+      {/* ── Pay ── */}
+      <AppSheet
+        open={showPay}
+        onClose={() => { setShowPay(false); if (payFromList) setDetailId(null) }}
+        id="bnpl-pay-sheet"
+        title={tr("Bayar ansuran", "Pay instalment")}
+        subtitle={detail?.name}
+        size="md"
+        footer={
+          <button type="button" onClick={() => void savePayment()} disabled={saving} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-40">
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {tr("Rekod bayaran", "Record payment")}
+          </button>
+        }
+      >
+        <form onSubmit={savePayment} className="space-y-4">
+          <div>
+            <label htmlFor="bp-amount" className={label}>{tr("Amaun (RM)", "Amount (RM)")}</label>
+            <input id="bp-amount" inputMode="decimal" value={payForm.amount} onChange={(e) => setPayForm({ ...payForm, amount: e.target.value })} className={field} />
+            {detail ? <p className="mt-1.5 text-xs text-[var(--muted)]">{tr("Baki", "Still owed")}: RM {money(detail.outstanding_amount)}</p> : null}
+          </div>
+          <div>
+            <label htmlFor="bp-wallet" className={label}>{tr("Dibayar daripada dompet", "Paid from wallet")}</label>
+            <select id="bp-wallet" value={payForm.wallet_id} onChange={(e) => setPayForm({ ...payForm, wallet_id: e.target.value })} className={field}>
+              <option value="">{tr("Pilih dompet…", "Choose a wallet…")}</option>
+              {wallets.map((w) => (
+                <option key={w.id} value={w.id}>{w.label || w.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="bp-notes" className={label}>{tr("Nota (pilihan)", "Notes (optional)")}</label>
+            <input id="bp-notes" value={payForm.notes} onChange={(e) => setPayForm({ ...payForm, notes: e.target.value })} className={field} />
+          </div>
+          <p className="text-xs text-[var(--muted)]">{tr("Ini direkod sebagai belanja dalam kategori yang dipilih.", "This is recorded as an expense in the chosen category.")}</p>
+        </form>
+      </AppSheet>
+
       {alertModal}
     </div>
   )

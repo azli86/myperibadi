@@ -50,11 +50,11 @@ export function MaintenanceItemRow({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)]/25 p-3 text-left transition",
-        "active:scale-[0.99] hover:bg-[var(--surface-tint)]/45"
+        "flex w-full items-center gap-3 rounded-full border border-[var(--border)] py-2.5 pl-2.5 pr-3 text-left transition",
+        "hover:bg-[var(--surface-tint)]"
       )}
     >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--card)] text-[var(--accent2)]">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--text)]">
         <Icon size={18} strokeWidth={2.1} />
       </span>
 

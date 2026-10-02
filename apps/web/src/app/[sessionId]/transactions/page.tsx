@@ -505,7 +505,6 @@ export default function TransactionsPage() {
  const [error, setError] = useState<string | null>(null)
  const [activeDailyBarIndex, setActiveDailyBarIndex] = useState<number | null>(null)
  const [isMobileViewport, setIsMobileViewport] = useState(false)
- const [mobileDetailId, setMobileDetailId] = useState<string | number | null>(null)
  const [mounted, setMounted] = useState(false)
  const [txnToDelete, setTxnToDelete] = useState<TransactionRecord | null>(null)
  const [deletingTxn, setDeletingTxn] = useState(false)
@@ -568,6 +567,8 @@ export default function TransactionsPage() {
    }
  }
 
+
+ const [mobileDetailId, setMobileDetailId] = useState<string | number | null>(null)
  const detailHistoryArmedRef = useRef(false)
  const openTransaction = (id: string | number) => {
    detailHistoryArmedRef.current = false
@@ -590,6 +591,18 @@ export default function TransactionsPage() {
    if (window.history.state?.transactionSlide) window.history.back()
    else setMobileDetailId(null)
  }
+ // The detail iframe tells this list when it deleted a transaction, so the
+ // panel closes and the list refetches.
+ useEffect(() => {
+   const onMessage = (e: MessageEvent) => {
+     if (e.data?.type === "TRANSACTION_DELETED") {
+       setMobileDetailId(null)
+       setTxnRefreshFlag((f) => f + 1)
+     }
+   }
+   window.addEventListener("message", onMessage)
+   return () => window.removeEventListener("message", onMessage)
+ }, [])
  const dailyChartScrollRef = useRef<HTMLDivElement | null>(null)
 const [cycleStartDay, setCycleStartDay] = useState(1)
 const [cycleMode, setCycleMode] = useState<"day" | "category">("day")
@@ -621,20 +634,6 @@ const currentCycleKeyStr = useMemo(
  )
  router.replace(`/${sessionId}/transactions`, { scroll: false })
  }, [searchParams, lang, router, sessionId])
-
- // When the transaction-detail iframe deletes a transaction it posts a
- // TRANSACTION_DELETED message back so this list can close the panel and
- // refetch instead of waiting for a route navigation inside the iframe.
- useEffect(() => {
- const onMessage = (e: MessageEvent) => {
- if (e.data?.type === "TRANSACTION_DELETED") {
- setMobileDetailId(null)
- setTxnRefreshFlag((f) => f + 1)
- }
- }
- window.addEventListener("message", onMessage)
- return () => window.removeEventListener("message", onMessage)
- }, [])
 
  // Live update: silent auto-refetch on window refresh events + periodic poll.
  useEffect(() => {
@@ -1695,9 +1694,6 @@ const currentCycleKeyStr = useMemo(
  homeHref={`/${sessionId}`}
  actions={
  <>
- <DesktopPageChip>
- {filteredTxns.length} {lang === "EN" ? "records" : "rekod"}
- </DesktopPageChip>
  <DesktopPageAction onClick={handleExport} disabled={filteredTxns.length === 0 || loading}>
  <Download strokeWidth={2.5} />
  {langT.download}
@@ -2551,7 +2547,7 @@ const currentCycleKeyStr = useMemo(
  {mobileDetailId !== null && (
    <div className="fixed inset-0 z-[500]">
      <button type="button" aria-label={lang === "EN" ? "Close transaction details" : "Tutup butiran transaksi"} onClick={closeMobileDetail} className="absolute inset-0 bg-[var(--overlay)]" />
-     <section className="absolute bottom-0 right-0 top-0 h-[100dvh] w-full overflow-hidden bg-[var(--page-bg)] md:w-[min(420px,80vw)] md:border-l md:border-[var(--border)] md:shadow-2xl">
+     <section className="absolute bottom-0 right-0 top-0 h-[100dvh] w-full overflow-hidden bg-[var(--page-bg)] md:w-[min(420px,80vw)] md:border-l md:border-[var(--border)]">
        <iframe
          title={lang === "EN" ? "Transaction details" : "Butiran transaksi"}
          src={`/${sessionId}/transactions/${mobileDetailId}`}
@@ -2568,13 +2564,14 @@ const currentCycleKeyStr = useMemo(
          type="button"
          aria-label={lang === "EN" ? "Close transaction details" : "Tutup butiran transaksi"}
          onClick={closeMobileDetail}
-         className="absolute right-3 top-3 z-[600] hidden h-8 w-8 items-center justify-center rounded-full bg-[var(--surface-tint)] text-[var(--muted)] shadow transition hover:text-[var(--text)] md:flex"
+         className="absolute right-3 top-3 z-[600] hidden h-8 w-8 items-center justify-center rounded-full bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] md:flex"
        >
          <X size={16} />
        </button>
      </section>
    </div>
  )}
+
 
  {/* Pagination Controls */}
  {totalPages > 1 && (
