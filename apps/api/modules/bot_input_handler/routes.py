@@ -494,6 +494,11 @@ async def process_bot_input_route(
     # ---- Barang Saya (Personal Inventory) commands — intercepted before txn handling. ----
     # Skip text handling when there's an image: the image+caption hook below attaches the photo.
     if text and not has_location and not has_media:
+        # `delete TXN26-…` is a transaction, not an inventory item; answer it before Barang Saya takes the word.
+        from modules.bot_input_handler.txn_delete_hint import txn_delete_reply
+        _txn_delete = await txn_delete_reply(db, user_id=user_id, text=text)
+        if _txn_delete:
+            return {"reply": _txn_delete}
         from modules.inventory.bot_service import handle_inventory_message
         try:
             inventory_reply = await handle_inventory_message(
