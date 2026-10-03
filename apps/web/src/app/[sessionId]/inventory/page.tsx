@@ -1,2622 +1,603 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  Boxes,
-  MapPin,
-  Package,
-  Plus,
-  Search,
-  Loader2,
-  Trash2,
-  Pencil,
-  X,
-  FolderTree,
-  Folder,
-  FolderOpen,
-  ChevronDown,
-  Tag,
-  Image as ImageIcon,
-  FolderPlus,
-  BoxSelect,
-  ChevronRight,
-  LayoutGrid,
-  List as ListIcon,
-  ExternalLink,
-} from "lucide-react"
+import { Boxes, Check, FolderPlus, ImagePlus, LayoutGrid, List as ListIcon, Loader2, MapPin, Package, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
-import { createPortal } from "react-dom"
-import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
-import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { onDataChanged, shouldRefetchFor } from "@/hooks/useRealtime"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
 import { usePageAlert } from "@/hooks/usePageAlert"
 import { DesktopPageAction, DesktopPageBody, DesktopPageHeader, MobileIconButton, MobilePageHeader } from "@/components/layout/PageHeader"
-
-type InvStatus = "available" | "loaned" | "missing" | "damaged" | "disposed" | "used_up"
-
-type InvItem = {
-  id: number
-  name: string
-  category?: string | null
-  quantity: number
-  unit: string
-  status: InvStatus
-  status_label: string
-  brand?: string | null
-  model?: string | null
-  serial_number?: string | null
-  has_image?: boolean
-  location_id?: number | null
-  container_id?: number | null
-  location_path?: string | null
-  container_name?: string | null
-  transaction_id?: number | null
-  warranty_id?: number | null
-  notes?: string | null
-  updated_at?: string | null
-}
-
-type InvLocation = {
-  id: number
-  name: string
-  parent_id: number | null
-  item_types: number
-  item_units: number
-  child_count: number
-}
-
-type InvContainer = {
-  id: number
-  name: string
-  location_id: number | null
-  item_types: number
-  item_units: number
-  location_path?: string | null
-}
-
-const STATUS_CONFIG: Record<
-  InvStatus,
-  { badge: string; pillActive: string; pillInactive: string; dot: string; labelBm: string; labelEn: string }
-> = {
-  available: {
-    badge: "bg-[var(--surface-tint-strong)] text-[var(--text)] border-[var(--border)] font-bold",
-    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
-    dot: "bg-emerald-500",
-    labelBm: "Ada",
-    labelEn: "Available",
-  },
-  loaned: {
-    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
-    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
-    dot: "bg-sky-400",
-    labelBm: "Dipinjam",
-    labelEn: "Loaned",
-  },
-  missing: {
-    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
-    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
-    dot: "bg-rose-500",
-    labelBm: "Hilang",
-    labelEn: "Missing",
-  },
-  damaged: {
-    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
-    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
-    dot: "bg-amber-400",
-    labelBm: "Rosak",
-    labelEn: "Damaged",
-  },
-  disposed: {
-    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
-    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
-    dot: "bg-zinc-400",
-    labelBm: "Dilupus",
-    labelEn: "Disposed",
-  },
-  used_up: {
-    badge: "bg-[var(--surface-tint)] text-[var(--muted)] border-[var(--border)]",
-    pillActive: "bg-[var(--text)] text-[var(--bg)] border-transparent shadow-sm",
-    pillInactive: "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint-strong)]",
-    dot: "bg-zinc-500",
-    labelBm: "Habis",
-    labelEn: "Used Up",
-  },
-}
-
-const CATEGORY_OPTIONS = [
-  "Electronics",
-  "Clothing",
-  "Documents",
-  "Tools",
-  "Furniture",
-  "Kitchen",
-  "Personal Care",
-  "Toys",
-  "Books",
-  "Sports",
-  "Medicines",
-  "Accessories",
-  "Other",
-]
+import { AppSheet } from "@/components/ui/AppSheet"
+import { ModenHero } from "@/components/ui/ModenHero"
+import { CATEGORIES, DOT, ItemSheet, LocationOptions, PAGE, STATUSES, field, label, todayKey, type Common, type ConfirmFn, type InvContainer, type InvItem, type InvLocation, type InvStatus, type Summary, type Tree } from "@/components/inventory/shared"
+import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
 
 export default function InventoryPage() {
   const params = useParams()
   const router = useRouter()
   const sessionId = (params.sessionId as string) || ""
   const { lang } = useLang()
-  const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
-  const showAlertRef = useRef(showAlert)
-  const showConfirmRef = useRef(showConfirm)
-  useEffect(() => { showAlertRef.current = showAlert }, [showAlert])
-  useEffect(() => { showConfirmRef.current = showConfirm }, [showConfirm])
-
   const isBm = lang === "BM"
   const tr = useCallback((bm: string, en: string) => (isBm ? bm : en), [isBm])
-
-  const authHeaders = useCallback((): HeadersInit => {
-    const token = getAccessToken()
-    if (token && !isCookieAuthSentinel(token)) return { Authorization: `Bearer ${token}` }
-    return {}
-  }, [])
+  const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
 
   const [items, setItems] = useState<InvItem[]>([])
+  const [total, setTotal] = useState(0)
   const [locations, setLocations] = useState<InvLocation[]>([])
   const [containers, setContainers] = useState<InvContainer[]>([])
-  const [summary, setSummary] = useState<{
-    total_types: number
-    total_units: number
-    available: number
-    loaned: number
-    missing: number
-    damaged: number
-    no_location: number
-  } | null>(null)
+  const [summary, setSummary] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<"items" | "locations">("items")
-  const [displayMode, setDisplayMode] = useState<"gallery" | "list">("gallery")
+  const [hasLoaded, setHasLoaded] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [tab, setTab] = useState<"items" | "places">("items")
+  const [view, setView] = useState<"gallery" | "list">("gallery")
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("")
-  const [categoryFilter, setCategoryFilter] = useState<string>("")
-  const [locationFilter, setLocationFilter] = useState<string>("")
+  const [statusFilter, setStatusFilter] = useState("")
+  const [category, setCategory] = useState("")
+  const [placeFilter, setPlaceFilter] = useState<{ kind: "location" | "container" | "none"; id: number } | null>(null)
+  const [itemSheet, setItemSheet] = useState<{ item: InvItem | null; locId?: string; contId?: string } | null>(null)
+  const [locSheet, setLocSheet] = useState<{ loc: InvLocation | null; parentId?: string } | null>(null)
+  const [contSheet, setContSheet] = useState<{ cont: InvContainer | null; locId?: string } | null>(null)
+  const showSkeleton = useDelayedSkeleton(loading && !hasLoaded)
 
-  const [showForm, setShowForm] = useState(false)
-  const [editing, setEditing] = useState<InvItem | null>(null)
-  const [prefilledLocId, setPrefilledLocId] = useState<string>("")
-  const [prefilledContId, setPrefilledContId] = useState<string>("")
-
-  const [showLocModal, setShowLocModal] = useState(false)
-  const [showContModal, setShowContModal] = useState(false)
-  const [editingLoc, setEditingLoc] = useState<InvLocation | null>(null)
-  const [editingCont, setEditingCont] = useState<InvContainer | null>(null)
-  const [defaultParentLocId, setDefaultParentLocId] = useState<string>("")
-  const [defaultContLocId, setDefaultContLocId] = useState<string>("")
-
-  // Location / Container Items View Sheet
-  const [selectedLocationForView, setSelectedLocationForView] = useState<InvLocation | null>(null)
-  const [selectedContainerForView, setSelectedContainerForView] = useState<InvContainer | null>(null)
+  const headers = useCallback((json = false): Record<string, string> => {
+    const token = getAccessToken()
+    return { ...(json ? { "Content-Type": "application/json" } : {}), ...(token && !isCookieAuthSentinel(token) ? { Authorization: `Bearer ${token}` } : {}) }
+  }, [])
+  const errorOf = async (res: Response, fallback: string) => {
+    const payload = (await res.json().catch(() => null)) as { detail?: unknown } | null
+    return typeof payload?.detail === "string" ? payload.detail : fallback
+  }
 
   const load = useCallback(async () => {
-    setLoading(true)
     try {
-      const qs = new URLSearchParams()
+      const qs = new URLSearchParams({ limit: String(PAGE) })
       if (search.trim()) qs.set("q", search.trim())
       if (statusFilter) qs.set("status", statusFilter)
-      qs.set("limit", "150")
+      const opts = { headers: headers(), credentials: "include" as const, cache: "no-store" as const }
       const [itemsRes, sumRes, locRes, contRes] = await Promise.all([
-        fetch(`/api/inventory/items?${qs}`, { headers: authHeaders(), credentials: "include", cache: "no-store" }),
-        fetch("/api/inventory/summary", { headers: authHeaders(), credentials: "include", cache: "no-store" }),
-        fetch("/api/inventory/locations", { headers: authHeaders(), credentials: "include", cache: "no-store" }),
-        fetch("/api/inventory/containers", { headers: authHeaders(), credentials: "include", cache: "no-store" }),
+        fetch(`/api/inventory/items?${qs}`, opts),
+        fetch("/api/inventory/summary", opts),
+        fetch("/api/inventory/locations", opts),
+        fetch("/api/inventory/containers", opts),
       ])
-      if (itemsRes.ok) setItems((await itemsRes.json()).items || [])
+      if (!itemsRes.ok) throw new Error()
+      const data = await itemsRes.json()
+      setItems(data.items || [])
+      setTotal(Number(data.total || 0))
       if (sumRes.ok) setSummary(await sumRes.json())
       if (locRes.ok) setLocations(await locRes.json())
       if (contRes.ok) setContainers(await contRes.json())
+      setHasLoaded(true)
+      setLoadFailed(false)
     } catch {
-      showAlertRef.current(tr("Ralat", "Error"), tr("Gagal muat barang.", "Failed to load items."), "error")
+      setLoadFailed(true)
     } finally {
       setLoading(false)
     }
-  }, [authHeaders, search, statusFilter, tr])
+  }, [headers, search, statusFilter])
 
   useEffect(() => {
-    const t = setTimeout(load, search ? 280 : 0)
+    const t = setTimeout(() => void load(), search ? 280 : 0)
     return () => clearTimeout(t)
   }, [load, search])
 
-  useEffect(() => {
-    return onDataChanged(({ resource }) => {
-      if (shouldRefetchFor(resource, "inventory")) void load()
-    })
-  }, [load])
+  useEffect(() => onDataChanged(({ resource }) => { if (shouldRefetchFor(resource, "inventory")) void load() }), [load])
 
-  const openCreate = useCallback((locId?: string, contId?: string) => {
-    setEditing(null)
-    setPrefilledLocId(locId || "")
-    setPrefilledContId(contId || "")
-    setShowForm(true)
-  }, [])
-
-  const categories = useMemo(() => {
-    const set = new Set<string>()
-    for (const item of items) {
-      if (item.category && item.category.trim()) {
-        set.add(item.category.trim())
+  const loadMore = async () => {
+    setLoadingMore(true)
+    try {
+      const qs = new URLSearchParams({ limit: String(PAGE), offset: String(items.length) })
+      if (search.trim()) qs.set("q", search.trim())
+      if (statusFilter) qs.set("status", statusFilter)
+      const res = await fetch(`/api/inventory/items?${qs}`, { headers: headers(), credentials: "include", cache: "no-store" })
+      if (res.ok) {
+        const data = await res.json()
+        setItems((prev) => [...prev, ...(data.items || [])])
+        setTotal(Number(data.total || 0))
       }
+    } finally {
+      setLoadingMore(false)
     }
-    return Array.from(set).sort()
-  }, [items])
+  }
 
-  // Desktop Folder Tree selection state
-  const [selectedFolder, setSelectedFolder] = useState<
-    | { type: "all" }
-    | { type: "unassigned" }
-    | { type: "location"; id: number; name: string }
-    | { type: "container"; id: number; name: string; locName?: string }
-  >({ type: "all" })
-
-  // Collapsed / Expanded state for folder tree
-  const [expandedLocIds, setExpandedLocIds] = useState<Set<number>>(new Set())
-  const toggleExpand = useCallback((locId: number) => {
-    setExpandedLocIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(locId)) next.delete(locId)
-      else next.add(locId)
-      return next
-    })
-  }, [])
-
-  // Count items matching each location and container
-  const locationItemCounts = useMemo(() => {
-    const counts = new Map<number, { types: number; units: number }>()
-    for (const loc of locations) {
-      const matched = items.filter(
-        (i) => i.location_id === loc.id || i.location_path === loc.name || i.location_path?.startsWith(loc.name + " >") || i.location_path?.includes(loc.name)
-      )
-      counts.set(loc.id, {
-        types: matched.length,
-        units: matched.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0),
-      })
-    }
-    return counts
-  }, [items, locations])
-
-  const containerItemCounts = useMemo(() => {
-    const counts = new Map<number, { types: number; units: number }>()
-    for (const cont of containers) {
-      const matched = items.filter(
-        (i) => i.container_id === cont.id || i.container_name === cont.name
-      )
-      counts.set(cont.id, {
-        types: matched.length,
-        units: matched.reduce((sum, it) => sum + (Number(it.quantity) || 1), 0),
-      })
-    }
-    return counts
-  }, [items, containers])
-
-  const unassignedCount = useMemo(() => {
-    return items.filter((i) => !i.location_path && !i.location_id).length
-  }, [items])
-
-  const filteredItems = useMemo(() => {
-    let result = items
-    if (selectedFolder.type === "location") {
-      result = result.filter(
-        (i) =>
-          i.location_id === selectedFolder.id ||
-          i.location_path === selectedFolder.name ||
-          i.location_path?.startsWith(selectedFolder.name + " >") ||
-          i.location_path?.includes(selectedFolder.name)
-      )
-    } else if (selectedFolder.type === "container") {
-      result = result.filter(
-        (i) => i.container_id === selectedFolder.id || i.container_name === selectedFolder.name
-      )
-    } else if (selectedFolder.type === "unassigned") {
-      result = result.filter((i) => !i.location_path && !i.location_id)
-    }
-    if (categoryFilter) {
-      result = result.filter((item) => item.category?.trim() === categoryFilter)
-    }
-    if (locationFilter) {
-      result = result.filter((item) => item.location_path?.includes(locationFilter))
-    }
-    return result
-  }, [items, selectedFolder, categoryFilter, locationFilter])
-
-  const locationTree = useMemo(() => {
-    const byParent = new Map<number | null, InvLocation[]>()
-    for (const l of locations) {
-      const list = byParent.get(l.parent_id) || []
-      list.push(l)
-      byParent.set(l.parent_id, list)
-    }
-    const rows: { loc: InvLocation; depth: number }[] = []
-    const walk = (parent: number | null, depth: number) => {
-      for (const l of byParent.get(parent) || []) {
-        rows.push({ loc: l, depth })
-        walk(l.id, depth + 1)
-      }
-    }
+  // Locations form a tree; an item in "Bilik > Rak" also counts as being in "Bilik".
+  const childrenOf = useMemo(() => {
+    const map = new Map<number | null, InvLocation[]>()
+    for (const l of locations) map.set(l.parent_id, [...(map.get(l.parent_id) || []), l])
+    return map
+  }, [locations])
+  const idsUnder = useCallback(
+    (id: number) => {
+      const out = new Set<number>([id])
+      const walk = (p: number) => { for (const c of childrenOf.get(p) || []) { if (!out.has(c.id)) { out.add(c.id); walk(c.id) } } }
+      walk(id)
+      return out
+    },
+    [childrenOf]
+  )
+  const tree = useMemo(() => {
+    const rows: Array<{ loc: InvLocation; depth: number }> = []
+    const walk = (p: number | null, depth: number) => { for (const l of childrenOf.get(p) || []) { rows.push({ loc: l, depth }); walk(l.id, depth + 1) } }
     walk(null, 0)
     return rows
-  }, [locations])
+  }, [childrenOf])
+  const unitsUnder = useCallback((id: number) => [...idsUnder(id)].reduce((s, i) => s + (locations.find((l) => l.id === i)?.item_units || 0), 0), [idsUnder, locations])
 
-  const totalBoxesCount = useMemo(() => containers.length, [containers])
-  const hasActiveFilters = Boolean(
-    search ||
-      statusFilter ||
-      categoryFilter ||
-      locationFilter ||
-      selectedFolder.type !== "all"
-  )
+  const categories = useMemo(() => Array.from(new Set(items.map((i) => (i.category || "").trim()).filter(Boolean))).sort(), [items])
 
-  const clearAllFilters = useCallback(() => {
-    setSearch("")
-    setStatusFilter("")
-    setCategoryFilter("")
-    setLocationFilter("")
-    setSelectedFolder({ type: "all" })
-  }, [])
+  const filtered = useMemo(() => {
+    let list = items
+    if (category) list = list.filter((i) => (i.category || "").trim() === category)
+    if (placeFilter?.kind === "location") {
+      const ids = idsUnder(placeFilter.id)
+      list = list.filter((i) => i.location_id != null && ids.has(i.location_id))
+    } else if (placeFilter?.kind === "container") {
+      list = list.filter((i) => i.container_id === placeFilter.id)
+    } else if (placeFilter?.kind === "none") {
+      list = list.filter((i) => !i.location_id)
+    }
+    return list
+  }, [items, category, placeFilter, idsUnder])
 
-  // ── RENDER PHOTO GALLERY CARD (REDESIGNED) ─────────────────────────────────
-  const renderGalleryCard = (item: InvItem) => {
-    const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.available
-    return (
-      <button
-        key={item.id}
-        type="button"
-        onClick={() => router.push(`/${sessionId}/inventory/${item.id}`)}
-        className="group relative flex flex-col overflow-hidden rounded-[var(--m3-shape-md)] border border-[var(--border)] bg-[var(--card)] text-left shadow-[var(--m3-elevation-1)] transition-all duration-200 hover:shadow-[var(--m3-elevation-3)] hover:border-[var(--text)]/20 active:scale-[0.97]"
-      >
-        {/* Photo Canvas */}
-        <div className="relative aspect-[4/3] w-full overflow-hidden">
-          {item.has_image ? (
-            <img
-              src={`/api/inventory/items/${item.id}/image`}
-              alt={item.name}
-              className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-[var(--surface-tint)]">
-              <Package className="h-12 w-12 sm:h-14 sm:w-14 text-[var(--muted)] opacity-40 transition-all duration-300 group-hover:opacity-60 group-hover:scale-110" />
-              {item.category?.trim() && (
-                <span className="absolute left-2.5 top-2.5 rounded-md border border-[var(--border)] bg-black/40 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white/80 backdrop-blur">
-                  {item.category.trim()}
-                </span>
-              )}
-            </div>
-          )}
+  const placeFilterName =
+    placeFilter?.kind === "location" ? locations.find((l) => l.id === placeFilter.id)?.name
+    : placeFilter?.kind === "container" ? containers.find((c) => c.id === placeFilter.id)?.name
+    : placeFilter?.kind === "none" ? tr("Tiada lokasi", "No location") : ""
 
-          {/* Bottom gradient overlay */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/40 to-transparent" />
+  const statusText = (s: InvStatus) =>
+    ({ available: tr("Ada", "Available"), loaned: tr("Dipinjam", "Loaned"), missing: tr("Hilang", "Missing"), damaged: tr("Rosak", "Damaged"), disposed: tr("Dilupus", "Disposed"), used_up: tr("Habis", "Used up") })[s]
 
-          {/* Floating Status Dot (Top-Right) */}
-          <span className="absolute right-2.5 top-2.5 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/50 backdrop-blur-lg px-2 py-0.5 text-[9px] font-black text-white shadow-md">
-            <span className={cn("h-1.5 w-1.5 rounded-full ring-1 ring-white/20", cfg.dot)} />
-            <span>{isBm ? cfg.labelBm : item.status_label || cfg.labelEn}</span>
-          </span>
+  const statusCount = (s: string) => (s ? (summary ? (summary[s as keyof Summary] as number) : 0) : summary?.total_types ?? 0)
 
-          {/* Floating Quantity (Bottom-Left, over gradient) */}
-          <span className="absolute bottom-2 left-2.5 inline-flex items-center gap-1 rounded-md bg-black/50 backdrop-blur-md px-1.5 py-0.5 text-[10px] font-black text-white/90 shadow">
-            {item.quantity} {item.unit}
-          </span>
-        </div>
-
-        {/* Card Body Details */}
-        <div className="flex flex-1 flex-col gap-1.5 p-3 sm:p-3.5">
-          <h4 className="truncate text-[13px] sm:text-sm font-extrabold leading-snug text-[var(--text)] transition-colors group-hover:text-[var(--text)]">
-            {item.name}
-          </h4>
-
-          {/* Location & Box Tags — emphasized storage place */}
-          <div className="mt-auto space-y-1">
-            {item.location_path ? (
-              <span className="flex items-center gap-1.5 truncate rounded-lg bg-[var(--surface-tint)] px-2 py-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                <MapPin className="h-3 w-3 shrink-0" />
-                <span className="truncate">{item.location_path}</span>
-              </span>
-            ) : null}
-            {item.container_name && (
-              <span className="flex items-center gap-1.5 truncate rounded-lg bg-[var(--surface-tint-strong)] px-2 py-1.5 text-[11px] font-bold text-[var(--text)]">
-                <Boxes className="h-3 w-3 shrink-0 text-[var(--accent)]" />
-                <span className="truncate">{item.container_name}</span>
-              </span>
-            )}
-            {!item.location_path && !item.container_name && (
-              <span className="flex items-center gap-1.5 truncate rounded-lg bg-[var(--surface-tint)] px-2 py-1.5 text-[11px] font-semibold italic text-[var(--muted)]">
-                <MapPin className="h-3 w-3 shrink-0" />
-                {tr("Tiada lokasi", "No location")}
-              </span>
-            )}
-          </div>
-        </div>
-      </button>
-    )
+  const openPlace = (kind: "location" | "container" | "none", id: number) => {
+    setPlaceFilter({ kind, id })
+    setTab("items")
   }
 
-  // ── RENDER COMPACT 3-COL MOBILE GALLERY CARD ────────────────────────────────
-  const renderMobile3ColCard = (item: InvItem) => {
-    const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.available
-    const category = item.category?.trim()
-    return (
-      <button
-        key={item.id}
-        type="button"
-        onClick={() => router.push(`/${sessionId}/inventory/${item.id}`)}
-        className="group relative flex flex-col overflow-hidden rounded-[var(--m3-shape-md)] border border-[var(--border)] bg-[var(--card)] text-left shadow-[var(--m3-elevation-1)] transition-all duration-200 active:scale-[0.95]"
-      >
-        {/* Photo Container */}
-        <div className="relative aspect-square w-full overflow-hidden">
-          {item.has_image ? (
-            <img
-              src={`/api/inventory/items/${item.id}/image`}
-              alt={item.name}
-              className="h-full w-full object-cover transition-transform duration-400 group-hover:scale-105"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-[var(--surface-tint)]">
-              <Package className="h-8 w-8 text-[var(--muted)] opacity-30" />
-              {category && (
-                <span className="absolute left-1.5 top-1.5 rounded-md border border-[var(--border)] bg-black/40 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wide text-white/80 backdrop-blur">
-                  {category}
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Bottom fade */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/50 to-transparent" />
-
-          {/* Status Dot (Top-Right) */}
-          <span
-            className={cn("absolute right-1.5 top-1.5 h-2 w-2 rounded-full ring-[1.5px] ring-black/20 shadow-sm", cfg.dot)}
-            title={isBm ? cfg.labelBm : item.status_label || cfg.labelEn}
-          />
-
-          {/* Quantity (Bottom-Left, over gradient) */}
-          <span className="absolute bottom-1 left-1.5 rounded bg-black/50 backdrop-blur px-1 py-px text-[8px] font-black text-white/90">
-            {item.quantity}{item.unit !== "unit" ? ` ${item.unit}` : ""}
-          </span>
-        </div>
-
-        {/* Card Body */}
-        <div className="flex flex-1 flex-col gap-1 px-1.5 pb-1.5 pt-1.5">
-          <h4 className="line-clamp-2 text-[10.5px] font-bold leading-tight text-[var(--text)]">
-            {item.name}
-          </h4>
-
-          {(item.container_name || item.location_path) && (
-            <div className="mt-auto truncate pt-0.5">
-              {item.container_name ? (
-                <span className="inline-flex w-full items-center gap-1 truncate rounded-md bg-[var(--surface-tint-strong)] px-1.5 py-1 text-[9px] font-bold text-[var(--text)]">
-                  <Boxes className="h-3 w-3 shrink-0 text-[var(--accent)]" />
-                  <span className="truncate">{item.container_name}</span>
-                </span>
-              ) : (
-                <span className="inline-flex w-full items-center gap-1 truncate rounded-md bg-[var(--surface-tint)] px-1.5 py-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
-                  <MapPin className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{item.location_path}</span>
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </button>
-    )
-  }
-  const renderListRow = (item: InvItem) => {
-    const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.available
-    const subtitle = [item.brand, item.category].filter(Boolean).join(" · ")
-    return (
-      <div
-        key={item.id}
-        onClick={() => router.push(`/${sessionId}/inventory/${item.id}`)}
-        className="group relative flex cursor-pointer items-center gap-3 rounded-xl border border-[var(--border)] bg-[var(--card)] p-2.5 transition-all duration-200 active:scale-[0.98] hover:border-[var(--text)]/20 hover:shadow-md"
-      >
-        {/* Image Thumbnail */}
-        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[var(--surface-tint)]">
-          {item.has_image ? (
-            <img
-              src={`/api/inventory/items/${item.id}/image`}
-              alt={item.name}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <Package className="h-5 w-5 text-[var(--muted)] opacity-40" />
-          )}
-          {/* Status dot overlay */}
-          <span className={cn("absolute right-0.5 top-0.5 h-2 w-2 rounded-full ring-[1.5px] ring-[var(--card)]", cfg.dot)} />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <p className="truncate text-xs font-bold text-[var(--text)]">
-              {item.name}
-            </p>
-            <span className="shrink-0 rounded bg-[var(--surface-tint)] px-1.5 py-0.5 text-[9px] font-bold text-[var(--muted)]">
-              {item.quantity} {item.unit}
-            </span>
-          </div>
-
-          {subtitle && (
-            <p className="truncate text-[10px] font-medium text-[var(--muted)]">
-              {subtitle}
-            </p>
-          )}
-
-          <div className="mt-1 flex flex-wrap items-center gap-1 text-[9px]">
-            {item.location_path ? (
-              <span className="inline-flex max-w-[140px] items-center gap-0.5 truncate text-[var(--muted)]">
-                <MapPin className="h-2 w-2 shrink-0" />
-                <span className="truncate">{item.location_path}</span>
-              </span>
-            ) : null}
-
-            {item.container_name ? (
-              <span className="inline-flex items-center gap-0.5 rounded bg-[var(--surface-tint-strong)] px-1 py-px font-bold text-[var(--text)]">
-                <Boxes className="h-2 w-2 shrink-0" />
-                <span>{item.container_name}</span>
-              </span>
-            ) : null}
-          </div>
-        </div>
-
-        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--muted)] opacity-40 transition-opacity group-hover:opacity-80" />
+  const img = (it: InvItem, cls: string) =>
+    it.has_image ? (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={`/api/inventory/items/${it.id}/image`} alt={it.name} loading="lazy" className={cls} />
+    ) : (
+      <div className={cn("flex items-center justify-center bg-[var(--surface-tint)] text-[var(--muted)]", cls)}>
+        <Package size={26} className="opacity-50" />
       </div>
     )
-  }
 
-  // Hero Card Component (debt layout: total left, metrics right)
-  const renderHeroStats = (isDesktop = false) => (
-    <div className={cn("inventory-hero relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[#1a1a1a] text-[#f5f5f5]", isDesktop ? "p-6 mb-5" : "p-5")}>
-      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] via-[#202020] to-[#262626]" />
-      <div className="absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/[0.04] blur-2xl" />
-      <div className="absolute -bottom-12 left-8 h-32 w-32 rounded-full bg-white/[0.03] blur-2xl" />
-
-      <div className={cn("relative", isDesktop && "flex items-center gap-5")}>
-        <div className={cn(isDesktop && "min-w-[10rem] shrink-0")}>
-          <p className={cn(
-            "font-bold uppercase tracking-[0.14em] text-[#a3a3a3]",
-            isDesktop ? "text-[0.7rem]" : "text-[0.625rem]",
-          )}>
-            {tr("Jumlah Inventori Barang", "Total Inventory Items")}
+  const gallery = (it: InvItem) => (
+    <li key={it.id}>
+      <button type="button" onClick={() => router.push(`/${sessionId}/inventory/${it.id}`)} className="flex h-full w-full flex-col overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] text-left hover:border-[var(--border-strong)]">
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-[var(--surface-tint)]">
+          {img(it, "h-full w-full object-cover")}
+          <span className="absolute left-2.5 top-2.5 flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-2.5 py-0.5 text-xs font-semibold text-[var(--text)]">
+            <span className={cn("h-1.5 w-1.5 rounded-full", DOT[it.status])} />
+            {statusText(it.status)}
+          </span>
+        </div>
+        <div className="flex flex-1 flex-col gap-1 p-3.5">
+          <p className="line-clamp-2 break-words text-sm font-bold leading-snug text-[var(--text)]">{it.name}</p>
+          <p className="text-xs text-[var(--muted)]">{it.quantity} {it.unit}{it.category ? ` · ${it.category}` : ""}</p>
+          <p className="mt-auto flex items-center gap-1 truncate pt-1 text-xs font-semibold text-[var(--text-soft)]">
+            {it.container_name ? <Boxes size={12} className="shrink-0" /> : <MapPin size={12} className="shrink-0" />}
+            <span className="truncate">{it.container_name || it.location_path || tr("Tiada lokasi", "No location")}</span>
           </p>
-          <div className="mt-2 text-[#ffffff]">
-            {loading && items.length === 0 ? (
-              <div className={cn("animate-pulse rounded bg-white/10", isDesktop ? "h-10 w-40" : "h-7 w-32")} />
-            ) : (
-              <span className={cn("font-black tracking-tight tabular-nums", isDesktop ? "text-4xl" : "text-3xl")}>
-                {summary ? summary.total_units : items.length}
-              </span>
-            )}
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[0.625rem] font-bold uppercase tracking-[0.1em] text-[#a3a3a3] md:text-[0.6875rem]">
-            <span>{tr("Unit", "Units")}: {summary ? summary.total_units : items.length}</span>
-            <span>{tr("Jenis", "Types")}: {summary ? summary.total_types : items.length}</span>
-          </div>
         </div>
-
-        <div className={cn(
-          "grid grid-cols-3",
-          isDesktop ? "min-w-0 flex-1 gap-3" : "mt-5 gap-2.5",
-        )}>
-          {[
-            { label: tr("Ada", "Avail"), value: summary?.available ?? 0, icon: <Boxes size={isDesktop ? 16 : 12} className="text-[#b3b3b3]" /> },
-            { label: tr("Pinjam", "Loaned"), value: summary?.loaned ?? 0, icon: <ExternalLink size={isDesktop ? 16 : 12} className="text-[#b3b3b3]" /> },
-            { label: tr("Rosak", "Damaged"), value: summary?.damaged ?? 0, icon: <Trash2 size={isDesktop ? 16 : 12} className="text-[#fdba74]" /> },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className={cn("bg-white/[0.06]", isDesktop ? "rounded-2xl p-4" : "rounded-[1.15rem] p-3")}
-            >
-              <div className={cn("flex items-center", isDesktop ? "gap-2" : "gap-1.5")}>
-                {item.icon}
-                <p className={cn(
-                  "font-bold uppercase tracking-[0.1em] text-[#a3a3a3]",
-                  isDesktop ? "text-[0.6rem] tracking-[0.12em]" : "text-[0.5rem]",
-                )}>
-                  {item.label}
-                </p>
-              </div>
-              <p className={cn("font-semibold tabular-nums tracking-tight text-[#e5e5e5]", isDesktop ? "mt-3 text-xl" : "mt-2 text-sm")}>
-                {loading && items.length === 0
-                  ? <span className={cn("block animate-pulse rounded bg-white/10", isDesktop ? "h-6 w-12" : "h-4 w-10")} />
-                  : item.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+      </button>
+    </li>
   )
+
+  const row = (it: InvItem) => (
+    <li key={it.id}>
+      <button type="button" onClick={() => router.push(`/${sessionId}/inventory/${it.id}`)} className="flex w-full items-center gap-3 rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-3 text-left hover:border-[var(--border-strong)]">
+        <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full">{img(it, "h-full w-full object-cover")}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold text-[var(--text)]">{it.name}</span>
+          <span className="block truncate text-xs text-[var(--muted)]">{[it.brand, it.category].filter(Boolean).join(" · ") || statusText(it.status)}</span>
+          <span className="block truncate text-xs text-[var(--text-soft)]">{it.container_name || it.location_path || tr("Tiada lokasi", "No location")}</span>
+        </span>
+        <span className="flex shrink-0 flex-col items-end gap-1">
+          <span className="text-sm font-bold tabular-nums text-[var(--text)]">{it.quantity} <span className="text-xs font-semibold text-[var(--muted)]">{it.unit}</span></span>
+          <span className="flex items-center gap-1 text-xs text-[var(--muted)]"><span className={cn("h-1.5 w-1.5 rounded-full", DOT[it.status])} />{statusText(it.status)}</span>
+        </span>
+      </button>
+    </li>
+  )
+
+  const hasFilters = Boolean(search || statusFilter || category || placeFilter)
+  const clearFilters = () => { setSearch(""); setStatusFilter(""); setCategory(""); setPlaceFilter(null) }
+  const addItem = () => setItemSheet({ item: null, locId: placeFilter?.kind === "location" ? String(placeFilter.id) : "", contId: placeFilter?.kind === "container" ? String(placeFilter.id) : "" })
 
   return (
-    <>
-      {/* ── HEADER PRESERVED UNTOUCHED ── */}
+    <div className="pb-24 md:pb-6">
       <div className="md:hidden">
         <MobilePageHeader
           title={tr("Barang Saya", "My Inventory")}
           fallbackHref={`/${sessionId}`}
           action={
-            <MobileIconButton label={tr("Tambah", "Add")} onClick={() => openCreate()}>
-              <Plus className="h-5 w-5" />
+            <MobileIconButton onClick={addItem} label={tr("Tambah barang", "Add item")}>
+              <Plus strokeWidth={2.5} />
             </MobileIconButton>
           }
         />
       </div>
+      <DesktopPageHeader
+        className="hidden md:block"
+        title={tr("Barang Saya", "My Inventory")}
+        homeHref={`/${sessionId}`}
+        actions={
+          <DesktopPageAction onClick={addItem}>
+            <Plus strokeWidth={2.5} />
+            {tr("Tambah barang", "Add item")}
+          </DesktopPageAction>
+        }
+      />
 
-      <div className="hidden md:block">
-        <DesktopPageHeader
-          title={tr("Barang Saya", "My Inventory")}
-          homeHref={`/${sessionId}`}
-          actions={
-            <DesktopPageAction onClick={() => openCreate()}>
-              <Plus size={16} />
-              {tr("Tambah Barang", "Add Item")}
-            </DesktopPageAction>
+      <DesktopPageBody className="mt-2 space-y-4 px-1 md:mt-0 md:space-y-5 md:px-0">
+        <ModenHero
+          label={
+            <>
+              <Boxes size={16} />
+              {tr("Jumlah unit barang", "Total units")}
+            </>
           }
+          currency={null}
+          amount={showSkeleton ? "—" : String(summary ? summary.total_units : items.length)}
+          amountSize="clamp(2rem, 9vw, 2.75rem)"
+          stats={[
+            { key: "types", tone: "neutral", icon: <Package size={15} strokeWidth={2.2} />, label: tr("Jenis barang", "Item types"), value: String(summary?.total_types ?? 0) },
+            { key: "noloc", tone: (summary?.no_location ?? 0) > 0 ? "out" : "neutral", icon: <MapPin size={15} strokeWidth={2.2} />, label: tr("Tiada lokasi", "No location"), value: String(summary?.no_location ?? 0) },
+          ]}
         />
-      </div>
 
-      {/* ── MOBILE VIEW ── */}
-      <div className="md:hidden px-1 pb-24 pt-1 space-y-4">
-        {renderHeroStats(false)}
-
-        {/* ── HERO STATS STRIP (REDESIGNED) ── */}
-        <section className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm space-y-3">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black uppercase tracking-wider text-[var(--text)]">
-                {tr("Status Ringkasan", "Summary Status")}
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => openCreate()}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-3 py-1.5 text-xs font-bold text-[var(--bg)] shadow-sm transition active:scale-95"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>{tr("Tambah", "Add")}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
-                  className="inline-flex items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-1.5 text-[var(--text)] transition active:scale-95"
-                  title={tr("Tambah Lokasi", "Add Location")}
-                >
-                  <FolderPlus className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Stats Grid - 4 compact stat tiles */}
-            <div className="grid grid-cols-4 gap-1.5">
-              {([
-                { label: tr("Ada", "Avail"), count: summary?.available ?? 0, dot: "bg-emerald-500" },
-                { label: tr("Pinjam", "Loaned"), count: summary?.loaned ?? 0, dot: "bg-sky-400" },
-                { label: tr("Hilang", "Missing"), count: summary?.missing ?? 0, dot: "bg-rose-500" },
-                { label: tr("Rosak", "Damaged"), count: summary?.damaged ?? 0, dot: "bg-amber-400" },
-              ] as const).map((st) => (
-                <div key={st.label} className="flex flex-col items-center gap-0.5 rounded-xl bg-[var(--surface-tint)] py-2 px-1">
-                  <div className="flex items-center gap-1">
-                    <span className={cn("h-1.5 w-1.5 rounded-full", st.dot)} />
-                    <span className="text-base font-black text-[var(--text)]">{st.count}</span>
-                  </div>
-                  <span className="text-[9px] font-semibold text-[var(--muted)] uppercase tracking-wider">{st.label}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Storage Place Quick Stats */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveTab("locations")}
-                className="flex flex-1 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 transition active:scale-[0.98]"
-              >
-                <MapPin className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-500" />
-                <div className="min-w-0 flex-1 text-left">
-                  <span className="block text-sm font-black text-[var(--text)]">{locations.length}</span>
-                  <span className="block truncate text-[9px] font-semibold text-[var(--muted)]">{tr("Lokasi", "Locations")}</span>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("locations")}
-                className="flex flex-1 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 transition active:scale-[0.98]"
-              >
-                <Boxes className="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-400" />
-                <div className="min-w-0 flex-1 text-left">
-                  <span className="block text-sm font-black text-[var(--text)]">{totalBoxesCount}</span>
-                  <span className="block truncate text-[9px] font-semibold text-[var(--muted)]">{tr("Bekas", "Boxes")}</span>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("missing")}
-                className="flex flex-1 items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 transition active:scale-[0.98]"
-              >
-                <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", STATUS_CONFIG.missing.dot)} />
-                <div className="min-w-0 flex-1 text-left">
-                  <span className="block text-sm font-black text-[var(--text)]">{summary?.missing ?? 0}</span>
-                  <span className="block truncate text-[9px] font-semibold text-[var(--muted)]">{tr("Hilang", "Missing")}</span>
-                </div>
-              </button>
-            </div>
-
-            {/* Status Filter Chips */}
-            {summary && (
-              <div className="no-scrollbar -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-0.5">
-                <button
-                  type="button"
-                  onClick={() => setStatusFilter("")}
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold transition active:scale-95",
-                    statusFilter === ""
-                      ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
-                      : "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]"
-                  )}
-                >
-                  <span>{tr("Semua", "All")}</span>
-                  <span className="opacity-75">({summary.total_types})</span>
-                </button>
-
-                {([
-                  { key: "available", label: tr("Ada", "Available"), count: summary.available },
-                  { key: "loaned", label: tr("Dipinjam", "Loaned"), count: summary.loaned },
-                  { key: "missing", label: tr("Hilang", "Missing"), count: summary.missing },
-                  { key: "damaged", label: tr("Rosak", "Damaged"), count: summary.damaged },
-                ] as const).map((st) => {
-                  const isSelected = statusFilter === st.key
-                  const cfg = STATUS_CONFIG[st.key as InvStatus]
-                  return (
-                    <button
-                      key={st.key}
-                      type="button"
-                      onClick={() => setStatusFilter(isSelected ? "" : st.key)}
-                      className={cn(
-                        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-bold transition active:scale-95",
-                        isSelected ? cfg.pillActive : cfg.pillInactive
-                      )}
-                    >
-                      <span className={cn("h-2 w-2 rounded-full", cfg.dot)} />
-                      <span>{st.label}</span>
-                      <span className="opacity-80">({st.count})</span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Mobile View Switcher */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="grid flex-1 grid-cols-2 gap-1 rounded-2xl bg-[var(--surface-tint)] p-1">
-            <button
-              type="button"
-              onClick={() => setActiveTab("items")}
-              className={cn(
-                "flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition active:scale-[0.98]",
-                activeTab === "items"
-                  ? "bg-[var(--card)] text-[var(--text)] shadow-sm"
-                  : "text-[var(--muted)] hover:text-[var(--text)]"
-              )}
-            >
-              <Package className="h-3.5 w-3.5" />
-              <span>{tr("Barang", "Items")}</span>
-              <span className="rounded-full bg-[var(--surface-tint-strong)] px-1.5 py-0.2 text-[10px] font-bold">
-                {filteredItems.length}
-              </span>
+        <div className="flex rounded-full border border-[var(--border)] p-1" role="tablist">
+          {([["items", tr("Barang", "Items"), Package], ["places", tr("Lokasi & bekas", "Places & boxes"), MapPin]] as const).map(([k, text, Icon]) => (
+            <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={cn("flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold", tab === k ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "text-[var(--muted)]")}>
+              <Icon size={15} />
+              {text}
             </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("locations")}
-              className={cn(
-                "flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition active:scale-[0.98]",
-                activeTab === "locations"
-                  ? "bg-[var(--card)] text-[var(--text)] shadow-sm"
-                  : "text-[var(--muted)] hover:text-[var(--text)]"
-              )}
-            >
-              <FolderTree className="h-3.5 w-3.5" />
-              <span>{tr("Lokasi & Kotak", "Locations")}</span>
-              <span className="rounded-full bg-[var(--surface-tint-strong)] px-1.5 py-0.2 text-[10px] font-bold">
-                {locations.length + totalBoxesCount}
-              </span>
-            </button>
-          </div>
-
-          {activeTab === "items" && (
-            <div className="flex items-center rounded-2xl bg-[var(--surface-tint)] p-1">
-              <button
-                type="button"
-                onClick={() => setDisplayMode("gallery")}
-                className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-xl transition",
-                  displayMode === "gallery" ? "bg-[var(--card)] text-[var(--text)] shadow-sm" : "text-[var(--muted)]"
-                )}
-                title={tr("Paparan Galeri", "Gallery View")}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setDisplayMode("list")}
-                className={cn(
-                  "flex h-8 w-8 items-center justify-center rounded-xl transition",
-                  displayMode === "list" ? "bg-[var(--card)] text-[var(--text)] shadow-sm" : "text-[var(--muted)]"
-                )}
-                title={tr("Paparan Senarai", "List View")}
-              >
-                <ListIcon className="h-4 w-4" />
-              </button>
-            </div>
-          )}
+          ))}
         </div>
 
-        {/* Tab 1: Items List (Mobile) */}
-        {activeTab === "items" && (
-          <div className="space-y-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={tr("Cari barang atau lokasi...", "Search item or location...")}
-                className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] py-2.5 pl-10 pr-9 text-xs font-medium text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--text)]"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-[var(--muted)] hover:text-[var(--text)]"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
+        {loadFailed && !hasLoaded ? (
+          <div className="flex flex-col items-center gap-3 rounded-[1.5rem] border border-dashed border-[var(--border)] px-6 py-10 text-center">
+            <p className="text-sm font-bold text-[var(--text)]">{tr("Barang tidak dapat dimuatkan", "Items could not be loaded")}</p>
+            <button type="button" onClick={() => { setLoading(true); void load() }} className="h-11 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)]">{tr("Cuba lagi", "Try again")}</button>
+          </div>
+        ) : tab === "items" ? (
+          <>
+            <div className="flex items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <Search size={15} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tr("Cari barang, jenama, lokasi…", "Search items, brand, place…")} className={cn(field, "pl-10")} />
+              </div>
+              <div className="flex shrink-0 rounded-full border border-[var(--border)] p-0.5">
+                {([["gallery", LayoutGrid, tr("Galeri", "Gallery")], ["list", ListIcon, tr("Senarai", "List")]] as const).map(([k, Icon, text]) => (
+                  <button key={k} type="button" aria-label={text} aria-pressed={view === k} onClick={() => setView(k)} className={cn("flex h-11 w-11 items-center justify-center rounded-full", view === k ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "text-[var(--muted)]")}><Icon size={17} /></button>
+                ))}
+              </div>
             </div>
 
+            <div role="tablist" className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {[["", tr("Semua", "All")] as const, ...STATUSES.map((s) => [s, statusText(s)] as const)].map(([k, text]) => (
+                <button key={k || "all"} type="button" role="tab" aria-selected={statusFilter === k} onClick={() => setStatusFilter(k)} className={cn("flex h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-semibold", statusFilter === k ? "border-transparent bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "border-[var(--border)] text-[var(--muted)]")}>
+                  {text}
+                  <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", statusFilter === k ? "bg-white/20" : "bg-[var(--surface-tint-strong)]")}>{statusCount(k)}</span>
+                </button>
+              ))}
+            </div>
             {categories.length > 0 && (
-              <div className="no-scrollbar -mx-2 flex items-center gap-1.5 overflow-x-auto px-2 pb-0.5">
-                <button
-                  type="button"
-                  onClick={() => setCategoryFilter("")}
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold transition active:scale-95",
-                    categoryFilter === ""
-                      ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
-                      : "border border-[var(--border)] bg-[var(--card)] text-[var(--muted)]"
-                  )}
-                >
-                  <span>{tr("Semua Kategori", "All Categories")}</span>
-                </button>
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategoryFilter(categoryFilter === cat ? "" : cat)}
-                    className={cn(
-                      "inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1 text-[11px] font-bold transition active:scale-95",
-                      categoryFilter === cat
-                        ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
-                        : "border border-[var(--border)] bg-[var(--card)] text-[var(--muted)]"
-                    )}
-                  >
-                    <Tag className="h-3 w-3 opacity-60" />
-                    <span>{cat}</span>
-                  </button>
+              <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {categories.map((c) => (
+                  <button key={c} type="button" aria-pressed={category === c} onClick={() => setCategory(category === c ? "" : c)} className={cn("h-8 shrink-0 rounded-full border px-3 text-xs font-semibold", category === c ? "border-[var(--text)] text-[var(--text)]" : "border-[var(--border)] text-[var(--muted)]")}>{c}</button>
                 ))}
               </div>
             )}
-
-            {hasActiveFilters && (
-              <div className="flex items-center justify-between px-1 text-[11px]">
-                <span className="text-[var(--muted)]">
-                  {tr("Menunjukkan", "Showing")} {filteredItems.length} {tr("hasil", "results")}
-                </span>
-                <button
-                  type="button"
-                  onClick={clearAllFilters}
-                  className="inline-flex items-center gap-1 font-bold text-[var(--text)] hover:underline"
-                >
-                  <X className="h-3 w-3" />
-                  {tr("Padam Penapis", "Reset")}
-                </button>
+            {placeFilter && (
+              <div className="flex items-center justify-between gap-3 rounded-full border border-[var(--border)] py-2 pl-4 pr-2 text-sm">
+                <span className="min-w-0 truncate text-[var(--muted)]">{tr("Dalam", "In")}: <span className="font-bold text-[var(--text)]">{placeFilterName}</span></span>
+                <button type="button" onClick={() => setPlaceFilter(null)} className="h-8 shrink-0 rounded-full border border-[var(--border)] px-3 text-xs font-semibold text-[var(--text)]">{tr("Buang", "Clear")}</button>
               </div>
             )}
 
-            {loading && items.length === 0 ? (
-              <div className="grid grid-cols-3 gap-2 sm:gap-2.5 py-2">
-                {[1, 2, 3, 4, 5, 6].map((i) => (
-                  <div key={i} className="aspect-square animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
-                ))}
+            {showSkeleton ? (
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+                {[0, 1, 2, 3].map((i) => <div key={i} className="h-56 animate-pulse rounded-[1.5rem] bg-[var(--surface-tint)]" />)}
               </div>
-            ) : filteredItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 px-4 py-12 text-center">
-                <Package className="h-7 w-7 text-[var(--muted)]" />
-                <p className="mt-2 text-xs font-bold text-[var(--text)]">
-                  {tr("Tiada barang dijumpai", "No items found")}
-                </p>
-              </div>
-            ) : displayMode === "gallery" ? (
-              <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-                {filteredItems.map(renderMobile3ColCard)}
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center rounded-[1.5rem] border border-dashed border-[var(--border)] px-6 py-12 text-center">
+                <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--muted)]"><Package size={24} /></span>
+                <p className="mt-4 text-base font-bold text-[var(--text)]">{hasFilters ? tr("Tiada padanan", "No matches") : tr("Belum ada barang", "No items yet")}</p>
+                <p className="mt-1 max-w-xs text-sm text-[var(--muted)]">{hasFilters ? tr("Cuba tapisan lain.", "Try a different filter.") : tr("Catat barang di rumah dan di mana anda simpan.", "Record what you own and where you keep it.")}</p>
+                {hasFilters ? (
+                  <button type="button" onClick={clearFilters} className="mt-5 h-11 rounded-full border border-[var(--border-strong)] px-6 text-sm font-semibold text-[var(--text)]">{tr("Kosongkan tapisan", "Clear filters")}</button>
+                ) : (
+                  <button type="button" onClick={addItem} className="mt-5 inline-flex h-11 items-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)]"><Plus size={15} />{tr("Tambah barang", "Add item")}</button>
+                )}
               </div>
             ) : (
-              <div className="space-y-2">
-                {filteredItems.map(renderListRow)}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tab 2: Locations (Mobile) */}
-        {activeTab === "locations" && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between px-1">
-              <div>
-                <h3 className="text-xs font-bold text-[var(--text)]">{tr("Hierarki Lokasi", "Locations Hierarchy")}</h3>
-                <p className="text-[11px] text-[var(--muted)]">{locations.length} {tr("lokasi", "locations")}</p>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
-                  className="inline-flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-bold text-[var(--text)] shadow-sm active:scale-95"
-                >
-                  <FolderPlus className="h-3.5 w-3.5 text-[var(--text)]" />
-                  <span>{tr("Lokasi", "Location")}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setEditingCont(null); setDefaultContLocId(""); setShowContModal(true) }}
-                  className="inline-flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-bold text-[var(--text)] shadow-sm active:scale-95"
-                >
-                  <BoxSelect className="h-3.5 w-3.5 text-[var(--text)]" />
-                  <span>{tr("Bekas", "Box")}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {locationTree.map(({ loc, depth }) => {
-                const conts = containers.filter((c) => c.location_id === loc.id)
-                return (
-                  <div
-                    key={loc.id}
-                    className="relative rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 shadow-sm transition hover:border-[var(--text)]/30"
-                    style={{ marginLeft: depth ? `${depth * 14}px` : "0px" }}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      {/* Clickable location title to view items inside */}
-                      <div
-                        onClick={() => setSelectedLocationForView(loc)}
-                        className="flex flex-1 cursor-pointer items-center gap-2.5 active:opacity-75"
-                      >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--surface-tint)] text-[var(--text)]">
-                          <MapPin className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <span className="font-bold text-xs text-[var(--text)] group-hover:text-[var(--text)]">{loc.name}</span>
-                          <p className="text-[10px] text-[var(--muted)]">
-                            {loc.item_types} {tr("jenis", "types")} · {loc.item_units} {tr("unit", "units")}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-0.5">
-                        <button
-                          type="button"
-                          onClick={() => { setEditingLoc(null); setDefaultParentLocId(String(loc.id)); setShowLocModal(true) }}
-                          className="rounded-lg p-1.5 text-[var(--muted)] hover:text-[var(--text)]"
-                          title={tr("Tambah Sub-Lokasi", "Add Sub-location")}
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setEditingCont(null); setDefaultContLocId(String(loc.id)); setShowContModal(true) }}
-                          className="rounded-lg p-1.5 text-[var(--muted)] hover:text-[var(--text)]"
-                          title={tr("Tambah Bekas", "Add Box")}
-                        >
-                          <Boxes className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setEditingLoc(loc); setShowLocModal(true) }}
-                          className="rounded-lg p-1.5 text-[var(--muted)] hover:text-[var(--text)]"
-                          title={tr("Edit", "Edit")}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {conts.length > 0 && (
-                      <div className="mt-3 border-t border-[var(--border)]/60 pt-2.5">
-                        <div className="mb-2 flex items-center justify-between">
-                          <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[var(--text)]">
-                            <Boxes className="h-3.5 w-3.5 text-[var(--muted)]" />
-                            {tr("Bekas / Kotak", "Boxes & Containers")} ({conts.length})
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                          {conts.map((c) => (
-                            <button
-                              key={c.id}
-                              type="button"
-                              onClick={() => setSelectedContainerForView(c)}
-                              className="group relative flex flex-col items-start justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-2.5 text-left shadow-sm transition hover:border-[var(--text)]/40 hover:bg-[var(--surface-tint-strong)] active:scale-[0.96]"
-                            >
-                              <div className="flex w-full items-center justify-between gap-1">
-                                <div className="flex h-6 w-6 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--card)] text-[var(--text)]">
-                                  <Boxes className="h-3.5 w-3.5" />
-                                </div>
-                                <span className="rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-1.5 py-0.2 text-[9px] font-black text-[var(--text)]">
-                                  {c.item_types} {tr("jenis", "types")}
-                                </span>
-                              </div>
-                              <span className="mt-2 line-clamp-1 w-full text-xs font-black text-[var(--text)] transition-colors">
-                                {c.name}
-                              </span>
-                              <span className="mt-0.5 text-[9px] font-semibold text-[var(--muted)]">
-                                {c.item_units} {tr("unit", "units")}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── DESKTOP VIEW (LEFT FOLDER TREE + RIGHT ITEMS GRID) ── */}
-      <div className="hidden md:block">
-        <DesktopPageBody className="space-y-5">
-          {renderHeroStats(true)}
-
-          {/* Desktop Dual-Pane: Folder Tree (Left) + Main Explorer (Right) */}
-          <div className="grid grid-cols-1 md:grid-cols-[260px_1fr] lg:grid-cols-[290px_1fr] gap-5 items-start">
-            {/* ── LEFT PANEL: FOLDER TREE SIDEBAR ── */}
-            <aside className="sticky top-20 flex flex-col rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
-              <div className="flex items-center justify-between border-b border-[var(--border)]/60 pb-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <FolderTree className="h-4 w-4 text-[var(--text)]" />
-                  <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text)]">
-                    {tr("Struktur Folder", "Folder Tree")}
-                  </h3>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => { setEditingLoc(null); setDefaultParentLocId(""); setShowLocModal(true) }}
-                    className="rounded-lg p-1 text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)] transition"
-                    title={tr("Tambah Lokasi", "Add Location")}
-                  >
-                    <FolderPlus className="h-3.5 w-3.5 text-[var(--text)]" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setEditingCont(null); setDefaultContLocId(""); setShowContModal(true) }}
-                    className="rounded-lg p-1 text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)] transition"
-                    title={tr("Tambah Bekas / Kotak", "Add Container")}
-                  >
-                    <Boxes className="h-3.5 w-3.5 text-[var(--text)]" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Tree Root & Items */}
-              <div className="space-y-1 overflow-y-auto max-h-[calc(100vh-14rem)] pr-1">
-                {/* Root: Semua Barang */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedFolder({ type: "all" })}
-                  className={cn(
-                    "group flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-bold transition active:scale-[0.98]",
-                    selectedFolder.type === "all"
-                      ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
-                      : "text-[var(--text)] hover:bg-[var(--surface-tint)]"
-                  )}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Folder className="h-4 w-4 shrink-0 opacity-80" />
-                    <span className="truncate">{tr("Semua Barang", "All Items")}</span>
-                  </div>
-                  <span className={cn(
-                    "rounded-full px-2 py-0.5 text-[10px] font-black",
-                    selectedFolder.type === "all"
-                      ? "bg-[var(--bg)] text-[var(--text)]"
-                      : "bg-[var(--surface-tint-strong)] text-[var(--muted)]"
-                  )}>
-                    {items.length}
-                  </span>
-                </button>
-
-                {/* Locations Tree with Nested Boxes */}
-                {locations.filter((l) => !l.parent_id).map((loc) => {
-                  const locStats = locationItemCounts.get(loc.id) || { types: 0, units: 0 }
-                  const locConts = containers.filter((c) => c.location_id === loc.id)
-                  const subLocations = locations.filter((sub) => sub.parent_id === loc.id)
-                  const isSelected = selectedFolder.type === "location" && selectedFolder.id === loc.id
-                  const isExpanded = expandedLocIds.has(loc.id) || locConts.some((c) => selectedFolder.type === "container" && selectedFolder.id === c.id)
-
-                  return (
-                    <div key={loc.id} className="space-y-1">
-                      <div
-                        className={cn(
-                          "group flex items-center justify-between rounded-xl px-2.5 py-1.5 text-xs font-bold transition",
-                          isSelected
-                            ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
-                            : "text-[var(--text)] hover:bg-[var(--surface-tint)]"
-                        )}
-                      >
-                        <div
-                          onClick={() => setSelectedFolder({ type: "location", id: loc.id, name: loc.name })}
-                          className="flex flex-1 items-center gap-2 min-w-0 cursor-pointer"
-                        >
-                          {(locConts.length > 0 || subLocations.length > 0) ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                toggleExpand(loc.id)
-                              }}
-                              className="p-0.5 text-[var(--muted)] group-hover:text-[var(--text)]"
-                            >
-                              <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", isExpanded && "rotate-90")} />
-                            </button>
-                          ) : (
-                            <span className="w-3.5" />
-                          )}
-                          <Folder className={cn("h-4 w-4 shrink-0", isSelected ? "" : "text-[var(--text)]")} />
-                          <span className="truncate">{loc.name}</span>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <span className={cn(
-                            "rounded-full px-1.5 py-0.2 text-[10px] font-black",
-                            isSelected
-                              ? "bg-[var(--bg)] text-[var(--text)]"
-                              : "bg-[var(--surface-tint-strong)] text-[var(--muted)]"
-                          )}>
-                            {locStats.types}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setEditingLoc(loc)
-                              setShowLocModal(true)
-                            }}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-[var(--muted)] hover:text-[var(--text)] transition"
-                            title={tr("Edit Lokasi", "Edit Location")}
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Expanded Sub-locations and Containers */}
-                      {isExpanded && (
-                        <div className="ml-5 border-l-2 border-[var(--border)]/70 pl-2 space-y-1">
-                          {/* Nested Sub-locations */}
-                          {subLocations.map((subLoc) => {
-                            const subStats = locationItemCounts.get(subLoc.id) || { types: 0, units: 0 }
-                            const isSubSelected = selectedFolder.type === "location" && selectedFolder.id === subLoc.id
-                            return (
-                              <div
-                                key={subLoc.id}
-                                onClick={() => setSelectedFolder({ type: "location", id: subLoc.id, name: subLoc.name })}
-                                className={cn(
-                                  "group flex cursor-pointer items-center justify-between rounded-lg px-2 py-1 text-[11px] font-bold transition",
-                                  isSubSelected
-                                    ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
-                                    : "text-[var(--text)] hover:bg-[var(--surface-tint)]"
-                                )}
-                              >
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <Folder className={cn("h-3.5 w-3.5 shrink-0", isSubSelected ? "" : "text-[var(--text)]")} />
-                                  <span className="truncate">{subLoc.name}</span>
-                                </div>
-                                <span className={cn(
-                                  "rounded-full px-1.5 text-[9px] font-black",
-                                  isSubSelected
-                                    ? "bg-[var(--bg)] text-[var(--text)]"
-                                    : "bg-[var(--surface-tint-strong)] text-[var(--muted)]"
-                                )}>
-                                  {subStats.types}
-                                </span>
-                              </div>
-                            )
-                          })}
-
-                          {/* Nested Containers / Boxes */}
-                          {locConts.map((cont) => {
-                            const contStats = containerItemCounts.get(cont.id) || { types: 0, units: 0 }
-                            const isContSelected = selectedFolder.type === "container" && selectedFolder.id === cont.id
-                            return (
-                              <div
-                                key={cont.id}
-                                onClick={() => setSelectedFolder({ type: "container", id: cont.id, name: cont.name, locName: loc.name })}
-                                className={cn(
-                                  "group flex cursor-pointer items-center justify-between rounded-lg px-2 py-1 text-[11px] font-bold transition",
-                                  isContSelected
-                                    ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
-                                    : "text-[var(--text)] hover:bg-[var(--surface-tint)]"
-                                )}
-                              >
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <Boxes className={cn("h-3.5 w-3.5 shrink-0", isContSelected ? "text-[var(--bg)]" : "text-[var(--muted)]")} />
-                                  <span className="truncate">{cont.name}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <span className={cn(
-                                    "rounded-full px-1.5 text-[9px] font-black",
-                                    isContSelected
-                                      ? "bg-[var(--bg)] text-[var(--text)]"
-                                      : "bg-[var(--surface-tint-strong)] text-[var(--muted)]"
-                                  )}>
-                                    {contStats.types}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      setEditingCont(cont)
-                                      setShowContModal(true)
-                                    }}
-                                    className="opacity-0 group-hover:opacity-100 p-0.5 text-[var(--muted)] hover:text-[var(--text)] transition"
-                                    title={tr("Edit Bekas", "Edit Box")}
-                                  >
-                                    <Pencil className="h-2.5 w-2.5" />
-                                  </button>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-
-                {/* Unassigned Bucket */}
-                {unassignedCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFolder({ type: "unassigned" })}
-                    className={cn(
-                      "group flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-bold transition active:scale-[0.98]",
-                      selectedFolder.type === "unassigned"
-                        ? "bg-[var(--text)] text-[var(--bg)] shadow-sm"
-                        : "text-[var(--muted)] hover:bg-[var(--surface-tint)] hover:text-[var(--text)]"
-                    )}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <MapPin className="h-3.5 w-3.5 shrink-0 opacity-60" />
-                      <span className="truncate">{tr("Tiada Lokasi", "Unassigned")}</span>
-                    </div>
-                    <span className={cn(
-                      "rounded-full px-2 py-0.5 text-[10px] font-black",
-                      selectedFolder.type === "unassigned"
-                        ? "bg-[var(--bg)] text-[var(--text)]"
-                        : "bg-[var(--surface-tint-strong)] text-[var(--muted)]"
-                    )}>
-                      {unassignedCount}
-                    </span>
-                  </button>
-                )}
-              </div>
-            </aside>
-
-            {/* ── RIGHT PANEL: MAIN ITEMS EXPLORER & GALLERY ── */}
-            <main className="space-y-4 min-w-0">
-              {/* Active Folder Header Banner */}
-              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
-                <div>
-                  <div className="flex items-center gap-2">
-                    {selectedFolder.type === "container" ? (
-                      <Boxes className="h-5 w-5 text-[var(--text)]" />
-                    ) : selectedFolder.type === "location" ? (
-                      <Folder className="h-5 w-5 text-[var(--text)]" />
-                    ) : (
-                      <FolderTree className="h-5 w-5 text-[var(--text)]" />
-                    )}
-                    <h2 className="text-base font-black text-[var(--text)]">
-                      {selectedFolder.type === "all"
-                        ? tr("Semua Barang Inventori", "All Inventory Items")
-                        : selectedFolder.type === "unassigned"
-                        ? tr("Barang Tiada Lokasi", "Unassigned Items")
-                        : selectedFolder.type === "location"
-                        ? selectedFolder.name
-                        : `${selectedFolder.name} (${selectedFolder.locName || ""})`}
-                    </h2>
-                  </div>
-                  <p className="mt-0.5 text-xs text-[var(--muted)]">
-                    {filteredItems.length} {tr("jenis barang dijumpai", "items in this folder")}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (selectedFolder.type === "location") {
-                        openCreate(String(selectedFolder.id))
-                      } else if (selectedFolder.type === "container") {
-                        openCreate(undefined, String(selectedFolder.id))
-                      } else {
-                        openCreate()
-                      }
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[var(--text)] px-3.5 py-2 text-xs font-bold text-[var(--bg)] shadow-sm transition hover:opacity-90 active:scale-95"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>{tr("Tambah Barang", "Add Item")}</span>
-                  </button>
-
-                  {/* Display Mode Toggle */}
-                  <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setDisplayMode("gallery")}
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition",
-                        displayMode === "gallery" ? "bg-[var(--card)] text-[var(--text)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--text)]"
-                      )}
-                      title={tr("Paparan Galeri", "Gallery View")}
-                    >
-                      <LayoutGrid className="h-3.5 w-3.5" />
-                      <span>{tr("Galeri", "Gallery")}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDisplayMode("list")}
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition",
-                        displayMode === "list" ? "bg-[var(--card)] text-[var(--text)] shadow-sm" : "text-[var(--muted)] hover:text-[var(--text)]"
-                      )}
-                      title={tr("Paparan Senarai", "List View")}
-                    >
-                      <ListIcon className="h-3.5 w-3.5" />
-                      <span>{tr("Senarai", "List")}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status Chips & Search Row */}
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                {summary && (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setStatusFilter("")}
-                      className={cn(
-                        "inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold transition active:scale-95",
-                        statusFilter === "" ? "bg-[var(--text)] text-[var(--bg)] shadow-sm" : "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]"
-                      )}
-                    >
-                      <span>{tr("Semua", "All")}</span>
-                      <span>({summary.total_types})</span>
-                    </button>
-
-                    {(
-                      [
-                        { key: "available", label: tr("Ada", "Available"), count: summary.available },
-                        { key: "loaned", label: tr("Dipinjam", "Loaned"), count: summary.loaned },
-                        { key: "missing", label: tr("Hilang", "Missing"), count: summary.missing },
-                        { key: "damaged", label: tr("Rosak", "Damaged"), count: summary.damaged },
-                      ] as const
-                    ).map((st) => {
-                      const isSelected = statusFilter === st.key
-                      const cfg = STATUS_CONFIG[st.key as InvStatus]
-                      return (
-                        <button
-                          key={st.key}
-                          type="button"
-                          onClick={() => setStatusFilter(isSelected ? "" : st.key)}
-                          className={cn(
-                            "inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-xs font-bold transition active:scale-95",
-                            isSelected ? cfg.pillActive : cfg.pillInactive
-                          )}
-                        >
-                          <span className={cn("h-1.5 w-1.5 rounded-full", cfg.dot)} />
-                          <span>{st.label}</span>
-                          <span>({st.count})</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
-
-                {/* Search Bar */}
-                <div className="relative w-64">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted)]" />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={tr("Cari barang...", "Search items...")}
-                    className="w-full rounded-xl border border-[var(--border)] bg-[var(--card)] py-1.5 pl-9 pr-8 text-xs font-medium text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)]"
-                  />
-                  {search && (
-                    <button
-                      type="button"
-                      onClick={() => setSearch("")}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-[var(--muted)] hover:text-[var(--text)]"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Categories Toolbar */}
-              {categories.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setCategoryFilter("")}
-                    className={cn(
-                      "rounded-full px-3 py-1 text-xs font-bold transition",
-                      categoryFilter === ""
-                        ? "bg-[var(--text)] text-[var(--bg)]"
-                        : "border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
-                    )}
-                  >
-                    {tr("Semua", "All")} ({items.length})
-                  </button>
-                  {categories.map((cat) => {
-                    const count = items.filter((i) => i.category === cat).length
-                    const isCatSelected = categoryFilter === cat
-                    return (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setCategoryFilter(isCatSelected ? "" : cat)}
-                        className={cn(
-                          "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold transition",
-                          isCatSelected
-                            ? "bg-[var(--text)] text-[var(--bg)]"
-                            : "border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] hover:text-[var(--text)]"
-                        )}
-                      >
-                        <Tag className="h-3 w-3 opacity-60" />
-                        <span>{cat}</span>
-                        <span className="opacity-70">({count})</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-
-              {/* Items Grid / List Content */}
-              <div>
-                {loading && items.length === 0 ? (
-                  <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 xl:grid-cols-4">
-                    {[1, 2, 3, 4, 5, 6].map((i) => (
-                      <div key={i} className="aspect-[4/3] animate-pulse rounded-2xl border border-[var(--border)] bg-[var(--card)]" />
-                    ))}
-                  </div>
-                ) : filteredItems.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 p-12 text-center text-sm text-[var(--muted)]">
-                    <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p className="font-bold text-[var(--text)]">{tr("Tiada barang dalam folder ini.", "No items in this folder.")}</p>
-                    <p className="text-xs text-[var(--muted)] mt-1">{tr("Sila tambah barang atau pilih folder lain.", "Add items or select another folder.")}</p>
-                  </div>
-                ) : displayMode === "gallery" ? (
-                  <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 xl:grid-cols-4">
-                    {filteredItems.map(renderGalleryCard)}
-                  </div>
+              <>
+                {view === "gallery" ? (
+                  <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">{filtered.map(gallery)}</ul>
                 ) : (
-                  <div className="space-y-2">
-                    {filteredItems.map(renderListRow)}
-                  </div>
+                  <ul className="grid gap-2.5 lg:grid-cols-2">{filtered.map(row)}</ul>
                 )}
-              </div>
-            </main>
+                {items.length < total && (
+                  <button type="button" onClick={() => void loadMore()} disabled={loadingMore} className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-[var(--border-strong)] text-sm font-semibold text-[var(--text)] disabled:opacity-50">
+                    {loadingMore ? <Loader2 size={15} className="animate-spin" /> : null}
+                    {tr(`Muat lagi (${total - items.length})`, `Load more (${total - items.length})`)}
+                  </button>
+                )}
+              </>
+            )}
+          </>
+        ) : (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setLocSheet({ loc: null })} className="flex h-12 items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] text-sm font-semibold text-[var(--btn-primary-text)]"><FolderPlus size={16} />{tr("Lokasi baharu", "New location")}</button>
+              <button type="button" onClick={() => setContSheet({ cont: null })} className="flex h-12 items-center justify-center gap-2 rounded-full border border-[var(--border-strong)] text-sm font-semibold text-[var(--text)]"><Boxes size={16} />{tr("Bekas baharu", "New box")}</button>
+            </div>
+
+            <section>
+              <h2 className="mb-2 px-1 text-base font-bold text-[var(--text)]">{tr("Lokasi", "Locations")}</h2>
+              {tree.length === 0 ? (
+                <p className="rounded-[1.5rem] border border-dashed border-[var(--border)] px-4 py-8 text-center text-sm text-[var(--muted)]">{tr("Belum ada lokasi. Cth. Bilik tidur, Stor, Dapur.", "No locations yet. E.g. Bedroom, Store, Kitchen.")}</p>
+              ) : (
+                <ul className="space-y-2">
+                  {tree.map(({ loc, depth }) => (
+                    <li key={loc.id} style={{ marginLeft: Math.min(depth, 4) * 14 }} className="flex items-center gap-2 rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] py-2.5 pl-3 pr-2">
+                      <button type="button" onClick={() => openPlace("location", loc.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--text)]"><MapPin size={16} /></span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-bold text-[var(--text)]">{loc.name}</span>
+                          <span className="block truncate text-xs text-[var(--muted)]">{unitsUnder(loc.id)} {tr("unit", "units")}{loc.child_count ? ` · ${loc.child_count} ${tr("sub-lokasi", "sub-locations")}` : ""}</span>
+                        </span>
+                      </button>
+                      <button type="button" onClick={() => setLocSheet({ loc: null, parentId: String(loc.id) })} aria-label={tr("Tambah sub-lokasi", "Add sub-location")} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text)]"><Plus size={14} /></button>
+                      <button type="button" onClick={() => setLocSheet({ loc })} aria-label={tr("Ubah", "Edit")} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text)]"><Pencil size={14} /></button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {(summary?.no_location ?? 0) > 0 && (
+                <button type="button" onClick={() => openPlace("none", 0)} className="mt-2 flex h-11 w-full items-center justify-between rounded-full border border-dashed border-[var(--border-strong)] px-4 text-sm font-semibold text-[var(--muted)]">
+                  <span>{tr("Barang tanpa lokasi", "Items without a location")}</span>
+                  <span className="tabular-nums">{summary?.no_location}</span>
+                </button>
+              )}
+            </section>
+
+            <section>
+              <h2 className="mb-2 px-1 text-base font-bold text-[var(--text)]">{tr("Bekas / kotak", "Boxes")}</h2>
+              {containers.length === 0 ? (
+                <p className="rounded-[1.5rem] border border-dashed border-[var(--border)] px-4 py-8 text-center text-sm text-[var(--muted)]">{tr("Belum ada bekas.", "No boxes yet.")}</p>
+              ) : (
+                <ul className="space-y-2">
+                  {containers.map((c) => (
+                    <li key={c.id} className="flex items-center gap-2 rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] py-2.5 pl-3 pr-2">
+                      <button type="button" onClick={() => openPlace("container", c.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--text)]"><Boxes size={16} /></span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-bold text-[var(--text)]">{c.name}</span>
+                          <span className="block truncate text-xs text-[var(--muted)]">{c.item_units} {tr("unit", "units")}{c.location_path ? ` · ${c.location_path}` : ""}</span>
+                        </span>
+                      </button>
+                      <button type="button" onClick={() => setContSheet({ cont: c })} aria-label={tr("Ubah", "Edit")} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text)]"><Pencil size={14} /></button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           </div>
-        </DesktopPageBody>
-      </div>
+        )}
+      </DesktopPageBody>
 
-      {/* ── MODAL SHEETS ── */}
-      {showForm && (
-        <ItemForm
-          item={editing}
-          locations={locations}
+      {itemSheet && (
+        <ItemSheet
+          key={itemSheet.item?.id ?? "new"}
+          state={itemSheet}
+          locations={tree}
           containers={containers}
-          defaultLocId={prefilledLocId}
-          defaultContId={prefilledContId}
-          onClose={() => setShowForm(false)}
-          onSaved={() => { setShowForm(false); load() }}
-          authHeaders={authHeaders}
+          categories={categories}
+          headers={headers}
+          errorOf={errorOf}
           tr={tr}
+          showAlert={showAlert}
+          onClose={() => setItemSheet(null)}
+          onSaved={() => { setItemSheet(null); void load() }}
         />
       )}
-
-      {/* Location Items Viewer Modal */}
-      {selectedLocationForView && (
-        <LocationItemsSheet
-          location={selectedLocationForView}
-          items={items}
-          containers={containers}
-          onClose={() => setSelectedLocationForView(null)}
-          onOpenItem={(it) => {
-            setSelectedLocationForView(null)
-            router.push(`/${sessionId}/inventory/${it.id}`)
-          }}
-          onAddItem={() => {
-            const locId = String(selectedLocationForView.id)
-            setSelectedLocationForView(null)
-            openCreate(locId)
-          }}
-          onEditLocation={(loc) => {
-            setSelectedLocationForView(null)
-            setEditingLoc(loc)
-            setShowLocModal(true)
-          }}
-          onViewInGallery={() => {
-            const locName = selectedLocationForView.name
-            setSelectedLocationForView(null)
-            setActiveTab("items")
-            setLocationFilter(locName)
-          }}
+      {locSheet && (
+        <LocationSheet
+          key={locSheet.loc?.id ?? `new-${locSheet.parentId || ""}`}
+          state={locSheet}
+          tree={tree}
+          idsUnder={idsUnder}
+          headers={headers}
+          errorOf={errorOf}
           tr={tr}
-          isBm={isBm}
+          showAlert={showAlert}
+          showConfirm={showConfirm}
+          onClose={() => setLocSheet(null)}
+          onSaved={() => { setLocSheet(null); void load() }}
         />
       )}
-
-      {/* Container / Box Items Viewer Modal */}
-      {selectedContainerForView && (
-        <LocationItemsSheet
-          container={selectedContainerForView}
-          items={items}
-          containers={containers}
-          onClose={() => setSelectedContainerForView(null)}
-          onOpenItem={(it) => {
-            setSelectedContainerForView(null)
-            router.push(`/${sessionId}/inventory/${it.id}`)
-          }}
-          onAddItem={() => {
-            const locId = selectedContainerForView.location_id ? String(selectedContainerForView.location_id) : ""
-            const contId = String(selectedContainerForView.id)
-            setSelectedContainerForView(null)
-            openCreate(locId, contId)
-          }}
-          onEditContainer={(cont) => {
-            setSelectedContainerForView(null)
-            setEditingCont(cont)
-            setShowContModal(true)
-          }}
-          onViewInGallery={() => {
-            const contName = selectedContainerForView.name
-            setSelectedContainerForView(null)
-            setActiveTab("items")
-            setSearch(contName)
-          }}
+      {contSheet && (
+        <ContainerSheet
+          key={contSheet.cont?.id ?? "new"}
+          state={contSheet}
+          tree={tree}
+          headers={headers}
+          errorOf={errorOf}
           tr={tr}
-          isBm={isBm}
-        />
-      )}
-
-      {showLocModal && (
-        <LocationModal
-          locations={locations}
-          editing={editingLoc}
-          defaultParentId={defaultParentLocId}
-          onClose={() => setShowLocModal(false)}
-          onSaved={() => { setShowLocModal(false); load() }}
-          authHeaders={authHeaders}
-          tr={tr}
-        />
-      )}
-      {showContModal && (
-        <ContainerModal
-          locations={locations}
-          containers={containers}
-          editing={editingCont}
-          defaultLocId={defaultContLocId}
-          onClose={() => setShowContModal(false)}
-          onSaved={() => { setShowContModal(false); load() }}
-          authHeaders={authHeaders}
-          tr={tr}
+          showAlert={showAlert}
+          showConfirm={showConfirm}
+          onClose={() => setContSheet(null)}
+          onSaved={() => { setContSheet(null); void load() }}
         />
       )}
       {alertModal}
-    </>
+    </div>
   )
 }
 
-// ── LOCATION / CONTAINER ITEMS VIEWER SHEET ──────────────────────────────────
-
-function LocationItemsSheet({
-  location,
-  container,
-  items,
-  containers,
-  onClose,
-  onOpenItem,
-  onAddItem,
-  onEditLocation,
-  onEditContainer,
-  onViewInGallery,
-  tr,
-  isBm,
-}: {
-  location?: InvLocation | null
-  container?: InvContainer | null
-  items: InvItem[]
-  containers: InvContainer[]
+function LocationSheet({ state, tree, idsUnder, headers, errorOf, tr, showAlert, showConfirm, onClose, onSaved }: Common & {
+  state: { loc: InvLocation | null; parentId?: string }
+  tree: Tree
+  idsUnder: (id: number) => Set<number>
+  showConfirm: ConfirmFn
   onClose: () => void
-  onOpenItem: (item: InvItem) => void
-  onAddItem: () => void
-  onEditLocation?: (loc: InvLocation) => void
-  onEditContainer?: (cont: InvContainer) => void
-  onViewInGallery?: () => void
-  tr: (bm: string, en: string) => string
-  isBm: boolean
+  onSaved: () => void
 }) {
-  const swipe = useSwipeDownToClose(onClose)
+  const loc = state.loc
+  const [name, setName] = useState(loc?.name || "")
+  const [parentId, setParentId] = useState(loc?.parent_id ? String(loc.parent_id) : state.parentId || "")
+  const [saving, setSaving] = useState(false)
+  const exclude = loc ? idsUnder(loc.id) : undefined
 
-  const matchedItems = useMemo(() => {
-    if (container) {
-      return items.filter(
-        (i) =>
-          i.container_name === container.name ||
-          (container.id && i.container_id === container.id)
-      )
+  const save = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (saving) return
+    if (!name.trim()) {
+      showAlert(tr("Maklumat tak lengkap", "Incomplete info"), tr("Nama lokasi wajib.", "A name is required."), "error")
+      return
     }
-    if (location) {
-      return items.filter(
-        (i) =>
-          i.location_path &&
-          (i.location_path === location.name ||
-            i.location_path.startsWith(location.name + " >") ||
-            i.location_path.includes(location.name))
-      )
+    setSaving(true)
+    try {
+      const res = await fetch(loc ? `/api/inventory/locations/${loc.id}` : "/api/inventory/locations", {
+        method: loc ? "PATCH" : "POST",
+        headers: headers(true),
+        credentials: "include",
+        body: JSON.stringify({ name: name.trim(), parent_id: parentId ? Number(parentId) : null }),
+      })
+      if (!res.ok) throw new Error(await errorOf(res, tr("Gagal simpan.", "Could not save.")))
+      onSaved()
+    } catch (err) {
+      showAlert(tr("Gagal simpan", "Save failed"), err instanceof Error ? err.message : "", "error")
+      setSaving(false)
     }
-    return []
-  }, [items, location, container])
+  }
 
-  const totalUnits = useMemo(() => {
-    return matchedItems.reduce((acc, it) => acc + (it.quantity || 0), 0)
-  }, [matchedItems])
+  const remove = () => {
+    if (!loc) return
+    showConfirm(tr("Padam lokasi?", "Delete location?"), tr(`Padam ${loc.name}? Lokasi mesti kosong dahulu.`, `Delete ${loc.name}? It must be empty first.`), async () => {
+      try {
+        const res = await fetch(`/api/inventory/locations/${loc.id}`, { method: "DELETE", headers: headers(), credentials: "include" })
+        if (!res.ok) throw new Error(await errorOf(res, tr("Gagal padam.", "Could not delete.")))
+        onSaved()
+      } catch (err) {
+        showAlert(tr("Tidak dapat padam", "Cannot delete"), err instanceof Error ? err.message : "", "error")
+      }
+    }, "warning")
+  }
 
-  const title = container ? container.name : location?.name || ""
-  const subtitle = container
-    ? container.location_path
-      ? `📍 ${container.location_path}`
-      : tr("Bekas / Kotak", "Box / Container")
-    : tr("Lokasi Penyimpanan", "Storage Location")
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-[var(--overlay)] p-0 sm:items-center"
-      onClick={onClose}
-      onTouchMove={(e) => e.preventDefault()}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        data-swipe-sheet
-        {...swipe}
-        className="app-sheet-panel app-sheet-panel--lg w-full max-h-[88dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[34rem] sm:rounded-2xl"
-      >
-        <AppSheetHeader
-          title={title}
-          eyebrow={subtitle}
-          onClose={onClose}
-          action={
-            <button
-              type="button"
-              onClick={onAddItem}
-              className="inline-flex items-center gap-1 rounded-xl bg-[var(--accent)] px-3 py-1.5 text-xs font-bold text-white shadow-sm transition active:scale-95"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>{tr("Tambah", "Add")}</span>
-            </button>
-          }
-        />
-
-        <div className="space-y-4 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
-          {/* Summary Banner */}
-          <div className="flex items-center justify-between rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3.5">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--card)] shadow-sm">
-                {container ? (
-                  <Boxes className="h-5 w-5 text-sky-700 dark:text-sky-400" />
-                ) : (
-                  <MapPin className="h-5 w-5 text-emerald-700 dark:text-emerald-400" />
-                )}
-              </div>
-              <div>
-                <p className="text-xs font-bold text-[var(--text)]">
-                  {matchedItems.length} {tr("jenis barang", "item types")}
-                </p>
-                <p className="text-[11px] font-semibold text-[var(--muted)]">
-                  {totalUnits} {tr("unit keseluruhan", "total units")}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              {onViewInGallery && (
-                <button
-                  type="button"
-                  onClick={onViewInGallery}
-                  className="inline-flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-[11px] font-bold text-[var(--text)] transition hover:border-[var(--accent)] active:scale-95"
-                  title={tr("Lihat dalam paparan galeri", "View in gallery mode")}
-                >
-                  <LayoutGrid className="h-3.5 w-3.5 text-[var(--accent)]" />
-                  <span>{tr("Galeri", "Gallery")}</span>
-                </button>
-              )}
-              {location && onEditLocation && (
-                <button
-                  type="button"
-                  onClick={() => onEditLocation(location)}
-                  className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-1.5 text-[var(--muted)] hover:text-[var(--text)]"
-                  title={tr("Edit Lokasi", "Edit Location")}
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
-              )}
-              {container && onEditContainer && (
-                <button
-                  type="button"
-                  onClick={() => onEditContainer(container)}
-                  className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-1.5 text-[var(--muted)] hover:text-[var(--text)]"
-                  title={tr("Edit Bekas", "Edit Box")}
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* List of Items */}
-          {matchedItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]/40 p-8 text-center">
-              <Package className="h-8 w-8 text-[var(--muted)] opacity-50" />
-              <p className="mt-2 text-xs font-bold text-[var(--text)]">
-                {tr("Tiada barang disimpan di sini lagi", "No items stored here yet")}
-              </p>
-              <button
-                type="button"
-                onClick={onAddItem}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--accent)] px-3.5 py-2 text-xs font-bold text-white shadow-sm transition active:scale-95"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>{tr("Tambah Barang Sekarang", "Add Item Now")}</span>
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="px-1 text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">
-                {tr("Senarai Barang", "Items Stored")}
-              </p>
-
-              {matchedItems.map((item) => {
-                const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.available
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => onOpenItem(item)}
-                    className="group flex cursor-pointer items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card)] p-3 transition hover:border-[var(--accent)]/30 hover:bg-[var(--card-active)] active:scale-[0.98]"
-                  >
-                    <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-tint)]">
-                      {item.has_image ? (
-                        <img
-                          src={`/api/inventory/items/${item.id}/image`}
-                          alt={item.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <Package className="h-5 w-5 text-[var(--muted)] opacity-60" />
-                      )}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <p className="truncate text-xs font-black text-[var(--text)] group-hover:text-[var(--accent)] transition-colors">
-                          {item.name}
-                        </p>
-                        <span className={cn("shrink-0 rounded-full border px-1.5 py-0.2 text-[8px] font-bold", cfg.badge)}>
-                          {isBm ? cfg.labelBm : item.status_label || cfg.labelEn}
-                        </span>
-                      </div>
-
-                      <div className="mt-1 flex items-center gap-2 text-[10px] text-[var(--muted)]">
-                        <span className="font-bold text-[var(--text)]">
-                          {item.quantity} {item.unit}
-                        </span>
-                        {item.container_name && !container && (
-                          <span className="inline-flex items-center gap-1 rounded bg-[var(--surface-tint)] px-1.5 py-0.5">
-                            <Boxes className="h-2.5 w-2.5 text-sky-700 dark:text-sky-400" />
-                            <span>{item.container_name}</span>
-                          </span>
-                        )}
-                        {item.category && (
-                          <span className="truncate">· {item.category}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="shrink-0 text-[var(--muted)] opacity-60">
-                      <ChevronRight className="h-4 w-4" />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+  return (
+    <AppSheet
+      open
+      onClose={onClose}
+      id="inventory-location-sheet"
+      title={loc ? tr("Ubah lokasi", "Edit location") : tr("Lokasi baharu", "New location")}
+      size="sm"
+      footer={
+        <div className="flex gap-2">
+          {loc ? <button type="button" onClick={remove} aria-label={tr("Padam", "Delete")} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-rose-500/30 text-rose-500"><Trash2 size={16} /></button> : null}
+          <button type="button" onClick={() => void save()} disabled={saving} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-40">
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {tr("Simpan", "Save")}
+          </button>
         </div>
-      </div>
-    </div>,
-    document.body
+      }
+    >
+      <form onSubmit={save} className="space-y-4">
+        <div><label htmlFor="loc-name" className={label}>{tr("Nama", "Name")}</label><input id="loc-name" value={name} maxLength={190} onChange={(e) => setName(e.target.value)} placeholder={tr("cth. Stor", "e.g. Store room")} className={field} /></div>
+        <div>
+          <label htmlFor="loc-parent" className={label}>{tr("Di dalam (pilihan)", "Inside (optional)")}</label>
+          <select id="loc-parent" value={parentId} onChange={(e) => setParentId(e.target.value)} className={field}>
+            <LocationOptions tree={tree} tr={tr} exclude={exclude} />
+          </select>
+        </div>
+      </form>
+    </AppSheet>
   )
 }
 
-// ── ADD / EDIT ITEM SHEET FORM ───────────────────────────────────────────────
-
-function ItemForm({
-  item,
-  locations,
-  containers,
-  defaultLocId,
-  defaultContId,
-  onClose,
-  onSaved,
-  authHeaders,
-  tr,
-}: {
-  item: InvItem | null
-  locations: InvLocation[]
-  containers: InvContainer[]
-  defaultLocId?: string
-  defaultContId?: string
+function ContainerSheet({ state, tree, headers, errorOf, tr, showAlert, showConfirm, onClose, onSaved }: Common & {
+  state: { cont: InvContainer | null; locId?: string }
+  tree: Tree
+  showConfirm: ConfirmFn
   onClose: () => void
   onSaved: () => void
-  authHeaders: () => HeadersInit
-  tr: (bm: string, en: string) => string
 }) {
-  const [name, setName] = useState(item?.name || "")
-  const [category, setCategory] = useState(item?.category || "")
-  const [quantity, setQuantity] = useState(String(item?.quantity ?? 1))
-  const [unit, setUnit] = useState(item?.unit || "unit")
-  const [status, setStatus] = useState<InvStatus>(item?.status || "available")
-  const [brand, setBrand] = useState(item?.brand || "")
-  const [model, setModel] = useState("")
-  const [serial, setSerial] = useState("")
-  const [purchaseDate, setPurchaseDate] = useState("")
-  const [purchasePrice, setPurchasePrice] = useState("")
-  const [locationId, setLocationId] = useState<string>(defaultLocId || "")
-  const [containerId, setContainerId] = useState<string>(defaultContId || "")
-  const [notes, setNotes] = useState(item?.notes || "")
+  const cont = state.cont
+  const [name, setName] = useState(cont?.name || "")
+  const [locationId, setLocationId] = useState(cont?.location_id ? String(cont.location_id) : state.locId || "")
   const [saving, setSaving] = useState(false)
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const { showAlert } = usePageAlert("BM")
-  const showAlertRef = useRef(showAlert)
-  useEffect(() => { showAlertRef.current = showAlert }, [showAlert])
 
-  useEffect(() => {
-    if (!item) return
-    ;(async () => {
-      const res = await fetch(`/api/inventory/items/${item.id}`, { headers: authHeaders(), credentials: "include" })
-      if (res.ok) {
-        const d = await res.json()
-        setLocationId(d.location_id ? String(d.location_id) : "")
-        setContainerId(d.container_id ? String(d.container_id) : "")
-        setBrand(d.brand || "")
-        setModel(d.model || "")
-        setSerial(d.serial_number || "")
-        setPurchaseDate(d.purchase_date || "")
-        setPurchasePrice(d.purchase_price != null ? String(d.purchase_price) : "")
-        setImagePreview(item.has_image ? `/api/inventory/items/${item.id}/image` : null)
-      }
-    })()
-  }, [item, authHeaders])
-
-  const pickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0] || null
-    setImageFile(f)
-    setImagePreview(f ? URL.createObjectURL(f) : null)
-  }
-
-  const filteredContainers = containers.filter((c) => !locationId || String(c.location_id) === locationId)
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name.trim() || saving) return
+  const save = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (saving) return
+    if (!name.trim()) {
+      showAlert(tr("Maklumat tak lengkap", "Incomplete info"), tr("Nama bekas wajib.", "A name is required."), "error")
+      return
+    }
     setSaving(true)
     try {
-      const body = {
-        name: name.trim(),
-        category: category.trim() || null,
-        quantity: Math.max(0, parseInt(quantity || "1", 10) || 1),
-        unit: unit.trim() || "unit",
-        status,
-        brand: brand.trim() || null,
-        model: model.trim() || null,
-        serial_number: serial.trim() || null,
-        purchase_date: purchaseDate || null,
-        purchase_price: purchasePrice ? parseFloat(purchasePrice) : null,
-        location_id: locationId ? parseInt(locationId, 10) : null,
-        container_id: containerId ? parseInt(containerId, 10) : null,
-        notes: notes.trim() || null,
-      }
-      const res = await fetch(item ? `/api/inventory/items/${item.id}` : "/api/inventory/items", {
-        method: item ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
+      const res = await fetch(cont ? `/api/inventory/containers/${cont.id}` : "/api/inventory/containers", {
+        method: cont ? "PATCH" : "POST",
+        headers: headers(true),
         credentials: "include",
-        body: JSON.stringify(body),
+        body: JSON.stringify({ name: name.trim(), location_id: locationId ? Number(locationId) : null }),
       })
-      if (!res.ok) {
-        const p = await res.json().catch(() => null)
-        throw new Error(p?.detail || "Failed")
-      }
-      if (imageFile) {
-        const saved = await res.json()
-        const targetId = item ? item.id : saved.id
-        const fd = new FormData()
-        fd.append("file", imageFile)
-        await fetch(`/api/inventory/items/${targetId}/image`, {
-          method: "POST",
-          headers: authHeaders(),
-          credentials: "include",
-          body: fd,
-        })
-      }
+      if (!res.ok) throw new Error(await errorOf(res, tr("Gagal simpan.", "Could not save.")))
       onSaved()
     } catch (err) {
-      showAlertRef.current(
-        tr("Ralat", "Error"),
-        err instanceof Error ? err.message : tr("Gagal simpan.", "Failed to save."),
-        "error"
-      )
-    } finally {
+      showAlert(tr("Gagal simpan", "Save failed"), err instanceof Error ? err.message : "", "error")
       setSaving(false)
     }
   }
 
-  const swipe = useSwipeDownToClose(onClose)
-
-  const inputCls =
-    "w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:bg-[var(--card)] focus:ring-2 focus:ring-[var(--accent)]/20"
-  const labelCls = "mb-1.5 block text-xs font-semibold text-[var(--text)]"
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-[var(--overlay)] p-0 sm:items-center"
-      onClick={onClose}
-      onTouchMove={(e) => e.preventDefault()}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        data-swipe-sheet
-        {...swipe}
-        className="app-sheet-panel app-sheet-panel--lg w-full max-h-[90dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[32rem] sm:rounded-2xl"
-      >
-        <AppSheetHeader
-          title={tr(item ? "Edit Barang" : "Tambah Barang Baru", item ? "Edit Item" : "Add New Item")}
-          eyebrow={tr("Barang Saya", "My Inventory")}
-          onClose={onClose}
-          action={
-            <button
-              type="submit"
-              form="inventory-item-form"
-              disabled={saving || !name.trim()}
-              className="px-2 py-1 text-base font-bold text-[var(--accent)] transition hover:opacity-80 disabled:opacity-50"
-            >
-              {saving ? tr("Menyimpan…", "Saving…") : tr("Simpan", "Save")}
-            </button>
-          }
-        />
-        <form id="inventory-item-form" onSubmit={submit} className="space-y-4 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
-          <div className="flex items-center gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-3">
-            <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--card)]">
-              {imagePreview ? (
-                <img src={imagePreview} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <ImageIcon className="h-6 w-6 text-[var(--muted)]" />
-              )}
-            </div>
-            <div className="flex-1">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={pickImage}
-                className="hidden"
-                aria-label={tr("Gambar barang", "Item image")}
-              />
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-xs font-semibold text-[var(--text)] transition hover:border-[var(--accent)] active:scale-95"
-                >
-                  {imagePreview ? tr("Tukar Gambar", "Change Image") : tr("Muat Naik Gambar", "Upload Image")}
-                </button>
-                {imageFile && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setImageFile(null)
-                      setImagePreview(item?.has_image ? `/api/inventory/items/${item.id}/image` : null)
-                    }}
-                    className="text-xs font-medium text-rose-700 dark:text-rose-400 hover:underline"
-                  >
-                    {tr("Padam", "Remove")}
-                  </button>
-                )}
-              </div>
-              <p className="mt-1 text-[11px] text-[var(--muted)]">
-                {tr("Format JPG, PNG atau WebP.", "JPG, PNG or WebP format.")}
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <label className={labelCls} htmlFor="inv-name">
-              {tr("Nama Barang *", "Item Name *")}
-            </label>
-            <input
-              id="inv-name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className={inputCls}
-              placeholder={tr("Cth: Bor Cordless Makita, Kipas Berdiri", "e.g. Cordless Drill, Stand Fan")}
-              maxLength={190}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls} htmlFor="inv-qty">
-                {tr("Kuantiti *", "Quantity *")}
-              </label>
-              <input
-                id="inv-qty"
-                type="number"
-                min={0}
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls} htmlFor="inv-unit">
-                {tr("Unit", "Unit")}
-              </label>
-              <input
-                id="inv-unit"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                className={inputCls}
-                placeholder="unit, buah, set, pcs"
-                maxLength={20}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls} htmlFor="inv-cat">
-                {tr("Kategori", "Category")}
-              </label>
-              <select
-                id="inv-cat"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className={inputCls}
-              >
-                <option value="">{tr("— Pilih kategori —", "— Select category —")}</option>
-                {CATEGORY_OPTIONS.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls} htmlFor="inv-status">
-                {tr("Status", "Status")}
-              </label>
-              <select
-                id="inv-status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as InvStatus)}
-                className={inputCls}
-              >
-                {STATUS_CONFIG &&
-                  Object.keys(STATUS_CONFIG).map((s) => {
-                    const cfg = STATUS_CONFIG[s as InvStatus]
-                    return (
-                      <option key={s} value={s}>
-                        {tr(cfg.labelBm, cfg.labelEn)}
-                      </option>
-                    )
-                  })}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls} htmlFor="inv-brand">
-                {tr("Jenama", "Brand")}
-              </label>
-              <input
-                id="inv-brand"
-                value={brand}
-                onChange={(e) => setBrand(e.target.value)}
-                className={inputCls}
-                placeholder="Sony, Bosch, Ikea..."
-                maxLength={80}
-              />
-            </div>
-            <div>
-              <label className={labelCls} htmlFor="inv-model">
-                {tr("Model", "Model")}
-              </label>
-              <input
-                id="inv-model"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                className={inputCls}
-                maxLength={80}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className={labelCls} htmlFor="inv-serial">
-              {tr("No. Siri", "Serial Number")}
-            </label>
-            <input
-              id="inv-serial"
-              value={serial}
-              onChange={(e) => setSerial(e.target.value)}
-              className={inputCls}
-              placeholder="SN-123456..."
-              maxLength={120}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls} htmlFor="inv-date">
-                {tr("Tarikh Pembelian", "Purchase Date")}
-              </label>
-              <input
-                id="inv-date"
-                type="date"
-                value={purchaseDate}
-                onChange={(e) => setPurchaseDate(e.target.value)}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls} htmlFor="inv-price">
-                {tr("Harga (RM)", "Price (RM)")}
-              </label>
-              <input
-                id="inv-price"
-                type="number"
-                min={0}
-                step="0.01"
-                value={purchasePrice}
-                onChange={(e) => setPurchasePrice(e.target.value)}
-                className={inputCls}
-                placeholder="0.00"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className={labelCls} htmlFor="inv-loc">
-                {tr("Lokasi", "Location")}
-              </label>
-              <select
-                id="inv-loc"
-                value={locationId}
-                onChange={(e) => {
-                  setLocationId(e.target.value)
-                  setContainerId("")
-                }}
-                className={inputCls}
-              >
-                <option value="">{tr("— Tiada lokasi —", "— No location —")}</option>
-                {locations.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className={labelCls} htmlFor="inv-cont">
-                {tr("Bekas / Kotak", "Box / Container")}
-              </label>
-              <select
-                id="inv-cont"
-                value={containerId}
-                onChange={(e) => setContainerId(e.target.value)}
-                className={inputCls}
-                disabled={!locationId}
-              >
-                <option value="">{tr("— Tiada bekas —", "— No box —")}</option>
-                {filteredContainers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className={labelCls} htmlFor="inv-notes">
-              {tr("Catatan / Nota Tambahan", "Notes / Remarks")}
-            </label>
-            <textarea
-              id="inv-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className={inputCls}
-              rows={2}
-              placeholder={tr("Simpan resit, keadaan barang, pautan manual dsb...", "Receipt details, condition, link...")}
-            />
-          </div>
-        </form>
-      </div>
-    </div>,
-    document.body
-  )
-}
-
-// ── LOCATION MODAL ───────────────────────────────────────────────────────────
-
-function LocationModal({
-  locations,
-  editing,
-  defaultParentId,
-  onClose,
-  onSaved,
-  authHeaders,
-  tr,
-}: {
-  locations: InvLocation[]
-  editing: InvLocation | null
-  defaultParentId?: string
-  onClose: () => void
-  onSaved: () => void
-  authHeaders: () => HeadersInit
-  tr: (bm: string, en: string) => string
-}) {
-  const [name, setName] = useState(editing?.name || "")
-  const [parentId, setParentId] = useState(editing?.parent_id ? String(editing.parent_id) : defaultParentId || "")
-  const [saving, setSaving] = useState(false)
-  const { showAlert } = usePageAlert("BM")
-  const showAlertRef = useRef(showAlert)
-  useEffect(() => { showAlertRef.current = showAlert }, [showAlert])
-  const swipe = useSwipeDownToClose(onClose)
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name.trim() || saving) return
-    setSaving(true)
-    try {
-      const res = await fetch(editing ? `/api/inventory/locations/${editing.id}` : "/api/inventory/locations", {
-        method: editing ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        credentials: "include",
-        body: JSON.stringify({ name: name.trim(), parent_id: parentId ? parseInt(parentId, 10) : null }),
-      })
-      if (!res.ok) {
-        const p = await res.json().catch(() => null)
-        throw new Error(p?.detail || "Failed")
+  const remove = () => {
+    if (!cont) return
+    showConfirm(tr("Padam bekas?", "Delete box?"), tr(`Padam ${cont.name}? Bekas mesti kosong dahulu.`, `Delete ${cont.name}? It must be empty first.`), async () => {
+      try {
+        const res = await fetch(`/api/inventory/containers/${cont.id}`, { method: "DELETE", headers: headers(), credentials: "include" })
+        if (!res.ok) throw new Error(await errorOf(res, tr("Gagal padam.", "Could not delete.")))
+        onSaved()
+      } catch (err) {
+        showAlert(tr("Tidak dapat padam", "Cannot delete"), err instanceof Error ? err.message : "", "error")
       }
-      onSaved()
-    } catch (err) {
-      showAlertRef.current(
-        tr("Ralat", "Error"),
-        err instanceof Error ? err.message : tr("Gagal simpan.", "Failed to save."),
-        "error"
-      )
-    } finally {
-      setSaving(false)
-    }
+    }, "warning")
   }
 
-  const inputCls =
-    "w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:bg-[var(--card)] focus:ring-2 focus:ring-[var(--accent)]/20"
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-[var(--overlay)] p-0 sm:items-center"
-      onClick={onClose}
-      onTouchMove={(e) => e.preventDefault()}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        data-swipe-sheet
-        {...swipe}
-        className="app-sheet-panel app-sheet-panel--sm w-full max-h-[85dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-w-[26rem] sm:rounded-2xl"
-      >
-        <AppSheetHeader
-          title={tr(editing ? "Edit Lokasi" : "Tambah Lokasi Baru", editing ? "Edit Location" : "Add New Location")}
-          eyebrow={tr("Barang Saya", "My Inventory")}
-          onClose={onClose}
-          action={
-            <button
-              type="submit"
-              form="inventory-loc-form"
-              disabled={saving || !name.trim()}
-              className="px-2 py-1 text-base font-bold text-[var(--accent)] transition hover:opacity-80 disabled:opacity-50"
-            >
-              {saving ? tr("Menyimpan…", "Saving…") : tr("Simpan", "Save")}
-            </button>
-          }
-        />
-        <form id="inventory-loc-form" onSubmit={submit} className="space-y-4 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="loc-name">
-              {tr("Nama Lokasi *", "Location Name *")}
-            </label>
-            <input
-              id="loc-name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className={inputCls}
-              placeholder={tr("Cth: Stor Utama, Dapur, Ruang Tamu, Rak 1", "e.g. Storeroom, Kitchen, Shelf 1")}
-              maxLength={190}
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="loc-parent">
-              {tr("Lokasi Induk (Pilihan)", "Parent Location (Optional)")}
-            </label>
-            <select id="loc-parent" value={parentId} onChange={(e) => setParentId(e.target.value)} className={inputCls}>
-              <option value="">{tr("— Tiada induk (Lokasi Utama) —", "— No parent (Main Location) —")}</option>
-              {locations
-                .filter((l) => !editing || l.id !== editing.id)
-                .map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
-                  </option>
-                ))}
-            </select>
-            <p className="mt-1 text-[11px] text-[var(--muted)]">
-              {tr("Contoh: Pilih 'Bilik Stor' sebagai induk untuk 'Rak A'.", "Example: Select 'Storeroom' as parent for 'Shelf A'.")}
-            </p>
-          </div>
-
-          {editing && (
-            <div className="border-t border-[var(--border)]/60 pt-4">
-              <button
-                type="button"
-                disabled={saving}
-                onClick={async () => {
-                  if (!window.confirm(tr(`Padam lokasi "${editing.name}"?`, `Delete location "${editing.name}"?`))) return
-                  setSaving(true)
-                  try {
-                    const res = await fetch(`/api/inventory/locations/${editing.id}`, {
-                      method: "DELETE",
-                      headers: authHeaders(),
-                      credentials: "include",
-                    })
-                    if (!res.ok) {
-                      const p = await res.json().catch(() => null)
-                      throw new Error(p?.detail || "Failed to delete location")
-                    }
-                    onSaved()
-                  } catch (err) {
-                    showAlertRef.current(
-                      tr("Ralat", "Error"),
-                      err instanceof Error ? err.message : tr("Gagal padam lokasi.", "Failed to delete location."),
-                      "error"
-                    )
-                  } finally {
-                    setSaving(false)
-                  }
-                }}
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 py-2.5 text-xs font-bold text-rose-700 dark:text-rose-500 transition hover:bg-rose-500/20 active:scale-95 disabled:opacity-50"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span>{tr("Padam Lokasi Ini", "Delete This Location")}</span>
-              </button>
-            </div>
-          )}
-        </form>
-      </div>
-    </div>,
-    document.body
-  )
-}
-
-// ── CONTAINER MODAL ──────────────────────────────────────────────────────────
-
-function ContainerModal({
-  locations,
-  containers,
-  editing,
-  defaultLocId,
-  onClose,
-  onSaved,
-  authHeaders,
-  tr,
-}: {
-  locations: InvLocation[]
-  containers: InvContainer[]
-  editing: InvContainer | null
-  defaultLocId?: string
-  onClose: () => void
-  onSaved: () => void
-  authHeaders: () => HeadersInit
-  tr: (bm: string, en: string) => string
-}) {
-  const [name, setName] = useState(editing?.name || "")
-  const [locationId, setLocationId] = useState(
-    editing?.location_id ? String(editing.location_id) : defaultLocId || ""
-  )
-  const [saving, setSaving] = useState(false)
-  const { showAlert } = usePageAlert("BM")
-  const showAlertRef = useRef(showAlert)
-  useEffect(() => { showAlertRef.current = showAlert }, [showAlert])
-  const swipe = useSwipeDownToClose(onClose)
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name.trim() || saving) return
-    setSaving(true)
-    try {
-      const res = await fetch(editing ? `/api/inventory/containers/${editing.id}` : "/api/inventory/containers", {
-        method: editing ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        credentials: "include",
-        body: JSON.stringify({ name: name.trim(), location_id: locationId ? parseInt(locationId, 10) : null }),
-      })
-      if (!res.ok) {
-        const p = await res.json().catch(() => null)
-        throw new Error(p?.detail || "Failed")
+  return (
+    <AppSheet
+      open
+      onClose={onClose}
+      id="inventory-container-sheet"
+      title={cont ? tr("Ubah bekas", "Edit box") : tr("Bekas baharu", "New box")}
+      size="sm"
+      footer={
+        <div className="flex gap-2">
+          {cont ? <button type="button" onClick={remove} aria-label={tr("Padam", "Delete")} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-rose-500/30 text-rose-500"><Trash2 size={16} /></button> : null}
+          <button type="button" onClick={() => void save()} disabled={saving} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-40">
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {tr("Simpan", "Save")}
+          </button>
+        </div>
       }
-      onSaved()
-    } catch (err) {
-      showAlertRef.current(
-        tr("Ralat", "Error"),
-        err instanceof Error ? err.message : tr("Gagal simpan.", "Failed to save."),
-        "error"
-      )
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const inputCls =
-    "w-full rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] outline-none transition focus:border-[var(--accent)] focus:bg-[var(--card)] focus:ring-2 focus:ring-[var(--accent)]/20"
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-[var(--overlay)] p-0 sm:items-center"
-      onClick={onClose}
-      onTouchMove={(e) => e.preventDefault()}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        data-swipe-sheet
-        {...swipe}
-        className="app-sheet-panel app-sheet-panel--sm w-full max-h-[85dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-w-[26rem] sm:rounded-2xl"
-      >
-        <AppSheetHeader
-          title={tr(editing ? "Edit Bekas" : "Tambah Bekas / Kotak", editing ? "Edit Box" : "Add Box / Container")}
-          eyebrow={tr("Barang Saya", "My Inventory")}
-          onClose={onClose}
-          action={
-            <button
-              type="submit"
-              form="inventory-cont-form"
-              disabled={saving || !name.trim()}
-              className="px-2 py-1 text-base font-bold text-[var(--accent)] transition hover:opacity-80 disabled:opacity-50"
-            >
-              {saving ? tr("Menyimpan…", "Saving…") : tr("Simpan", "Save")}
-            </button>
-          }
-        />
-        <form id="inventory-cont-form" onSubmit={submit} className="space-y-4 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="cont-name">
-              {tr("Nama Bekas / Kotak *", "Box / Container Name *")}
-            </label>
-            <input
-              id="cont-name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className={inputCls}
-              placeholder={tr("Cth: Kotak Plastik Merah, Toolbox A, Tupperware 5L", "e.g. Red Storage Box, Tool Box 1")}
-              maxLength={190}
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold text-[var(--text)]" htmlFor="cont-loc">
-              {tr("Lokasi Penyimpanan", "Storage Location")}
-            </label>
-            <select id="cont-loc" value={locationId} onChange={(e) => setLocationId(e.target.value)} className={inputCls}>
-              <option value="">{tr("— Tiada lokasi —", "— No location —")}</option>
-              {locations.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
-            <p className="mt-1 text-[11px] text-[var(--muted)]">
-              {tr("Bekas akan dikaitkan dengan lokasi ini.", "Box will be associated with this location.")}
-            </p>
-          </div>
-
-          {editing && (
-            <div className="border-t border-[var(--border)]/60 pt-4">
-              <button
-                type="button"
-                disabled={saving}
-                onClick={async () => {
-                  if (!window.confirm(tr(`Padam bekas "${editing.name}"?`, `Delete box "${editing.name}"?`))) return
-                  setSaving(true)
-                  try {
-                    const res = await fetch(`/api/inventory/containers/${editing.id}`, {
-                      method: "DELETE",
-                      headers: authHeaders(),
-                      credentials: "include",
-                    })
-                    if (!res.ok) {
-                      const p = await res.json().catch(() => null)
-                      throw new Error(p?.detail || "Failed to delete box")
-                    }
-                    onSaved()
-                  } catch (err) {
-                    showAlertRef.current(
-                      tr("Ralat", "Error"),
-                      err instanceof Error ? err.message : tr("Gagal padam bekas.", "Failed to delete box."),
-                      "error"
-                    )
-                  } finally {
-                    setSaving(false)
-                  }
-                }}
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 py-2.5 text-xs font-bold text-rose-700 dark:text-rose-500 transition hover:bg-rose-500/20 active:scale-95 disabled:opacity-50"
-              >
-                <Trash2 className="h-4 w-4" />
-                <span>{tr("Padam Bekas / Kotak Ini", "Delete This Box / Container")}</span>
-              </button>
-            </div>
-          )}
-        </form>
-      </div>
-    </div>,
-    document.body
+      <form onSubmit={save} className="space-y-4">
+        <div><label htmlFor="box-name" className={label}>{tr("Nama", "Name")}</label><input id="box-name" value={name} maxLength={190} onChange={(e) => setName(e.target.value)} placeholder={tr("cth. Kotak alat", "e.g. Tool box")} className={field} /></div>
+        <div>
+          <label htmlFor="box-loc" className={label}>{tr("Lokasi (pilihan)", "Location (optional)")}</label>
+          <select id="box-loc" value={locationId} onChange={(e) => setLocationId(e.target.value)} className={field}>
+            <LocationOptions tree={tree} tr={tr} />
+          </select>
+        </div>
+      </form>
+    </AppSheet>
   )
 }

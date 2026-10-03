@@ -35,6 +35,7 @@ import {
 } from "@/components/layout/PageHeader"
 import { cn } from "@/lib/utils"
 import { usePageAlert } from "@/hooks/usePageAlert"
+import { ModenHero } from "@/components/ui/ModenHero"
 import "leaflet/dist/leaflet.css"
 
 // ── MAPS TILE SERVERS (Global CDN, High-Performance) ──
@@ -196,6 +197,8 @@ export default function HealthTrackingPage() {
   const lastLocationRef = useRef<LatLngPoint | null>(null)
   const lastSplitDistanceKmRef = useRef<number>(0)
   const lastSplitTimeRef = useRef<number>(0)
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null)
 
   const historyStorageKey = `myperibadi_health_runs_${sessionId}`
 
@@ -432,9 +435,21 @@ export default function HealthTrackingPage() {
     startTimestampRef.current = Date.now() - elapsedSeconds * 1000
 
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
+    // Count from the clock, not by adding 1 a tick: a phone throttles timers when the screen
+    // locks, which made the run time fall behind.
     timerIntervalRef.current = setInterval(() => {
-      setElapsedSeconds((prev) => prev + 1)
+      setElapsedSeconds(Math.max(0, Math.floor((Date.now() - startTimestampRef.current) / 1000)))
     }, 1000)
+
+    // Keep the screen awake so the GPS keeps reporting while you run.
+    try {
+      const wl = (navigator as unknown as { wakeLock?: { request: (t: string) => Promise<{ release: () => Promise<void> }> } }).wakeLock
+      if (wl && !wakeLockRef.current) {
+        wl.request("screen").then((lock) => { wakeLockRef.current = lock }).catch(() => {})
+      }
+    } catch {
+      // not supported
+    }
 
     if (typeof window !== "undefined") {
       const androidApp = (window as unknown as {
@@ -465,6 +480,9 @@ export default function HealthTrackingPage() {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current)
     }
+    // Resuming after a pause: the first new fix becomes the anchor, so the distance walked
+    // while paused is not added to the run.
+    lastLocationRef.current = null
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
@@ -484,7 +502,11 @@ export default function HealthTrackingPage() {
 
         setCurrentCoord({ lat: latitude, lng: longitude })
 
-        if (lastLocationRef.current) {
+        // A fix that is off by more than 50 m would add phantom distance; show it, do not count it.
+        const usable = !accuracy || accuracy <= 50
+        if (!usable) {
+          // skip distance and path for this fix
+        } else if (lastLocationRef.current) {
           const delta = getDistanceFromLatLonInMeters(
             lastLocationRef.current.lat,
             lastLocationRef.current.lng,
@@ -510,8 +532,8 @@ export default function HealthTrackingPage() {
               className: "run-user-marker",
               html: `
                 <div class="relative flex h-8 w-8 items-center justify-center">
-                  <span class="absolute inline-flex h-full w-full animate-ping rounded-full ${darkTiles ? "bg-white/40" : "bg-neutral-900/30"}"></span>
-                  <span class="relative inline-flex h-4 w-4 rounded-full border-2 ${darkTiles ? "border-neutral-950 bg-white shadow-[0_0_12px_rgba(255,255,255,0.9)]" : "border-white bg-neutral-950 shadow-[0_0_10px_rgba(0,0,0,0.5)]"}"></span>
+                  <span class="absolute inline-flex h-full w-full rounded-full ${darkTiles ? "bg-white/25" : "bg-neutral-900/20"}"></span>
+                  <span class="relative inline-flex h-4 w-4 rounded-full border-2 ${darkTiles ? "border-neutral-950 bg-white  " : "border-white bg-neutral-950  "}"></span>
                 </div>
               `,
               iconSize: [32, 32],
@@ -539,7 +561,7 @@ export default function HealthTrackingPage() {
             const startIcon = L.divIcon({
               className: "run-start-marker",
               html: `
-                <div class="flex items-center gap-1 rounded-full ${darkTiles ? "bg-white text-black border-neutral-300" : "bg-neutral-900 text-white border-neutral-700"} px-2 py-0.5 text-[9px] font-black tracking-widest uppercase shadow-md border">
+                <div class="flex items-center gap-1 rounded-full ${darkTiles ? "bg-white text-black border-neutral-300" : "bg-neutral-900 text-white border-neutral-700"} px-2 py-0.5 text-[9px] font-black tracking-widest uppercase   border">
                   <span>START</span>
                 </div>
               `,
@@ -567,7 +589,18 @@ export default function HealthTrackingPage() {
         }
       },
       (err) => {
-        console.warn("GPS watch error:", err)
+        if (err.code === err.PERMISSION_DENIED) {
+          showAlert(
+            isBm ? "Akses lokasi ditolak" : "Location access denied",
+            isBm ? "Benarkan akses lokasi untuk app ini supaya jarak dapat dijejak." : "Allow location access for this app so the distance can be tracked.",
+            "error"
+          )
+          setTrackingState("paused")
+          if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current)
+            timerIntervalRef.current = null
+          }
+        }
       },
       {
         enableHighAccuracy: true,
@@ -575,7 +608,7 @@ export default function HealthTrackingPage() {
         maximumAge: 1000,
       }
     )
-  }, [darkTiles, elapsedSeconds])
+  }, [darkTiles, elapsedSeconds, isBm, showAlert])
 
   // Countdown initiator
   const triggerStartCountdown = useCallback(() => {
@@ -591,13 +624,15 @@ export default function HealthTrackingPage() {
     setTrackingState("countdown")
     setCountdownNum(3)
 
+    if (countdownRef.current) clearInterval(countdownRef.current)
     let current = 3
-    const cInterval = setInterval(() => {
+    countdownRef.current = setInterval(() => {
       current -= 1
       if (current > 0) {
         setCountdownNum(current)
       } else {
-        clearInterval(cInterval)
+        if (countdownRef.current) clearInterval(countdownRef.current)
+        countdownRef.current = null
         beginTrackingExecution()
       }
     }, 900)
@@ -614,6 +649,16 @@ export default function HealthTrackingPage() {
       navigator.geolocation.clearWatch(watchIdRef.current)
       watchIdRef.current = null
     }
+    if (stepIntervalRef.current) {
+      clearInterval(stepIntervalRef.current)
+      stepIntervalRef.current = null
+    }
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current)
+      countdownRef.current = null
+    }
+    wakeLockRef.current?.release().catch(() => {})
+    wakeLockRef.current = null
   }, [])
 
   // Finish & Save
@@ -750,11 +795,24 @@ export default function HealthTrackingPage() {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current)
       if (stepIntervalRef.current) clearInterval(stepIntervalRef.current)
+      if (countdownRef.current) clearInterval(countdownRef.current)
       if (watchIdRef.current !== null && navigator.geolocation) {
         navigator.geolocation.clearWatch(watchIdRef.current)
       }
+      wakeLockRef.current?.release().catch(() => {})
     }
   }, [])
+
+  // Leaving mid-run throws the run away, so ask first.
+  useEffect(() => {
+    if (trackingState !== "running" && trackingState !== "paused") return
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+    window.addEventListener("beforeunload", warn)
+    return () => window.removeEventListener("beforeunload", warn)
+  }, [trackingState])
 
   // Aggregate stats for History
   const historySummary = useMemo(() => {
@@ -902,7 +960,7 @@ export default function HealthTrackingPage() {
       const startIcon = L.divIcon({
         className: "run-route-pin",
         html: `
-          <div class="flex items-center justify-center h-7 w-7 rounded-full border-2 border-white bg-emerald-600 text-[11px] font-black text-white shadow-xl">
+          <div class="flex items-center justify-center h-7 w-7 rounded-full border-2 border-white bg-emerald-600 text-[11px] font-black text-white  ">
             S
           </div>
         `,
@@ -920,7 +978,7 @@ export default function HealthTrackingPage() {
         const endIcon = L.divIcon({
           className: "run-route-pin",
           html: `
-            <div class="flex items-center justify-center h-7 w-7 rounded-full border-2 border-white bg-rose-600 text-[11px] font-black text-white shadow-xl">
+            <div class="flex items-center justify-center h-7 w-7 rounded-full border-2 border-white bg-rose-600 text-[11px] font-black text-white  ">
               F
             </div>
           `,
@@ -975,6 +1033,115 @@ export default function HealthTrackingPage() {
     }
   }, [])
 
+  const stateLabel =
+    trackingState === "running"
+      ? isBm ? "Sedang berlari" : "Running"
+      : trackingState === "paused"
+        ? isBm ? "Dijeda" : "Paused"
+        : isBm ? "Sedia untuk lari" : "Ready to run"
+  const gpsLabel = gpsAccuracy ? `GPS ±${Math.round(gpsAccuracy)} m` : isBm ? "Mencari GPS…" : "Searching GPS…"
+  const gpsGood = Boolean(gpsAccuracy && gpsAccuracy < 25)
+  const goalOptions: Array<{ label: string; val: number | null }> = [
+    { label: isBm ? "Bebas" : "Free", val: null },
+    { label: "1 km", val: 1 },
+    { label: "3 km", val: 3 },
+    { label: "5 km", val: 5 },
+    { label: "10 km", val: 10 },
+    { label: isBm ? "21 km" : "21 km", val: 21 },
+  ]
+  const segBtn = (on: boolean) =>
+    cn(
+      "flex h-11 flex-1 items-center justify-center gap-2 rounded-full text-sm font-semibold",
+      on ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "text-[var(--muted)]"
+    )
+  const bigBtn = "flex h-14 w-full items-center justify-center gap-2.5 rounded-full text-base font-semibold"
+
+  // One set of controls, below whichever view is showing, always in the same place.
+  const runControls = (
+    <div className="space-y-3">
+      {trackingState === "idle" && (
+        <>
+          <div>
+            <p className="mb-1.5 px-1 text-xs font-semibold text-[var(--muted)]">{isBm ? "Mod larian" : "Run mode"}</p>
+            <div className="flex rounded-full border border-[var(--border)] p-1">
+              <button type="button" onClick={() => setRunMode("outdoor")} aria-pressed={runMode === "outdoor"} className={segBtn(runMode === "outdoor")}>
+                <Navigation size={15} />
+                {isBm ? "Luar (GPS)" : "Outdoor (GPS)"}
+              </button>
+              <button type="button" onClick={() => setRunMode("indoor")} aria-pressed={runMode === "indoor"} className={segBtn(runMode === "indoor")}>
+                <Footprints size={15} />
+                {isBm ? "Treadmill" : "Treadmill"}
+              </button>
+            </div>
+            {runMode === "indoor" && (
+              <p className="mt-2 px-1 text-xs text-[var(--muted)]">
+                {isBm ? "Jarak dan kalori dikira daripada langkah." : "Distance and calories are worked out from your steps."}
+              </p>
+            )}
+          </div>
+          <div>
+            <p className="mb-1.5 px-1 text-xs font-semibold text-[var(--muted)]">{isBm ? "Sasaran" : "Target"}</p>
+            <div className="grid grid-cols-3 gap-2">
+              {goalOptions.map((g) => (
+                <button
+                  key={String(g.val)}
+                  type="button"
+                  aria-pressed={targetGoalKm === g.val}
+                  onClick={() => setTargetGoalKm(g.val)}
+                  className={cn(
+                    "h-11 rounded-full border text-sm font-semibold",
+                    targetGoalKm === g.val ? "border-transparent bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "border-[var(--border)] text-[var(--text)]"
+                  )}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button type="button" onClick={triggerStartCountdown} className={cn(bigBtn, "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]")}>
+            <Play size={20} className="fill-current" />
+            {isBm ? "Mula larian" : "Start run"}
+          </button>
+        </>
+      )}
+      {trackingState === "running" && (
+        <button type="button" onClick={pauseTracking} className={cn(bigBtn, "border border-[var(--border-strong)] text-[var(--text)]")}>
+          <Pause size={20} className="fill-current" />
+          {isBm ? "Jeda" : "Pause"}
+        </button>
+      )}
+      {trackingState === "paused" && (
+        <>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={beginTrackingExecution} className={cn(bigBtn, "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]")}>
+              <Play size={20} className="fill-current" />
+              {isBm ? "Sambung" : "Resume"}
+            </button>
+            <button type="button" onClick={finishTracking} className={cn(bigBtn, "border border-[var(--border-strong)] text-[var(--text)]")}>
+              <StopCircle size={20} />
+              {isBm ? "Tamat" : "Finish"}
+            </button>
+          </div>
+          <button type="button" onClick={resetTracking} className="flex h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-semibold text-[var(--muted)]">
+            <RotateCcw size={15} />
+            {isBm ? "Set semula larian" : "Discard this run"}
+          </button>
+        </>
+      )}
+    </div>
+  )
+
+  const metricTile = (icon: React.ReactNode, name: string, value: React.ReactNode, unit: string) => (
+    <div className="min-w-0 rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)] p-3">
+      <div className="flex items-center gap-1.5 text-xs text-[var(--muted)]">
+        {icon}
+        <span className="truncate">{name}</span>
+      </div>
+      <p className="mt-1.5 truncate text-xl font-bold tabular-nums text-[var(--text)]">{value}</p>
+      <p className="truncate text-[0.6875rem] text-[var(--muted)]">{unit}</p>
+    </div>
+  )
+
   return (
     <div className="flex min-h-screen flex-col bg-[var(--page-bg)] text-[var(--text)] selection:bg-[var(--text)] selection:text-[var(--page-bg)]">
       {/* ── MAPS THEME MONOCHROME FILTERS ── */}
@@ -1005,7 +1172,7 @@ export default function HealthTrackingPage() {
 
         <main className="mx-auto w-full max-w-7xl px-6 py-6 space-y-6">
           {/* LIFETIME METRICS OVERVIEW BANNER */}
-          <div className="modern-card rounded-[var(--radius-3xl)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[var(--card-shadow)]">
+          <div className="modern-card rounded-[var(--radius-3xl)] border border-[var(--border)] bg-[var(--card)] p-6  ">
             <div className="flex items-center justify-between border-b border-[var(--divider)] pb-4">
               <div>
                 <h2 className="text-lg font-black text-[var(--text)] flex items-center gap-2">
@@ -1083,7 +1250,7 @@ export default function HealthTrackingPage() {
                         localStorage.removeItem(historyStorageKey)
                       }
                     }}
-                    className="text-[11px] font-bold text-[var(--muted)] hover:text-rose-500 transition"
+                    className="text-[11px] font-bold text-[var(--muted)] hover:text-rose-500  "
                   >
                     {isBm ? "Kosongkan Semua" : "Clear All"}
                   </button>
@@ -1091,7 +1258,7 @@ export default function HealthTrackingPage() {
               </div>
 
               {!savedHistory.length ? (
-                <div className="modern-card flex flex-col items-center justify-center rounded-[var(--radius-2xl)] border border-dashed border-[var(--border)] bg-[var(--card)] p-8 text-center shadow-[var(--card-shadow)]">
+                <div className="modern-card flex flex-col items-center justify-center rounded-[var(--radius-2xl)] border border-dashed border-[var(--border)] bg-[var(--card)] p-8 text-center  ">
                   <Footprints size={32} className="text-[var(--muted)]" />
                   <p className="mt-3 text-sm font-black text-[var(--text)]">
                     {isBm ? "Belum ada rekod larian." : "No workouts recorded yet."}
@@ -1123,9 +1290,9 @@ export default function HealthTrackingPage() {
                           }
                         }}
                         className={cn(
-                          "modern-card group relative cursor-pointer rounded-[var(--radius-2xl)] border p-4 text-left shadow-xs transition-all",
+                          "modern-card group relative cursor-pointer rounded-[var(--radius-2xl)] border p-4 text-left shadow-xs  ",
                           isSelected
-                            ? "border-[var(--text)] bg-[var(--card)] ring-2 ring-[var(--text)]/20 shadow-md"
+                            ? "border-[var(--text)] bg-[var(--card)] ring-2 ring-[var(--text)]/20  "
                             : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--border-strong)] hover:bg-[var(--surface-tint)]"
                         )}
                       >
@@ -1134,7 +1301,7 @@ export default function HealthTrackingPage() {
                             <span
                               className={cn(
                                 "h-2 w-2 rounded-full",
-                                isSelected ? "bg-emerald-500 animate-pulse" : "bg-[var(--muted)]"
+                                isSelected ? "bg-emerald-500  " : "bg-[var(--muted)]"
                               )}
                             />
                             <span className="text-xs font-black text-[var(--text)]">{dateStr}</span>
@@ -1149,7 +1316,7 @@ export default function HealthTrackingPage() {
                               }
                             }}
                             title={isBm ? "Padam rekod" : "Delete"}
-                            className="rounded-lg p-1 text-[var(--muted)] hover:bg-[var(--surface-tint-strong)] hover:text-rose-500 transition"
+                            className="rounded-lg p-1 text-[var(--muted)] hover:bg-[var(--surface-tint-strong)] hover:text-rose-500  "
                           >
                             <Trash2 size={13} />
                           </button>
@@ -1194,7 +1361,7 @@ export default function HealthTrackingPage() {
             {/* RIGHT: INTERACTIVE MAP & KM SPLITS */}
             <div className="col-span-12 lg:col-span-7 xl:col-span-8 flex flex-col gap-6">
               {/* MAP CONTAINER CARD (ALWAYS MOUNTED & INTERACTIVE) */}
-              <div className="modern-card overflow-hidden rounded-[var(--radius-3xl)] border border-[var(--border)] bg-[var(--card)] shadow-[var(--card-shadow)]">
+              <div className="modern-card overflow-hidden rounded-[var(--radius-3xl)] border border-[var(--border)] bg-[var(--card)]  ">
                 <div className="flex items-center justify-between border-b border-[var(--divider)] px-6 py-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)]">
@@ -1227,7 +1394,7 @@ export default function HealthTrackingPage() {
                         type="button"
                         onClick={() => setDesktopMapType("google-streets")}
                         className={cn(
-                          "rounded-full px-2.5 py-1 text-[11px] font-bold transition",
+                          "rounded-full px-2.5 py-1 text-[11px] font-bold  ",
                           desktopMapType === "google-streets"
                             ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-xs"
                             : "text-[var(--muted)] hover:text-[var(--text)]"
@@ -1239,7 +1406,7 @@ export default function HealthTrackingPage() {
                         type="button"
                         onClick={() => setDesktopMapType("google-hybrid")}
                         className={cn(
-                          "rounded-full px-2.5 py-1 text-[11px] font-bold transition",
+                          "rounded-full px-2.5 py-1 text-[11px] font-bold  ",
                           desktopMapType === "google-hybrid"
                             ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-xs"
                             : "text-[var(--muted)] hover:text-[var(--text)]"
@@ -1251,7 +1418,7 @@ export default function HealthTrackingPage() {
                         type="button"
                         onClick={() => setDesktopMapType("google-terrain")}
                         className={cn(
-                          "rounded-full px-2.5 py-1 text-[11px] font-bold transition",
+                          "rounded-full px-2.5 py-1 text-[11px] font-bold  ",
                           desktopMapType === "google-terrain"
                             ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-xs"
                             : "text-[var(--muted)] hover:text-[var(--text)]"
@@ -1265,7 +1432,7 @@ export default function HealthTrackingPage() {
                       type="button"
                       onClick={fitDesktopRoute}
                       title={isBm ? "Muat Semula Laluan" : "Fit Route to Screen"}
-                      className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)] transition hover:bg-[var(--surface-tint-strong)]"
+                      className="flex h-8 w-8 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text)]   hover:bg-[var(--surface-tint-strong)]"
                     >
                       <Maximize2 size={14} />
                     </button>
@@ -1277,14 +1444,14 @@ export default function HealthTrackingPage() {
                   <div ref={desktopMapContainerRef} className="h-full min-h-[440px] w-full z-0" />
 
                   {/* Maps badge */}
-                  <div className="pointer-events-none absolute bottom-3 left-3 z-[10] flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)]/90 px-3 py-1 shadow-md backdrop-blur-md">
+                  <div className="pointer-events-none absolute bottom-3 left-3 z-[10] flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)]/90 px-3 py-1   backdrop-blur-md">
                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
                     <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text)]">Maps</span>
                   </div>
 
                   {/* Route pin legend or status banner */}
                   {selectedRun && selectedRun.path && selectedRun.path.length > 0 ? (
-                    <div className="pointer-events-none absolute bottom-3 right-3 z-[10] flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)]/90 px-3 py-1 shadow-md backdrop-blur-md text-[10px] font-bold text-[var(--text)]">
+                    <div className="pointer-events-none absolute bottom-3 right-3 z-[10] flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)]/90 px-3 py-1   backdrop-blur-md text-[10px] font-bold text-[var(--text)]">
                       <span className="flex items-center gap-1">
                         <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-600 text-[8px] font-bold text-white">S</span>
                         <span>{isBm ? "Mula" : "Start"}</span>
@@ -1296,7 +1463,7 @@ export default function HealthTrackingPage() {
                       </span>
                     </div>
                   ) : (
-                    <div className="pointer-events-none absolute bottom-3 right-3 z-[10] rounded-full border border-[var(--border)] bg-[var(--card)]/90 px-3 py-1 text-[11px] font-medium text-[var(--muted)] shadow-md backdrop-blur-md">
+                    <div className="pointer-events-none absolute bottom-3 right-3 z-[10] rounded-full border border-[var(--border)] bg-[var(--card)]/90 px-3 py-1 text-[11px] font-medium text-[var(--muted)]   backdrop-blur-md">
                       {isBm ? "Peta GPS Aktif" : "GPS Map Active"}
                     </div>
                   )}
@@ -1305,7 +1472,7 @@ export default function HealthTrackingPage() {
 
               {/* KM SPLITS & PACE ANALYSIS (OR READY TO RECORD NOTICE) */}
               {selectedRun ? (
-                <div className="modern-card rounded-[var(--radius-3xl)] border border-[var(--border)] bg-[var(--card)] p-6 shadow-[var(--card-shadow)]">
+                <div className="modern-card rounded-[var(--radius-3xl)] border border-[var(--border)] bg-[var(--card)] p-6  ">
                   <div className="flex items-center justify-between border-b border-[var(--divider)] pb-4">
                     <div className="flex items-center gap-2.5">
                       <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)]">
@@ -1343,7 +1510,7 @@ export default function HealthTrackingPage() {
                           <div
                             key={lap.kmNumber}
                             className={cn(
-                              "flex items-center justify-between gap-4 rounded-xl border p-3 transition",
+                              "flex items-center justify-between gap-4 rounded-xl border p-3  ",
                               lap.isFastest
                                 ? "border-[var(--text)] bg-[var(--surface-tint-strong)]"
                                 : "border-[var(--border)] bg-[var(--surface-tint)]"
@@ -1367,7 +1534,7 @@ export default function HealthTrackingPage() {
                               <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--card)] border border-[var(--border)]">
                                 <div
                                   className={cn(
-                                    "h-full rounded-full transition-all",
+                                    "h-full rounded-full  ",
                                     lap.isFastest ? "bg-emerald-500" : "bg-[var(--text)]"
                                   )}
                                   style={{ width: `${barWidthPct}%` }}
@@ -1405,7 +1572,7 @@ export default function HealthTrackingPage() {
                   )}
                 </div>
               ) : (
-                <div className="modern-card flex flex-col items-center justify-center rounded-[var(--radius-3xl)] border border-dashed border-[var(--border)] bg-[var(--card)] p-6 text-center shadow-[var(--card-shadow)]">
+                <div className="modern-card flex flex-col items-center justify-center rounded-[var(--radius-3xl)] border border-dashed border-[var(--border)] bg-[var(--card)] p-6 text-center  ">
                   <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]">
                     <Route size={24} />
                   </div>
@@ -1430,818 +1597,219 @@ export default function HealthTrackingPage() {
         </main>
       </div>
 
-      {/* ── MOBILE WORKSPACE (ATHLETIC RUN TRACKER & RUN HISTORY) ── */}
-      <div className="md:hidden flex flex-col flex-1">
-        <MobilePageHeader title="RunTracker" fallbackHref={`/${sessionId}/health`} />
+      {/* ── MOBILE: tracker and history ── */}
+      <div className="flex flex-1 flex-col md:hidden">
+        <MobilePageHeader title={isBm ? "Larian" : "Run Tracker"} fallbackHref={`/${sessionId}/health`} />
 
-      {/* ── COUNTDOWN OVERLAY ── */}
-      {trackingState === "countdown" && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--overlay)] p-4">
-          <span className="text-xs font-bold uppercase tracking-[0.3em] text-[var(--muted)]">
-            {isBm ? "BERSEDIA" : "GET READY"}
-          </span>
-          <div className="my-6 flex h-36 w-36 items-center justify-center rounded-full border border-[var(--border-strong)] bg-[var(--card)] text-7xl font-black text-[var(--text)] shadow-2xl animate-pulse">
-            {countdownNum}
-          </div>
-          <p className="text-xs font-medium text-[var(--text-soft)]">
-            {isBm ? "Mengunci isyarat GPS OpenStreetMap..." : "Locking high-accuracy GPS signal..."}
-          </p>
-        </div>
-      )}
-
-      {/* ── MAIN CONTENT: FULL-WIDE ON MOBILE (px-1) MATCHING HEALTH DASHBOARD ── */}
-      <main className="flex-1 pb-24">
-        {activeTab === "tracker" && (
-          <div className="px-3 pb-1 pt-2">
-            <button
-              type="button"
-              onClick={() => setViewMode(viewMode === "cockpit" ? "map" : "cockpit")}
-              className="ml-auto flex h-11 w-fit items-center justify-center gap-2 rounded-full border border-[var(--border)] px-5 text-sm font-semibold text-[var(--text)] transition active:scale-[0.98]"
-            >
-              {viewMode === "cockpit" ? <Route size={15} /> : <Gauge size={15} />}
-              <span>{viewMode === "cockpit" ? (isBm ? "Paparan peta" : "Map view") : (isBm ? "Paparan metrik" : "Metrics view")}</span>
-            </button>
+        {trackingState === "countdown" && (
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[var(--overlay)] p-4">
+            <span className="text-sm font-semibold text-[var(--muted)]">{isBm ? "Bersedia" : "Get ready"}</span>
+            <div className="my-6 flex h-36 w-36 items-center justify-center rounded-full border border-[var(--border-strong)] bg-[var(--card)] text-7xl font-black text-[var(--text)]">
+              {countdownNum}
+            </div>
+            <p className="text-xs text-[var(--text-soft)]">{isBm ? "Mengunci isyarat GPS…" : "Locking the GPS signal…"}</p>
           </div>
         )}
-        {/* TOP STATUS RIBBON */}
-        <div className="mx-auto w-full max-w-5xl px-1 pt-1 md:px-6 md:pt-4">
-          <div className="flex items-center justify-between gap-2 border-b border-[var(--divider)] pb-3">
-            {/* Tab pill switcher */}
-            <div className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface-tint)] p-1">
-              <button
-                type="button"
-                onClick={() => setActiveTab("tracker")}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold transition",
-                  activeTab === "tracker"
-                    ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-xs"
-                    : "text-[var(--muted)] hover:text-[var(--text)]"
-                )}
-              >
-                <Route size={13} />
-                <span>{isBm ? "Larian" : "Tracker"}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("history")}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-bold transition",
-                  activeTab === "history"
-                    ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-xs"
-                    : "text-[var(--muted)] hover:text-[var(--text)]"
-                )}
-              >
-                <History size={13} />
-                <span>{isBm ? "Sejarah" : "History"}</span>
-                {savedHistory.length > 0 && (
-                  <span className="ml-1 rounded-full bg-[var(--surface-tint-strong)] px-1.5 py-0.2 text-[10px] font-bold text-[var(--text)]">
-                    {savedHistory.length}
-                  </span>
-                )}
-              </button>
-            </div>
 
-            {/* GPS Signal badge */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-3 py-1 text-[11px] font-medium text-[var(--text)]">
-                <span
-                  className={cn(
-                    "h-2 w-2 rounded-full",
-                    gpsAccuracy && gpsAccuracy < 15
-                      ? "bg-[var(--text)] animate-ping"
-                      : gpsAccuracy && gpsAccuracy < 35
-                      ? "bg-[var(--text-soft)]"
-                      : "bg-[var(--muted)]"
-                  )}
-                />
-                <span className="text-[10px] font-bold">
-                  {gpsAccuracy ? `±${Math.round(gpsAccuracy)}m` : isBm ? "Mencari GPS..." : "Searching GPS..."}
+        <main className="flex-1 space-y-3 px-1 pb-28 pt-2">
+          <div className="flex rounded-full border border-[var(--border)] p-1" role="tablist">
+            <button type="button" role="tab" aria-selected={activeTab === "tracker"} onClick={() => setActiveTab("tracker")} className={segBtn(activeTab === "tracker")}>
+              <Route size={15} />
+              {isBm ? "Larian" : "Tracker"}
+            </button>
+            <button type="button" role="tab" aria-selected={activeTab === "history"} onClick={() => setActiveTab("history")} className={segBtn(activeTab === "history")}>
+              <History size={15} />
+              {isBm ? "Sejarah" : "History"}
+              {savedHistory.length > 0 ? <span className="rounded-full bg-white/20 px-1.5 text-xs">{savedHistory.length}</span> : null}
+            </button>
+          </div>
+
+          {activeTab === "tracker" ? (
+            <>
+              <div className="flex items-center justify-between gap-2 px-1">
+                <span className="flex items-center gap-2 text-sm font-semibold text-[var(--text)]">
+                  <span className={cn("h-2 w-2 rounded-full", trackingState === "running" ? "bg-emerald-500" : trackingState === "paused" ? "bg-amber-500" : "bg-[var(--muted)]")} />
+                  {stateLabel}
+                </span>
+                <span className="flex items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1 text-xs font-semibold text-[var(--text)]">
+                  <span className={cn("h-1.5 w-1.5 rounded-full", gpsGood ? "bg-emerald-500" : "bg-[var(--muted)]")} />
+                  {gpsLabel}
                 </span>
               </div>
 
-              {hasNativeStepSensor && (
-                <div className="hidden sm:flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-2.5 py-1 text-[10px] font-bold text-[var(--text)]">
-                  <Zap size={11} />
-                  <span>{isBm ? "Sensor Perkakasan" : "Hardware Sensor"}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+              <div className="flex rounded-full border border-[var(--border)] p-1">
+                <button type="button" aria-pressed={viewMode === "cockpit"} onClick={() => setViewMode("cockpit")} className={segBtn(viewMode === "cockpit")}>
+                  <Gauge size={15} />
+                  {isBm ? "Metrik" : "Metrics"}
+                </button>
+                <button type="button" aria-pressed={viewMode === "map"} onClick={() => setViewMode("map")} className={segBtn(viewMode === "map")}>
+                  <Route size={15} />
+                  {isBm ? "Peta" : "Map"}
+                </button>
+              </div>
 
-        {activeTab === "tracker" ? (
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-1 pt-3 md:px-6 md:pt-4">
-            {/* ── RUN COCKPIT VIEW ── */}
-            <div className={cn("space-y-4", viewMode === "cockpit" ? "block" : "hidden")}>
-                {/* 1. GIANT ATHLETIC DISTANCE DISPLAY */}
-                <div className="modern-card relative overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--card)] p-5 text-center shadow-[var(--card-shadow)] md:rounded-[var(--radius-3xl)] md:p-8">
-                  {/* Subtle top indicator */}
-                  <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-widest text-[var(--muted)]">
-                    <span>
-                      {trackingState === "running"
-                        ? runMode === "indoor"
-                          ? isBm ? "● LARI SETEMPAT / TREADMILL" : "● INDOOR / TREADMILL"
-                          : isBm ? "● SEDANG BERLARI (GPS)" : "● LIVE RUN (GPS)"
-                        : trackingState === "paused"
-                        ? isBm ? "❚❚ DIJEDA" : "❚❚ PAUSED"
-                        : isBm ? "SEDIA UNTUK LARI" : "READY TO RUN"}
-                    </span>
-                    {calculatedStats.progressPercent !== null && (
-                      <span className="rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-2.5 py-0.5 text-[10px] font-bold text-[var(--text)]">
-                        {calculatedStats.progressPercent}% {isBm ? "Sasaran" : "Target"}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Main giant number */}
-                  <div className="my-4 flex flex-col items-center justify-center">
-                    <div className="text-7xl font-black tabular-nums tracking-tighter text-[var(--text)] sm:text-8xl md:text-9xl">
+              <div className={cn("space-y-3", viewMode === "cockpit" ? "block" : "hidden")}>
+                <ModenHero
+                  pageActions={false}
+                  label={
+                    <>
+                      <Timer size={16} />
+                      <span className="font-mono tabular-nums">{formatDuration(elapsedSeconds)}</span>
+                      {calculatedStats.progressPercent !== null ? <span className="ml-auto text-xs opacity-70">{calculatedStats.progressPercent}% {isBm ? "sasaran" : "of target"}</span> : null}
+                    </>
+                  }
+                  currency={null}
+                  amount={
+                    <>
                       {calculatedStats.distanceKm}
+                      <span className="ml-2 text-base font-semibold opacity-60">km</span>
+                    </>
+                  }
+                  amountSize="clamp(3rem, 16vw, 4.5rem)"
+                  stats={[
+                    { key: "pace", tone: "neutral", icon: <TrendingUp size={15} strokeWidth={2.2} />, label: isBm ? "Pace purata" : "Avg pace", value: `${calculatedStats.pace} /km` },
+                    { key: "speed", tone: "neutral", icon: <Gauge size={15} strokeWidth={2.2} />, label: isBm ? "Kelajuan" : "Speed", value: `${currentSpeedKmh} km/h` },
+                  ]}
+                />
+                {runControls}
+                <div className="grid grid-cols-2 gap-2">
+                  {metricTile(<Footprints size={13} />, isBm ? "Langkah" : "Steps", calculatedStats.effectiveSteps.toLocaleString(), calculatedStats.cadenceSpm > 0 ? `${calculatedStats.cadenceSpm} spm` : hasNativeStepSensor ? (isBm ? "Sensor" : "Sensor") : "GPS")}
+                  {metricTile(<Flame size={13} />, isBm ? "Kalori" : "Calories", calculatedStats.calories, "kcal")}
+                </div>
+                {splits.length > 0 && (
+                  <section className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4">
+                    <div className="mb-2 flex items-baseline justify-between">
+                      <h2 className="text-base font-bold text-[var(--text)]">{isBm ? "Pecahan km" : "Km splits"}</h2>
+                      <span className="text-xs text-[var(--muted)]">{splits.length} km</span>
                     </div>
-                    <div className="mt-1 text-sm font-black tracking-widest text-[var(--muted)] sm:text-base">
-                      {isBm ? "KILOMETER" : "KILOMETERS"}
+                    <ul className="space-y-1.5">
+                      {splits.map((sp) => (
+                        <li key={sp.kmNumber} className="flex items-center justify-between rounded-full border border-[var(--border)] px-4 py-2 text-sm">
+                          <span className="font-semibold text-[var(--text)]">
+                            km {sp.kmNumber}
+                            {sp.isFastest ? <span className="ml-2 rounded-full bg-[var(--btn-primary-bg)] px-2 py-0.5 text-[0.625rem] font-semibold text-[var(--btn-primary-text)]">{isBm ? "Terpantas" : "Fastest"}</span> : null}
+                          </span>
+                          <span className="font-mono tabular-nums text-[var(--muted)]">
+                            {sp.paceFormatted} /km · {formatDuration(sp.durationSeconds)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+              </div>
+
+              <div className={cn("relative h-[calc(100dvh-24rem)] min-h-[320px] w-full overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)]", viewMode === "map" ? "block" : "hidden")}>
+                <div ref={mapContainerRef} className="z-[1] h-full w-full touch-none" />
+                <div className="pointer-events-none absolute inset-x-2 top-2 z-[15] flex items-start justify-between gap-2">
+                  <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-[var(--border)] bg-[var(--card)]/90 px-4 py-1.5 backdrop-blur-md">
+                    <div>
+                      <div className="text-[0.625rem] text-[var(--muted)]">km</div>
+                      <div className="text-base font-bold tabular-nums text-[var(--text)]">{calculatedStats.distanceKm}</div>
+                    </div>
+                    <div className="h-6 w-px bg-[var(--divider)]" />
+                    <div>
+                      <div className="text-[0.625rem] text-[var(--muted)]">pace</div>
+                      <div className="text-base font-bold tabular-nums text-[var(--text)]">{calculatedStats.pace}</div>
+                    </div>
+                    <div className="h-6 w-px bg-[var(--divider)]" />
+                    <div>
+                      <div className="text-[0.625rem] text-[var(--muted)]">{isBm ? "masa" : "time"}</div>
+                      <div className="font-mono text-base font-bold tabular-nums text-[var(--text)]">{formatDuration(elapsedSeconds)}</div>
                     </div>
                   </div>
-
-                  {/* Big athletic digital clock */}
-                  <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-1.5">
-                    <Timer size={15} className="text-[var(--muted)]" />
-                    <span className="text-xl font-black tabular-nums tracking-wider text-[var(--text)] sm:text-2xl font-mono">
-                      {formatDuration(elapsedSeconds)}
-                    </span>
-                  </div>
-
-                  {/* Target Goal & Run Mode (when idle) */}
-                  {trackingState === "idle" && (
-                    <div className="mt-6 border-t border-[var(--divider)] pt-4 space-y-4">
-                      {/* Mode Segmented Selector */}
-                      <div className="flex flex-col items-center">
-                        <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
-                          {isBm ? "Pilih Mod Larian:" : "Select Run Mode:"}
-                        </div>
-                        <div className="inline-flex rounded-2xl border border-[var(--border)] bg-[var(--surface-tint)] p-1 w-full max-w-sm">
-                          <button
-                            type="button"
-                            onClick={() => setRunMode("outdoor")}
-                            className={cn(
-                              "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 px-3 text-xs font-black transition",
-                              runMode === "outdoor"
-                                ? "bg-[var(--card)] text-[var(--text)] shadow-xs border border-[var(--border)]"
-                                : "text-[var(--muted)] hover:text-[var(--text)]"
-                            )}
-                          >
-                            <Navigation size={13} />
-                            <span>{isBm ? "Luar (GPS)" : "Outdoor (GPS)"}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setRunMode("indoor")}
-                            className={cn(
-                              "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 px-3 text-xs font-black transition",
-                              runMode === "indoor"
-                                ? "bg-[var(--card)] text-[var(--text)] shadow-xs border border-[var(--border)]"
-                                : "text-[var(--muted)] hover:text-[var(--text)]"
-                            )}
-                          >
-                            <Footprints size={13} />
-                            <span>{isBm ? "Setempat / Treadmill" : "Indoor / Treadmill"}</span>
-                          </button>
-                        </div>
-                        {runMode === "indoor" && (
-                          <p className="mt-2 text-[11px] font-medium text-[var(--muted)] text-center">
-                            {isBm
-                              ? "⚡ Penderia langkah aktif: Jarak & kalori dikira daripada langkah setempat."
-                              : "⚡ Step sensor active: Distance & calories calculated from stationary steps."}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-[var(--muted)] text-center">
-                        {isBm ? "Tetapkan Sasaran Larian:" : "Set Target Goal:"}
-                      </div>
-                      <div className="flex flex-wrap items-center justify-center gap-1.5">
-                        {[
-                          { label: isBm ? "Bebas" : "Free", val: null },
-                          { label: "1 km", val: 1 },
-                          { label: "3 km", val: 3 },
-                          { label: "5 km (5K)", val: 5 },
-                          { label: "10 km (10K)", val: 10 },
-                          { label: isBm ? "21 km (Separuh)" : "21 km (Half)", val: 21 },
-                        ].map((g) => (
-                          <button
-                            key={String(g.val)}
-                            type="button"
-                            onClick={() => setTargetGoalKm(g.val)}
-                            className={cn(
-                              "rounded-full px-3.5 py-1 text-xs font-bold transition",
-                              targetGoalKm === g.val
-                                ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-xs"
-                                : "border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--text-soft)] hover:text-[var(--text)]"
-                            )}
-                          >
-                            {g.label}
+                  <div className="pointer-events-auto flex flex-col items-end gap-2">
+                    <button type="button" onClick={() => setShowMapTypeMenu(!showMapTypeMenu)} aria-label={isBm ? "Gaya peta" : "Map style"} className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)]/90 text-[var(--text)] backdrop-blur-md">
+                      <Layers size={17} />
+                    </button>
+                    <button type="button" onClick={centerOnUser} aria-label={isBm ? "Pusatkan" : "Center on me"} className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)]/90 text-[var(--text)] backdrop-blur-md">
+                      <LocateFixed size={17} />
+                    </button>
+                    {showMapTypeMenu && (
+                      <div className="flex min-w-[10.5rem] flex-col gap-1 rounded-[1.25rem] border border-[var(--border)] bg-[var(--card)] p-1.5">
+                        {([["google-streets", isBm ? "Jalan" : "Street"], ["google-hybrid", isBm ? "Satelit" : "Satellite"], ["google-terrain", isBm ? "Rupa bumi" : "Terrain"]] as const).map(([k, text]) => (
+                          <button key={k} type="button" onClick={() => { setMapType(k); setShowMapTypeMenu(false) }} className={cn("flex h-10 items-center justify-between rounded-full px-4 text-sm font-semibold", mapType === k ? "bg-[var(--surface-tint-strong)] text-[var(--text)]" : "text-[var(--muted)]")}>
+                            {text}
+                            {mapType === k && <Check size={14} />}
                           </button>
                         ))}
                       </div>
+                    )}
+                  </div>
+                </div>
+              </div>
 
-                      {/* ── HERO START BUTTON (NIKE RUN CLUB ICONIC FOCUS) ── */}
-                      <div className="mt-6 flex flex-col items-center justify-center pt-2">
-                        <button
-                          type="button"
-                          onClick={triggerStartCountdown}
-                          className="group relative flex h-24 w-24 sm:h-28 sm:w-28 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-2xl transition-all duration-300 hover:scale-105 active:scale-95 ring-4 ring-[var(--surface-tint-strong)] cursor-pointer"
-                          title={isBm ? "Ketik untuk mula larian" : "Tap to start run"}
-                        >
-                          {/* Concentric athletic pulsing radar rings */}
-                          <span className="absolute -inset-3 rounded-full border-2 border-[var(--text)]/20 animate-ping pointer-events-none" />
-                          <span className="absolute -inset-1 rounded-full border border-[var(--border-strong)] pointer-events-none" />
-
-                          <div className="flex flex-col items-center justify-center">
-                            <Play size={32} className="translate-x-0.5 fill-current" />
-                            <span className="mt-1 text-xs font-black uppercase tracking-widest">
-                              {isBm ? "MULA" : "START"}
-                            </span>
+              {viewMode === "map" ? runControls : null}
+            </>
+          ) : (
+            <div className="space-y-3">
+              <ModenHero
+                pageActions={false}
+                label={
+                  <>
+                    <Trophy size={16} />
+                    {isBm ? "Jumlah larian" : "Lifetime running"}
+                  </>
+                }
+                currency={null}
+                amount={
+                  <>
+                    {historySummary.totalDistKm}
+                    <span className="ml-2 text-base font-semibold opacity-60">km</span>
+                  </>
+                }
+                amountSize="clamp(2rem, 9vw, 2.75rem)"
+                stats={[
+                  { key: "runs", tone: "neutral", icon: <Route size={15} strokeWidth={2.2} />, label: isBm ? "Larian" : "Runs", value: String(historySummary.totalRuns) },
+                  { key: "time", tone: "neutral", icon: <Timer size={15} strokeWidth={2.2} />, label: isBm ? "Jumlah masa" : "Total time", value: historySummary.totalDuration },
+                ]}
+              />
+              {!savedHistory.length ? (
+                <div className="flex flex-col items-center rounded-[1.5rem] border border-dashed border-[var(--border)] px-6 py-12 text-center">
+                  <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--surface-tint-strong)] text-[var(--muted)]"><Footprints size={24} /></span>
+                  <p className="mt-4 text-base font-bold text-[var(--text)]">{isBm ? "Belum ada larian" : "No runs yet"}</p>
+                  <p className="mt-1 max-w-xs text-sm text-[var(--muted)]">{isBm ? "Larian yang anda simpan akan muncul di sini." : "Runs you save will show up here."}</p>
+                  <button type="button" onClick={() => setActiveTab("tracker")} className="mt-5 h-11 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)]">
+                    {isBm ? "Mula larian" : "Start a run"}
+                  </button>
+                </div>
+              ) : (
+                <ul className="space-y-2.5">
+                  {savedHistory.map((item) => {
+                    const when = new Date(item.startTime || item.createdAt).toLocaleString(isBm ? "ms-MY" : "en-MY", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false })
+                    return (
+                      <li key={item.id} className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-base font-bold tabular-nums text-[var(--text)]">{(item.distanceMeters / 1000).toFixed(2)} km</p>
+                            <p className="text-xs text-[var(--muted)]">{when} · {item.mode === "indoor" ? "Treadmill" : "GPS"}</p>
                           </div>
-                        </button>
-
-                        <div className="mt-4 flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-tint)] px-4 py-1.5 text-xs font-bold text-[var(--text)]">
-                          <span
-                            className={cn(
-                              "h-2 w-2 rounded-full",
-                              gpsAccuracy && gpsAccuracy < 25 ? "bg-emerald-500 animate-pulse" : "bg-[var(--muted)]"
-                            )}
-                          />
-                          <span>
-                            {gpsAccuracy && gpsAccuracy < 25
-                              ? isBm ? "GPS bersedia • Ketik MULA untuk berlari" : "GPS ready • Tap START to begin"
-                              : isBm ? "Ketik butang MULA untuk menjejak" : "Tap START to begin tracking"}
-                          </span>
+                          <button type="button" onClick={() => deleteHistoryItem(item.id)} aria-label={isBm ? "Padam larian" : "Delete run"} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-rose-500/30 text-rose-500">
+                            <Trash2 size={14} />
+                          </button>
                         </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* IN-CARD RUNNING CONTROLS */}
-                  {trackingState === "running" && (
-                    <div className="mt-6 flex flex-col items-center justify-center border-t border-[var(--divider)] pt-4">
-                      <button
-                        type="button"
-                        onClick={pauseTracking}
-                        className="flex h-14 items-center gap-2.5 rounded-full border-2 border-[var(--border-strong)] bg-[var(--card)] px-8 text-xs font-black uppercase tracking-wider text-[var(--text)] shadow-lg transition hover:bg-[var(--surface-tint-strong)] active:scale-95 cursor-pointer"
-                      >
-                        <Pause size={20} className="fill-current" />
-                        <span>{isBm ? "Jeda Larian" : "Pause Run"}</span>
-                      </button>
-                      <span className="mt-2 text-[11px] font-medium text-[var(--muted)]">
-                        {isBm ? "Larian sedang dirakam • Ketik untuk jeda" : "Run in progress • Tap to pause"}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* IN-CARD PAUSED CONTROLS */}
-                  {trackingState === "paused" && (
-                    <div className="mt-6 flex flex-col items-center justify-center gap-3 border-t border-[var(--divider)] pt-4">
-                      <div className="flex items-center justify-center gap-3">
-                        <button
-                          type="button"
-                          onClick={beginTrackingExecution}
-                          className="flex h-13 w-13 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-lg transition hover:opacity-90 active:scale-95 sm:h-14 sm:w-14"
-                          title={isBm ? "Sambung larian" : "Resume run"}
-                        >
-                          <Play size={22} className="translate-x-0.5 fill-current" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={finishTracking}
-                          className="flex h-13 items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-5 text-xs font-black uppercase tracking-wider text-[var(--text)] shadow-md transition hover:bg-[var(--card-active)] active:scale-95 sm:h-14"
-                        >
-                          <StopCircle size={18} />
-                          <span>{isBm ? "Tamat & Simpan" : "Finish & Save"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={resetTracking}
-                          className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)] text-[var(--muted)] shadow-xs transition hover:text-[var(--text)] active:scale-95 sm:h-12 sm:w-12"
-                          title={isBm ? "Set Semula" : "Reset"}
-                        >
-                          <RotateCcw size={16} />
-                        </button>
-                      </div>
-                      <span className="text-[11px] font-medium text-[var(--muted)]">
-                        {isBm ? "Sesi dijeda • Sambung atau tamatkan bila selesai" : "Session paused • Resume or finish when done"}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* 2. 4-METRIC ATHLETIC TELEMETRY TILES */}
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 md:gap-3">
-                  {/* Avg Pace */}
-                  <div className="modern-card flex flex-col justify-between rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--card)] p-3.5 shadow-xs md:rounded-[var(--radius-2xl)] md:p-4">
-                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      <span>{isBm ? "Pace Purata" : "Avg Pace"}</span>
-                      <TrendingUp size={14} />
-                    </div>
-                    <div className="mt-2.5 md:mt-3">
-                      <div className="text-2xl font-black tabular-nums tracking-tight text-[var(--text)] sm:text-3xl">
-                        {calculatedStats.pace}
-                      </div>
-                      <div className="text-[10px] font-bold text-[var(--muted)]">MIN / KM</div>
-                    </div>
-                  </div>
-
-                  {/* Current Speed */}
-                  <div className="modern-card flex flex-col justify-between rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--card)] p-3.5 shadow-xs md:rounded-[var(--radius-2xl)] md:p-4">
-                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      <span>{isBm ? "Kelajuan" : "Speed"}</span>
-                      <Gauge size={14} />
-                    </div>
-                    <div className="mt-2.5 md:mt-3">
-                      <div className="text-2xl font-black tabular-nums tracking-tight text-[var(--text)] sm:text-3xl">
-                        {currentSpeedKmh}
-                      </div>
-                      <div className="text-[10px] font-bold text-[var(--muted)]">{isBm ? "KM / JAM" : "KM / H"}</div>
-                    </div>
-                  </div>
-
-                  {/* Cadence / Steps */}
-                  <div className="modern-card flex flex-col justify-between rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--card)] p-3.5 shadow-xs md:rounded-[var(--radius-2xl)] md:p-4">
-                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      <span>{isBm ? "Langkah" : "Steps"}</span>
-                      <Footprints size={14} />
-                    </div>
-                    <div className="mt-2.5 md:mt-3">
-                      <div className="text-2xl font-black tabular-nums tracking-tight text-[var(--text)] sm:text-3xl">
-                        {calculatedStats.effectiveSteps.toLocaleString()}
-                      </div>
-                      <div className="text-[10px] font-bold text-[var(--muted)]">
-                        {calculatedStats.cadenceSpm > 0 ? `${calculatedStats.cadenceSpm} SPM` : hasNativeStepSensor ? (isBm ? "SENSOR" : "HARDWARE") : "GPS"}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Calories */}
-                  <div className="modern-card flex flex-col justify-between rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--card)] p-3.5 shadow-xs md:rounded-[var(--radius-2xl)] md:p-4">
-                    <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      <span>{isBm ? "Kalori" : "Calories"}</span>
-                      <Flame size={14} />
-                    </div>
-                    <div className="mt-2.5 md:mt-3">
-                      <div className="text-2xl font-black tabular-nums tracking-tight text-[var(--text)] sm:text-3xl">
-                        {calculatedStats.calories}
-                      </div>
-                      <div className="text-[10px] font-bold text-[var(--muted)]">{isBm ? "KCAL TERBAKAR" : "KCAL BURNED"}</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3. MINI MAP PREVIEW CARD */}
-                <div
-                  onClick={() => setViewMode("map")}
-                  className="modern-card modern-card-interactive group relative flex h-32 cursor-pointer items-center justify-between overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--card)] p-4 shadow-xs transition hover:border-[var(--border-strong)] md:h-36 md:rounded-[var(--radius-3xl)]"
-                >
-                  <div className="z-10 max-w-[65%]">
-                    <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[var(--text)]">
-                      <Route size={15} />
-                      <span>{isBm ? "Peta Langsung" : "Live Map View"}</span>
-                    </div>
-                    <p className="mt-1 text-xs text-[var(--muted)]">
-                      {isBm
-                        ? "Ketik untuk melihat peta skrin penuh dengan jejak laluan & mod satelit."
-                        : "Tap to view full interactive map with live route & satellite mode."}
-                    </p>
-                  </div>
-                  <div className="z-10 flex h-9 items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 text-xs font-bold text-[var(--text)] shadow-sm md:h-10 md:px-3.5">
-                    <span>{isBm ? "Buka Peta" : "Open Map"}</span>
-                    <ChevronRight size={14} />
-                  </div>
-                  <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 opacity-15 transition group-hover:opacity-25">
-                    <Navigation size={90} className="text-[var(--text)]" />
-                  </div>
-                </div>
-
-                {/* 4. SPLIT LAPS TABLE */}
-                {splits.length > 0 && (
-                  <div className="modern-card rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--card)] p-4 shadow-xs md:rounded-[var(--radius-3xl)] md:p-5">
-                    <div className="mb-3 flex items-center justify-between border-b border-[var(--divider)] pb-2.5">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
-                        {isBm ? "Pecahan Kilometer (Splits)" : "KM Splits"}
-                      </span>
-                      <span className="text-xs font-bold text-[var(--text)]">
-                        {splits.length} KM {isBm ? "SELESAI" : "COMPLETED"}
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      {splits.map((s) => (
-                        <div
-                          key={s.kmNumber}
-                          className="flex items-center justify-between rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] px-3.5 py-2 text-xs md:px-4"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono font-bold text-[var(--text)]">KM {s.kmNumber}</span>
-                            {s.isFastest && (
-                              <span className="rounded-full bg-[var(--text)] px-1.5 py-0.2 text-[9px] font-black text-[var(--page-bg)]">
-                                {isBm ? "TERPANTAS" : "FASTEST"}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-4 font-mono">
-                            <span className="font-bold text-[var(--text)]">{s.paceFormatted} /km</span>
-                            <span className="text-[var(--muted)]">{formatDuration(s.durationSeconds)}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-            </div>
-
-            {/* ── FULL HUD MAP VIEW (FULL SCREEN MOBILE GPS) ── */}
-            <div
-              className={cn(
-                "relative h-[calc(100dvh-105px)] min-h-[560px] w-full overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--card)] shadow-[var(--card-shadow)] md:h-[calc(100dvh-180px)] md:rounded-[var(--radius-3xl)]",
-                viewMode === "map" ? "block" : "hidden"
-              )}
-            >
-              {/* Leaflet container */}
-              <div ref={mapContainerRef} className="h-full min-h-[560px] w-full touch-none z-[1]" />
-
-              {/* 1. Floating Map HUD Top Bar */}
-              <div className="pointer-events-none absolute inset-x-2 top-2 z-[15] flex items-center justify-between gap-1.5 md:inset-x-3 md:top-3 md:gap-2">
-                <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--card)]/90 px-3 py-1.5 shadow-lg backdrop-blur-md md:gap-3 md:px-4 md:py-2">
-                  <div>
-                    <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--muted)] md:text-[10px]">{isBm ? "Jarak" : "Dist"}</div>
-                    <div className="text-base font-black tabular-nums text-[var(--text)] md:text-lg">{calculatedStats.distanceKm} KM</div>
-                  </div>
-                  <div className="h-5 w-px bg-[var(--divider)] md:h-6" />
-                  <div>
-                    <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--muted)] md:text-[10px]">{isBm ? "Pace" : "Pace"}</div>
-                    <div className="text-base font-black tabular-nums text-[var(--text)] md:text-lg">{calculatedStats.pace}</div>
-                  </div>
-                  <div className="h-5 w-px bg-[var(--divider)] md:h-6" />
-                  <div>
-                    <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--muted)] md:text-[10px]">{isBm ? "Masa" : "Time"}</div>
-                    <div className="text-base font-black tabular-nums text-[var(--text)] font-mono md:text-lg">{formatDuration(elapsedSeconds)}</div>
-                  </div>
-                </div>
-
-                {/* Switch back to cockpit button */}
-                <button
-                  type="button"
-                  onClick={() => setViewMode("cockpit")}
-                  className="pointer-events-auto flex h-10 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)]/90 px-3 text-xs font-bold text-[var(--text)] shadow-lg backdrop-blur-md transition hover:bg-[var(--surface-tint-strong)] active:scale-95 md:h-11 md:px-4 cursor-pointer"
-                >
-                  <Gauge size={14} />
-                  <span>{isBm ? "Metrik" : "Metrics"}</span>
-                </button>
-              </div>
-
-              {/* 2. Map Brand Badge (Top-Left below top bar) */}
-              <div className="pointer-events-none absolute left-2.5 top-15 z-[12] flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)]/90 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-[var(--text-soft)] shadow-md backdrop-blur-md md:left-3 md:top-16">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
-                <span>Maps</span>
-                {mapType === "google-hybrid" && <span className="text-[9px] text-[var(--muted)]">• Satelit</span>}
-              </div>
-
-              {/* 3. Map Controls Tools Dock (Top-Right below top bar - Zero clash with bottom buttons!) */}
-              <div className="absolute right-2.5 top-15 z-[15] flex flex-col items-end gap-2 md:right-3 md:top-16">
-                <div className="flex flex-col gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowMapTypeMenu(!showMapTypeMenu)}
-                    title={isBm ? "Tukar gaya peta" : "Change Map style"}
-                    className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)]/90 text-[var(--text)] shadow-lg backdrop-blur-md transition hover:bg-[var(--surface-tint-strong)] active:scale-95 md:h-11 md:w-11 cursor-pointer"
-                  >
-                    <Layers size={17} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={centerOnUser}
-                    title={isBm ? "Pusatkan lokasi saya" : "Center on me"}
-                    className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card)]/90 text-[var(--text)] shadow-lg backdrop-blur-md transition hover:bg-[var(--surface-tint-strong)] active:scale-95 md:h-11 md:w-11 cursor-pointer"
-                  >
-                    <LocateFixed size={17} />
-                  </button>
-                </div>
-
-                {/* Map style selector popup */}
-                {showMapTypeMenu && (
-                  <div className="pointer-events-auto mt-1 flex flex-col gap-1 rounded-2xl border border-[var(--border)] bg-[var(--card)]/95 p-2 shadow-2xl backdrop-blur-md min-w-[175px] text-xs">
-                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
-                      {isBm ? "Gaya Peta" : "Map Style"}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMapType("google-streets")
-                        setShowMapTypeMenu(false)
-                      }}
-                      className={cn(
-                        "flex items-center justify-between rounded-xl px-2.5 py-2 font-bold transition text-left cursor-pointer",
-                        mapType === "google-streets"
-                          ? "bg-[var(--surface-tint-strong)] text-[var(--text)]"
-                          : "text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint)]"
-                      )}
-                    >
-                      <span>{isBm ? "Jalan (Monokrom)" : "Street (Monochrome)"}</span>
-                      {mapType === "google-streets" && <Check size={14} className="shrink-0" />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMapType("google-hybrid")
-                        setShowMapTypeMenu(false)
-                      }}
-                      className={cn(
-                        "flex items-center justify-between rounded-xl px-2.5 py-2 font-bold transition text-left cursor-pointer",
-                        mapType === "google-hybrid"
-                          ? "bg-[var(--surface-tint-strong)] text-[var(--text)]"
-                          : "text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint)]"
-                      )}
-                    >
-                      <span>{isBm ? "Satelit" : "Satellite"}</span>
-                      {mapType === "google-hybrid" && <Check size={14} className="shrink-0" />}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMapType("google-terrain")
-                        setShowMapTypeMenu(false)
-                      }}
-                      className={cn(
-                        "flex items-center justify-between rounded-xl px-2.5 py-2 font-bold transition text-left cursor-pointer",
-                        mapType === "google-terrain"
-                          ? "bg-[var(--surface-tint-strong)] text-[var(--text)]"
-                          : "text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--surface-tint)]"
-                      )}
-                    >
-                      <span>{isBm ? "Rupa Bumi" : "Terrain"}</span>
-                      {mapType === "google-terrain" && <Check size={14} className="shrink-0" />}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* 4. Live Speed readout (Placed safely above bottom dock when running) */}
-              {trackingState === "running" && currentSpeedKmh > 0 && (
-                <div className="absolute bottom-20 left-3 z-[15] flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)]/90 px-3 py-1 text-[var(--text)] shadow-lg backdrop-blur-md md:bottom-22 md:px-4 md:py-1.5">
-                  <Gauge size={14} className="text-[var(--text-soft)]" />
-                  <span className="text-xs font-black tabular-nums md:text-sm">{currentSpeedKmh} {isBm ? "km/j" : "km/h"}</span>
-                </div>
-              )}
-
-              {/* 5. ── OVERLAID MAP BOTTOM RUNNER CONTROLS (FULL WIDTH ON MOBILE, ZERO CLASH) ── */}
-              <div className="pointer-events-none absolute inset-x-3 bottom-4 z-[20] flex justify-center">
-                {trackingState === "idle" && (
-                  <button
-                    type="button"
-                    onClick={triggerStartCountdown}
-                    className="pointer-events-auto flex h-14 w-full max-w-lg items-center justify-center gap-3 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-black uppercase tracking-widest text-[var(--btn-primary-text)] shadow-2xl transition hover:opacity-95 active:scale-[0.98] ring-4 ring-[var(--card)]/80 md:h-16 cursor-pointer"
-                  >
-                    <Play size={22} className="translate-x-0.5 fill-current" />
-                    <span>{isBm ? "MULA LARIAN" : "START RUN"}</span>
-                  </button>
-                )}
-                {trackingState === "running" && (
-                  <button
-                    type="button"
-                    onClick={pauseTracking}
-                    className="pointer-events-auto flex h-14 w-full max-w-lg items-center justify-center gap-3 rounded-full border border-[var(--border-strong)] bg-[var(--card)]/95 px-6 text-sm font-black uppercase tracking-widest text-[var(--text)] shadow-2xl backdrop-blur-md transition hover:bg-[var(--surface-tint-strong)] active:scale-[0.98] md:h-16 cursor-pointer"
-                  >
-                    <Pause size={22} className="fill-current" />
-                    <span>{isBm ? "JEDA LARIAN" : "PAUSE RUN"}</span>
-                  </button>
-                )}
-                {trackingState === "paused" && (
-                  <div className="pointer-events-auto flex w-full max-w-lg items-center justify-center gap-2.5 rounded-full border border-[var(--border-strong)] bg-[var(--card)]/95 p-2 shadow-2xl backdrop-blur-md">
-                    <button
-                      type="button"
-                      onClick={beginTrackingExecution}
-                      className="flex h-12 flex-1 items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-4 text-xs font-black uppercase tracking-wider text-[var(--btn-primary-text)] shadow-md transition active:scale-95 cursor-pointer"
-                      title={isBm ? "Sambung" : "Resume"}
-                    >
-                      <Play size={18} className="translate-x-0.5 fill-current" />
-                      <span>{isBm ? "Sambung" : "Resume"}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={finishTracking}
-                      className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-4 text-xs font-black uppercase tracking-wider text-[var(--text)] transition active:scale-95 cursor-pointer"
-                    >
-                      <StopCircle size={17} />
-                      <span>{isBm ? "Tamat" : "Finish"}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={resetTracking}
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--muted)] hover:text-[var(--text)] transition active:scale-95 cursor-pointer"
-                      title={isBm ? "Set Semula" : "Reset"}
-                    >
-                      <RotateCcw size={16} />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* ── FLOATING RUNNER ACTION DOCK (ALWAYS IN THUMB REACH ON RUN / PAUSE) ── */}
-            {(trackingState === "running" || trackingState === "paused") && (
-              <aside aria-label="Runner controls" className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-40 flex justify-center px-3 pointer-events-none md:bottom-6">
-                <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-[var(--border-strong)] bg-[var(--card)]/95 px-4 py-2 shadow-2xl backdrop-blur-xl">
-                  {trackingState === "running" ? (
-                    <>
-                      <div className="flex items-center gap-2 pr-2 border-r border-[var(--divider)]">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-xs font-mono font-bold tabular-nums text-[var(--text)]">
-                          {calculatedStats.distanceKm} KM • {calculatedStats.pace}/km
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={pauseTracking}
-                        className="flex h-10 items-center gap-1.5 rounded-full bg-[var(--btn-primary-bg)] px-4 text-xs font-black uppercase tracking-wider text-[var(--btn-primary-text)] shadow-xs transition active:scale-95 cursor-pointer"
-                      >
-                        <Pause size={15} className="fill-current" />
-                        <span>{isBm ? "Jeda" : "Pause"}</span>
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={beginTrackingExecution}
-                        className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-xs transition active:scale-95"
-                        title={isBm ? "Sambung" : "Resume"}
-                      >
-                        <Play size={18} className="translate-x-0.5 fill-current" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={finishTracking}
-                        className="flex h-10 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] px-3 text-xs font-black uppercase tracking-wider text-[var(--text)] transition active:scale-95"
-                      >
-                        <StopCircle size={15} />
-                        <span>{isBm ? "Tamat" : "Finish"}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={resetTracking}
-                        className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--muted)] hover:text-[var(--text)] transition active:scale-95"
-                        title={isBm ? "Set Semula" : "Reset"}
-                      >
-                        <RotateCcw size={15} />
-                      </button>
-                    </>
-                  )}
-                </div>
-              </aside>
-            )}
-          </div>
-        ) : (
-          /* ── RUN WORKOUT HISTORY (STRAVA STYLE) ── */
-          <div className="mx-auto w-full max-w-5xl space-y-4 px-1 pt-3 md:px-6 md:pt-4">
-            {/* Lifetime stats header card */}
-            <div className="modern-card rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--card-shadow)] md:rounded-[var(--radius-3xl)] md:p-6">
-              <div className="flex items-center justify-between border-b border-[var(--divider)] pb-4">
-                <div>
-                  <h2 className="text-base font-black text-[var(--text)] flex items-center gap-2 md:text-lg">
-                    <Trophy size={18} className="text-[var(--text-soft)]" />
-                    <span>{isBm ? "Statistik Keseluruhan Larian" : "Lifetime Running Stats"}</span>
-                  </h2>
-                  <p className="text-xs text-[var(--muted)]">
-                    {historySummary.totalRuns} {isBm ? "sesi berjaya direkodkan" : "total workouts recorded"}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-2 text-center sm:grid-cols-4 md:gap-3">
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-3 md:rounded-2xl">
-                  <div className="text-[10px] font-bold uppercase text-[var(--muted)]">{isBm ? "Jumlah Jarak" : "Total Dist"}</div>
-                  <div className="mt-1 text-xl font-black tabular-nums text-[var(--text)] md:text-2xl">{historySummary.totalDistKm} <span className="text-xs font-bold text-[var(--muted)]">KM</span></div>
-                </div>
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-3 md:rounded-2xl">
-                  <div className="text-[10px] font-bold uppercase text-[var(--muted)]">{isBm ? "Jumlah Larian" : "Runs"}</div>
-                  <div className="mt-1 text-xl font-black tabular-nums text-[var(--text)] md:text-2xl">{historySummary.totalRuns}</div>
-                </div>
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-3 md:rounded-2xl">
-                  <div className="text-[10px] font-bold uppercase text-[var(--muted)]">{isBm ? "Masa Larian" : "Total Time"}</div>
-                  <div className="mt-1 text-xl font-black tabular-nums text-[var(--text)] font-mono md:text-2xl">{historySummary.totalDuration}</div>
-                </div>
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-3 md:rounded-2xl">
-                  <div className="text-[10px] font-bold uppercase text-[var(--muted)]">{isBm ? "Jarak Terjauh" : "Longest Run"}</div>
-                  <div className="mt-1 text-xl font-black tabular-nums text-[var(--text)] md:text-2xl">{historySummary.longestDistKm} <span className="text-xs font-bold text-[var(--muted)]">KM</span></div>
-                </div>
-              </div>
-            </div>
-
-            {/* Run feed items */}
-            {!savedHistory.length ? (
-              <div className="modern-card flex flex-col items-center justify-center rounded-[var(--radius-2xl)] border border-dashed border-[var(--border)] bg-[var(--card)] p-10 text-center md:rounded-[var(--radius-3xl)] md:p-12">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-tint)] text-[var(--muted)]">
-                  <Footprints size={28} />
-                </div>
-                <p className="mt-4 text-base font-black text-[var(--text)]">
-                  {isBm ? "Belum ada rekod larian tersimpan." : "No workout sessions yet."}
-                </p>
-                <p className="mt-1 max-w-xs text-xs text-[var(--muted)]">
-                  {isBm
-                    ? "Ketik MULA LARIAN untuk menjejak larian luar pertama anda dengan GPS!"
-                    : "Hit START RUN to track your first outdoor run with GPS!"}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("tracker")}
-                  className="mt-5 rounded-full bg-[var(--btn-primary-bg)] px-6 py-2.5 text-xs font-black uppercase tracking-wider text-[var(--btn-primary-text)] shadow-xs hover:opacity-90 active:scale-[0.98]"
-                >
-                  {isBm ? "Mula Larian Sekarang" : "Start Run Now"}
-                </button>
-              </div>
-            ) : (
-              <div className="grid gap-2.5 sm:grid-cols-2 md:gap-3.5">
-                {savedHistory.map((item) => {
-                  const dateStr = new Date(item.startTime || item.createdAt).toLocaleDateString(
-                    isBm ? "ms-MY" : "en-US",
-                    { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }
-                  )
-                  const distKm = (item.distanceMeters / 1000).toFixed(2)
-                  return (
-                    <div
-                      key={item.id}
-                      className="modern-card modern-card-interactive flex flex-col justify-between rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--card)] p-4 shadow-[var(--card-shadow)] transition hover:border-[var(--border-strong)] md:rounded-[var(--radius-3xl)] md:p-5"
-                    >
-                      <div className="flex items-center justify-between border-b border-[var(--divider)] pb-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--surface-tint-strong)] text-[var(--text)]">
-                            <Route size={16} />
-                          </div>
-                          <div>
-                            <span className="text-xs font-black text-[var(--text)]">{dateStr}</span>
-                            <div className="text-[10px] font-medium text-[var(--muted)]">
-                              {item.stepSource === "native"
-                                ? isBm ? "Sensor Android" : "Android Sensor"
-                                : isBm ? "Langkah GPS" : "GPS Cadence"}
+                        <dl className="mt-3 grid grid-cols-4 gap-2 text-center">
+                          {([[isBm ? "Masa" : "Time", formatDuration(item.durationSeconds)], ["Pace", formatPace(item.avgPaceMinPerKm)], [isBm ? "Langkah" : "Steps", item.steps.toLocaleString()], ["kcal", String(item.caloriesKcal)]] as const).map(([k, v]) => (
+                            <div key={k} className="min-w-0 rounded-[1rem] border border-[var(--border)] px-1 py-2">
+                              <dt className="text-[0.625rem] text-[var(--muted)]">{k}</dt>
+                              <dd className="truncate text-sm font-bold tabular-nums text-[var(--text)]">{v}</dd>
                             </div>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => deleteHistoryItem(item.id)}
-                          title={isBm ? "Padam rekod" : "Delete workout"}
-                          className="rounded-lg p-1.5 text-[var(--muted)] transition hover:bg-[var(--surface-tint-strong)] hover:text-[var(--text)]"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-
-                      <div className="my-3.5 grid grid-cols-3 gap-2 text-center">
-                        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-2.5 md:rounded-2xl md:p-3">
-                          <div className="text-[10px] font-bold uppercase text-[var(--muted)]">
-                            {isBm ? "Jarak" : "Distance"}
-                          </div>
-                          <div className="mt-0.5 text-base font-black tabular-nums text-[var(--text)] md:text-lg">
-                            {distKm} <span className="text-xs font-bold text-[var(--muted)]">km</span>
-                          </div>
-                        </div>
-                        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-2.5 md:rounded-2xl md:p-3">
-                          <div className="text-[10px] font-bold uppercase text-[var(--muted)]">
-                            {isBm ? "Langkah" : "Steps"}
-                          </div>
-                          <div className="mt-0.5 text-base font-black tabular-nums text-[var(--text)] md:text-lg">
-                            {item.steps.toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface-tint)] p-2.5 md:rounded-2xl md:p-3">
-                          <div className="text-[10px] font-bold uppercase text-[var(--muted)]">
-                            {isBm ? "Masa" : "Time"}
-                          </div>
-                          <div className="mt-0.5 text-base font-black tabular-nums text-[var(--text)] font-mono md:text-lg">
-                            {formatDuration(item.durationSeconds)}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs font-medium text-[var(--muted)]">
-                        <span>
-                          Pace: <strong className="font-bold tabular-nums text-[var(--text)]">{formatPace(item.avgPaceMinPerKm)}</strong>
-                        </span>
-                        <span className="font-bold tabular-nums text-[var(--text)]">
-                          {item.caloriesKcal} kcal
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </main>
+                          ))}
+                        </dl>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
+        </main>
       </div>
 
       {/* ── WORKOUT COMPLETED MODAL (NIKE / STRAVA SHARE CARD) ── */}
       {completedSession && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-3 md:p-4">
-          <div className="modern-card relative w-full max-w-md overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--card)] p-5 shadow-2xl md:rounded-[var(--radius-3xl)] md:p-6">
+          <div className="modern-card relative w-full max-w-md overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--card)] p-5   md:rounded-[var(--radius-3xl)] md:p-6">
             <div className="flex flex-col items-center text-center">
               <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-tint-strong)] text-[var(--text)] shadow-xs md:h-16 md:w-16">
                 <Trophy size={30} />

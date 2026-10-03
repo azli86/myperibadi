@@ -292,6 +292,8 @@ export default function TransactionDetailPage() {
   const txnId = params.txnId as string || ""
 
   const [txn, setTxn] = useState<TransactionDetail | null>(null)
+  // True while the page shows the row handed over by the list; the full record replaces it.
+  const [isPreview, setIsPreview] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -621,20 +623,64 @@ export default function TransactionDetailPage() {
   }, [])
 
   useEffect(() => {
+    // The transaction and what changes how it looks come first. Everything the edit and
+    // link sheets need waits a moment, so those requests are not competing with the one
+    // the page is waiting on.
     fetchTransaction()
-    fetchCategories()
-    fetchWallets()
-    fetchLoans()
-    fetchSubscriptions()
     fetchTransactionLoanLink()
     fetchTransactionVehicleLink()
-    fetchUserProfile()
+    const later = window.setTimeout(() => {
+      fetchCategories()
+      fetchWallets()
+      fetchLoans()
+      fetchSubscriptions()
+      fetchUserProfile()
+    }, 400)
+    return () => window.clearTimeout(later)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [txnId])
 
   const fetchTransaction = async () => {
     const fetchId = activeFetchIdRef.current + 1
     activeFetchIdRef.current = fetchId
+
+    // The list leaves the row it showed; use it so the page is not blank while the rest loads.
+    if (activeFetchIdRef.current === fetchId && fetchId === 1) {
+      try {
+        const raw = sessionStorage.getItem(`txn-preview:${txnId}`)
+        if (raw) {
+          const row = JSON.parse(raw) as Partial<TransactionDetail>
+          if (row && row.amount != null && row.vendor_or_source != null) {
+            setTxn({
+              id: Number(row.id) || 0,
+              reference_id: row.reference_id ?? null,
+              user_id: "",
+              wallet_id: Number(row.wallet_id) || 0,
+              wallet_name: row.wallet_name || "",
+              type: row.type || "expense",
+              txn_date: row.txn_date || "",
+              txn_time: row.txn_time ?? null,
+              vendor_or_source: row.vendor_or_source || "",
+              amount: Number(row.amount),
+              category_id: row.category_id ?? null,
+              category_name: row.category_name ?? null,
+              category_icon_name: row.category_icon_name ?? null,
+              is_wallet_transfer: row.is_wallet_transfer,
+              is_debt_movement: row.is_debt_movement,
+              is_refund: row.is_refund,
+              has_been_refunded: row.has_been_refunded,
+              notes: row.notes ?? null,
+              source_channel: row.source_channel ?? null,
+              created_at: row.created_at ?? null,
+              items: [],
+              attachments: [],
+            })
+            setIsPreview(true)
+            setLoading(false)
+          }
+        }
+      } catch {}
+    }
 
     try {
       const token = getAccessToken()
@@ -651,6 +697,7 @@ export default function TransactionDetailPage() {
         // Show the transaction straight away; attachments missing from the
         // payload are looked up after, without holding the page back.
         setTxn({ ...data, attachments })
+        setIsPreview(false)
         void fetchSplitForTxn(data.id)
         clearAttachmentUrls(new Set(attachments.map((att: { id: number }) => att.id)))
         void preloadImagePreviews(attachments)
@@ -1573,29 +1620,29 @@ export default function TransactionDetailPage() {
 
   const summaryCardActions = (
     <>
-      <TxnActionButton icon={receiptDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} label={lang === "BM" ? "Resit" : "Receipt"} onClick={() => downloadStandardReceipt()} disabled={receiptDownloading || !txn} />
-      <TxnActionButton icon={<Edit3 size={18} />} label={langT.edit} onClick={() => setShowEditModal(true)} disabled={saving || !txn} />
+      <TxnActionButton icon={receiptDownloading ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />} label={lang === "BM" ? "Resit" : "Receipt"} onClick={() => downloadStandardReceipt()} disabled={receiptDownloading || !txn || isPreview} />
+      <TxnActionButton icon={<Edit3 size={18} />} label={langT.edit} onClick={() => setShowEditModal(true)} disabled={saving || !txn || isPreview} />
       {refundButtonState !== "hidden" ? (
         <TxnActionButton
           icon={refundButtonState === "loading" ? <Loader2 size={18} className="animate-spin" /> : <Undo2 size={18} />}
           label="Refund"
           tone="positive"
           onClick={handleRefundClick}
-          disabled={refundButtonState === "loading" || !txn}
+          disabled={refundButtonState === "loading" || !txn || isPreview}
         />
       ) : null}
       <TxnActionButton
         icon={<BadgePercent size={18} />}
         label={lang === "BM" ? "Cukai" : "Tax"}
         onClick={() => setShowTaxModal(true)}
-        disabled={saving || !txn}
+        disabled={saving || !txn || isPreview}
       />
       <TxnActionButton
         icon={<Trash2 size={18} />}
         label={langT.delete}
         tone="danger"
         onClick={() => setShowDeleteModal(true)}
-        disabled={saving || !txn}
+        disabled={saving || !txn || isPreview}
       />
     </>
   )

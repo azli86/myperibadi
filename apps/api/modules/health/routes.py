@@ -188,6 +188,8 @@ def create_health_router(*, get_current_user: Callable[..., Any]) -> APIRouter:
             raise HTTPException(400, "schedule_id is required")
         if payload.status not in ("taken", "skipped", "pending"):
             raise HTTPException(400, "status must be 'taken', 'skipped' or 'pending'")
+        if payload.dose_date and payload.dose_date > current_business_date():
+            raise HTTPException(400, "A dose cannot be ticked for a future day")
         log = await service.tick_dose(
             db,
             medication_id=medication_id,

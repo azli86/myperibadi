@@ -64,10 +64,23 @@ def create_inventory_router(*, get_current_user: Callable[..., Any], publish_rea
                 )
             )
             cont_names = {r[0]: r[1] for r in res}
-        items = []
-        for r in rows:
-            path = await queries.location_full_path(db, location_id=r.location_id, user_id=current_user.id) if r.location_id else None
-            items.append(service.serialize_item(r, location_path=path, container_name=cont_names.get(r.container_id)))
+        # One query for every location, then build each path in memory, instead of one walk per item.
+        all_locs = await queries.list_locations(db, user_id=current_user.id)
+        loc_by_id = {l.id: (l.name, l.parent_id) for l in all_locs}
+
+        def path_of(location_id):
+            names, seen, cur = [], set(), location_id
+            while cur is not None and cur not in seen and cur in loc_by_id and len(names) <= queries.MAX_LOCATION_DEPTH * 2:
+                seen.add(cur)
+                name, parent = loc_by_id[cur]
+                names.append(name)
+                cur = parent
+            return " → ".join(reversed(names)) if names else None
+
+        items = [
+            service.serialize_item(r, location_path=path_of(r.location_id) if r.location_id else None, container_name=cont_names.get(r.container_id))
+            for r in rows
+        ]
         return {"items": items, "total": total, "limit": limit, "offset": offset}
 
     @router.post("/items")
@@ -158,7 +171,26 @@ def create_inventory_router(*, get_current_user: Callable[..., Any], publish_rea
         current_user: models.User = Depends(get_current_user),
     ):
         rows = await service.list_movements(db, current_user=current_user, item_id=item_id)
-        return [service.serialize_movement(r) for r in rows]
+        # Name the places a move went from and to, so the history can say where.
+        locs = {l.id: (l.name, l.parent_id) for l in await queries.list_locations(db, user_id=current_user.id)}
+        conts = {c.id: c.name for c in await queries.list_containers(db, user_id=current_user.id)}
+
+        def loc_path(location_id):
+            names, seen, cur = [], set(), location_id
+            while cur is not None and cur not in seen and cur in locs and len(names) <= queries.MAX_LOCATION_DEPTH * 2:
+                seen.add(cur)
+                name, parent = locs[cur]
+                names.append(name)
+                cur = parent
+            return " → ".join(reversed(names)) if names else None
+
+        out = []
+        for r in rows:
+            d = service.serialize_movement(r)
+            d["from_place"] = " · ".join(x for x in (loc_path(r.from_location_id), conts.get(r.from_container_id)) if x) or None
+            d["to_place"] = " · ".join(x for x in (loc_path(r.to_location_id), conts.get(r.to_container_id)) if x) or None
+            out.append(d)
+        return out
 
     @router.post("/items/{item_id}/image")
     async def upload_item_image(

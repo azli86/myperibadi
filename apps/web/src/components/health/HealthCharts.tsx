@@ -70,7 +70,7 @@ export function HealthAreaChart({
             />
           }
         />
-        <Area
+        <Area isAnimationActive={false}
           type="monotone"
           dataKey="value"
           stroke={color}
@@ -136,7 +136,7 @@ export function HealthBpChart({
             />
           }
         />
-        <Area
+        <Area isAnimationActive={false}
           type="monotone"
           dataKey="systolic"
           stroke={sys}
@@ -145,7 +145,7 @@ export function HealthBpChart({
           dot={false}
           activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--card)" }}
         />
-        <Area
+        <Area isAnimationActive={false}
           type="monotone"
           dataKey="diastolic"
           stroke={dia}

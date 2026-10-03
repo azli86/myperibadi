@@ -80,12 +80,20 @@ async def _validate_container_consistency(
         # allow item location being an ancestor? No — keep strict simple rule: direct match.
         raise HTTPException(status_code=400, detail="Bekas ini tidak berada dalam lokasi yang dipilih.")
 
+async def _validate_place(db: AsyncSession, *, user_id: str, location_id: Optional[int], container_id: Optional[int]) -> None:
+    """A location or container must be the user's own; an id from someone else's account is refused."""
+    if location_id is not None:
+        await queries.get_location_or_404(db, location_id=location_id, user_id=user_id)
+    if container_id is not None:
+        await queries.get_container_or_404(db, container_id=container_id, user_id=user_id)
+
 # ── items ─────────────────────────────────────────────────────────────────────
 
 async def create_item(
     db: AsyncSession, *, current_user: models.User, payload: ItemCreate, source_channel: str = "web"
 ) -> models.InventoryItem:
     name = _clean_name(payload.name)
+    await _validate_place(db, user_id=current_user.id, location_id=payload.location_id, container_id=payload.container_id)
     await _validate_container_consistency(
         db, user_id=current_user.id, location_id=payload.location_id, container_id=payload.container_id
     )
@@ -95,7 +103,7 @@ async def create_item(
         description=payload.description,
         category=payload.category,
         quantity=payload.quantity,
-        unit=payload.unit or "unit",
+        unit=(payload.unit or "").strip() or "unit",
         status=payload.status,
         brand=payload.brand,
         model=payload.model,
@@ -129,14 +137,20 @@ async def update_item(
     location_changed = False
     if "name" in data:
         item.name = _clean_name(data["name"])
-    for field in ("description", "category", "brand", "model", "serial_number", "notes", "unit"):
+    for field in ("description", "category", "brand", "model", "serial_number", "notes"):
         if field in data:
-            setattr(item, field, data[field])
+            value = data[field]
+            setattr(item, field, value.strip() or None if isinstance(value, str) else value)
     if "purchase_date" in data:
         item.purchase_date = _parse_date(data["purchase_date"])
     if "purchase_price" in data:
         item.purchase_price = data["purchase_price"]
 
+    await _validate_place(
+        db, user_id=current_user.id, location_id=data.get("location_id"), container_id=data.get("container_id")
+    )
+    if "unit" in data:
+        item.unit = (data["unit"] or "").strip() or "unit"
     if "location_id" in data:
         item.location_id = data["location_id"]
         location_changed = True
@@ -188,6 +202,7 @@ async def move_item(
 ) -> models.InventoryItem:
     """Full move updates the row. Partial move splits into a new item row (safe, simple)."""
     item = await queries.get_item_or_404(db, item_id=item_id, user_id=current_user.id)
+    await _validate_place(db, user_id=current_user.id, location_id=payload.location_id, container_id=payload.container_id)
     await _validate_container_consistency(
         db, user_id=current_user.id, location_id=payload.location_id, container_id=payload.container_id
     )

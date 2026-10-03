@@ -1,31 +1,16 @@
 "use client"
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useParams } from "next/navigation"
-import {
-  Activity,
-  HeartPulse,
-  LineChart,
-  Pencil,
-  Plus,
-  Stethoscope,
-  Trash2,
-} from "lucide-react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
+import { useParams, useSearchParams } from "next/navigation"
+import { Activity, Check, Clock, Hash, LineChart, Loader2, Pencil, Plus, Trash2 } from "lucide-react"
 import { getAccessToken, isCookieAuthSentinel } from "@/lib/auth-session"
 import { useLang } from "@/lib/lang"
 import { cn } from "@/lib/utils"
 import { usePageAlert } from "@/hooks/usePageAlert"
-import {
-  DesktopPageAction,
-  DesktopPageBody,
-  DesktopPageHeader,
-  MobileIconButton,
-  MobilePageHeader,
-} from "@/components/layout/PageHeader"
+import { DesktopPageAction, DesktopPageBody, DesktopPageHeader, MobileIconButton, MobilePageHeader } from "@/components/layout/PageHeader"
+import { AppSheet } from "@/components/ui/AppSheet"
+import { ModenHero } from "@/components/ui/ModenHero"
 import { useDelayedSkeleton } from "@/hooks/useDelayedSkeleton"
-import { useSearchParams } from "next/navigation"
-import { AppSheetHeader } from "@/components/ui/AppSheetHeader"
-import { useSwipeDownToClose } from "@/hooks/useSwipeDownToClose"
 import { MetricChart, TrendStats } from "@/components/health/HealthCharts"
 
 type Reading = {
@@ -39,636 +24,360 @@ type Reading = {
   measured_at: string
 }
 
-const METRICS: { key: string; labelBM: string; labelEN: string; unit: string; fields: string[] }[] = [
-  { key: "weight", labelBM: "Berat", labelEN: "Weight", unit: "kg", fields: ["value"] },
-  { key: "height", labelBM: "Tinggi", labelEN: "Height", unit: "cm", fields: ["value"] },
-  { key: "bp", labelBM: "Tekanan Darah", labelEN: "Blood Pressure", unit: "mmHg", fields: ["systolic", "diastolic"] },
-  { key: "glucose", labelBM: "Gula Darah", labelEN: "Glucose", unit: "mmol/L", fields: ["value"] },
-  { key: "pulse", labelBM: "Denyutan Nadi", labelEN: "Pulse", unit: "BPM", fields: ["value"] },
-  { key: "spo2", labelBM: "SpO₂", labelEN: "SpO₂", unit: "%", fields: ["value"] },
-  { key: "temperature", labelBM: "Suhu", labelEN: "Temperature", unit: "°C", fields: ["value"] },
+const METRICS: { key: string; labelBM: string; labelEN: string; unit: string; fields: string[]; min: number; max: number }[] = [
+  { key: "weight", labelBM: "Berat", labelEN: "Weight", unit: "kg", fields: ["value"], min: 1, max: 500 },
+  { key: "height", labelBM: "Tinggi", labelEN: "Height", unit: "cm", fields: ["value"], min: 30, max: 260 },
+  { key: "bp", labelBM: "Tekanan darah", labelEN: "Blood pressure", unit: "mmHg", fields: ["systolic", "diastolic"], min: 30, max: 300 },
+  { key: "glucose", labelBM: "Gula darah", labelEN: "Glucose", unit: "mmol/L", fields: ["value"], min: 0.5, max: 60 },
+  { key: "pulse", labelBM: "Nadi", labelEN: "Pulse", unit: "BPM", fields: ["value"], min: 20, max: 260 },
+  { key: "spo2", labelBM: "SpO₂", labelEN: "SpO₂", unit: "%", fields: ["value"], min: 50, max: 100 },
+  { key: "temperature", labelBM: "Suhu", labelEN: "Temperature", unit: "°C", fields: ["value"], min: 30, max: 45 },
 ]
 
 const RANGES = ["7d", "30d", "3m", "1y"]
+const TZ = "Asia/Kuala_Lumpur"
+
+/** "YYYY-MM-DDTHH:mm" in Kuala Lumpur time for a UTC instant. */
+function toKlInput(iso?: string): string {
+  const d = iso ? new Date(iso) : new Date()
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(d)
+  const get = (t: string) => parts.find((p) => p.type === t)?.value || "00"
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`
+}
+
+const field = "h-12 w-full rounded-full border border-[var(--border)] bg-transparent px-4 text-base text-[var(--text)] outline-none focus:border-[var(--btn-primary-bg)]"
+const label = "mb-1.5 block text-xs font-semibold text-[var(--muted)]"
 
 export default function HealthReadingsPage() {
   const params = useParams()
   const { lang } = useLang()
-  const sessionId = (params.sessionId as string) || ""
-  const { showAlert, alertModal } = usePageAlert(lang)
-  const showAlertRef = useRef(showAlert)
   const isBm = lang === "BM"
+  const tr = useCallback((bm: string, en: string) => (isBm ? bm : en), [isBm])
+  const locale = isBm ? "ms-MY" : "en-MY"
+  const sessionId = (params.sessionId as string) || ""
+  const { showAlert, showConfirm, alertModal } = usePageAlert(lang)
 
-  // Deep-link support: /health/readings?metric=bp
   const searchParams = useSearchParams()
   const initialMetric = searchParams.get("metric")
-  const [metric, setMetricState] = useState(
-    initialMetric && METRICS.some((m) => m.key === initialMetric) ? initialMetric : "weight",
-  )
+  const [metric, setMetricState] = useState(initialMetric && METRICS.some((m) => m.key === initialMetric) ? initialMetric : "weight")
   const setMetric = useCallback((k: string) => {
     setMetricState(k)
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href)
-      url.searchParams.set("metric", k)
-      window.history.replaceState(null, "", url.toString())
-    }
+    const url = new URL(window.location.href)
+    url.searchParams.set("metric", k)
+    window.history.replaceState(null, "", url.toString())
   }, [])
   const [range, setRange] = useState("30d")
   const [readings, setReadings] = useState<Reading[]>([])
   const [loading, setLoading] = useState(true)
   const [hasLoaded, setHasLoaded] = useState(false)
-  const [showAdd, setShowAdd] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [sheet, setSheet] = useState(false)
   const [editing, setEditing] = useState<Reading | null>(null)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState<Record<string, string>>({})
-  const sheetOpen = showAdd || editing != null
-  const [mounted, setMounted] = useState(false)
-  const showDataSkeleton = useDelayedSkeleton(loading && !hasLoaded)
-  const addSwipe = useSwipeDownToClose(() => {
-    setShowAdd(false)
-    setEditing(null)
-  })
+  const showSkeleton = useDelayedSkeleton(loading && !hasLoaded)
 
-  const openAdd = useCallback(() => {
-    setEditing(null)
-    setForm({})
-    setShowAdd(true)
+  const meta = useMemo(() => METRICS.find((m) => m.key === metric) || METRICS[0], [metric])
+  const metricName = isBm ? meta.labelBM : meta.labelEN
+  const current = readings[0]
+
+  const headers = useCallback((json = false): Record<string, string> => {
+    const token = getAccessToken()
+    return { ...(json ? { "Content-Type": "application/json" } : {}), ...(token && !isCookieAuthSentinel(token) ? { Authorization: `Bearer ${token}` } : {}) }
   }, [])
+  const errorOf = async (res: Response, fallback: string) => {
+    const payload = (await res.json().catch(() => null)) as { detail?: unknown } | null
+    return typeof payload?.detail === "string" ? payload.detail : fallback
+  }
 
-  const openEdit = useCallback((r: Reading) => {
-    const f: Record<string, string> = {}
+  const loadReadings = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/health/readings?metric=${metric}&range=${range}`, { headers: headers(), credentials: "include", cache: "no-store" })
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setReadings(Array.isArray(data) ? data : [])
+      setHasLoaded(true)
+      setLoadFailed(false)
+    } catch {
+      setLoadFailed(true)
+    } finally {
+      setLoading(false)
+    }
+  }, [headers, metric, range])
+
+  useEffect(() => {
+    setLoading(true)
+    void loadReadings()
+  }, [loadReadings])
+
+  const openAdd = () => {
+    setEditing(null)
+    setForm({ at: toKlInput() })
+    setSheet(true)
+  }
+  const openEdit = (r: Reading) => {
+    const f: Record<string, string> = { at: toKlInput(r.measured_at) }
     if (r.value != null) f.value = String(r.value)
     if (r.systolic != null) f.systolic = String(r.systolic)
     if (r.diastolic != null) f.diastolic = String(r.diastolic)
     if (r.note) f.note = r.note
     setForm(f)
     setEditing(r)
-    setShowAdd(false)
-  }, [])
-
-  const closeSheet = useCallback(() => {
-    setShowAdd(false)
+    setSheet(true)
+  }
+  const close = () => {
+    setSheet(false)
     setEditing(null)
-  }, [])
+  }
 
-  const meta = useMemo(() => METRICS.find((m) => m.key === metric) || METRICS[0], [metric])
-  const currentReading = readings[0]
-
-  const authHeaders = useCallback((): HeadersInit => {
-    const token = getAccessToken()
-    if (token && !isCookieAuthSentinel(token)) return { Authorization: `Bearer ${token}` }
-    return {}
-  }, [])
-
-  useEffect(() => {
-    showAlertRef.current = showAlert
-  }, [showAlert])
-  useEffect(() => setMounted(true), [])
-
-  const loadReadings = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/health/readings?metric=${metric}&range=${range}`, {
-        headers: authHeaders(),
-        credentials: "include",
-        cache: "no-store",
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setReadings(Array.isArray(data) ? data : [])
-      }
-      setHasLoaded(true)
-    } catch {
-      showAlertRef.current(isBm ? "Ralat" : "Error", isBm ? "Gagal memuat bacaan." : "Failed to load readings.", "error")
-    } finally {
-      setLoading(false)
+  const num = (v?: string) => (v == null || v.trim() === "" ? NaN : Number(v))
+  const problem = (() => {
+    if (meta.key === "bp") {
+      const s = num(form.systolic)
+      const d = num(form.diastolic)
+      if (isNaN(s) || isNaN(d)) return tr("Isi kedua-dua tekanan sistolik dan diastolik.", "Enter both systolic and diastolic pressure.")
+      if (s < 50 || s > 300 || d < 30 || d > 200) return tr("Tekanan darah di luar julat yang munasabah.", "Blood pressure is outside a possible range.")
+      if (s <= d) return tr("Sistolik mesti lebih tinggi daripada diastolik.", "Systolic must be higher than diastolic.")
+    } else {
+      const v = num(form.value)
+      if (isNaN(v)) return tr("Masukkan nilai.", "Enter a value.")
+      if (v < meta.min || v > meta.max) return tr(`Nilai patut antara ${meta.min} dan ${meta.max} ${meta.unit}.`, `The value should be between ${meta.min} and ${meta.max} ${meta.unit}.`)
     }
-  }, [authHeaders, metric, range, isBm])
+    if (!form.at) return tr("Pilih tarikh dan masa.", "Choose a date and time.")
+    return null
+  })()
 
-  useEffect(() => {
-    void loadReadings()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [metric, range])
-
-  const saveReading = useCallback(async () => {
+  const saveReading = async (e?: React.FormEvent) => {
+    e?.preventDefault()
+    if (saving) return
+    if (problem) {
+      showAlert(tr("Maklumat tak sah", "Invalid info"), problem, "error")
+      return
+    }
     setSaving(true)
     try {
-      const body: Record<string, unknown> = {}
-      if (meta.fields.includes("value") && form.value) body.value = parseFloat(form.value)
-      if (meta.fields.includes("systolic") && form.systolic) body.systolic = parseFloat(form.systolic)
-      if (meta.fields.includes("diastolic") && form.diastolic) body.diastolic = parseFloat(form.diastolic)
-      if (form.note) body.note = form.note
-      const isEdit = editing != null
-      const res = await fetch(
-        isEdit ? `/api/health/readings/${editing.id}` : "/api/health/readings",
-        {
-          method: isEdit ? "PATCH" : "POST",
-          headers: { ...authHeaders(), "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(isEdit ? body : { metric_type: metric, ...body }),
-        },
-      )
-      if (!res.ok) throw new Error()
-      setForm({})
-      closeSheet()
+      const body: Record<string, unknown> = { note: form.note?.trim() || null, measured_at: new Date(`${form.at}:00+08:00`).toISOString() }
+      if (meta.fields.includes("value")) body.value = num(form.value)
+      if (meta.fields.includes("systolic")) {
+        body.systolic = num(form.systolic)
+        body.diastolic = num(form.diastolic)
+      }
+      const res = await fetch(editing ? `/api/health/readings/${editing.id}` : "/api/health/readings", {
+        method: editing ? "PATCH" : "POST",
+        headers: headers(true),
+        credentials: "include",
+        body: JSON.stringify(editing ? body : { metric_type: metric, ...body }),
+      })
+      if (!res.ok) throw new Error(await errorOf(res, tr("Gagal simpan bacaan.", "Could not save the reading.")))
+      close()
       await loadReadings()
-    } catch {
-      showAlertRef.current(isBm ? "Ralat" : "Error", isBm ? "Gagal simpan bacaan." : "Failed to save reading.", "error")
+    } catch (err) {
+      showAlert(tr("Gagal simpan", "Save failed"), err instanceof Error ? err.message : "", "error")
     } finally {
       setSaving(false)
     }
-  }, [authHeaders, meta, metric, form, editing, closeSheet, loadReadings, isBm])
+  }
 
-  const deleteReading = useCallback(
-    async (r: Reading) => {
-      if (!confirm(isBm ? `Padam bacaan ini?` : "Delete this reading?")) return
+  const deleteReading = (r: Reading) =>
+    showConfirm(tr("Padam bacaan?", "Delete reading?"), tr("Bacaan ini akan dipadam.", "This reading will be deleted."), async () => {
       try {
-        const res = await fetch(`/api/health/readings/${r.id}`, {
-          method: "DELETE",
-          headers: authHeaders(),
-          credentials: "include",
-        })
-        if (!res.ok) throw new Error()
+        const res = await fetch(`/api/health/readings/${r.id}`, { method: "DELETE", headers: headers(), credentials: "include" })
+        if (!res.ok) throw new Error(await errorOf(res, tr("Gagal padam.", "Could not delete.")))
+        close()
         await loadReadings()
-      } catch {
-        showAlertRef.current(isBm ? "Ralat" : "Error", isBm ? "Gagal padam bacaan." : "Failed to delete reading.", "error")
+      } catch (err) {
+        showAlert(tr("Gagal padam", "Delete failed"), err instanceof Error ? err.message : "", "error")
       }
-    },
-    [authHeaders, loadReadings, isBm],
+    }, "warning")
+
+  const chartPoints = useMemo(
+    () =>
+      [...readings].reverse().map((r) => ({
+        id: r.id,
+        label: new Date(r.measured_at).toLocaleDateString(locale, { day: "2-digit", month: "2-digit", timeZone: TZ }),
+        value: metric === "bp" && r.systolic != null ? r.systolic : (r.value ?? undefined),
+        systolic: r.systolic ?? undefined,
+        diastolic: r.diastolic ?? undefined,
+      })),
+    [readings, metric, locale]
   )
 
-  const chartPoints = useMemo(() => {
-    if (!readings.length) return []
-    const sorted = [...readings].reverse()
-    return sorted.map((r) => ({
-      id: r.id,
-      label: new Date(r.measured_at).toLocaleDateString([], { day: "2-digit", month: "2-digit" }),
-      value: metric === "bp" && r.systolic != null ? r.systolic : (r.value ?? undefined),
-      systolic: r.systolic ?? undefined,
-      diastolic: r.diastolic ?? undefined,
-    }))
-  }, [readings, metric])
+  const fmtReading = (r: Reading) => (metric === "bp" && r.systolic != null && r.diastolic != null ? `${r.systolic}/${r.diastolic}` : r.value != null ? String(r.value) : "—")
+  const when = (iso: string, long = false) =>
+    new Date(iso).toLocaleString(locale, { day: "numeric", month: "short", ...(long ? { year: "numeric" } : {}), hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TZ })
 
   return (
-    <div className="min-h-screen bg-[var(--page-bg)]">
+    <div className="pb-24 md:pb-6">
       <div className="md:hidden">
         <MobilePageHeader
-          title={isBm ? "Monitor" : "Monitor"}
+          title={tr("Monitor", "Monitor")}
           fallbackHref={`/${sessionId}/health`}
+          action={
+            <MobileIconButton onClick={openAdd} label={tr("Tambah bacaan", "Add reading")}>
+              <Plus strokeWidth={2.5} />
+            </MobileIconButton>
+          }
         />
       </div>
+      <DesktopPageHeader
+        className="hidden md:block"
+        title={tr("Monitor Kesihatan", "Health Monitor")}
+        homeHref={`/${sessionId}`}
+        breadcrumbs={[{ label: tr("Kesihatan", "Health"), href: `/${sessionId}/health` }]}
+        actions={
+          <DesktopPageAction onClick={openAdd}>
+            <Plus strokeWidth={2.5} />
+            {tr("Tambah bacaan", "Add reading")}
+          </DesktopPageAction>
+        }
+      />
 
-      <div className="hidden md:block">
-        <DesktopPageHeader
-          title={isBm ? "Monitor Kesihatan" : "Health Monitor"}
-          homeHref={`/${sessionId}`}
-          breadcrumbs={[{ label: isBm ? "Kesihatan" : "Health", href: `/${sessionId}/health` }]}
-        />
-      </div>
-
-      {/* ── MOBILE VIEW ── */}
-      <div className="space-y-4 px-3 pb-28 pt-2 md:hidden">
-        <button
-          type="button"
-          onClick={openAdd}
-          className="ml-auto flex h-12 w-fit items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-[0.98]"
-        >
-          <Plus size={16} />
-          {isBm ? "Tambah bacaan" : "Add reading"}
-        </button>
-        {/* Metric picker */}
-        <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-          {METRICS.map((m) => (
-            <button
-              key={m.key}
-              onClick={() => setMetric(m.key)}
-              className={cn(
-                "inline-flex min-h-10 shrink-0 items-center rounded-full px-4 py-2 text-xs font-bold transition active:scale-95",
-                metric === m.key
-                  ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] shadow-sm"
-                  : "border border-[var(--divider)]/40 bg-[var(--surface-tint)] text-[var(--muted)]",
-              )}
-            >
-              {isBm ? m.labelBM : m.labelEN}
-            </button>
-          ))}
-        </div>
-
-        {/* Hero Card */}
-        <section className="overflow-hidden rounded-3xl bg-[var(--text)] p-5 text-[var(--bg)] shadow-sm">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] opacity-60">{isBm ? "Bacaan Terkini" : "Current Reading"}</p>
-              {currentReading ? (
-                <div className="mt-2 text-4xl font-black tracking-tight">
-                  {metric === "bp" && currentReading.systolic != null && currentReading.diastolic != null
-                    ? `${currentReading.systolic} / ${currentReading.diastolic}`
-                    : currentReading.value}
-                  <span className="ml-2 text-sm font-bold opacity-60">{currentReading.unit || meta.unit}</span>
-                </div>
+      <DesktopPageBody className="mt-2 space-y-4 px-1 md:mt-0 md:space-y-5 md:px-0">
+        <div className="mx-auto w-full max-w-4xl space-y-4">
+          <ModenHero
+            label={
+              <>
+                <Activity size={16} />
+                {metricName} · {tr("bacaan terkini", "latest reading")}
+              </>
+            }
+            currency={null}
+            amount={
+              showSkeleton ? (
+                "—"
+              ) : current ? (
+                <>
+                  {fmtReading(current)}
+                  <span className="ml-2 text-base font-semibold opacity-60">{current.unit || meta.unit}</span>
+                </>
               ) : (
-                <p className="mt-3 text-lg font-black">{isBm ? "Belum ada bacaan" : "No reading yet"}</p>
-              )}
-              <p className="mt-1 text-sm font-bold opacity-75">{isBm ? meta.labelBM : meta.labelEN}</p>
-            </div>
-            <Activity className="h-7 w-7 opacity-60" />
-          </div>
-          <div className="mt-5 flex items-end justify-between gap-3 border-t border-current/15 pt-3 text-xs opacity-70">
-            <span className="truncate">{currentReading?.note || (currentReading ? (isBm ? "Tiada nota" : "No note") : (isBm ? "Tambah bacaan pertama anda" : "Add your first reading"))}</span>
-            {currentReading ? <time className="shrink-0">{new Date(currentReading.measured_at).toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false })}</time> : null}
-          </div>
-        </section>
+                "—"
+              )
+            }
+            amountSize="clamp(2rem, 9vw, 2.75rem)"
+            stats={[
+              { key: "when", tone: "neutral", icon: <Clock size={15} strokeWidth={2.2} />, label: tr("Direkod", "Recorded"), value: current ? when(current.measured_at) : tr("Belum ada", "None yet") },
+              { key: "count", tone: "neutral", icon: <Hash size={15} strokeWidth={2.2} />, label: tr("Bacaan", "Readings"), value: String(readings.length) },
+            ]}
+          />
 
-        {/* Butang Tambah Bacaan di bawah Hero Card */}
-        <button
-          type="button"
-          onClick={openAdd}
-          className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-[var(--btn-primary-bg)] px-5 py-3.5 text-sm font-bold text-[var(--btn-primary-text)] shadow-sm transition hover:opacity-90 active:scale-[0.98]"
-        >
-          <Plus size={18} strokeWidth={2.5} />
-          <span>{isBm ? `Tambah Bacaan ${meta.labelBM}` : `Add ${meta.labelEN} Reading`}</span>
-        </button>
-
-        {/* Chart */}
-        <section className="rounded-3xl border border-[var(--divider)]/40 bg-[var(--card)] p-4 shadow-sm">
-          <div className="mb-3 flex items-start justify-between gap-2">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                {isBm ? "Trend" : "Trend"}
-              </p>
-              <h2 className="text-lg font-black tracking-tight text-[var(--text)]">
-                {isBm ? meta.labelBM : meta.labelEN}
-                {meta.unit ? <span className="ml-1 text-xs font-semibold text-[var(--muted)]">({meta.unit})</span> : null}
-              </h2>
-            </div>
-            <div className="flex gap-1">
-              {RANGES.map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setRange(r)}
-                  className={cn(
-                    "rounded-lg px-2 py-1 text-[11px] font-bold transition",
-                    range === r ? "bg-[var(--text)] text-[var(--bg)]" : "bg-[var(--surface-tint)] text-[var(--muted)]",
-                  )}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-          </div>
-          {showDataSkeleton ? (
-            <div className="h-44 animate-pulse rounded-xl bg-[var(--surface-tint)]" />
-          ) : chartPoints.length ? (
-            <>
-              <MetricChart metricKey={metric} points={chartPoints} className="h-48" />
-              <TrendStats
-                values={chartPoints.map((p) => p.value ?? 0).filter((v) => v != null)}
-                unit={metric === "bp" ? "" : meta.unit}
-                isBm={isBm}
-              />
-            </>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-[var(--divider)]/60 px-4 py-10 text-center">
-              <LineChart size={26} className="mx-auto text-[var(--muted)]" />
-              <p className="mt-2 text-sm font-semibold text-[var(--text)]">
-                {isBm ? "Tiada bacaan untuk julat ini" : "No readings for this range"}
-              </p>
-              <button
-                type="button"
-                onClick={openAdd}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-bold text-[var(--btn-primary-text)] transition active:scale-95"
-              >
-                <Plus size={14} />
-                {isBm ? "Tambah Bacaan" : "Add Reading"}
-              </button>
-            </div>
-          )}
-        </section>
-
-        {/* Reading list */}
-        <section>
-          <div className="mb-3 flex items-end justify-between">
-            <h2 className="text-base font-black text-[var(--text)]">{isBm ? "Senarai Bacaan" : "Readings"}</h2>
-            <span className="text-xs font-semibold text-[var(--muted)]">{readings.length} {isBm ? "rekod" : "records"}</span>
-          </div>
-          {!readings.length ? (
-            <div className="rounded-2xl border border-dashed border-[var(--divider)]/60 bg-[var(--card)] py-8 text-center text-xs text-[var(--muted)]">
-              {isBm ? "Belum ada bacaan." : "No readings yet."}
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {readings.map((r) => (
-                <li
-                  key={r.id}
-                  className="flex min-h-20 items-center justify-between gap-3 rounded-2xl border border-[var(--divider)]/40 bg-[var(--card)] p-4 shadow-sm"
-                >
-                  <div>
-                    <div className="text-sm font-bold text-[var(--text)]">
-                      {metric === "bp" && r.systolic != null && r.diastolic != null
-                        ? `${r.systolic} / ${r.diastolic}`
-                        : r.value != null
-                          ? `${r.value}`
-                          : "—"}
-                      <span className="ml-1 text-xs font-semibold text-[var(--muted)]">{r.unit}</span>
-                    </div>
-                    {r.note ? <div className="text-xs text-[var(--muted)]">{r.note}</div> : null}
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <div className="text-right text-xs text-[var(--muted)]">
-                      {new Date(r.measured_at).toLocaleDateString([], { day: "2-digit", month: "2-digit" })}{" "}
-                      {new Date(r.measured_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
-                    </div>
-                    <button
-                      onClick={() => openEdit(r)}
-                      className="rounded-lg p-1.5 text-[var(--muted)] transition hover:text-[var(--text)]"
-                      aria-label={isBm ? "Edit" : "Edit"}
-                    >
-                      <Pencil size={15} />
-                    </button>
-                    <button
-                      onClick={() => deleteReading(r)}
-                      className="rounded-lg p-1.5 text-[var(--muted)] transition hover:text-rose-500"
-                      aria-label={isBm ? "Padam" : "Delete"}
-                    >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
-
-      {/* ── DESKTOP VIEW ── */}
-      <div className="hidden md:block">
-        <DesktopPageBody>
-        <div className="mx-auto w-full max-w-[1180px] space-y-6 p-6 xl:px-8">
-          <button
-          type="button"
-          onClick={openAdd}
-          className="ml-auto flex h-12 w-fit items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)] transition active:scale-[0.98]"
-        >
-          <Plus size={16} />
-          {isBm ? "Tambah bacaan" : "Add reading"}
-        </button>
-          <div className="flex gap-2 overflow-x-auto rounded-2xl border border-[var(--divider)]/40 bg-[var(--card)] p-2 shadow-sm">
+          <div role="tablist" className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {METRICS.map((m) => (
-              <button
-                key={m.key}
-                onClick={() => setMetric(m.key)}
-                className={cn(
-                  "min-h-10 shrink-0 rounded-xl px-4 py-2 text-xs font-bold transition",
-                  metric === m.key
-                    ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]"
-                    : "bg-transparent text-[var(--muted)] hover:text-[var(--text)]",
-                )}
-              >
+              <button key={m.key} type="button" role="tab" aria-selected={metric === m.key} onClick={() => setMetric(m.key)} className={cn("h-10 shrink-0 rounded-full border px-4 text-sm font-semibold", metric === m.key ? "border-transparent bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "border-[var(--border)] text-[var(--muted)]")}>
                 {isBm ? m.labelBM : m.labelEN}
               </button>
             ))}
           </div>
 
-          {/* Desktop Hero Card */}
-          <section className="grid min-h-52 grid-cols-[1fr_auto] overflow-hidden rounded-3xl bg-[var(--text)] p-8 text-[var(--bg)] shadow-sm">
-            <div className="flex flex-col justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.18em] opacity-60">{isBm ? "Bacaan Terkini" : "Current Reading"}</p>
-                {currentReading ? (
-                  <div className="mt-3 text-6xl font-black tracking-tight">
-                    {metric === "bp" && currentReading.systolic != null && currentReading.diastolic != null
-                      ? `${currentReading.systolic} / ${currentReading.diastolic}`
-                      : currentReading.value}
-                    <span className="ml-3 text-base font-bold opacity-60">{currentReading.unit || meta.unit}</span>
-                  </div>
-                ) : (
-                  <p className="mt-4 text-3xl font-black">{isBm ? "Belum ada bacaan" : "No reading yet"}</p>
-                )}
-                <p className="mt-2 text-lg font-bold opacity-75">{isBm ? meta.labelBM : meta.labelEN}</p>
-              </div>
-              <div className="flex gap-6 text-sm opacity-65">
-                {currentReading ? <time>{new Date(currentReading.measured_at).toLocaleString([], { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })}</time> : null}
-                <span>{currentReading?.note || (currentReading ? (isBm ? "Tiada nota" : "No note") : (isBm ? "Tambah bacaan pertama anda" : "Add your first reading"))}</span>
+          <section className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-4 sm:p-5">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="text-base font-bold text-[var(--text)]">
+                {tr("Trend", "Trend")} <span className="text-xs font-semibold text-[var(--muted)]">({meta.unit})</span>
+              </h2>
+              <div className="flex gap-1">
+                {RANGES.map((r) => (
+                  <button key={r} type="button" aria-pressed={range === r} onClick={() => setRange(r)} className={cn("h-8 rounded-full px-3 text-xs font-semibold", range === r ? "bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)]" : "border border-[var(--border)] text-[var(--muted)]")}>{r}</button>
+                ))}
               </div>
             </div>
-            <Activity className="h-12 w-12 opacity-50" />
+            {showSkeleton ? (
+              <div className="h-44 animate-pulse rounded-[1.25rem] bg-[var(--surface-tint)]" />
+            ) : loadFailed && !hasLoaded ? (
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <p className="text-sm font-bold text-[var(--text)]">{tr("Bacaan tidak dapat dimuatkan", "Readings could not be loaded")}</p>
+                <button type="button" onClick={() => { setLoading(true); void loadReadings() }} className="h-11 rounded-full bg-[var(--btn-primary-bg)] px-6 text-sm font-semibold text-[var(--btn-primary-text)]">{tr("Cuba lagi", "Try again")}</button>
+              </div>
+            ) : chartPoints.length ? (
+              <>
+                <MetricChart metricKey={metric} points={chartPoints} className="h-48 md:h-64" />
+                <TrendStats values={chartPoints.map((p) => p.value).filter((v): v is number => v != null)} unit={metric === "bp" ? "" : meta.unit} isBm={isBm} />
+              </>
+            ) : (
+              <div className="flex flex-col items-center rounded-[1.25rem] border border-dashed border-[var(--border)] px-4 py-10 text-center">
+                <LineChart size={26} className="text-[var(--muted)]" />
+                <p className="mt-2 text-sm font-bold text-[var(--text)]">{tr("Tiada bacaan dalam julat ini", "No readings in this range")}</p>
+                <button type="button" onClick={openAdd} className="mt-3 inline-flex h-10 items-center gap-1.5 rounded-full bg-[var(--btn-primary-bg)] px-5 text-xs font-semibold text-[var(--btn-primary-text)]">
+                  <Plus size={14} />
+                  {tr("Tambah bacaan", "Add reading")}
+                </button>
+              </div>
+            )}
           </section>
 
-          {/* Butang Tambah Bacaan di bawah Hero Card (Desktop) */}
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={openAdd}
-              className="inline-flex items-center gap-2 rounded-2xl bg-[var(--btn-primary-bg)] px-6 py-3.5 text-sm font-bold text-[var(--btn-primary-text)] shadow-sm transition hover:opacity-90 active:scale-[0.98]"
-            >
-              <Plus size={18} strokeWidth={2.5} />
-              <span>{isBm ? `Tambah Bacaan ${meta.labelBM}` : `Add ${meta.labelEN} Reading`}</span>
-            </button>
-          </div>
-
-          <section className="rounded-3xl border border-[var(--divider)]/40 bg-[var(--card)] p-6 shadow-sm">
-              <div className="mb-4 flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted)]">
-                    {isBm ? "Trend" : "Trend"}
-                  </p>
-                  <h2 className="text-lg font-black tracking-tight text-[var(--text)]">
-                    {isBm ? meta.labelBM : meta.labelEN}
-                    {meta.unit ? <span className="ml-1 text-xs font-semibold text-[var(--muted)]">({meta.unit})</span> : null}
-                  </h2>
-                </div>
-                <div className="flex gap-1">
-                  {RANGES.map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => setRange(r)}
-                      className={cn(
-                        "rounded-lg px-3 py-1 text-xs font-bold transition",
-                        range === r ? "bg-[var(--text)] text-[var(--bg)]" : "bg-[var(--surface-tint)] text-[var(--muted)]",
-                      )}
-                    >
-                      {r}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {showDataSkeleton ? (
-                <div className="h-44 animate-pulse rounded-xl bg-[var(--surface-tint)]" />
-              ) : chartPoints.length ? (
-                <>
-                  <MetricChart metricKey={metric} points={chartPoints} className="h-72" />
-                  <TrendStats
-                    values={chartPoints.map((p) => p.value ?? 0).filter((v) => v != null)}
-                    unit={metric === "bp" ? "" : meta.unit}
-                    isBm={isBm}
-                  />
-                </>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-[var(--divider)]/60 px-4 py-10 text-center">
-                  <LineChart size={26} className="mx-auto text-[var(--muted)]" />
-                  <p className="mt-2 text-sm font-semibold text-[var(--text)]">
-                    {isBm ? "Tiada bacaan untuk julat ini" : "No readings for this range"}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={openAdd}
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[var(--btn-primary-bg)] px-4 py-2 text-xs font-bold text-[var(--btn-primary-text)] transition hover:opacity-90"
-                  >
-                    <Plus size={14} />
-                    {isBm ? "Tambah Bacaan" : "Add Reading"}
-                  </button>
-                </div>
-              )}
-            </section>
-
-          <section className="rounded-3xl border border-[var(--divider)]/40 bg-[var(--card)] p-6 shadow-sm">
-            <h2 className="mb-4 text-base font-black text-[var(--text)]">{isBm ? "Senarai Bacaan" : "Readings"}</h2>
-            {!readings.length ? (
-              <div className="rounded-2xl border border-dashed border-[var(--divider)]/60 bg-[var(--surface-tint)] py-8 text-center text-xs text-[var(--muted)]">
-                {isBm ? "Belum ada bacaan." : "No readings yet."}
-              </div>
+          <section>
+            <div className="mb-3 flex items-baseline justify-between px-1">
+              <h2 className="text-base font-bold text-[var(--text)]">{tr("Senarai bacaan", "Readings")}</h2>
+              <span className="text-xs font-semibold text-[var(--muted)]">{readings.length} {tr("rekod", "records")}</span>
+            </div>
+            {readings.length === 0 ? (
+              <p className="rounded-[1.5rem] border border-dashed border-[var(--border)] px-4 py-8 text-center text-sm text-[var(--muted)]">{tr("Belum ada bacaan.", "No readings yet.")}</p>
             ) : (
-              <ul className="space-y-2.5">
+              <ul className="space-y-2">
                 {readings.map((r) => (
-                  <li
-                    key={r.id}
-                    className="flex min-h-20 items-center justify-between rounded-2xl border border-[var(--divider)]/30 bg-[var(--surface-tint)] p-4"
-                  >
-                    <div>
-                      <div className="text-sm font-bold text-[var(--text)]">
-                        {metric === "bp" && r.systolic != null && r.diastolic != null
-                          ? `${r.systolic} / ${r.diastolic}`
-                          : r.value != null
-                            ? `${r.value}`
-                            : "—"}
-                        <span className="ml-1 text-xs font-semibold text-[var(--muted)]">{r.unit}</span>
-                      </div>
-                      {r.note ? <div className="text-xs text-[var(--muted)]">{r.note}</div> : null}
+                  <li key={r.id} className="flex items-center gap-3 rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] py-3 pl-4 pr-2.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base font-bold tabular-nums text-[var(--text)]">
+                        {fmtReading(r)} <span className="text-xs font-semibold text-[var(--muted)]">{r.unit || meta.unit}</span>
+                      </p>
+                      <p className="truncate text-xs text-[var(--muted)]">{when(r.measured_at, true)}{r.note ? ` · ${r.note}` : ""}</p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <div className="text-xs text-[var(--muted)]">
-                        {new Date(r.measured_at).toLocaleDateString([], { day: "2-digit", month: "2-digit", year: "numeric" })}{" "}
-                        {new Date(r.measured_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })}
-                      </div>
-                      <button
-                        onClick={() => openEdit(r)}
-                        className="rounded-lg p-1.5 text-[var(--muted)] transition hover:text-[var(--accent2)]"
-                        aria-label={isBm ? "Edit" : "Edit"}
-                      >
-                        <Pencil size={15} />
-                      </button>
-                      <button
-                        onClick={() => deleteReading(r)}
-                        className="rounded-lg p-1.5 text-[var(--muted)] transition hover:text-rose-500"
-                        aria-label={isBm ? "Padam" : "Delete"}
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
+                    <button type="button" onClick={() => openEdit(r)} aria-label={tr("Ubah", "Edit")} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text)]"><Pencil size={14} /></button>
+                    <button type="button" onClick={() => deleteReading(r)} aria-label={tr("Padam", "Delete")} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-rose-500/30 text-rose-500"><Trash2 size={14} /></button>
                   </li>
                 ))}
               </ul>
             )}
           </section>
         </div>
-        </DesktopPageBody>
-      </div>
+      </DesktopPageBody>
 
-      {/* Add/Edit reading sheet */}
-      {sheetOpen ? (
-        <div
-          className="fixed inset-0 z-[140] flex items-end justify-center overscroll-none bg-[var(--overlay)] p-0 sm:items-center"
-          onClick={closeSheet}
-          onTouchMove={(e) => e.preventDefault()}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            data-swipe-sheet
-            {...addSwipe}
-            className="app-sheet-panel app-sheet-panel--lg w-full max-h-[90dvh] overflow-y-auto overscroll-contain touch-pan-y border border-[var(--border)] bg-[var(--sheet-bg)] pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] will-change-transform sm:max-h-[85vh] sm:max-w-[32rem] sm:rounded-2xl"
-          >
-            <AppSheetHeader
-              title={editing ? (isBm ? "Edit Bacaan" : "Edit Reading") : isBm ? "Tambah Bacaan" : "Add Reading"}
-              eyebrow={isBm ? meta.labelBM : meta.labelEN}
-              onClose={closeSheet}
-              action={
-                <button
-                  type="button"
-                  onClick={saveReading}
-                  disabled={saving}
-                  className="px-2 py-1 text-base font-bold text-[var(--accent)] transition hover:opacity-80 disabled:opacity-50"
-                >
-                  {saving ? (isBm ? "Menyimpan…" : "Saving…") : isBm ? "Simpan" : "Save"}
-                </button>
-              }
-            />
-            <div className="space-y-3 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
-              {meta.fields.includes("value") && (
-                <Field
-                  label={isBm ? "Nilai" : "Value"}
-                  suffix={meta.unit}
-                  value={form.value || ""}
-                  onChange={(v) => setForm((f) => ({ ...f, value: v }))}
-                />
-              )}
-              {meta.fields.includes("systolic") && (
-                <Field
-                  label="Systolic"
-                  suffix="mmHg"
-                  value={form.systolic || ""}
-                  onChange={(v) => setForm((f) => ({ ...f, systolic: v }))}
-                />
-              )}
-              {meta.fields.includes("diastolic") && (
-                <Field
-                  label="Diastolic"
-                  suffix="mmHg"
-                  value={form.diastolic || ""}
-                  onChange={(v) => setForm((f) => ({ ...f, diastolic: v }))}
-                />
-              )}
-              <Field
-                label={isBm ? "Nota (pilihan)" : "Note (optional)"}
-                text
-                value={form.note || ""}
-                onChange={(v) => setForm((f) => ({ ...f, note: v }))}
-              />
+      <AppSheet
+        open={sheet}
+        onClose={close}
+        id="health-reading-sheet"
+        title={editing ? tr(`Ubah ${metricName}`, `Edit ${metricName}`) : tr(`Bacaan ${metricName}`, `${metricName} reading`)}
+        size="md"
+        footer={
+          <button type="button" onClick={() => void saveReading()} disabled={saving} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--btn-primary-bg)] text-sm font-semibold text-[var(--btn-primary-text)] disabled:opacity-40">
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+            {tr("Simpan", "Save")}
+          </button>
+        }
+      >
+        <form onSubmit={saveReading} className="space-y-4">
+          {meta.fields.includes("value") && (
+            <div>
+              <label htmlFor="hr-value" className={label}>{tr("Nilai", "Value")} ({meta.unit})</label>
+              <input id="hr-value" inputMode="decimal" value={form.value || ""} onChange={(e) => setForm({ ...form, value: e.target.value.replace(/,/g, ".").replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1") })} placeholder="0" className={field} />
             </div>
+          )}
+          {meta.fields.includes("systolic") && (
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label htmlFor="hr-sys" className={label}>{tr("Sistolik", "Systolic")} (mmHg)</label>
+                <input id="hr-sys" inputMode="numeric" value={form.systolic || ""} onChange={(e) => setForm({ ...form, systolic: e.target.value.replace(/\D/g, "").slice(0, 3) })} placeholder="120" className={field} />
+              </div>
+              <div>
+                <label htmlFor="hr-dia" className={label}>{tr("Diastolik", "Diastolic")} (mmHg)</label>
+                <input id="hr-dia" inputMode="numeric" value={form.diastolic || ""} onChange={(e) => setForm({ ...form, diastolic: e.target.value.replace(/\D/g, "").slice(0, 3) })} placeholder="80" className={field} />
+              </div>
+            </div>
+          )}
+          <div>
+            <label htmlFor="hr-at" className={label}>{tr("Tarikh dan masa", "Date and time")}</label>
+            <input id="hr-at" type="datetime-local" max={toKlInput()} value={form.at || ""} onChange={(e) => setForm({ ...form, at: e.target.value })} className={field} />
           </div>
-        </div>
-      ) : null}
-      {alertModal}
-    </div>
-  )
-}
+          <div>
+            <label htmlFor="hr-note" className={label}>{tr("Nota (pilihan)", "Note (optional)")}</label>
+            <input id="hr-note" value={form.note || ""} maxLength={200} onChange={(e) => setForm({ ...form, note: e.target.value })} className={field} />
+          </div>
+          {editing && (
+            <p className="text-xs text-[var(--muted)]">{tr("Jenis bacaan tidak boleh ditukar. Padam dan tambah semula jika salah.", "The reading type cannot be changed. Delete and add it again if it is wrong.")}</p>
+          )}
+        </form>
+      </AppSheet>
 
-function Field({
-  label,
-  suffix,
-  value,
-  onChange,
-  text = false,
-}: {
-  label: string
-  suffix?: string
-  value: string
-  onChange: (v: string) => void
-  text?: boolean
-}) {
-  return (
-    <div>
-      <label className="mb-1 block text-xs font-bold text-[var(--muted)]">{label}</label>
-      <div className="flex items-center gap-2">
-        <input
-          type={text ? "text" : "number"}
-          inputMode={text ? "text" : "decimal"}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="0"
-          className="min-h-12 w-full rounded-2xl border border-[var(--border)] bg-[var(--page-bg)] px-4 py-3 text-base text-[var(--text)] outline-none focus:border-[var(--accent2)]"
-        />
-        {suffix ? <span className="shrink-0 text-xs font-bold text-[var(--muted)]">{suffix}</span> : null}
-      </div>
+      {alertModal}
     </div>
   )
 }

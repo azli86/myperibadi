@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Optional
 
+from fastapi import HTTPException
 from sqlalchemy import select
 
 import models
@@ -39,6 +40,63 @@ METRIC_LABELS_BM = {
     "spo2": "SpO₂",
     "temperature": "Suhu",
 }
+
+
+METRIC_RANGES = {
+    "weight": (1.0, 500.0),
+    "height": (30.0, 260.0),
+    "glucose": (0.5, 60.0),
+    "pulse": (20.0, 260.0),
+    "spo2": (50.0, 100.0),
+    "temperature": (30.0, 45.0),
+}
+
+
+def _bad(detail: str):
+    raise HTTPException(status_code=400, detail=detail)
+
+
+def validate_reading_values(metric_type, value, systolic, diastolic, measured_at=None) -> None:
+    if metric_type not in METRIC_UNITS:
+        _bad("Unknown reading type.")
+    if metric_type == "bp":
+        if systolic is None or diastolic is None:
+            _bad("Enter both the systolic and the diastolic pressure.")
+        if not (50 <= float(systolic) <= 300) or not (30 <= float(diastolic) <= 200):
+            _bad("Blood pressure is outside a possible range.")
+        if float(systolic) <= float(diastolic):
+            _bad("Systolic must be higher than diastolic.")
+    else:
+        if value is None:
+            _bad("Enter a value.")
+        low, high = METRIC_RANGES[metric_type]
+        if not (low <= float(value) <= high):
+            _bad(f"The value should be between {low:g} and {high:g} {METRIC_UNITS[metric_type]}.")
+    if measured_at is not None:
+        naive = _naive_utc(measured_at)
+        if naive and naive > datetime.utcnow() + timedelta(minutes=10):
+            _bad("The measurement time cannot be in the future.")
+
+
+def validate_medication(name, frequency, start_date, end_date, schedules) -> None:
+    if name is not None and not str(name).strip():
+        _bad("Medication name is required.")
+    if frequency is not None and not (1 <= int(frequency) <= 12):
+        _bad("Doses per day must be between 1 and 12.")
+    if start_date and end_date and end_date < start_date:
+        _bad("The end date cannot be before the start date.")
+    if schedules is not None:
+        if len(schedules) > 12:
+            _bad("At most 12 reminder times.")
+        seen = set()
+        for sc in schedules:
+            try:
+                t = parse_time(sc.get("time") if isinstance(sc, dict) else sc.time)
+            except ValueError:
+                _bad("A reminder time is not valid.")
+            if t in seen:
+                _bad("Two reminders have the same time.")
+            seen.add(t)
 
 
 def parse_time(s: str) -> time:
@@ -95,6 +153,7 @@ def _naive_utc(value: Optional[datetime]) -> Optional[datetime]:
 
 
 async def create_reading(db, *, user_id, payload: HealthReadingCreate, household_id=None) -> models.HealthReading:
+    validate_reading_values(payload.metric_type, payload.value, payload.systolic, payload.diastolic, payload.measured_at)
     row = models.HealthReading(
         user_id=user_id,
         household_id=household_id,
@@ -123,6 +182,8 @@ async def update_reading(db, *, reading_id, user_id, payload: HealthReadingUpdat
             data.pop("diastolic", None)
     if "measured_at" in data:
         data["measured_at"] = _naive_utc(data["measured_at"])
+    final = {k: data.get(k, getattr(row, k)) for k in ("value", "systolic", "diastolic")}
+    validate_reading_values(row.metric_type, final["value"], final["systolic"], final["diastolic"], data.get("measured_at"))
     for k, v in data.items():
         setattr(row, k, v)
     if payload.unit is None and row.unit is None:
@@ -246,11 +307,14 @@ async def _attach_schedules(db, med: models.Medication, schedules: list[dict[str
 
 
 async def create_medication(db, *, user_id, payload: MedicationCreate, household_id=None) -> models.Medication:
+    if not (payload.name or "").strip():
+        _bad("Medication name is required.")
+    validate_medication(payload.name, payload.frequency, payload.start_date, payload.end_date, [s.dict() for s in payload.schedules])
     med = models.Medication(
         user_id=user_id,
         household_id=household_id,
-        name=payload.name,
-        dosage=payload.dosage,
+        name=payload.name.strip(),
+        dosage=(payload.dosage or "").strip() or None,
         frequency=payload.frequency or max(1, len(payload.schedules) or 1),
         timing=payload.timing or "anytime",
         start_date=payload.start_date,
@@ -274,6 +338,15 @@ async def update_medication(db, *, medication_id, user_id, payload: MedicationUp
         return None
     data = payload.dict(exclude_unset=True)
     schedules = data.pop("schedules", None)
+    validate_medication(
+        data.get("name"),
+        data.get("frequency"),
+        data.get("start_date", med.start_date),
+        data.get("end_date", med.end_date),
+        schedules,
+    )
+    if "name" in data:
+        data["name"] = data["name"].strip()
     for k, v in data.items():
         setattr(med, k, v)
     if schedules is not None:

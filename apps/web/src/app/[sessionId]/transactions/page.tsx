@@ -570,7 +570,19 @@ export default function TransactionsPage() {
 
  const [mobileDetailId, setMobileDetailId] = useState<string | number | null>(null)
  const detailHistoryArmedRef = useRef(false)
+ // Warm the detail route once the list is up, so the first tap does not wait for its code.
+ useEffect(() => {
+   const first = transactions[0]
+   if (first) router.prefetch(`/${sessionId}/transactions/${first.reference_id || first.id}`)
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [transactions.length > 0])
  const openTransaction = (id: string | number) => {
+   // Hand the row we already have to the detail panel, so it can show something at once
+   // instead of waiting for the app and the full record to load.
+   try {
+     const row = transactions.find((t) => t.reference_id === id || String(t.id) === String(id))
+     if (row) sessionStorage.setItem(`txn-preview:${id}`, JSON.stringify(row))
+   } catch {}
    detailHistoryArmedRef.current = false
    setMobileDetailId(id)
  }

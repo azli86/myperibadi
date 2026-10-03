@@ -464,6 +464,7 @@ async function apiGetPet(): Promise<PetState | null> {
   try {
     const token = getAccessToken()
     if (!token) return null // no valid session -> skip, avoid 401 noise
+    if (typeof window !== "undefined" && window.self !== window.top) return null // framed copy: parent owns the pet
     const res = await fetch("/api/users/me/cat-pet", {
       credentials: "include",
       headers: {

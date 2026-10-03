@@ -60,8 +60,8 @@ export default function TxnSummaryCard({
               )}
             </span>
             <span className="flex min-w-0 flex-col">
-              <span className="truncate font-bold" style={{ color: HERO_TEXT, fontSize: "1rem" }}>{title}</span>
-              <span className="truncate font-medium" style={{ color: HERO_MUTED, fontSize: "0.75rem" }}>{categoryName}</span>
+              <span className="line-clamp-2 break-words font-bold leading-snug [overflow-wrap:anywhere]" style={{ color: HERO_TEXT, fontSize: "1rem" }}>{title}</span>
+              <span className="line-clamp-1 font-medium [overflow-wrap:anywhere]" style={{ color: HERO_MUTED, fontSize: "0.75rem" }}>{categoryName}</span>
             </span>
           </>
         }

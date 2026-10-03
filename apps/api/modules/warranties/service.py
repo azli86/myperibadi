@@ -12,8 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import models
 import storage_service
+from time_utils import current_business_date
 from modules.warranties import queries, storage
 from modules.warranties.schemas import ClaimCreate, ClaimUpdate, DeviceCreate, DeviceUpdate
+
+
+MAX_WARRANTY_MONTHS = 600
 
 
 def _parse_date(value: Optional[str], field: str = "date") -> Optional[date]:
@@ -52,7 +56,7 @@ def _add_months(start: date, months: int) -> date:
 def compute_warranty_status(expiry: Optional[date], *, today: Optional[date] = None) -> str:
     if expiry is None:
         return "unknown"
-    ref = today or date.today()
+    ref = today or current_business_date()
     remaining = (expiry - ref).days
     if remaining < 0:
         return "expired"
@@ -64,7 +68,7 @@ def compute_warranty_status(expiry: Optional[date], *, today: Optional[date] = N
 def remaining_days(expiry: Optional[date], *, today: Optional[date] = None) -> Optional[int]:
     if expiry is None:
         return None
-    ref = today or date.today()
+    ref = today or current_business_date()
     return (expiry - ref).days
 
 
@@ -141,8 +145,8 @@ async def create_device(
     duration = payload.warranty_duration_months
     if duration is None or int(duration) <= 0:
         raise HTTPException(status_code=400, detail="Warranty duration is required.")
-    if int(duration) < 0:
-        raise HTTPException(status_code=400, detail="Warranty duration cannot be negative.")
+    if int(duration) > MAX_WARRANTY_MONTHS:
+        raise HTTPException(status_code=400, detail="Warranty duration is too long.")
     # Expiry is always calculated from start + duration
     expiry = _add_months(warranty_start, int(duration))
     if payload.purchase_price is not None and float(payload.purchase_price) < 0:
@@ -228,8 +232,8 @@ async def update_device(
         duration = payload.warranty_duration_months
         if duration is None or int(duration) <= 0:
             raise HTTPException(status_code=400, detail="Warranty duration is required.")
-        if int(duration) < 0:
-            raise HTTPException(status_code=400, detail="Warranty duration cannot be negative.")
+        if int(duration) > MAX_WARRANTY_MONTHS:
+            raise HTTPException(status_code=400, detail="Warranty duration is too long.")
         row.warranty_duration_months = duration
 
     # Always recompute expiry from start + duration
@@ -270,6 +274,15 @@ async def delete_device(db: AsyncSession, *, current_user: models.User, device_i
     await db.commit()
 
 
+def _check_claim_dates(claim: models.WarrantyClaim) -> None:
+    if claim.date_sent and claim.claim_date and claim.date_sent < claim.claim_date:
+        raise HTTPException(status_code=400, detail="Date sent cannot be before the claim date.")
+    if claim.date_received and claim.date_sent and claim.date_received < claim.date_sent:
+        raise HTTPException(status_code=400, detail="Date received cannot be before the date sent.")
+    if claim.expected_completion_date and claim.date_sent and claim.expected_completion_date < claim.date_sent:
+        raise HTTPException(status_code=400, detail="Expected completion cannot be before the date sent.")
+
+
 async def create_claim(
     db: AsyncSession,
     *,
@@ -281,7 +294,7 @@ async def create_claim(
     claim = models.WarrantyClaim(
         device_id=device_id,
         user_id=current_user.id,
-        claim_date=_parse_date(payload.claim_date, "claim_date") or date.today(),
+        claim_date=_parse_date(payload.claim_date, "claim_date") or current_business_date(),
         problem_description=(payload.problem_description or "").strip() or None,
         service_centre=(payload.service_centre or "").strip() or None,
         reference_number=(payload.reference_number or "").strip() or None,
@@ -291,6 +304,7 @@ async def create_claim(
         resolution=(payload.resolution or None),
         notes=(payload.notes or "").strip() or None,
     )
+    _check_claim_dates(claim)
     db.add(claim)
     await db.commit()
     await db.refresh(claim)
@@ -331,6 +345,7 @@ async def update_claim(
     if "resolution" in data:
         claim.resolution = payload.resolution
 
+    _check_claim_dates(claim)
     claim.updated_at = datetime.utcnow()
     await db.commit()
     await db.refresh(claim)

@@ -131,18 +131,18 @@ export function ModenHero({
               <span className="min-w-0 flex-1 truncate font-semibold" style={{ color: HERO_STRIP_MUTED, fontSize: "0.8125rem" }}>
                 {stat.label}
               </span>
-              <span className="shrink-0 font-bold tabular-nums" style={{ color: HERO_STRIP_TEXT, fontSize: "0.9375rem" }}>
+              <span className="min-w-0 max-w-[65%] text-right font-bold tabular-nums [overflow-wrap:anywhere]" style={{ color: HERO_STRIP_TEXT, fontSize: "0.9375rem" }}>
                 {stat.value}
               </span>
             </div>
           ))}
         </div>
       ) : stats && stats.length ? (
-        <div className="flex items-center gap-3.5 pb-4 pl-[22px] pr-5 pt-3.5" style={{ color: HERO_STRIP_TEXT }}>
+        <div className="flex items-start gap-3.5 pb-4 pl-[22px] pr-5 pt-3.5" style={{ color: HERO_STRIP_TEXT }}>
           {stats.map((stat, index) => (
             <div key={stat.key} className="contents">
-              {index > 0 ? <span aria-hidden className="h-9 w-px shrink-0" style={{ background: HERO_DIVIDER }} /> : null}
-              <div className="flex min-w-0 flex-1 items-center gap-2.5">
+              {index > 0 ? <span aria-hidden className="h-9 w-px shrink-0 self-center" style={{ background: HERO_DIVIDER }} /> : null}
+              <div className="flex min-w-0 flex-1 items-start gap-2.5">
                 <span
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
                   style={{
@@ -156,7 +156,7 @@ export function ModenHero({
                   <span className="truncate font-semibold" style={{ color: HERO_STRIP_MUTED, fontSize: "0.75rem" }}>
                     {stat.label}
                   </span>
-                  <span className="truncate font-bold tabular-nums" style={{ color: HERO_STRIP_TEXT, fontSize: "0.875rem" }}>
+                  <span className="font-bold tabular-nums leading-snug [overflow-wrap:anywhere]" style={{ color: HERO_STRIP_TEXT, fontSize: "0.875rem" }}>
                     {stat.value}
                   </span>
                 </span>

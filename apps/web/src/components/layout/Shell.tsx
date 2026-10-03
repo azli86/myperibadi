@@ -3660,13 +3660,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
           {/* Cat playground + calculator */}
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-0 pt-2">
-            <CatPlayground
-              lang={lang === "BM" ? "BM" : "EN"}
-              userKey={sessionId}
-              compact
-              stackFeed
-              presentation="chip"
-            />
+            {/* Not in a framed copy (the transaction panel): it would fetch the cat for nothing. */}
+            {embedded ? null : (
+              <CatPlayground
+                lang={lang === "BM" ? "BM" : "EN"}
+                userKey={sessionId}
+                compact
+                stackFeed
+                presentation="chip"
+              />
+            )}
             <div className="overflow-hidden rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)]">
               <Calculator embedded />
             </div>
@@ -3690,7 +3693,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                 <Settings size={15} strokeWidth={2} />
                 <span>{lang === "BM" ? "Tetapan" : "Settings"}</span>
               </Link>
-              <DesktopAnnouncementBell sessionId={sessionId} lang={lang} />
+              {embedded ? null : <DesktopAnnouncementBell sessionId={sessionId} lang={lang} />}
               <button
                 type="button"
                 onClick={() => setShowChatOverlay(true)}

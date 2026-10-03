@@ -80,6 +80,8 @@ export function useAnnouncements() {
     const token = getAccessToken()
     const cached = readApiCache<Announcement[]>(LIST_URL, token, 24 * 60 * 60 * 1000)
     if (cached) setItems(cached)
+    // A framed copy (the transaction panel) shows no announcements; its parent has them.
+    if (window.self !== window.top) return
     let cancelled = false
     fetchApiJson<Announcement[]>(LIST_URL, token)
       .then((fresh) => {
