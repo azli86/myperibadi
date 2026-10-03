@@ -241,6 +241,7 @@ async def create_place(
     category_name: Optional[str] = None,
     location_name: Optional[str] = None,
     source_channel: Optional[str] = None,
+    category_color: Optional[str] = None,
 ) -> models.Place:
     cleaned_title = re.sub(r"\s+", " ", (title or "").strip())
     if not cleaned_title:
@@ -255,7 +256,7 @@ async def create_place(
 
     resolved_category_id = category_id
     if category_name and not resolved_category_id:
-        cat = await get_or_create_category(db, user_id=user_id, name=category_name)
+        cat = await get_or_create_category(db, user_id=user_id, name=category_name, color=category_color)
         resolved_category_id = int(cat.id)
     elif resolved_category_id is not None:
         cat_result = await db.execute(

@@ -148,6 +148,8 @@ async def get_transaction_map_points_route(
         .outerjoin(models.Wallet, models.Transaction.wallet_id == models.Wallet.id)
         .where(models.Transaction.user_id == current_user.id)
         .where(models.Transaction.latitude.is_not(None), models.Transaction.longitude.is_not(None))
+        # Moving money between your own wallets, or lending and repaying, is not spending somewhere.
+        .where(or_(models.Category.id.is_(None), models.Category.is_internal.is_(False)))
         .order_by(models.Transaction.txn_date.desc(), _effective_txn_time().desc(), models.Transaction.created_at.desc())
         .limit(limit)
     )

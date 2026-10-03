@@ -5,12 +5,26 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+import re
+
+from pydantic import BaseModel, Field, field_validator
+
+_COLOR = re.compile(r"^#[0-9a-fA-F]{3,8}$")
+
+
+def _clean_color(value):
+    if value is None or value == "":
+        return None
+    if not _COLOR.match(value):
+        raise ValueError("color must be a hex value like #3b82f6")
+    return value
 
 
 class PlaceCategoryCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     color: Optional[str] = Field(default=None, max_length=20)
+
+    _check_color = field_validator("color")(_clean_color)
 
 
 class PlaceCategoryUpdate(BaseModel):
@@ -18,21 +32,27 @@ class PlaceCategoryUpdate(BaseModel):
     color: Optional[str] = Field(default=None, max_length=20)
     sort_order: Optional[int] = None
 
+    _check_color = field_validator("color")(_clean_color)
+
 
 class PlaceCreate(BaseModel):
     title: str = Field(min_length=1, max_length=190)
-    latitude: float
-    longitude: float
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
     category_id: Optional[int] = None
     category_name: Optional[str] = Field(default=None, max_length=120)
+    # Colour for a category that is created along with this place.
+    category_color: Optional[str] = Field(default=None, max_length=20)
     location_name: Optional[str] = Field(default=None, max_length=190)
     source_channel: Optional[str] = Field(default=None, max_length=30)
+
+    _check_color = field_validator("category_color")(_clean_color)
 
 
 class PlaceUpdate(BaseModel):
     title: Optional[str] = Field(default=None, min_length=1, max_length=190)
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
+    latitude: Optional[float] = Field(default=None, ge=-90, le=90)
+    longitude: Optional[float] = Field(default=None, ge=-180, le=180)
     category_id: Optional[int] = None
     category_name: Optional[str] = Field(default=None, max_length=120)
     location_name: Optional[str] = Field(default=None, max_length=190)

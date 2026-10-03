@@ -3797,3 +3797,64 @@ html[data-theme="light"] {
   animation-duration: 1s !important;
   animation-iteration-count: infinite !important;
 }
+
+/* Chat "Reading…" indicator: the star turns and breathes, the words fade in and out. Lives inside
+   a [data-motion] element, so the no-animation rule leaves it alone. */
+@keyframes chat-star-spin {
+  0%   { transform: rotate(0deg) scale(0.85); }
+  50%  { transform: rotate(180deg) scale(1.15); }
+  100% { transform: rotate(360deg) scale(0.85); }
+}
+@keyframes chat-reading-fade {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+.chat-star { animation: chat-star-spin 1.6s ease-in-out infinite; }
+.chat-reading { animation: chat-reading-fade 1.6s ease-in-out infinite; }
+
+/* Map analysis pins: a rounded badge with the rank and the amount, and a small stem. */
+.analysis-marker-wrap { background: transparent; border: 0; }
+.analysis-marker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: max-content;
+  padding: 3px 10px 3px 3px;
+  border-radius: 9999px;
+  border: 1px solid var(--border-strong);
+  background: var(--card);
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1;
+}
+.analysis-marker > span {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-text);
+  font-weight: 700;
+}
+.analysis-marker > strong { font-weight: 700; font-variant-numeric: tabular-nums; }
+.analysis-marker::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  background: var(--card);
+  border-right: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
+  transform: rotate(45deg);
+}
+
+/* Behind the tiles: until a tile arrives the map shows the theme's own colour, not Leaflet's
+   default light grey, which flashed white on the dark theme. */
+/* Doubled selector: leaflet.css loads later and sets #ddd with the same weight as a single class. */
+.leaflet-container.leaflet-container { background: #1b1b1b; }
+html[data-theme="light"] .leaflet-container.leaflet-container { background: #e6e6e6; }

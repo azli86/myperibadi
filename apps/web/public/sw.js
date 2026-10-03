@@ -35,12 +35,13 @@ try {
   console.error("[sw.js] Firebase init failed:", e)
 }
 
-const CACHE_NAME = "budget-by-digitalport-shell-v55"
+const CACHE_NAME = "budget-by-digitalport-shell-v57"
+const TILE_CACHE = "budget-map-tiles-v1"
+const TILE_CACHE_MAX = 900
 const APP_SHELL = [
   "/offline",
   "/icon-192-v3.png",
   "/icon-512-v3.png",
-  "/assets/lock/keypadbanner-v5.png",
 ]
 
 self.addEventListener("install", (event) => {
@@ -55,7 +56,7 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
+      Promise.all(keys.filter((key) => key !== CACHE_NAME && key !== TILE_CACHE).map((key) => caches.delete(key)))
     ).then(() => self.clients.claim())
       .then(async () => {
         const windowClients = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
@@ -80,6 +81,33 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return
 
   const url = new URL(request.url)
+
+  // Map tiles: serve the saved tile at once and refresh it quietly, so a map opens already drawn.
+  if (url.hostname.endsWith(".basemaps.cartocdn.com")) {
+    event.respondWith((async () => {
+      const cache = await caches.open(TILE_CACHE)
+      const cached = await cache.match(request)
+      const refresh = fetch(request)
+        .then(async (response) => {
+          if (response && response.ok) {
+            await cache.put(request, response.clone())
+            const keys = await cache.keys()
+            if (keys.length > TILE_CACHE_MAX) {
+              await Promise.all(keys.slice(0, keys.length - TILE_CACHE_MAX).map((k) => cache.delete(k)))
+            }
+          }
+          return response
+        })
+        .catch(() => null)
+      if (cached) {
+        event.waitUntil(refresh)
+        return cached
+      }
+      return (await refresh) || Response.error()
+    })())
+    return
+  }
+
   if (url.pathname.startsWith("/api/") || url.pathname === "/build-version.json" || url.pathname === "/manifest.webmanifest") return
 
   if (request.mode === "navigate") {

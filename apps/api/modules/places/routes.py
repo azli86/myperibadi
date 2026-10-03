@@ -153,6 +153,7 @@ def create_places_router(
             longitude=payload.longitude,
             category_id=payload.category_id,
             category_name=payload.category_name,
+            category_color=payload.category_color,
             location_name=payload.location_name,
             source_channel=payload.source_channel or "web",
         )

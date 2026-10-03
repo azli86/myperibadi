@@ -1762,10 +1762,12 @@ export default function ChatPage() {
 
         {isTyping && (
           <div className="flex w-full justify-start">
-            <div className={cn("inline-flex items-center gap-1.5 rounded-2xl border px-3.5 py-3", bubbleBotBg)} aria-label={lang === "EN" ? "Typing" : "Sedang menaip"}>
-              <span className="chat-typing-dot h-2 w-2 bg-[var(--muted)]" />
-              <span className="chat-typing-dot h-2 w-2 bg-[var(--muted)]" />
-              <span className="chat-typing-dot h-2 w-2 bg-[var(--muted)]" />
+            {/* The one animation the user asked to keep in chat: a turning star beside "Reading…". */}
+            <div data-motion role="status" className={cn("inline-flex items-center gap-2.5 rounded-2xl border px-3.5 py-3", bubbleBotBg)}>
+              <svg className="chat-star h-5 w-5 shrink-0 text-[var(--btn-primary-bg)]" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M12 1.5c.5 5.6 2.4 8.4 4.5 9.5 1.6.9 3.6 1.5 6 1-2.4.5-4.4 1.1-6 2-2.1 1.2-4 3.9-4.5 9.5-.5-5.6-2.4-8.3-4.5-9.5-1.6-.9-3.6-1.5-6-2 2.4-.5 4.4-1.1 6-1 2.1-1.1 4-3.9 4.5-9.5Z" />
+              </svg>
+              <span className="chat-reading text-sm font-semibold text-[var(--text-soft)]">Reading…</span>
             </div>
           </div>
         )}
